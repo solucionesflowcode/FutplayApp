@@ -1,3 +1,7 @@
 export default function DashboardPage() {
-    return <h1>Dashboard usuario</h1>;
+    return (
+        <main>
+            <h1>Dashboard usuario</h1>
+        </main>
+    );
 }
