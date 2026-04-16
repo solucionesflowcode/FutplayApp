@@ -133,7 +133,7 @@ export default function SideBarAdmin({
                     <button onClick={() => setOpen(true)} className="p-1 hover:bg-gray-100 rounded-md transition-colors cursor-pointer">
                         <Menu className="text-[#004080]" />
                     </button>
-                    <span className="font-bold text-[#004080]">Kinetic</span>
+                    <span className="font-bold text-[#004080]">FutPlay</span>
                 </div>
 
                 <main className="w-full relative z-0">{children}</main>
