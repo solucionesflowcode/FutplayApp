@@ -1,7 +1,8 @@
 "use client";
 import { createClient } from "@/utils/supabase/client";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,14 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[url('/login-background.svg')] bg-contain flex items-center justify-center">
+    <div className="min-h-screen bg-[url('/login-background.svg')] bg-contain flex items-center justify-center relative">
+      <Link 
+        href="/home" 
+        className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors font-medium z-10"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span className="text-sm">Volver al inicio</span>
+      </Link>
       <div className="flex justify-center w-[850px] h-[500px] md:h-[500px] md:w-[650px] bg-transparent md:bg-white border-0 md:border-2 md:border-gray-200 rounded-none md:rounded-[20px] shadow-none md:shadow-[0px_7px_18px_-4px_rgba(0,_0,_0,_0.35)]">
         <div className="hidden md:block relative flex items-center justify-center bg-[#FFAD91] md:w-[50%] m-[8px] rounded-[12px]">
 
