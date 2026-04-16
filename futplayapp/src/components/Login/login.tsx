@@ -27,32 +27,33 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[url('/login-background.svg')] bg-contain flex items-center justify-center">
-      <div className="flex w-[650px] h-[500px] bg-white border-2 border-gray-200 rounded-[20px] shadow-[0px_7px_18px_-4px_rgba(0,_0,_0,_0.35)]">
-        <div className="relative flex items-center justify-center bg-[#FFAD91] w-[50%] m-[8px] rounded-[12px]">
+      <div className="flex justify-center w-[850px] h-[500px] md:h-[500px] md:w-[650px] bg-transparent md:bg-white border-0 md:border-2 md:border-gray-200 rounded-none md:rounded-[20px] shadow-none md:shadow-[0px_7px_18px_-4px_rgba(0,_0,_0,_0.35)]">
+        <div className="hidden md:block relative flex items-center justify-center bg-[#FFAD91] md:w-[50%] m-[8px] rounded-[12px]">
 
 
-          <img src="/login-image-player.svg" alt="" className="" />
-          <img src="/futplay-logo.svg" alt="" className="absolute bottom-0 left-0 w-[80px] m-2" />
-          <p className="absolute bottom-0 right-0 text-white text-[8px] m-2">Derechos reservados FutPlay™</p>
+          <img src="/login-image-player.svg" alt="" className="hidden md:block" />
+          <img src="/futplay-logo.svg" alt="" className="absolute bottom-0 left-0 w-[80px] m-2 hidden md:block" />
+          <p className="absolute bottom-0 right-0 text-white text-[8px] m-2 hidden md:block">Derechos reservados FutPlay™</p>
 
 
         </div>
-        <div className=" flex flex-col   justify-between w-[50%]  m-[8px] ">
+        <div className=" flex flex-col   justify-between md:w-[50%]  m-[8px] ">
           <div>
-            <p className="font-bold text-[12px]">FutPlay™</p>
-            <p className="text-[#999999] text-[10px]">Academia de futbol de alto rendimiento.</p>
+            <p className="hidden md:block font-bold  text-[12px]">FutPlay™</p>
+            <p className="hidden md:block text-[#999999] text-[10px]">Academia de futbol de alto rendimiento.</p>
           </div>
           <div>
             <div>
-              <p className="font-regular text-[28px] leading-none"><span className="text-[#FFAD91]">Bienvenido</span>, Inicia <br />
+              <img src="/futplay-logo-original.svg" alt="" className="w-[180px] mx-auto mb-2 md:hidden" />
+              <p className="font-regular text-[28px] text-center leading-none"><span className="text-[#F39200]">Bienvenido</span>, Inicia <br />
                 sesion en tu cuenta.</p>
-              <p className="text-[#999999] text-[14px] mb-[40px] mt-[10px]">Ingresa con Google</p>
+              <p className="text-[#999999] text-[14px] mb-[40px] mt-[10px] text-center">Ingresa con Google</p>
             </div>
             <div className="flex flex-col gap-4">
               <button
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 bg-[#EAEAEA] hover:bg-gray-50 transition-all px-6 py-[10px] rounded-xl font-bold text-[#505050] text-[12px] disabled:opacity-50 cursor-pointer shadow-md"
+                className=" w-full flex items-center justify-center gap-3 bg-[#EAEAEA] hover:bg-gray-50 transition-all px-6 py-[10px] rounded-xl border-1 border-[#B4B4B4] font-bold text-[#505050] text-[12px] disabled:opacity-50 cursor-pointer shadow-md"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -87,7 +88,7 @@ export default function Login() {
               <button
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 bg-[#EAEAEA] hover:bg-gray-50 transition-all px-6 py-[10px] rounded-xl font-bold text-[#505050] text-[12px] disabled:opacity-50 cursor-pointer shadow-md"
+                className="w-full flex items-center justify-center gap-3 bg-[#EAEAEA] hover:bg-gray-50 transition-all px-6 py-[10px] rounded-xl font-bold border-1 border-[#B4B4B4] text-[#505050] text-[12px] disabled:opacity-50 cursor-pointer shadow-md"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -116,7 +117,7 @@ export default function Login() {
             </div>
 
           </div>
-          <p className="text-[#999999] text-[12px] m-1  ">¿Necesitas ayuda?</p>
+          <p className=" text-center md:text-start text-[#999999] text-[12px] m-1  ">¿Necesitas ayuda?</p>
         </div>
 
       </div>
