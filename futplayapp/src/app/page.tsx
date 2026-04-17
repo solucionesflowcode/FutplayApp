@@ -6,7 +6,6 @@ import { useEffect } from "react";
 export default function Home() {
   const params = useSearchParams();
   const router = useRouter();
-
   const role = params.get("role");
   /* Hardcodeamos los tipos ya que no hemos conectaaado la base de datos con roles. 
   se usan asi en el navegador para probarlo
