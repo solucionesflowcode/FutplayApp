@@ -1,37 +1,18 @@
 "use client";
-import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { Loader2, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuthUser } from "@/context";
+import { LogOut, Loader2 } from "lucide-react";
 
 /**
  * Página de perfil del usuario.
- * Muestra el email del usuario logueado y permite cerrar sesión.
- * Esta página es temporal para probar autenticación - 
- * se reemplazará con el perfil completo de FutPlay.
- * 
- * Flujo:
- * 1. Carga la sesión actual del usuario
- * 2. Muestra el email si hay usuario logueado
- * 3. Permite cerrar sesión (redirige a /login)
+ * Muestra el email, nombre y rol del usuario logueado.
  */
 export default function Perfil() {
-  const supabase = createClient();
-  const [user, setUser] = useState<{ email?: string | null; id: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { user, usuario, loading, signOut } = useAuthUser();
 
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
-    };
-    getUser();
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  };
+  console.log("🔍 user:", user);
+  console.log("🔍 usuario:", usuario);
 
   if (loading) {
     return (
@@ -41,14 +22,31 @@ export default function Perfil() {
     );
   }
 
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/login");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-lg shadow-md flex flex-col items-center gap-6">
         <h1 className="text-xl font-semibold text-gray-800">Sesión activa</h1>
+        
         <div className="flex flex-col items-center gap-2">
           <p className="text-gray-600">Email:</p>
           <p className="text-[#F39200] font-medium">{user?.email || "No hay usuario"}</p>
         </div>
+
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-gray-600">Nombre:</p>
+          <p className="text-[#F39200] font-medium">{usuario?.nombre || "No disponible"}</p>
+        </div>
+
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-gray-600">Rol:</p>
+          <p className="text-[#F39200] font-medium capitalize">{usuario?.rol || "No disponible"}</p>
+        </div>
+
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
