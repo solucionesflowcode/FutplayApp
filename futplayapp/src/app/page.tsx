@@ -23,7 +23,7 @@ export default function Home() {
     if (loading) return;
 
     if (!usuario) {
-      router.replace("/login");
+      router.replace("/home");
       return;
     }
 
