@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -45,6 +45,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const supabase = createClient();
+
 /**
  * Proveedor del contexto de autenticación.
  * Debe envolver toda la aplicación en layout.tsx.
@@ -59,11 +61,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
  * @param {ReactNode} props.children - Componentes hijos
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isInitialLoadStarted = useRef(false);
 
   /**
    * Obtiene los datos del usuario desde la tabla 'usuario'.
@@ -145,19 +147,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Evitar que la carga inicial se ejecute más de una vez (especialmente en React Strict Mode)
+    if (isInitialLoadStarted.current) return;
+    isInitialLoadStarted.current = true;
+
     loadUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Si el evento es SIGNED_IN y ya tenemos el usuario cargado por loadUser, 
+      // podemos evitar llamadas redundantes a fetchUsuario si ya coinciden.
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        // Solo obtener datos de la tabla si el usuario ha cambiado o no tenemos los datos
         await fetchUsuario(session.user.id);
       } else {
         setUsuario(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [loadUser, fetchUsuario]);
 
   return (
