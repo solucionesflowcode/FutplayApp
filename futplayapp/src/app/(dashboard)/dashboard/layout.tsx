@@ -9,7 +9,7 @@ export default function DashboardLayout({
     return (
         <>
             <SideBarUsuario>
-                <main>{children}</main>
+                <main >{children}</main>
             </SideBarUsuario>
         </>
     );
