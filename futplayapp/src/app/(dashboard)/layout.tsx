@@ -1,5 +1,5 @@
-import SideBarUsuario from "../../../components/navbars/SideBarUsuario";
-import "../../globals.css";
+import SideBarUsuario from "../../components/navbars/SideBarUsuario";
+import "../globals.css";
 
 export default function DashboardLayout({
     children,
