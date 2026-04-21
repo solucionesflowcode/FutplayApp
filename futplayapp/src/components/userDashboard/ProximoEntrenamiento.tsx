@@ -2,7 +2,7 @@
 
 export default function ProximoEntrenamiento() {
     return (
-        <div className="max-w-[500px]  min-w-[380px] h-[250px] bg-white px-6 pt-4 rounded-xl border-l-4 border-[#8A5100] shadow-lg ">
+        <div className="w-full  min-w-[380px] h-[250px] bg-white px-6 pt-4 rounded-xl border-l-4 border-[#8A5100] shadow-lg ">
             <div className="flex justify-between ">
                 <h1 className="text-[#8A5100] text-[15px] font-semibold ">Proximo Entrenamiento</h1>
                 <p className="bg-[#D3E3FF] text-[#004080] px-2 py-1 rounded-[6px] text-[12px]"> {/*aqui va una llamado para obtener 

@@ -29,7 +29,7 @@ export default function MetricasCorporales({
                 : "from-red-400 to-red-600";
 
     return (
-        <div className="max-w-[700px] relative h-[250px] min-w-[300px] bg-gradient-to-br from-[#002447] to-[#00305B] px-6 py-7 rounded-2xl shadow-xl overflow-hidden border border-white/10">
+        <div className="w-full relative h-[250px] min-w-[300px] bg-gradient-to-br from-[#002447] to-[#00305B] px-6 py-7 rounded-2xl shadow-xl overflow-hidden border border-white/10">
 
 
             <ChartNoAxesCombined
