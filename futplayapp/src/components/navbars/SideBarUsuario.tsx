@@ -70,7 +70,7 @@ export default function SideBarUsuario({
         <nav className="flex flex-col gap-2 px-3 mt-2 h-full overflow-y-auto no-scrollbar relative z-50">
           <NavItem icon={Home} label="Home" href="/home" collapsed={collapsed} />
           <NavItem icon={Calendar} label="Calendar" href="/calendar" collapsed={collapsed} />
-          <NavItem icon={Book} label="Content" href="/capsules" collapsed={collapsed} />
+          <NavItem icon={Book} label="Capsulas" href="/capsules" collapsed={collapsed} />
           <NavItem icon={CreditCard} label="Payments" href="/payments" collapsed={collapsed} />
           <NavItem icon={Book} label="My Classes" href="/classes" collapsed={collapsed} />
 
