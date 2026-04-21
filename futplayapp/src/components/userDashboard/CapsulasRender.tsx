@@ -15,10 +15,10 @@ export default function CapsulasRender() {
                 </button>
             </div>
 
-            {/* Grid */}
-            <div className="w-full flex justify-between flex-wrap gap-6 mt-5">
+
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-5 pb-6">
                 {capsulasMock.map((capsula) => (
-                    <div key={capsula.id} className="w-[300px]">
+                    <div key={capsula.id} className="w-full">
                         <CapsulaCard
                             titulo={capsula.titulo}
                             imagen={capsula.imagen}
