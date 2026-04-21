@@ -51,7 +51,7 @@ export default function SideBarUsuario({
         {/* Header */}
         <div className="flex items-center justify-between p-4 h-16">
           <div className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out ${collapsed ? "w-0 opacity-0" : "w-32 opacity-100"}`}>
-            <span className="font-bold text-[#004080] text-lg tracking-wide">Kinetic</span>
+            <Link href="/home"><span className="font-bold text-[#004080] text-lg tracking-wide">Futplay</span></Link>
           </div>
 
           <button
@@ -68,11 +68,11 @@ export default function SideBarUsuario({
 
         {/* Menu */}
         <nav className="flex flex-col gap-2 px-3 mt-2 h-full overflow-y-auto no-scrollbar relative z-50">
-          <NavItem icon={Home} label="Home" href="/home" collapsed={collapsed} />
-          <NavItem icon={Calendar} label="Calendar" href="/calendar" collapsed={collapsed} />
+          <NavItem icon={Home} label="Dashboard" href="/dashboard" collapsed={collapsed} />
+          <NavItem icon={Calendar} label="Calendario" href="/calendar" collapsed={collapsed} />
           <NavItem icon={Book} label="Capsulas" href="/capsules" collapsed={collapsed} />
-          <NavItem icon={CreditCard} label="Payments" href="/payments" collapsed={collapsed} />
-          <NavItem icon={Book} label="My Classes" href="/classes" collapsed={collapsed} />
+          <NavItem icon={CreditCard} label="Pagos" href="/payments" collapsed={collapsed} />
+          <NavItem icon={Book} label="Mis Clases" href="/classes" collapsed={collapsed} />
 
           <button className={`mt-6 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-bold transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap flex items-center justify-center shrink-0 shadow-sm hover:shadow ${collapsed ? "py-2 w-10 mx-auto" : "py-2.5 w-full px-4"}`}>
             {collapsed ? "🔥" : "UPGRADE PLAN"}
