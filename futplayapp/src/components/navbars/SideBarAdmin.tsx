@@ -23,7 +23,7 @@ export default function SideBarAdmin({
     const [collapsed, setCollapsed] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 
-    // persistencia segura para evitar sobreescritura errónea temprana
+    // persistencia segura para evitar sobreescritura errónea 
     useEffect(() => {
         setIsMounted(true);
         const saved = localStorage.getItem("sidebar-collapsed");

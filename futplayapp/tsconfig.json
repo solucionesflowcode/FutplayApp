@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "src/components/navbars/SideBarUsuario.jsx", "src/components/landingPage/Hero.jsx", "src/components/landingPage/Footer.jsx", "src/components/landingPage/Bento.jsx", "src/components/landingPage/Benefits.jsx", "src/components/landingPage/About.jsx", "src/components/TopNavBar.jsx"  ],
   "exclude": ["node_modules"]
 }
