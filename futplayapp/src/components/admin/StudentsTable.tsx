@@ -11,21 +11,23 @@ type Student = {
   tokens: number;
   status: string;
 };
+/*PROPS ME PERMITE PASAR DATOS DE UN
+ COMPONENTE PADRE A UN COMPONENTE HIJO, 
+ EN ESTE CASO, LA TABLA DE ESTUDIANTES
+  RECIBE UNA LISTA DE ESTUDIANTES DESDE EL COMPONENTE ADMINPAGE.*/
+type Props = {
+  students: Student[];
+};
 
-const students: Student[] = [
-  { id: "#001", name: "Santiago Rodríguez", role: "Alumno", plan: "Elite Kids", tokens: 12, status: "Activo" },
-  { id: "#002", name: "Valentina Espinoza", role: "Apoderado", plan: "Rendimiento Adultos", tokens: 5, status: "Inactivo" },
-  { id: "#003", name: "Mateo Valencia", role: "Alumno", plan: "Rendimiento Adultos", tokens: 0, status: "Vencido" },
-  { id: "#004", name: "Camila Soto", role: "Alumno", plan: "Elite Kids", tokens: 8, status: "Activo" },
-  { id: "#005", name: "Diego Rojas", role: "Alumno", plan: "Elite Kids", tokens: 10, status: "Activo" },
-  { id: "#006", name: "Fernanda Díaz", role: "Alumno", plan: "Rendimiento Adultos", tokens: 3, status: "Inactivo" },
-];
+export default function StudentsTable({ students }: Props) {
 
-export default function StudentsTable() {
   const [page, setPage] = useState(1);
+
   const itemsPerPage = 4;
 
-  const totalPages = Math.ceil(students.length / itemsPerPage);
+  const totalPages = Math.ceil(
+    students.length / itemsPerPage
+  );
 
   const currentData = students.slice(
     (page - 1) * itemsPerPage,
@@ -38,8 +40,7 @@ export default function StudentsTable() {
       {/* TABLA */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          
-          {/* HEADER */}
+
           <thead>
             <tr className="text-left text-gray-500 border-b">
               <th className="p-3">Nombre</th>
@@ -51,40 +52,45 @@ export default function StudentsTable() {
             </tr>
           </thead>
 
-          {/* BODY */}
           <tbody>
             {currentData.map((student) => (
-              <tr key={student.id} className="border-b hover:bg-gray-50">
-                
+              <tr
+                key={student.id}
+                className="border-b hover:bg-gray-50"
+              >
+
                 {/* Nombre + ID */}
                 <td className="p-3">
-                    <div className="font-semibold text-black">
-    {student.name}
-  </div>
-  <div className="text-xs text-gray-400">
-    {student.id}
-  </div>
-                  
+                  <div className="font-semibold text-black">
+                    {student.name}
+                  </div>
+
+                  <div className="text-xs text-gray-400">
+                    {student.id}
+                  </div>  
                 </td>
 
+                {/* Rol */}
                 <td className="p-3">
-                <span
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    student.role === "Alumno"
-                     ? "bg-blue-100 text-blue-700"
-                     : "bg-purple-100 text-purple-700"
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      student.role === "Alumno"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-purple-100 text-purple-700"
                     }`}
-                        >
-                             {student.role}
-                </span>
+                  >
+                    {student.role}
+                  </span>
                 </td>
 
+                {/* Plan */}
                 <td className="p-3 text-gray-900 font-medium">
-                    {student.plan}
+                  {student.plan}
                 </td>
 
+                {/* Tokens */}
                 <td className="p-3 text-gray-900 font-medium">
-                    {student.tokens}
+                  {student.tokens}
                 </td>
 
                 {/* Estado */}
@@ -107,9 +113,11 @@ export default function StudentsTable() {
                   <button className="text-blue-500 hover:scale-110">
                     <Eye size={16} />
                   </button>
+
                   <button className="text-green-500 hover:scale-110">
                     <Pencil size={16} />
                   </button>
+
                   <button className="text-red-500 hover:scale-110">
                     <Trash2 size={16} />
                   </button>
@@ -118,23 +126,24 @@ export default function StudentsTable() {
               </tr>
             ))}
           </tbody>
+
         </table>
       </div>
 
       {/* FOOTER */}
       <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-3">
 
-        {/* TEXTO */}
         <span className="text-sm text-gray-500">
           Mostrando {(page - 1) * itemsPerPage + 1} a{" "}
-          {Math.min(page * itemsPerPage, students.length)} de{" "}
+          {Math.min(
+            page * itemsPerPage,
+            students.length
+          )} de{" "}
           {students.length} registros
         </span>
 
-        {/* PAGINACIÓN */}
         <div className="flex gap-2 items-center">
 
-          {/* ANTERIOR */}
           <button
             onClick={() => setPage(page - 1)}
             disabled={page === 1}
@@ -143,20 +152,22 @@ export default function StudentsTable() {
             Anterior
           </button>
 
-          {/* BOTONES FIJOS 1 2 3 */}
-          {[1, 2, 3].map((num) => (
-            <button
-              key={num}
-              onClick={() => setPage(num)}
-              className={`px-3 py-1 border rounded ${
-                page === num ? "bg-blue-500 text-white" : ""
-              }`}
-            >
-              {num}
-            </button>
+          {[1,2,3]
+            .filter((n)=> n <= totalPages)
+            .map((num)=>(
+              <button
+                key={num}
+                onClick={()=>setPage(num)}
+                className={`px-3 py-1 border rounded ${
+                  page === num
+                    ? "bg-blue-500 text-white"
+                    : ""
+                }`}
+              >
+                {num}
+              </button>
           ))}
 
-          {/* SIGUIENTE */}
           <button
             onClick={() => setPage(page + 1)}
             disabled={page === totalPages}
@@ -166,6 +177,7 @@ export default function StudentsTable() {
           </button>
 
         </div>
+
       </div>
 
     </div>
