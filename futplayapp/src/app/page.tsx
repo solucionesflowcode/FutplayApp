@@ -23,7 +23,7 @@ export default function Home() {
     if (loading) return;
 
     if (!usuario) {
-      router.replace("/login");
+      router.replace("/home");
       return;
     }
 
@@ -38,7 +38,7 @@ export default function Home() {
         router.replace("/dashboard");
         break;
       default:
-        router.replace("/login");
+        router.replace("/dashboard");
     }
   }, [usuario, loading, router]);
 
