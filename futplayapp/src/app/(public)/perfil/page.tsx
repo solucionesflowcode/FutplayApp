@@ -31,7 +31,7 @@ export default function Perfil() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-lg shadow-md flex flex-col items-center gap-6">
         <h1 className="text-xl font-semibold text-gray-800">Sesión activa</h1>
-        
+
         <div className="flex flex-col items-center gap-2">
           <p className="text-gray-600">Email:</p>
           <p className="text-[#F39200] font-medium">{user?.email || "No hay usuario"}</p>

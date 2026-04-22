@@ -23,7 +23,7 @@ export default function SideBarAdmin({
     const [collapsed, setCollapsed] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 
-    // persistencia segura para evitar sobreescritura errónea temprana
+    // persistencia segura para evitar sobreescritura errónea 
     useEffect(() => {
         setIsMounted(true);
         const saved = localStorage.getItem("sidebar-collapsed");
@@ -133,7 +133,7 @@ export default function SideBarAdmin({
                     <button onClick={() => setOpen(true)} className="p-1 hover:bg-gray-100 rounded-md transition-colors cursor-pointer">
                         <Menu className="text-[#004080]" />
                     </button>
-                    <span className="font-bold text-[#004080]">FutPlay</span>
+                    <span className="font-bold text-[#004080]">Kinetic</span>
                 </div>
 
                 <main className="w-full relative z-0">{children}</main>

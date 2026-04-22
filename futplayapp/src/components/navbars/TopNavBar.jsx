@@ -17,7 +17,7 @@ export default function Navbar() {
                     <Link href="#" className="text-[#004080] font-bold border-b-2 border-orange-500">Inicio</Link>
                     <Link href="#" className="text-gray-500 hover:text-[#004080]">Sobre Nosotros</Link>
                     <Link href="#" className="text-gray-500 hover:text-[#004080]">Programas</Link>
-                    <Link href="#" className="text-gray-500 hover:text-[#004080]">Tienda</Link>
+                    <Link href="#" className="text-gray-500 hover:text-[#004080]">Capsulas</Link>
                 </div>
 
                 {/* Desktop Auth Buttons */}
