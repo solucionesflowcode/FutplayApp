@@ -16,9 +16,9 @@ export default function CapsulaCard({
     duracion,
 }: Props) {
     return (
-        <div className="w-full max-w-[320px] cursor-pointer">
+        <div className="w-full cursor-pointer">
 
-            {/* Imagen */}
+
             <div className="relative w-full h-[180px] rounded-2xl overflow-hidden group">
 
                 <img
@@ -27,20 +27,20 @@ export default function CapsulaCard({
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
 
-                {/* Botón Play */}
+
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="bg-white/30 backdrop-blur-md p-4 rounded-full group-hover:scale-110 transition">
                         <div className="w-0 h-0 border-l-[10px] border-l-white border-y-[6px] border-y-transparent ml-1"></div>
                     </div>
                 </div>
 
-                {/* Duración */}
+
                 <div className="absolute bottom-3 right-3 bg-black/80 text-white text-xs px-2 py-1 rounded-md">
                     {duracion}
                 </div>
             </div>
 
-            {/* Texto */}
+
             <div className="mt-3">
                 <h3 className="text-[#00305B] font-semibold text-[16px] leading-snug">
                     {titulo}
