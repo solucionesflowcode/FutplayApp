@@ -13,11 +13,13 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Crown
 } from "lucide-react";
 
 const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Planes", href: "/planes", icon: Crown },
   { name: "Capsulas", href: "/capsules", icon: Users },
   { name: "Pagos", href: "/pagos", icon: MapPin },
   { name: "Mis Clases", href: "/misclases", icon: CalendarDays },
