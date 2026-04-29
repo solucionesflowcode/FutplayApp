@@ -2,7 +2,7 @@ import Sidebar from "@/components/admin/Sidebar";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB]">
+    <div className="position: fixed; flex min-h-screen bg-[#F8F9FB]">
       {/* El Sidebar se queda aquí fijo para TODAS las páginas de admin */}
       <Sidebar />
 
