@@ -1,27 +1,20 @@
 "use client";
-import { createClient } from "@/utils/supabase/client";
 import { useState } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { signInWithGoogle } from "@/data/auth";
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createClient();
 
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
-      },
-    });
-
+    const { error } = await signInWithGoogle();
     if (error) {
-      setError(error.message);
+      setError(error);
       setLoading(false);
     }
   };

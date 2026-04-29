@@ -66,6 +66,23 @@ export async function userHasFichaMedica(userId: string): Promise<boolean> {
     return data !== null;
 }
 
+export async function getFichaMedicaByUser(userId: string): Promise<FichaMedicaData & { usuario_id: string } | null> {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("ficha_medica")
+        .select("*")
+        .eq("usuario_id", userId)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Error fetching ficha medica:", error.message);
+        return null;
+    }
+
+    return data as (FichaMedicaData & { usuario_id: string }) | null;
+}
+
 export function calculateIMC(pesoKg: number, estaturaCm: number): number {
     const estaturaM = estaturaCm / 100;
     return parseFloat((pesoKg / (estaturaM * estaturaM)).toFixed(1));
