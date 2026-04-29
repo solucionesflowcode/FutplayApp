@@ -1,16 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthUser } from "@/context";
 import Link from "next/link";
 import { Crown, CheckCircle2 } from "lucide-react";
-import { getPlanesLimit, userHasMembresia, type Plan } from "@/data/plans";
+import { getPlanesLimit, type Plan } from "@/data/plans";
+import { userHasMembresia, createMembresia } from "@/data/membresia";
+import { userHasFichaMedica } from "@/data/fichaMedica";
+import FichaMedicaModal from "../checkout/FichaMedicaModal";
 
 export default function PlanesRender() {
+    const router = useRouter();
     const { usuario } = useAuthUser();
     const [hasPlan, setHasPlan] = useState<boolean | null>(null);
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
     useEffect(() => {
         const fetchMembresiaYPlanes = async () => {
@@ -36,6 +43,30 @@ export default function PlanesRender() {
 
         fetchMembresiaYPlanes();
     }, [usuario]);
+
+    const handleComprarPlan = async (plan: Plan) => {
+        if (!usuario?.id) return;
+
+        setSelectedPlan(plan);
+
+        const hasFicha = await userHasFichaMedica(usuario.id);
+        if (hasFicha) {
+            const success = await createMembresia(usuario.id, plan.id, plan.tokens_mensuales);
+            if (success) {
+                router.push("/dashboard");
+            }
+        } else {
+            setModalOpen(true);
+        }
+    };
+
+    const handleFichaSuccess = async () => {
+        if (!usuario?.id || !selectedPlan) return;
+        const success = await createMembresia(usuario.id, selectedPlan.id, selectedPlan.tokens_mensuales);
+        if (success) {
+            router.push("/dashboard");
+        }
+    };
 
     if (loading) return null;
     if (hasPlan) return null;
@@ -72,7 +103,7 @@ export default function PlanesRender() {
                                 ${plan.precio ? plan.precio.toLocaleString("es-CL") : "0"}
                                 <span className="text-sm font-normal text-white/60">/mes</span>
                             </div>
-                            
+
                             <ul className="space-y-3 mb-6 flex-1">
                                 <li className="flex items-center gap-2 text-sm text-white/80">
                                     <CheckCircle2 size={16} className="text-[#F28C28]" />
@@ -92,7 +123,10 @@ export default function PlanesRender() {
                                 </li>
                             </ul>
 
-                            <button className="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold transition-colors border border-white/10">
+                            <button
+                                onClick={() => handleComprarPlan(plan)}
+                                className="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold transition-colors border border-white/10"
+                            >
                                 Comprar
                             </button>
                         </div>
@@ -104,6 +138,17 @@ export default function PlanesRender() {
                     )}
                 </div>
             </div>
+
+            {selectedPlan && usuario && (
+                <FichaMedicaModal
+                    open={modalOpen}
+                    onClose={() => setModalOpen(false)}
+                    onSuccess={handleFichaSuccess}
+                    planId={selectedPlan.id}
+                    planName={selectedPlan.nombre}
+                    userId={usuario.id}
+                />
+            )}
         </div>
     );
 }

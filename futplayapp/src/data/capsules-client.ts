@@ -1,5 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
-import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/client";
 
 export type Capsula = {
     id: string;
@@ -10,7 +9,7 @@ export type Capsula = {
     duracion: string;
 };
 
-async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
+async function fetchCapsulaData(supabase: ReturnType<typeof createClient>): Promise<Capsula[]> {
     const { data: capsulas, error: capsulasError } = await supabase
         .from("capsula")
         .select("id, titulo, imagen, creado, duracion, modulo_id")
@@ -67,9 +66,8 @@ async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
     }));
 }
 
-export async function getCapsulas(): Promise<Capsula[]> {
-    const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
+export async function getCapsulasClient(): Promise<Capsula[]> {
+    const supabase = createClient();
     return fetchCapsulaData(supabase);
 }
 

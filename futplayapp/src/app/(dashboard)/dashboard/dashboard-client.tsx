@@ -5,9 +5,10 @@ import MiAsistencia from "../../../components/userDashboard/MiAsistencia";
 import MetricasCorporales from "../../../components/userDashboard/MetricasCorporales";
 import Recordatorio from "../../../components/userDashboard/Recordatorio";
 import PlanesRender from "../../../components/userDashboard/PlanesRender";
+import CapsulasClient from "../../../components/userDashboard/CapsulasClient";
 import { useAuthUser } from "@/context";
 
-export default function DashboardClient({ children }: { children: React.ReactNode }) {
+export default function DashboardClient() {
     const { usuario } = useAuthUser();
 
     const formattedUser = {
@@ -41,7 +42,7 @@ export default function DashboardClient({ children }: { children: React.ReactNod
                         <Recordatorio />
                     </div>
                     <div className="w-full h-auto">
-                        {children}
+                        <CapsulasClient />
                     </div>
                 </div>
             </div>
