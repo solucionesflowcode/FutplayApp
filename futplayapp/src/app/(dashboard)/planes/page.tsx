@@ -1,17 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { CheckCircle2, Shield, Zap, Crown, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
-
-interface Plan {
-    id: string;
-    nombre: string;
-    tokens_mensuales: number;
-    precio: number;
-}
+import { getPlanes, type Plan } from "@/data/plans";
 
 export default function PlanesPage() {
     const [planes, setPlanes] = useState<Plan[]>([]);
@@ -19,15 +12,9 @@ export default function PlanesPage() {
 
     useEffect(() => {
         const fetchPlanes = async () => {
-            const supabase = createClient();
             try {
-                const { data, error } = await supabase
-                    .from("plan")
-                    .select("*")
-                    .order("precio", { ascending: true });
-
-                if (error) throw error;
-                if (data) setPlanes(data);
+                const data = await getPlanes();
+                setPlanes(data);
             } catch (err) {
                 console.error("Error obteniendo planes:", err);
             } finally {
