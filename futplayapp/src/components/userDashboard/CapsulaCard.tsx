@@ -8,6 +8,8 @@ type Props = {
     duracion: string;
 };
 
+const PLACEHOLDER = "https://images.unsplash.com/photo-1570498839593-e565b39455fc";
+
 export default function CapsulaCard({
     titulo,
     imagen,
@@ -15,6 +17,7 @@ export default function CapsulaCard({
     categoria,
     duracion,
 }: Props) {
+    const imgSrc = imagen || PLACEHOLDER;
     return (
         <div className="w-full cursor-pointer">
 
@@ -22,7 +25,7 @@ export default function CapsulaCard({
             <div className="relative w-full h-[180px] rounded-2xl overflow-hidden group">
 
                 <img
-                    src={imagen}
+                    src={imgSrc}
                     alt={titulo}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
