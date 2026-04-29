@@ -10,10 +10,10 @@ import { Loader2 } from "lucide-react";
  * Detecta si hay un usuario autenticado y redirige según su rol.
  * 
  * Redirecciones:
- * - Sin usuario → /login
+ * - Sin usuario → /home
  * - administrador → /admin
  * - profesor → /dashboard
- * - jugador → /dashboard
+ * - jugador → /perfil
  */
 export default function Home() {
   const router = useRouter();
@@ -38,7 +38,7 @@ export default function Home() {
         router.replace("/dashboard");
         break;
       default:
-        router.replace("/dashboard");
+        router.replace("/login");
     }
   }, [usuario, loading, router]);
 

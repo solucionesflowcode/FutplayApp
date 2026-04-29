@@ -115,13 +115,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (!user) {
+        setUsuario(null);
+        setLoading(false);
+        return;
+      }
+
       setUser(user);
 
-      if (user) {
-        await fetchUsuario(user.id);
-      } else {
-        setUsuario(null);
-      }
+      await fetchUsuario(user.id);
     } catch (err) {
       console.error("[AuthContext] Error inesperado al cargar usuario:", err);
       setError("Error al cargar usuario");
