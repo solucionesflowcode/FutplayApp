@@ -6,15 +6,15 @@ import { Eye, Pencil, Trash2 } from "lucide-react";
 type Student = {
   id: string;
   name: string;
-  role: string;
+  role: string; // se muestra como "Usuario"
+  rut: string;
+  phone: string;
   plan: string;
   tokens: number;
   status: string;
+  medicalFileUrl?: string; // 👈 PRO (para Supabase)
 };
-/*PROPS ME PERMITE PASAR DATOS DE UN
- COMPONENTE PADRE A UN COMPONENTE HIJO, 
- EN ESTE CASO, LA TABLA DE ESTUDIANTES
-  RECIBE UNA LISTA DE ESTUDIANTES DESDE EL COMPONENTE ADMINPAGE.*/
+
 type Props = {
   students: Student[];
 };
@@ -22,12 +22,9 @@ type Props = {
 export default function StudentsTable({ students }: Props) {
 
   const [page, setPage] = useState(1);
-
   const itemsPerPage = 4;
 
-  const totalPages = Math.ceil(
-    students.length / itemsPerPage
-  );
+  const totalPages = Math.ceil(students.length / itemsPerPage);
 
   const currentData = students.slice(
     (page - 1) * itemsPerPage,
@@ -44,8 +41,10 @@ export default function StudentsTable({ students }: Props) {
           <thead>
             <tr className="text-left text-gray-500 border-b">
               <th className="p-3">Nombre</th>
-              <th className="p-3">Rol</th>
-              <th className="p-3">Tipo de Plan</th>
+              <th className="p-3">Usuario</th>
+              <th className="p-3">RUT</th>
+              <th className="p-3">Teléfono</th>
+              <th className="p-3">Plan</th>
               <th className="p-3">Tokens</th>
               <th className="p-3">Estado</th>
               <th className="p-3">Acciones</th>
@@ -54,23 +53,19 @@ export default function StudentsTable({ students }: Props) {
 
           <tbody>
             {currentData.map((student) => (
-              <tr
-                key={student.id}
-                className="border-b hover:bg-gray-50"
-              >
+              <tr key={student.id} className="border-b hover:bg-gray-50">
 
-                {/* Nombre + ID */}
+                {/* Nombre */}
                 <td className="p-3">
                   <div className="font-semibold text-black">
                     {student.name}
                   </div>
-
                   <div className="text-xs text-gray-400">
                     {student.id}
-                  </div>  
+                  </div>
                 </td>
 
-                {/* Rol */}
+                {/* Usuario */}
                 <td className="p-3">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -81,6 +76,16 @@ export default function StudentsTable({ students }: Props) {
                   >
                     {student.role}
                   </span>
+                </td>
+
+                {/* RUT */}
+                <td className="p-3 text-gray-900 font-medium">
+                  {student.rut}
+                </td>
+
+                {/* Teléfono */}
+                <td className="p-3 text-gray-900 font-medium">
+                  {student.phone}
                 </td>
 
                 {/* Plan */}
@@ -108,19 +113,34 @@ export default function StudentsTable({ students }: Props) {
                   </span>
                 </td>
 
-                {/* Acciones */}
-                <td className="p-3 flex gap-2">
+                {/* ACCIONES */}
+                <td className="p-3 flex gap-2 items-center">
+
+                  {/* VER FICHA MÉDICA (PRO READY) */}
+                  {student.medicalFileUrl && (
+                    <button
+                      onClick={() => window.open(student.medicalFileUrl)}
+                      className="text-purple-600 text-xs border px-2 py-1 rounded hover:bg-purple-100"
+                    >
+                      Ver ficha
+                    </button>
+                  )}
+
+                  {/* VER */}
                   <button className="text-blue-500 hover:scale-110">
                     <Eye size={16} />
                   </button>
 
+                  {/* EDITAR */}
                   <button className="text-green-500 hover:scale-110">
                     <Pencil size={16} />
                   </button>
 
+                  {/* ELIMINAR */}
                   <button className="text-red-500 hover:scale-110">
                     <Trash2 size={16} />
                   </button>
+
                 </td>
 
               </tr>
@@ -135,48 +155,66 @@ export default function StudentsTable({ students }: Props) {
 
         <span className="text-sm text-gray-500">
           Mostrando {(page - 1) * itemsPerPage + 1} a{" "}
-          {Math.min(
-            page * itemsPerPage,
-            students.length
-          )} de{" "}
+          {Math.min(page * itemsPerPage, students.length)} de{" "}
           {students.length} registros
         </span>
 
         <div className="flex gap-2 items-center">
 
-          <button
-            onClick={() => setPage(page - 1)}
-            disabled={page === 1}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Anterior
-          </button>
+  {/* ANTERIOR */}
+  <button
+    onClick={() => setPage(page - 1)}
+    disabled={page === 1}
+    className="
+      px-4 py-2 rounded-lg font-medium
+      bg-white border border-gray-300
+      text-gray-700
+      hover:bg-blue-50 hover:text-blue-600
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-all
+    "
+  >
+    Anterior
+  </button>
 
-          {[1,2,3]
-            .filter((n)=> n <= totalPages)
-            .map((num)=>(
-              <button
-                key={num}
-                onClick={()=>setPage(num)}
-                className={`px-3 py-1 border rounded ${
-                  page === num
-                    ? "bg-blue-500 text-white"
-                    : ""
-                }`}
-              >
-                {num}
-              </button>
-          ))}
+  {/* NÚMEROS */}
+  {[1, 2, 3]
+    .filter((n) => n <= totalPages)
+    .map((num) => (
+      <button
+        key={num}
+        onClick={() => setPage(num)}
+        className={`
+          px-4 py-2 rounded-lg font-semibold
+          border transition-all
+          ${
+            page === num
+              ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-600"
+          }
+        `}
+      >
+        {num}
+      </button>
+  ))}
 
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={page === totalPages}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Siguiente
-          </button>
+  {/* SIGUIENTE */}
+  <button
+    onClick={() => setPage(page + 1)}
+    disabled={page === totalPages}
+    className="
+      px-4 py-2 rounded-lg font-medium
+      bg-white border border-gray-300
+      text-gray-700
+      hover:bg-blue-50 hover:text-blue-600
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-all
+    "
+  >
+    Siguiente
+  </button>
 
-        </div>
+</div>    
 
       </div>
 
