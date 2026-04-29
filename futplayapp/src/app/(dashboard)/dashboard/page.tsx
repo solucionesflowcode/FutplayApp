@@ -4,6 +4,7 @@ import ProximoEntrenamiento from "../../../components/userDashboard/ProximoEntre
 import MiAsistencia from "../../../components/userDashboard/MiAsistencia";
 import MetricasCorporales from "../../../components/userDashboard/MetricasCorporales";
 import Recordatorio from "../../../components/userDashboard/Recordatorio";
+import PlanesRender from "../../../components/userDashboard/PlanesRender";
 import CapsulasRender from "../../../components/userDashboard/CapsulasRender";
 import { useAuthUser } from "@/context";
 
@@ -36,6 +37,9 @@ export default function DashboardPage() {
                         <div className="flex-1 min-w-[300px]">
                             <MetricasCorporales />
                         </div>
+                    </div>
+                    <div className="w-full">
+                        <PlanesRender />
                     </div>
                     <div className="w-full">
                         <Recordatorio />

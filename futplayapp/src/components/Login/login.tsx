@@ -28,8 +28,8 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[url('/login-background.svg')] bg-contain flex items-center justify-center relative">
-      <Link 
-        href="/home" 
+      <Link
+        href="/home"
         className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors font-medium z-10"
       >
         <ArrowLeft className="w-5 h-5" />
