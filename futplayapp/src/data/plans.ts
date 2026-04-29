@@ -39,19 +39,3 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
 
     return data as Plan[];
 }
-
-export async function userHasMembresia(userId: string): Promise<boolean> {
-    const supabase = createClient();
-
-    const { data, error } = await supabase
-        .from("membresia")
-        .select("*")
-        .eq("usuario_id", userId);
-
-    if (error) {
-        console.error("Error fetching membresia:", error.message);
-        return false;
-    }
-
-    return data.length > 0;
-}
