@@ -1,39 +1,10 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { User } from "@supabase/supabase-js";
+import { getCurrentUser, getUsuario, signOut, onAuthStateChange, type Usuario } from "@/data/auth";
 
-/**
- * Tipos de rol disponibles en el sistema.
- * @enum {string}
- */
-export type Rol = "jugador" | "profesor" | "administrador";
+export type { Rol, Usuario } from "@/data/auth";
 
-/**
- * Representa un usuario de la tabla 'usuario' en Supabase.
- * @typedef {Object} Usuario
- * @property {string} id - ID del usuario (coincide con auth.users.id)
- * @property {string} nombre - Nombre del usuario
- * @property {Rol} rol - Rol del usuario
- * @property {string} [email] - Email opcional
- */
-export interface Usuario {
-  id: string;
-  nombre: string;
-  rol: Rol;
-  email?: string;
-}
-
-/**
- * Estado del contexto de autenticación.
- * @typedef {Object} AuthContextType
- * @property {User | null} user - Usuario de Supabase Auth (contiene email, id, etc.)
- * @property {Usuario | null} usuario - Datos del usuario de la tabla 'usuario' (id, nombre, rol)
- * @property {boolean} loading - Indica si está cargando la sesión
- * @property {string | null} error - Mensaje de error si ocurre alguno
- * @property {() => Promise<void>} signOut - Función para cerrar sesión
- * @property {() => Promise<void>} refreshUser - Función para recargar datos del usuario
- */
 interface AuthContextType {
   user: User | null;
   usuario: Usuario | null;
@@ -45,21 +16,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const supabase = createClient();
-
-/**
- * Proveedor del contexto de autenticación.
- * Debe envolver toda la aplicación en layout.tsx.
- * 
- * Maneja:
- * - Carga inicial del usuario desde Supabase Auth
- * - Consulta a la tabla 'usuario' para obtener nombre y rol
- * - Escucha de cambios en el estado de autenticación
- * - Cierre de sesión
- * 
- * @param {Object} props
- * @param {ReactNode} props.children - Componentes hijos
- */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -67,48 +23,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const isInitialLoadStarted = useRef(false);
 
-  /**
-   * Obtiene los datos del usuario desde la tabla 'usuario'.
-   * Usa useCallback para evitar recrear la función en cada render.
-   * @param {string} userId - ID del usuario de Supabase Auth
-   */
   const fetchUsuario = useCallback(async (userId: string) => {
     try {
-      const { data, error: fetchError } = await supabase
-        .from("usuario")
-        .select("id, nombre, rol")
-        .eq("id", userId)
-        .single();
-
-      if (fetchError) {
-        console.error("[AuthContext] Error al obtener usuario de la tabla:", fetchError.message);
-        setError(`Error al obtener datos del usuario: ${fetchError.message}`);
+      const data = await getUsuario(userId);
+      if (data) {
+        setUsuario(data);
+        setError(null);
+      } else {
+        setError("No se pudieron obtener los datos del usuario");
         setUsuario(null);
-        return;
       }
-
-      setUsuario(data);
-      setError(null);
     } catch (err) {
       console.error("[AuthContext] Error inesperado al obtener usuario:", err);
       setError("Error inesperado al obtener datos del usuario");
       setUsuario(null);
     }
-  }, [supabase]);
+  }, []);
 
-  /**
-   * Carga el usuario actual y sus datos.
-   * Usa useCallback para evitar recrear la función en cada render.
-   */
   const loadUser = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const { user, error: authError } = await getCurrentUser();
 
       if (authError) {
-        console.error("[AuthContext] Error de autenticación:", authError.message);
-        setError(`Error de autenticación: ${authError.message}`);
+        console.error("[AuthContext] Error de autenticación:", authError);
+        setError(`Error de autenticación: ${authError}`);
         setUser(null);
         setUsuario(null);
         setLoading(false);
@@ -122,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(user);
-
       await fetchUsuario(user.id);
     } catch (err) {
       console.error("[AuthContext] Error inesperado al cargar usuario:", err);
@@ -130,15 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [supabase, fetchUsuario]);
+  }, [fetchUsuario]);
 
-  /**
-   * Cierra la sesión del usuario.
-   * Limpia el estado local y las cookies de Supabase.
-   */
-  const signOut = async () => {
+  const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
       setUser(null);
       setUsuario(null);
       setError(null);
@@ -149,27 +84,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Evitar que la carga inicial se ejecute más de una vez (especialmente en React Strict Mode)
     if (isInitialLoadStarted.current) return;
     isInitialLoadStarted.current = true;
 
     loadUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Si el evento es SIGNED_IN y ya tenemos el usuario cargado por loadUser, 
-      // podemos evitar llamadas redundantes a fetchUsuario si ya coinciden.
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        // Solo obtener datos de la tabla si el usuario ha cambiado o no tenemos los datos
-        await fetchUsuario(session.user.id);
+    const { unsubscribe } = onAuthStateChange(async (authUser) => {
+      setUser(authUser);
+      if (authUser) {
+        await fetchUsuario(authUser.id);
       } else {
         setUsuario(null);
       }
     });
 
     return () => {
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, [loadUser, fetchUsuario]);
 
@@ -180,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         usuario,
         loading,
         error,
-        signOut,
+        signOut: handleSignOut,
         refreshUser: loadUser,
       }}
     >
@@ -189,20 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Hook para acceder al contexto de autenticación.
- * Debe usarse dentro de un AuthProvider.
- * 
- * @returns {AuthContextType} Estado de autenticación con:
- * - user: Usuario de Supabase Auth
- * - usuario: Datos de la tabla usuario (id, nombre, rol)
- * - loading: Estado de carga
- * - error: Mensaje de error
- * - signOut: Función para cerrar sesión
- * - refreshUser: Función para recargar datos
- * 
- * @throws {Error} Si se usa fuera de un AuthProvider
- */
 export function useAuthUser() {
   const context = useContext(AuthContext);
   if (context === undefined) {

@@ -3,12 +3,21 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Shield, Zap, Crown, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import { getPlanes, type Plan } from "@/data/plans";
+import { useAuthUser } from "@/context";
+import { userHasFichaMedica } from "@/data/fichaMedica";
+import { userHasMembresia, createMembresia } from "@/data/membresia";
+import FichaMedicaModal from "../../../components/checkout/FichaMedicaModal";
 
 export default function PlanesPage() {
+    const router = useRouter();
+    const { usuario } = useAuthUser();
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
     useEffect(() => {
         const fetchPlanes = async () => {
@@ -25,6 +34,30 @@ export default function PlanesPage() {
         fetchPlanes();
     }, []);
 
+    const handleComprarPlan = async (plan: Plan) => {
+        if (!usuario?.id) return;
+
+        setSelectedPlan(plan);
+
+        const hasFicha = await userHasFichaMedica(usuario.id);
+        if (hasFicha) {
+            const success = await createMembresia(usuario.id, plan.id, plan.tokens_mensuales);
+            if (success) {
+                router.push("/dashboard");
+            }
+        } else {
+            setModalOpen(true);
+        }
+    };
+
+    const handleFichaSuccess = async () => {
+        if (!usuario?.id || !selectedPlan) return;
+        const success = await createMembresia(usuario.id, selectedPlan.id, selectedPlan.tokens_mensuales);
+        if (success) {
+            router.push("/dashboard");
+        }
+    };
+
     const renderPlanIcon = (index: number) => {
         switch (index) {
             case 0: return <Zap className="text-gray-400 w-12 h-12 mb-4 mx-auto" />;
@@ -39,7 +72,6 @@ export default function PlanesPage() {
             <TopNavBarUser />
             
             <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-10 flex flex-col">
-                {/* Header Section */}
                 <div className="mb-10 text-center max-w-2xl mx-auto">
                     <h1 className="text-[#004080] text-4xl md:text-5xl font-black mb-4">
                         Elige tu <span className="text-[#F28C28]">Plan</span> Ideal
@@ -49,18 +81,16 @@ export default function PlanesPage() {
                     </p>
                 </div>
 
-                {/* Loading State */}
                 {loading && (
                     <div className="flex justify-center items-center h-64">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F28C28]"></div>
                     </div>
                 )}
 
-                {/* Grid de Planes */}
                 {!loading && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-center items-center mt-6">
                         {planes.map((plan, index) => {
-                            const isDestacado = index === 1; // Asumimos que el plan del medio es el destacado
+                            const isDestacado = index === 1;
                             
                             return (
                                 <div 
@@ -120,6 +150,7 @@ export default function PlanesPage() {
                                     </div>
 
                                     <button 
+                                        onClick={() => handleComprarPlan(plan)}
                                         className={`w-full mt-10 py-4 rounded-xl font-bold text-lg transition-all duration-300
                                             ${isDestacado 
                                                 ? 'bg-[#F28C28] hover:bg-[#e07d1f] text-white shadow-[0_0_20px_rgba(242,140,40,0.4)] hover:shadow-[0_0_30px_rgba(242,140,40,0.6)] transform hover:-translate-y-1' 
@@ -140,6 +171,17 @@ export default function PlanesPage() {
                     </div>
                 )}
             </div>
+
+            {selectedPlan && usuario && (
+                <FichaMedicaModal
+                    open={modalOpen}
+                    onClose={() => setModalOpen(false)}
+                    onSuccess={handleFichaSuccess}
+                    planId={selectedPlan.id}
+                    planName={selectedPlan.nombre}
+                    userId={usuario.id}
+                />
+            )}
         </main>
     );
 }
