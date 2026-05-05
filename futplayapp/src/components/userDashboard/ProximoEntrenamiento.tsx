@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { useAuthUser } from "@/context";
 import Link from "next/link";
 import { Lock } from "lucide-react";
+import { userHasMembresia } from "@/data/membresia";
+import { getProximaClase } from "@/data/clases";
 
 interface Clase {
     titulo: string;
@@ -24,29 +25,15 @@ export default function ProximoEntrenamiento() {
         const fetchData = async () => {
             if (!usuario?.id) return;
 
-            const supabase = createClient();
             setLoading(true);
 
             try {
-                // 🔒 1. Verificar membresía
-                const { data: membresia } = await supabase
-                    .from("membresia")
-                    .select("id")
-                    .eq("usuario_id", usuario.id);
-
-                const tienePlan = membresia && membresia.length > 0;
+                const tienePlan = await userHasMembresia(usuario.id);
                 setHasPlan(tienePlan);
 
-                // 🏋️ 2. Solo si tiene plan, traer clase
                 if (tienePlan) {
-                    const { data, error } = await supabase.rpc(
-                        "get_proxima_clase",
-                        {
-                            p_usuario_id: usuario.id,
-                        }
-                    );
-
-                    if (!error && data?.length > 0) {
+                    const data = await getProximaClase(usuario.id);
+                    if (data.length > 0) {
                         setClase(data[0]);
                     }
                 }
