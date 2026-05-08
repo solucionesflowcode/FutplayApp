@@ -8,12 +8,13 @@ export type Capsula = {
     coach: string;
     categoria: string;
     duracion: string;
+    bunny_video_id: string | null;
 };
 
 async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
     const { data: capsulas, error: capsulasError } = await supabase
         .from("capsula")
-        .select("id, titulo, imagen, creado, duracion, modulo_id")
+        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id")
         .order("order_index");
 
     if (capsulasError) {
@@ -64,6 +65,7 @@ async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
         coach: item.creado || "",
         categoria: item.modulo_id ? moduloMap.get(item.modulo_id) ?? "" : "",
         duracion: formatDuration(item.duracion),
+        bunny_video_id: item.bunny_video_id || null,
     }));
 }
 
