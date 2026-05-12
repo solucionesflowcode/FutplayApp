@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# webhook
+webhook/node_modules/
+webhook/whatsapp-session/
+webhook/.wwebjs_cache/
+
+# editor
+.vscode/
