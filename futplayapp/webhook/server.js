@@ -2,7 +2,22 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
+const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
+
+// Persistencia de recordatorios enviados (archivo JSON)
+const RECORDATORIOS_FILE = path.join(__dirname, '.recordatorios.json');
+const recordatoriosEnviados = new Set();
+try {
+    const data = fs.readFileSync(RECORDATORIOS_FILE, 'utf8');
+    JSON.parse(data).forEach(id => recordatoriosEnviados.add(id));
+} catch {}
+
+function guardarRecordatorios() {
+    fs.writeFileSync(RECORDATORIOS_FILE, JSON.stringify([...recordatoriosEnviados]));
+}
 
 const app = express();
 app.use(express.json());
@@ -158,10 +173,15 @@ whatsapp.on('message', async msg => {
   if (msg.from.endsWith('@g.us') || msg.from.endsWith('@broadcast')) return;
 
   if (msg.from.endsWith('@lid')) {
-    console.log('DEBUG msg.from:', msg.from);
-    console.log('DEBUG msg.author:', msg.author);
-    console.log('DEBUG msg._data:', JSON.stringify(msg._data?.key || {}));
-    console.log('DEBUG msg.id:', JSON.stringify(msg.id));
+    const contact = await msg.getContact();
+    const rawId = contact.id?.user || contact.id?._serialized || contact.id || contact.number;
+    const telefono = rawId.replace(/@\w+/g, '').replace(/\D/g, '');
+    console.log(`[WhatsApp] Contact: name="${contact.name}", number="${telefono}"`);
+    console.log(`[WhatsApp] Buscando teléfono: "${telefono}" en Supabase...`);
+    const respuesta = await procesarMensajeWhatsApp(telefono, msg.body);
+    if (respuesta) {
+      await msg.reply(respuesta);
+    }
     return;
   }
 
@@ -176,6 +196,77 @@ whatsapp.on('message', async msg => {
 whatsapp.initialize().catch(err => {
   console.error('Error al iniciar WhatsApp:', err.message);
 });
+
+// ─── Scheduler: recordatorio 24h antes de la clase ───
+if (process.env.SCHEDULER_ENABLED === 'true') {
+  cron.schedule('*/15 * * * *', async () => {
+    console.log('[Scheduler] Buscando clases en ~24h...');
+
+  const ahora = new Date();
+  const objetivo = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
+  const desde = new Date(objetivo.getTime() - 90 * 60 * 1000);
+  const hasta = new Date(objetivo.getTime() + 90 * 60 * 1000);
+
+  const { data: horarios, error: errHor } = await supabase
+    .from('horario')
+    .select('id, fecha_hora, clase_id')
+    .gte('fecha_hora', desde.toISOString())
+    .lte('fecha_hora', hasta.toISOString());
+
+  if (errHor || !horarios?.length) return;
+
+  for (const horario of horarios) {
+    const { data: inscripciones } = await supabase
+      .from('clase_usuario')
+      .select('id, usuario_id')
+      .eq('clase_id', horario.clase_id)
+      .is('asistencia', null);
+
+    if (!inscripciones?.length) continue;
+
+    const { data: clase } = await supabase
+      .from('clase')
+      .select('titulo')
+      .eq('id', horario.clase_id)
+      .single();
+
+    for (const insc of inscripciones) {
+      if (recordatoriosEnviados.has(insc.id)) continue;
+
+      const { data: usuario } = await supabase
+        .from('usuario')
+        .select('nombre, telefono')
+        .eq('id', insc.usuario_id)
+        .single();
+
+      if (!usuario?.telefono) continue;
+
+      const fecha = new Date(horario.fecha_hora);
+      const hora = fecha.toLocaleString('es-CL', {
+        hour: '2-digit', minute: '2-digit',
+        timeZone: 'America/Santiago'
+      });
+
+      const telefono = usuario.telefono.replace('+', '');
+      const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé SI para confirmar o NO para cancelar.`;
+
+      try {
+        await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
+        recordatoriosEnviados.add(insc.id);
+        guardarRecordatorios();
+        console.log(`[Scheduler] Recordatorio enviado a ${usuario.nombre} (${telefono})`);
+      } catch (err) {
+        console.error(`[Scheduler] Error al enviar a ${usuario.nombre}:`, err.message);
+      }
+
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  });
+
+}
+
+console.log('[Scheduler] Desactivado. Para activar: SCHEDULER_ENABLED=true');
 
 app.post('/whatsapp-webhook', async (req, res) => {
   try {
