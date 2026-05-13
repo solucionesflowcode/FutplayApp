@@ -91,7 +91,7 @@ export default function VideoPlayerView({ capsula, hasMembership, onUnlock }: Vi
             {/* Reproductor de Video */}
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-gray-800 shadow-2xl group">
               {!hasMembership ? (
-                <div className="absolute inset-0 z-10 flex flex-center flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-8 text-center">
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-8 text-center">
                   <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mb-6 border border-gray-800 shadow-[0_0_50px_rgba(37,99,235,0.1)]">
                     <Lock size={32} className="text-blue-500" />
                   </div>
@@ -105,6 +105,18 @@ export default function VideoPlayerView({ capsula, hasMembership, onUnlock }: Vi
                   >
                     Obtener Membresía
                   </Link>
+                </div>
+              ) : !process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || !capsula.bunny_video_id ? (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900 p-8 text-center">
+                  <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
+                    <Play size={24} className="text-red-500 opacity-50" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Video no disponible</h3>
+                  <p className="text-gray-400 text-sm max-w-xs">
+                    {!process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID 
+                      ? "Falta configuración técnica (Library ID). Por favor, contacta a soporte."
+                      : "Esta cápsula no tiene un video vinculado todavía."}
+                  </p>
                 </div>
               ) : (
                 <>
