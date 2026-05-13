@@ -1,0 +1,9 @@
+| enum_name   | enum_value    |
+| ----------- | ------------- |
+| estado      | pendiente     |
+| estado      | pagado        |
+| estado      | rechazado     |
+| estado      | anulado       |
+| rol_usuario | jugador       |
+| rol_usuario | profesor      |
+| rol_usuario | administrador |
