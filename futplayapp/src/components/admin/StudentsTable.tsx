@@ -3,16 +3,17 @@
 import { useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 
-type Student = {
+export type Student = {
   id: string;
   name: string;
   role: string; // se muestra como "Usuario"
-  rut: string;
-  phone: string;
+  rut?: string;
+  phone?: string;
   plan: string;
   tokens: number;
   status: string;
   medicalFileUrl?: string; // 👈 PRO (para Supabase)
+  children?: any[];
 };
 
 type Props = {
