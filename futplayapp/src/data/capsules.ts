@@ -75,6 +75,48 @@ export async function getCapsulas(): Promise<Capsula[]> {
     return fetchCapsulaData(supabase);
 }
 
+export async function getCapsulaById(id: string): Promise<Capsula | null> {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    
+    const { data: item, error: capsulaError } = await supabase
+        .from("capsula")
+        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id")
+        .eq("id", id)
+        .single();
+
+    if (capsulaError || !item) {
+        console.error("Error fetching capsula by id:", capsulaError?.message);
+        return null;
+    }
+
+    const { data: modulo, error: modulosError } = item.modulo_id
+        ? await supabase
+            .from("modulo")
+            .select("id, categoria_id")
+            .eq("id", item.modulo_id)
+            .single()
+        : { data: null, error: null };
+
+    const { data: categoria, error: categoriasError } = modulo?.categoria_id
+        ? await supabase
+            .from("categoria")
+            .select("id, nombre")
+            .eq("id", modulo.categoria_id)
+            .single()
+        : { data: null, error: null };
+
+    return {
+        id: item.id,
+        titulo: item.titulo,
+        imagen: item.imagen || "",
+        coach: item.creado || "",
+        categoria: categoria?.nombre ?? "",
+        duracion: formatDuration(item.duracion),
+        bunny_video_id: item.bunny_video_id || null,
+    };
+}
+
 function formatDuration(interval: string | null): string {
     if (!interval) return "0 min";
     const match = interval.match(/(\d+):(\d+):(\d+)/);

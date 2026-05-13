@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search, Play, Clock, Zap } from "lucide-react";
+import Link from "next/link";
 import type { Capsula } from "@/data/capsules";
 
 interface CapsulesPageProps {
@@ -12,85 +13,89 @@ const PLACEHOLDER = "https://images.unsplash.com/photo-1570498839593-e565b39455f
 
 function FeaturedHero({ capsula }: { capsula: Capsula }) {
     return (
-        <div className="relative w-full h-[400px] rounded-2xl overflow-hidden shadow-2xl cursor-pointer group mb-10">
-            <img
-                src={capsula.imagen || PLACEHOLDER}
-                alt={capsula.titulo}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
+        <Link href={`/capsules/${capsula.id}`} className="block">
+            <div className="relative w-full h-[400px] rounded-2xl overflow-hidden shadow-2xl cursor-pointer group mb-10">
+                <img
+                    src={capsula.imagen || PLACEHOLDER}
+                    alt={capsula.titulo}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
 
-            <div className="absolute inset-0 bg-gradient-to-r from-[#001220]/95 via-[#001220]/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#001220]/95 via-[#001220]/60 to-transparent" />
 
-            <div className="absolute top-5 left-6 flex items-center gap-2 bg-[#00A86B] text-white text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full">
-                <Zap size={12} />
-                Cápsula Destacada
-            </div>
-
-            <div className="absolute bottom-0 left-0 right-0 p-8 flex items-end justify-between flex-wrap gap-4">
-                <div>
-                    <span className="inline-block mb-3 bg-white/10 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/20">
-                        {capsula.categoria}
-                    </span>
-
-                    <h2 className="text-white text-[1.85rem] font-extrabold leading-tight max-w-lg mb-2">
-                        {capsula.titulo}
-                    </h2>
-
-                    <p className="text-white/65 text-sm">
-                        Con <span className="text-white font-semibold">{capsula.coach}</span> · Nivel Intermedio
-                    </p>
-
-                    <div className="flex items-center gap-5 mt-3">
-                        <span className="flex items-center gap-1.5 text-white/75 text-xs">
-                            <Clock size={13} />
-                            {capsula.duracion}
-                        </span>
-                        <span className="text-white/50 text-xs">🎯 Técnica individual</span>
-                    </div>
+                <div className="absolute top-5 left-6 flex items-center gap-2 bg-[#00A86B] text-white text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full">
+                    <Zap size={12} />
+                    Cápsula Destacada
                 </div>
 
-                <button className="flex items-center gap-2 bg-[#00A86B] hover:bg-[#009960] text-white font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-[#00A86B]/40 transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap">
-                    <Play size={16} />
-                    Ver Cápsula
-                </button>
+                <div className="absolute bottom-0 left-0 right-0 p-8 flex items-end justify-between flex-wrap gap-4">
+                    <div>
+                        <span className="inline-block mb-3 bg-white/10 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/20">
+                            {capsula.categoria}
+                        </span>
+
+                        <h2 className="text-white text-[1.85rem] font-extrabold leading-tight max-w-lg mb-2">
+                            {capsula.titulo}
+                        </h2>
+
+                        <p className="text-white/65 text-sm">
+                            Con <span className="text-white font-semibold">{capsula.coach}</span> · Nivel Intermedio
+                        </p>
+
+                        <div className="flex items-center gap-5 mt-3">
+                            <span className="flex items-center gap-1.5 text-white/75 text-xs">
+                                <Clock size={13} />
+                                {capsula.duracion}
+                            </span>
+                            <span className="text-white/50 text-xs">🎯 Técnica individual</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-[#00A86B] hover:bg-[#009960] text-white font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-[#00A86B]/40 transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap">
+                        <Play size={16} />
+                        Ver Cápsula
+                    </div>
+                </div>
             </div>
-        </div>
+        </Link>
     );
 }
 
 function CapsulaCard({ capsula }: { capsula: Capsula }) {
     return (
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group">
-            <div className="relative w-full h-44 overflow-hidden">
-                <img
-                    src={capsula.imagen || PLACEHOLDER}
-                    alt={capsula.titulo}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#001220]/60 to-transparent" />
+        <Link href={`/capsules/${capsula.id}`} className="block h-full">
+            <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group h-full">
+                <div className="relative w-full h-44 overflow-hidden">
+                    <img
+                        src={capsula.imagen || PLACEHOLDER}
+                        alt={capsula.titulo}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#001220]/60 to-transparent" />
 
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="bg-white/20 backdrop-blur-md border border-white/40 rounded-full w-12 h-12 flex items-center justify-center text-white transition-transform duration-200 group-hover:scale-110">
-                        <Play size={18} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-white/20 backdrop-blur-md border border-white/40 rounded-full w-12 h-12 flex items-center justify-center text-white transition-transform duration-200 group-hover:scale-110">
+                            <Play size={18} />
+                        </div>
+                    </div>
+
+                    <div className="absolute bottom-2.5 right-2.5 bg-black/75 text-white text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Clock size={10} />
+                        {capsula.duracion}
                     </div>
                 </div>
 
-                <div className="absolute bottom-2.5 right-2.5 bg-black/75 text-white text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <Clock size={10} />
-                    {capsula.duracion}
+                <div className="p-4">
+                    <span className="inline-block bg-green-50 text-[#00A86B] text-[10px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full mb-2">
+                        {capsula.categoria}
+                    </span>
+                    <h3 className="text-[#00305B] font-bold text-[0.93rem] leading-snug mb-1">
+                        {capsula.titulo}
+                    </h3>
+                    <p className="text-slate-400 text-xs">{capsula.coach}</p>
                 </div>
             </div>
-
-            <div className="p-4">
-                <span className="inline-block bg-green-50 text-[#00A86B] text-[10px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full mb-2">
-                    {capsula.categoria}
-                </span>
-                <h3 className="text-[#00305B] font-bold text-[0.93rem] leading-snug mb-1">
-                    {capsula.titulo}
-                </h3>
-                <p className="text-slate-400 text-xs">{capsula.coach}</p>
-            </div>
-        </div>
+        </Link>
     );
 }
 
