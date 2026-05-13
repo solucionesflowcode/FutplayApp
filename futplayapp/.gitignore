@@ -44,6 +44,7 @@ next-env.d.ts
 webhook/node_modules/
 webhook/whatsapp-session/
 webhook/.wwebjs_cache/
+webhook/.recordatorios.json
 
 # editor
 .vscode/
