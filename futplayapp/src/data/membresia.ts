@@ -43,3 +43,25 @@ export async function createMembresia(
 
     return true;
 }
+
+export async function devolverToken(userId: string): Promise<boolean> {
+    const supabase = createClient();
+
+    const { data: membresia } = await supabase
+        .from("membresia")
+        .select("id, tokens_usados")
+        .eq("usuario_id", userId)
+        .gt("tokens_usados", 0)
+        .order("mes", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (!membresia) return false;
+
+    const { error } = await supabase
+        .from("membresia")
+        .update({ tokens_usados: membresia.tokens_usados - 1 })
+        .eq("id", membresia.id);
+
+    return !error;
+}

@@ -61,6 +61,20 @@ export async function signInWithGoogle(): Promise<{ error: string | null }> {
     }
 }
 
+export async function buscarUsuarioPorTelefono(
+    telefono: string
+): Promise<{ id: string; nombre: string; rol: Rol } | null> {
+    const supabase = createClient();
+
+    const { data } = await supabase
+        .from("usuario")
+        .select("id, nombre, rol")
+        .or(`telefono.eq.${telefono},telefono.eq.+${telefono}`)
+        .maybeSingle();
+
+    return data as { id: string; nombre: string; rol: Rol } | null;
+}
+
 export function onAuthStateChange(
     callback: (user: User | null) => void
 ): { unsubscribe: () => void } {

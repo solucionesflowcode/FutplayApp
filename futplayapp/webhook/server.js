@@ -1,5 +1,4 @@
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const cron = require('node-cron');
@@ -7,150 +6,63 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
-// Persistencia de recordatorios enviados (archivo JSON)
+const db = require('./data');
+
 const RECORDATORIOS_FILE = path.join(__dirname, '.recordatorios.json');
 const recordatoriosEnviados = new Set();
 try {
-    const data = fs.readFileSync(RECORDATORIOS_FILE, 'utf8');
-    JSON.parse(data).forEach(id => recordatoriosEnviados.add(id));
+  const data = fs.readFileSync(RECORDATORIOS_FILE, 'utf8');
+  JSON.parse(data).forEach(id => recordatoriosEnviados.add(id));
 } catch {}
 
 function guardarRecordatorios() {
-    fs.writeFileSync(RECORDATORIOS_FILE, JSON.stringify([...recordatoriosEnviados]));
+  fs.writeFileSync(RECORDATORIOS_FILE, JSON.stringify([...recordatoriosEnviados]));
 }
 
 const app = express();
 app.use(express.json());
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+if (!supabaseUrl) { console.error('Falta NEXT_PUBLIC_SUPABASE_URL'); process.exit(1); }
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) console.warn('AVISO: Sin SUPABASE_SERVICE_ROLE_KEY. Solo lectura.');
+db.init(supabaseUrl, supabaseKey);
 
-if (!supabaseUrl) {
-  console.error('Falta NEXT_PUBLIC_SUPABASE_URL en .env.local');
-  process.exit(1);
-}
-
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn('AVISO: No hay SUPABASE_SERVICE_ROLE_KEY. Usando anon key (solo lectura).');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-async function getProximaClaseUsuario(usuarioId) {
-  const { data: inscripciones, error: errIns } = await supabase
-    .from('clase_usuario')
-    .select('id, clase_id')
-    .eq('usuario_id', usuarioId);
-
-  if (errIns || !inscripciones?.length) {
-    console.error(`Error al buscar inscripciones de ${usuarioId}:`, errIns?.message);
-    return null;
-  }
-
-  const claseIds = inscripciones.map(i => i.clase_id);
-
-  const { data: horario, error: errHor } = await supabase
-    .from('horario')
-    .select('id, fecha_hora, clase_id')
-    .in('clase_id', claseIds)
-    .gte('fecha_hora', new Date().toISOString())
-    .order('fecha_hora', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (errHor || !horario) {
-    console.log(`No hay próximas clases para usuario ${usuarioId}`);
-    return null;
-  }
-
-  const claseUsuario = inscripciones.find(i => i.clase_id === horario.clase_id);
-
-  const { data: clase, error: errClase } = await supabase
-    .from('clase')
-    .select('titulo')
-    .eq('id', horario.clase_id)
-    .single();
-
-  return {
-    id: claseUsuario.id,
-    clase: { titulo: clase?.titulo ?? 'Clase' },
-    horario: { fecha_hora: horario.fecha_hora }
-  };
+function horasHasta(fecha_hora) {
+  return (new Date(fecha_hora) - new Date()) / (1000 * 60 * 60);
 }
 
 async function confirmarAsistencia(usuarioId) {
-  const proxima = await getProximaClaseUsuario(usuarioId);
-  if (!proxima) {
-    console.log(`No se encontró próxima clase para usuario ${usuarioId}`);
-    return false;
-  }
-
-  const { error } = await supabase
-    .from('clase_usuario')
-    .update({ asistencia: true })
-    .eq('id', proxima.id);
-
-  if (error) {
-    console.error(`Error al confirmar asistencia de ${usuarioId}:`, error.message);
-    return false;
-  }
-  console.log(`Asistencia confirmada para usuario ${usuarioId} en clase ${proxima.clase.titulo}`);
-  return true;
+  const proxima = await db.getProximaClaseUsuario(usuarioId);
+  if (!proxima) return 'No tenés clases próximas agendadas.';
+  if (horasHasta(proxima.horario.fecha_hora) < 1) return 'Ya no alcanzás a confirmar, la clase empieza en menos de 1 hora.';
+  const ok = await db.confirmarAsistencia(proxima.id);
+  return ok ? `✅ Asistencia confirmada! Nos vemos en "${proxima.clase.titulo}".` : 'Error al confirmar. Intentalo de nuevo.';
 }
 
-async function liberarCupoFantasma(usuarioId) {
-  const proxima = await getProximaClaseUsuario(usuarioId);
-  if (!proxima) {
-    console.log(`No se encontró próxima clase para usuario ${usuarioId}`);
-    return false;
+async function cancelarAsistencia(usuarioId) {
+  const proxima = await db.getProximaClaseUsuario(usuarioId);
+  if (!proxima) return 'No tenés clases próximas agendadas.';
+  const horas = horasHasta(proxima.horario.fecha_hora);
+  if (horas >= 3) {
+    await db.updateAsistencia(proxima.id, 'cancelado');
+    await db.devolverToken(usuarioId);
+    return '❌ Clase cancelada. Te devolvimos el token.';
   }
-
-  const { error } = await supabase
-    .from('clase_usuario')
-    .delete()
-    .eq('id', proxima.id);
-
-  if (error) {
-    console.error(`Error al liberar cupo de ${usuarioId}:`, error.message);
-    return false;
-  }
-  console.log(`Cupo liberado para usuario ${usuarioId} en clase ${proxima.clase.titulo}`);
-  return true;
+  await db.updateAsistencia(proxima.id, 'cancelado_sin_reembolso');
+  return '❌ Clase cancelada. Como faltan menos de 3h, no se devuelve el token.';
 }
 
 async function procesarMensajeWhatsApp(telefono, texto) {
-  console.log(`Procesando mensaje de teléfono: "${telefono}" texto: "${texto.trim()}"`);
   const textoUpper = texto.toUpperCase().trim();
-  let respuesta = '';
-
-  const { data: usuario } = await supabase
-    .from('usuario')
-    .select('id, nombre, rol')
-    .or(`telefono.eq.${telefono},telefono.eq.+${telefono}`)
-    .maybeSingle();
-
-  if (!usuario) {
-    console.log(`Teléfono ${telefono} no registrado`);
-    return 'No estás registrado en la academia. Contactate con la administración.';
-  }
-
-  if (textoUpper === 'SI' || textoUpper === 'CONFIRMAR') {
-    const ok = await confirmarAsistencia(usuario.id);
-    respuesta = ok
-      ? `✅ Asistencia confirmada ${usuario.nombre}! Nos vemos en la próxima clase.`
-      : 'No se pudo confirmar tu asistencia. No tenés clases próximas agendadas.';
-  } else if (textoUpper === 'NO' || textoUpper === 'CANCELAR') {
-    const ok = await liberarCupoFantasma(usuario.id);
-    respuesta = ok
-      ? `❌ Cupo liberado ${usuario.nombre}. Esperamos verte la próxima.`
-      : 'No se pudo liberar tu cupo. No tenés clases próximas agendadas.';
-  } else {
-    return null;
-  }
-
-  return respuesta;
+  const usuario = await db.buscarUsuarioPorTelefono(telefono);
+  if (!usuario) return 'No estás registrado en la academia. Contactate con la administración.';
+  if (textoUpper === 'SI' || textoUpper === 'CONFIRMAR') return await confirmarAsistencia(usuario.id);
+  if (textoUpper === 'NO' || textoUpper === 'CANCELAR') return await cancelarAsistencia(usuario.id);
+  return null;
 }
 
+// ─── WhatsApp Client ───
 const whatsapp = new Client({
   authStrategy: new LocalAuth({ dataPath: './whatsapp-session' }),
   puppeteer: {
@@ -160,129 +72,82 @@ const whatsapp = new Client({
   }
 });
 
-whatsapp.on('qr', qr => {
-  qrcode.generate(qr, { small: true });
-  console.log('Escanea el QR con WhatsApp en tu celular.');
-});
-
-whatsapp.on('ready', () => {
-  console.log('WhatsApp conectado!');
-});
+whatsapp.on('qr', qr => { qrcode.generate(qr, { small: true }); console.log('Escanea el QR.'); });
+whatsapp.on('ready', () => console.log('WhatsApp conectado!'));
 
 whatsapp.on('message', async msg => {
   if (msg.from.endsWith('@g.us') || msg.from.endsWith('@broadcast')) return;
 
+  let telefono;
   if (msg.from.endsWith('@lid')) {
     const contact = await msg.getContact();
     const rawId = contact.id?.user || contact.id?._serialized || contact.id || contact.number;
-    const telefono = rawId.replace(/@\w+/g, '').replace(/\D/g, '');
-    console.log(`[WhatsApp] Contact: name="${contact.name}", number="${telefono}"`);
-    console.log(`[WhatsApp] Buscando teléfono: "${telefono}" en Supabase...`);
-    const respuesta = await procesarMensajeWhatsApp(telefono, msg.body);
-    if (respuesta) {
-      await msg.reply(respuesta);
-    }
-    return;
+    telefono = rawId.replace(/@\w+/g, '').replace(/\D/g, '');
+  } else {
+    telefono = msg.from.replace('@c.us', '');
   }
 
-  const telefono = msg.from.replace('@c.us', '');
   const respuesta = await procesarMensajeWhatsApp(telefono, msg.body);
-
-  if (respuesta) {
-    await msg.reply(respuesta);
-  }
+  if (respuesta) await msg.reply(respuesta);
 });
 
-whatsapp.initialize().catch(err => {
-  console.error('Error al iniciar WhatsApp:', err.message);
-});
+whatsapp.initialize().catch(err => console.error('Error al iniciar WhatsApp:', err.message));
 
-// ─── Scheduler: recordatorio 24h antes de la clase ───
+// ─── Scheduler ───
 if (process.env.SCHEDULER_ENABLED === 'true') {
   cron.schedule('*/15 * * * *', async () => {
-    console.log('[Scheduler] Buscando clases en ~24h...');
+    const ahora = new Date();
 
-  const ahora = new Date();
-  const objetivo = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
-  const desde = new Date(objetivo.getTime() - 90 * 60 * 1000);
-  const hasta = new Date(objetivo.getTime() + 90 * 60 * 1000);
+    const horarios = await db.getHorarios24h();
+    for (const h of horarios) {
+      const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
+      if (!inscripciones.length) continue;
+      const clase = await db.getClase(h.clase_id);
 
-  const { data: horarios, error: errHor } = await supabase
-    .from('horario')
-    .select('id, fecha_hora, clase_id')
-    .gte('fecha_hora', desde.toISOString())
-    .lte('fecha_hora', hasta.toISOString());
+      for (const insc of inscripciones) {
+        if (recordatoriosEnviados.has(insc.id)) continue;
+        const usuario = await db.getUsuario(insc.usuario_id);
+        if (!usuario?.telefono) continue;
 
-  if (errHor || !horarios?.length) return;
+        const fecha = new Date(h.fecha_hora);
+        const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
+        const telefono = usuario.telefono.replace('+', '');
+        const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé SI para confirmar o NO para cancelar.`;
 
-  for (const horario of horarios) {
-    const { data: inscripciones } = await supabase
-      .from('clase_usuario')
-      .select('id, usuario_id')
-      .eq('clase_id', horario.clase_id)
-      .is('asistencia', null);
-
-    if (!inscripciones?.length) continue;
-
-    const { data: clase } = await supabase
-      .from('clase')
-      .select('titulo')
-      .eq('id', horario.clase_id)
-      .single();
-
-    for (const insc of inscripciones) {
-      if (recordatoriosEnviados.has(insc.id)) continue;
-
-      const { data: usuario } = await supabase
-        .from('usuario')
-        .select('nombre, telefono')
-        .eq('id', insc.usuario_id)
-        .single();
-
-      if (!usuario?.telefono) continue;
-
-      const fecha = new Date(horario.fecha_hora);
-      const hora = fecha.toLocaleString('es-CL', {
-        hour: '2-digit', minute: '2-digit',
-        timeZone: 'America/Santiago'
-      });
-
-      const telefono = usuario.telefono.replace('+', '');
-      const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé SI para confirmar o NO para cancelar.`;
-
-      try {
-        await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
-        recordatoriosEnviados.add(insc.id);
-        guardarRecordatorios();
-        console.log(`[Scheduler] Recordatorio enviado a ${usuario.nombre} (${telefono})`);
-      } catch (err) {
-        console.error(`[Scheduler] Error al enviar a ${usuario.nombre}:`, err.message);
+        try {
+          await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
+          await db.setPendiente(insc.id);
+          recordatoriosEnviados.add(insc.id);
+          guardarRecordatorios();
+        } catch (err) {
+          console.error(`Error al enviar a ${usuario.nombre}:`, err.message);
+        }
+        await new Promise(r => setTimeout(r, 1000));
       }
-
-      await new Promise(r => setTimeout(r, 1000));
     }
-  }
-  });
 
+    const pasados = await db.getHorariosPasados();
+    for (const h of pasados) {
+      await db.actualizarPorClaseYEstado(h.id, 'pendiente', 'cancelado_sin_reembolso');
+      await db.actualizarPorClaseYEstado(h.id, 'confirmado_whatsapp', 'no_asistio');
+    }
+  });
 }
 
-console.log('[Scheduler] Desactivado. Para activar: SCHEDULER_ENABLED=true');
+if (process.env.SCHEDULER_ENABLED !== 'true') {
+  console.log('[Scheduler] Desactivado. SCHEDULER_ENABLED=true para activar.');
+}
 
+// ─── Webhook HTTP ───
 app.post('/whatsapp-webhook', async (req, res) => {
   try {
     const data = req.body;
     if (data.event === 'messages.upsert') {
       const message = data.data?.[0];
       if (!message) return res.sendStatus(200);
-
       const telefono = message.key?.remoteJid?.split('@')[0];
-      const texto = message.message?.conversation
-        || message.message?.extendedTextMessage?.text
-        || '';
-
-      if (telefono && texto) {
-        await procesarMensajeWhatsApp(telefono, texto);
-      }
+      const texto = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
+      if (telefono && texto) await procesarMensajeWhatsApp(telefono, texto);
     }
     res.sendStatus(200);
   } catch (err) {
@@ -291,8 +156,22 @@ app.post('/whatsapp-webhook', async (req, res) => {
   }
 });
 
+// ─── QR Scanner ───
+app.get('/scan-qr/:horarioId', async (req, res) => {
+  try {
+    const registros = await db.getConfirmadosPorClase(req.params.horarioId);
+    if (!registros.length) return res.send('<h2>No hay alumnos con asistencia confirmada.</h2>');
+
+    for (const r of registros) await db.updateAsistencia(r.id, 'asistio');
+    res.send(`<h2>✅ Asistencia marcada para ${registros.length} alumno(s).</h2>`);
+  } catch (err) {
+    console.error('Error en /scan-qr:', err);
+    res.status(500).send('Error interno');
+  }
+});
+
 const PORT = process.env.WEBHOOK_PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Webhook Express activo en puerto ${PORT}`);
-  console.log(`Endpoint: POST http://localhost:${PORT}/whatsapp-webhook`);
+  console.log(`QR Scanner: http://localhost:${PORT}/scan-qr/:horarioId`);
 });
