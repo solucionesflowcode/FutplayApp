@@ -10,29 +10,32 @@ type Child = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onSave: (student: any) => void;
+  onCreated: () => void;
+  onSave?: (student: { id: string; email: string; nombre: string; rol: string }) => void;
 };
 
 export default function CreateStudentModal({
   open,
   onClose,
-  onSave,
+  onCreated,
+  onSave: onSaveCallback,
 }: Props) {
 
-  // 🔹 Estados principales
   const [name, setName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
   const [rut, setRut] = useState("");
   const [phone, setPhone] = useState("");
   const [plan, setPlan] = useState("");
   const [userType, setUserType] = useState("Alumno");
   const [file, setFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // 🔹 Hijos
   const [childrenCount, setChildrenCount] = useState(0);
   const [children, setChildren] = useState<Child[]>([]);
 
-  // 🔥 Generar hijos dinámicos
   const handleChildrenCount = (value: number) => {
     setChildrenCount(value);
 
@@ -44,7 +47,6 @@ export default function CreateStudentModal({
     setChildren(newChildren);
   };
 
-  // 🔥 Actualizar hijos
   const handleChildChange = (
     index: number,
     field: "name" | "plan",
@@ -55,39 +57,70 @@ export default function CreateStudentModal({
     setChildren(updated);
   };
 
-  // 🔥 Guardar (PREPARADO PARA SUPABASE)
-  const saveStudent = () => {
-
-    const fileUrl = file
-      ? URL.createObjectURL(file) // 🔁 luego reemplazas por Supabase
-      : "";
-
-    const fullName = `${name} ${lastName}`;
-
-    onSave({
-      id: "#" + Date.now(),
-      name: fullName,
-      role: userType,
-      rut,
-      phone,
-      plan,
-      tokens: plan === "Plan Híbrido" ? 10 : 5,
-      status: "Activo",
-      medicalFileUrl: fileUrl,
-      children: userType === "Apoderado" ? children : []
-    });
-
-    onClose();
-
-    // 🔄 Reset (opcional pero pro)
+  const resetForm = () => {
     setName("");
     setLastName("");
+    setEmail("");
     setRut("");
     setPhone("");
     setPlan("");
+    setUserType("Alumno");
     setFile(null);
     setChildren([]);
     setChildrenCount(0);
+    setError(null);
+    setSuccess(null);
+  };
+
+  const saveStudent = async () => {
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    const fullName = `${name} ${lastName}`.trim();
+
+    if (!email || !fullName) {
+      setError("Nombre completo y email son obligatorios");
+      setSaving(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          nombre: fullName,
+          rol: userType === "Alumno" ? "jugador" : "jugador",
+          rut: rut || undefined,
+          telefono: phone || undefined,
+          plan_id: plan || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Error al crear estudiante");
+        setSaving(false);
+        return;
+      }
+
+      setSuccess(`Estudiante creado: ${data.user.nombre} (${data.user.rol})`);
+      setSaving(false);
+
+      onSaveCallback?.(data.user);
+
+      setTimeout(() => {
+        resetForm();
+        onCreated();
+        onClose();
+      }, 1500);
+    } catch {
+      setError("Error de conexión al servidor");
+      setSaving(false);
+    }
   };
 
   if (!open) return null;
@@ -122,6 +155,15 @@ export default function CreateStudentModal({
           placeholder="Apellido"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
+          className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
+        />
+
+        {/* EMAIL */}
+        <input
+          type="email"
+          placeholder="Correo electrónico *"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
         />
 
@@ -229,21 +271,35 @@ export default function CreateStudentModal({
           </div>
         )}
 
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm mb-4">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-600 text-sm mb-4">
+            {success}
+          </div>
+        )}
+
         {/* BOTONES */}
         <div className="flex justify-end gap-3 mt-6">
 
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300"
+            disabled={saving}
+            className="px-4 py-2 rounded-xl border border-gray-300 disabled:opacity-50"
           >
             Cancelar
           </button>
 
           <button
             onClick={saveStudent}
-            className="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700"
+            disabled={saving}
+            className="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
           >
-            Guardar Registro
+            {saving ? "Guardando..." : "Guardar Registro"}
           </button>
 
         </div>
