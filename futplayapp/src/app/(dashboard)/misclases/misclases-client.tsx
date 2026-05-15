@@ -59,10 +59,12 @@ function flattenInscripciones(rows: ClaseInscripcionRow[]): SessionItem[] {
 
 function normalizeAsistencia(
     a: string | boolean | null | undefined,
-): "sin_confirmar" | "presente" | "ausente" {
-    if (a === true || a === "presente") return "presente";
-    if (a === false || a === "ausente") return "ausente";
-    if (a === "sin_confirmar" || a == null) return "sin_confirmar";
+): "sin_confirmar" | "pendiente" | "presente" | "ausente" {
+    if (a === true || a === "presente" || a === "asistio" || a === "confirmado_whatsapp")
+        return "presente";
+    if (a === false || a === "ausente" || a === "no_asistio" || a === "cancelado" || a === "cancelado_sin_reembolso")
+        return "ausente";
+    if (a === "pendiente") return "pendiente";
     return "sin_confirmar";
 }
 
