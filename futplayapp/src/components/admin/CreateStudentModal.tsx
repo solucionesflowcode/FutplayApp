@@ -192,7 +192,8 @@ export default function CreateStudentModal({
           className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
         >
           <option>Alumno</option>
-          <option>Apoderado</option>
+          <option>Profesor</option>
+          <option>Administrador</option>
         </select>
 
         {/* PLAN */}
