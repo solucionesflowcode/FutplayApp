@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 
 export type Student = {
   id: string;
@@ -18,11 +18,16 @@ export type Student = {
 
 type Props = {
   students: Student[];
+  onStatusChange?: (userId: string, newStatus: string) => void;
+  onView?: (student: Student) => void;
+  onEdit?: (student: Student) => void;
+  onDelete?: (student: Student) => void;
 };
 
-export default function StudentsTable({ students }: Props) {
+export default function StudentsTable({ students, onStatusChange, onView, onEdit, onDelete }: Props) {
 
   const [page, setPage] = useState(1);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const itemsPerPage = 4;
 
   const totalPages = Math.ceil(students.length / itemsPerPage);
@@ -101,17 +106,40 @@ export default function StudentsTable({ students }: Props) {
 
                 {/* Estado */}
                 <td className="p-3">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      student.status === "Activo"
-                        ? "bg-green-100 text-green-600"
-                        : student.status === "Inactivo"
-                        ? "bg-yellow-100 text-yellow-600"
-                        : "bg-red-100 text-red-600"
-                    }`}
-                  >
-                    {student.status}
-                  </span>
+                  {updatingId === student.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  ) : (
+                    <select
+                      value={student.status}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        setUpdatingId(student.id);
+                        fetch("/api/admin/students/status", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ userId: student.id, status: newStatus }),
+                        })
+                          .then((res) => res.json())
+                          .then((data) => {
+                            if (data.success) {
+                              onStatusChange?.(student.id, newStatus);
+                            }
+                          })
+                          .finally(() => setUpdatingId(null));
+                      }}
+                      className={`px-2 py-1 rounded text-xs font-medium border cursor-pointer appearance-none ${
+                        student.status === "Activo"
+                          ? "bg-green-100 text-green-600 border-green-300"
+                          : student.status === "Inactivo"
+                          ? "bg-yellow-100 text-yellow-600 border-yellow-300"
+                          : "bg-red-100 text-red-600 border-red-300"
+                      }`}
+                    >
+                      <option value="Activo" className="bg-white text-green-600">Activo</option>
+                      <option value="Inactivo" className="bg-white text-yellow-600">Inactivo</option>
+                      <option value="Vencido" className="bg-white text-red-600">Vencido</option>
+                    </select>
+                  )}
                 </td>
 
                 {/* ACCIONES */}
@@ -128,17 +156,29 @@ export default function StudentsTable({ students }: Props) {
                   )}
 
                   {/* VER */}
-                  <button className="text-blue-500 hover:scale-110">
+                  <button
+                    onClick={() => onView?.(student)}
+                    className="text-blue-500 hover:scale-110 cursor-pointer"
+                    title="Ver detalle"
+                  >
                     <Eye size={16} />
                   </button>
 
                   {/* EDITAR */}
-                  <button className="text-green-500 hover:scale-110">
+                  <button
+                    onClick={() => onEdit?.(student)}
+                    className="text-green-500 hover:scale-110 cursor-pointer"
+                    title="Editar"
+                  >
                     <Pencil size={16} />
                   </button>
 
                   {/* ELIMINAR */}
-                  <button className="text-red-500 hover:scale-110">
+                  <button
+                    onClick={() => onDelete?.(student)}
+                    className="text-red-500 hover:scale-110 cursor-pointer"
+                    title="Eliminar"
+                  >
                     <Trash2 size={16} />
                   </button>
 
