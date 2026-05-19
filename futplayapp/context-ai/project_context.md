@@ -603,3 +603,44 @@ El enfoque actual es continuar evolucionando:
 * QR
 * integración de pagos
 * experiencia de usuario
+
+---
+
+## Features Completadas
+
+### 1. Función `get_proxima_clase`
+
+Regenerada para el esquema actual donde `clase_usuario` ya no tiene `clase_id` directo, sino que se relaciona con `clase` a través de `horario`:
+
+```
+clase_usuario.horario_id → horario.id → horario.clase_id → clase.id → clase.sede_id → sede.id
+```
+
+Compatible con la llamada existente en `src/data/clases.ts`.
+
+### 2. Calendario de Mis Clases
+
+Visualización mensual en grilla de las clases inscritas con código de colores según estado de asistencia:
+
+| Estado | Color | Valores del enum `asistencia` |
+|---|---|---|
+| Asistido | Verde | `asistio`, `confirmado_whatsapp` |
+| Próxima / Pendiente | Naranja | `sin_confirmar`, `pendiente` (futuras) |
+| Inasistencia | Rojo | `no_asistio`, `cancelado`, `cancelado_sin_reembolso` |
+| Sin confirmar pasada | Neutro | `sin_confirmar`, `pendiente` (pasadas) |
+
+Incluye:
+- Navegación entre meses
+- Indicador "Hoy" con anillo
+- Iconos por estado (CheckCircle, XCircle, Clock)
+- Resumen mensual con anillo de progreso
+- Tabla de detalle de sesiones recientes
+- Leyenda rápida de colores
+
+### 3. Query corregida en `getMisClasesInscripciones`
+
+Adaptada al nuevo esquema relacional: la consulta ahora atraviesa `horario:horario_id → clase:clase_id` y reestructura el resultado para mantener la interfaz `ClaseInscripcionRow` existente.
+
+### 4. Normalización del enum `asistencia`
+
+La función `normalizeAsistencia` mapea los valores del enum y booleanos legacy a un estado visual consistente (`presente`, `ausente`, `pendiente`, `sin_confirmar`), usado tanto en la grilla del calendario como en la tabla de detalle.

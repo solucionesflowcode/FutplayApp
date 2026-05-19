@@ -2,7 +2,6 @@
 | ------------- | ------------ | ------------------ | ------------------- |
 | clase         | sede_id      | sede               | id                  |
 | horario       | clase_id     | clase              | id                  |
-| clase_usuario | clase_id     | clase              | id                  |
 | clase_usuario | usuario_id   | usuario            | id                  |
 | boleta        | usuario_id   | usuario            | id                  |
 | membresia     | usuario_id   | usuario            | id                  |
@@ -12,3 +11,4 @@
 | capsula       | modulo_id    | modulo             | id                  |
 | modulo        | categoria_id | categoria          | id                  |
 | ficha_medica  | usuario_id   | usuario            | id                  |
+| clase_usuario | horario_id   | horario            | id                  |
