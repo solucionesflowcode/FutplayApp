@@ -7,17 +7,12 @@ import { useRouter } from "next/navigation";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import { getPlanes, type Plan } from "@/data/plans";
 import { useAuthUser } from "@/context";
-import { userHasFichaMedica } from "@/data/fichaMedica";
-import { userHasMembresia, createMembresia } from "@/data/membresia";
-import FichaMedicaModal from "../../../components/checkout/FichaMedicaModal";
 
 export default function PlanesPage() {
     const router = useRouter();
     const { usuario } = useAuthUser();
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
     useEffect(() => {
         const fetchPlanes = async () => {
@@ -34,28 +29,9 @@ export default function PlanesPage() {
         fetchPlanes();
     }, []);
 
-    const handleComprarPlan = async (plan: Plan) => {
+    const handleComprarPlan = (plan: Plan) => {
         if (!usuario?.id) return;
-
-        setSelectedPlan(plan);
-
-        const hasFicha = await userHasFichaMedica(usuario.id);
-        if (hasFicha) {
-            const success = await createMembresia(usuario.id, plan.id, plan.tokens_mensuales);
-            if (success) {
-                router.push("/dashboard");
-            }
-        } else {
-            setModalOpen(true);
-        }
-    };
-
-    const handleFichaSuccess = async () => {
-        if (!usuario?.id || !selectedPlan) return;
-        const success = await createMembresia(usuario.id, selectedPlan.id, selectedPlan.tokens_mensuales);
-        if (success) {
-            router.push("/dashboard");
-        }
+        router.push(`/pagos?id=${plan.id}`);
     };
 
     const renderPlanIcon = (index: number) => {
@@ -171,17 +147,6 @@ export default function PlanesPage() {
                     </div>
                 )}
             </div>
-
-            {selectedPlan && usuario && (
-                <FichaMedicaModal
-                    open={modalOpen}
-                    onClose={() => setModalOpen(false)}
-                    onSuccess={handleFichaSuccess}
-                    planId={selectedPlan.id}
-                    planName={selectedPlan.nombre}
-                    userId={usuario.id}
-                />
-            )}
         </main>
     );
 }
