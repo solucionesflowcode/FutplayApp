@@ -61,14 +61,26 @@ futplayapp/
 │   │   │   │   └── dashboard-client.tsx  # Dashboard layout con widgets
 │   │   │   ├── capsules/
 │   │   │   │   ├── page.tsx         # Server component (getCapsulas) → CapsulesPage
-│   │   │   │   └── capsules-client.tsx  # Catálogo de cápsulas con búsqueda/filtros
+│   │   │   │   ├── capsules-client.tsx  # Catálogo de cápsulas con búsqueda/filtros
+│   │   │   │   └── [id]/
+│   │   │   │       └── page.tsx     # Reproductor de video + progreso + comentarios
 │   │   │   └── planes/
 │   │   │       └── page.tsx         # Planes de membresía + compra + ficha médica
 │   │   │
 │   │   ├── (admin)/
 │   │   │   └── admin/
-│   │   │       ├── layout.tsx       # Sidebar admin fijo
-│   │   │       └── page.tsx         # Panel admin con tabla de usuarios + stats
+│   │   │       ├── layout.tsx       # Sidebar admin fijo + AuthGuard
+│   │   │       ├── page.tsx         # Panel admin con tabla de usuarios + stats
+│   │   │       ├── analiticas/
+│   │   │       │   └── page.tsx     # Vista de analíticas (stats, gráficos, distribución)
+│   │   │       ├── clases/
+│   │   │       │   └── page.tsx     # CRUD completo: tabla, crear/editar modal, eliminar, asistencia general y por alumno
+│   │   │       ├── modulos/
+│   │   │       │   └── page.tsx     # CRUD completo: tabla, crear/editar modal, eliminar con validación de cápsulas asociadas
+│   │   │       ├── capsulas/
+│   │       │           │       └── page.tsx     # CRUD completo: tabla con thumbnail, coach, duración, módulo, BunnyVideoID, orden; modal crear/editar, eliminar
+│   │   │       └── profesores/
+│   │   │           └── page.tsx     # CRUD completo: tabla con clases y cápsulas asociadas, expandible, crear/editar/eliminar profesor
 │   │   │
 │   │   └── api/
 │   │       ├── auth/
@@ -80,7 +92,12 @@ futplayapp/
 │   │       │   ├── get-video/route.ts   # GET - Metadata de un video
 │   │       │   └── get-videos/route.ts  # GET - Listar videos
 │   │       └── admin/
-│   │           └── membresias/route.ts  # GET - Membresías (bypass RLS con service_role)
+│       │           ├── clases/route.ts      # CRUD Clases + Horarios + Asistencia (service_role)
+│       │           ├── modulos/route.ts     # CRUD Módulos + Categorías (service_role)
+│       │           ├── capsulas/route.ts    # CRUD Cápsulas (service_role)
+│       │           ├── profesores/route.ts  # CRUD Profesores (service_role, crea usuario auth + perfil)
+│       │           ├── membresias/route.ts  # GET - Membresías (bypass RLS con service_role)
+│       │           └── students/route.ts    # POST - Crear alumno/profesor manualmente
 │   │
 │   ├── components/
 │   │   ├── admin/
@@ -397,6 +414,28 @@ futplayapp/
 - Tokens: Híbrido=10, Online=5
 - **NO conectado a Supabase** — solo estado local en admin/page.tsx
 
+### Vista de Analíticas (`admin/analiticas/page.tsx`)
+
+**Layout:** `flex-col gap-8 max-w-[1216px]` con secciones `flex-none self-stretch z-0`.
+
+**Secciones:**
+
+| Sección | Componente | Datos |
+|---------|-----------|-------|
+| Header | Título + selector de período | — |
+| 4 StatCards | Total Alumnos, Ingresos del Mes, Membresías Activas, Tasa Retención | Supabase queries |
+| Gráfico Ingresos | Barras por mes (últimos 6) | `membresia.precio` agrupado por mes |
+| Distribución por Plan | Barras horizontales con % | `getAdminMembresias()` agrupado por `plan_nombre` |
+| Ingresos por Plan | Ingresos por plan + alumnos + barra % + total recurrente | `membresia.precio` agrupado por `plan_nombre` |
+| Tabla de Planes | Nombre, Tokens, Precio | `getPlanes()` |
+
+**Queries a Supabase:**
+- `usuario` → total alumnos + distribución por rol
+- `boleta` (pagadas) → ingresos del mes
+- `membresia` (vía API `/api/admin/membresias`) → membresías activas + distribución por plan
+- `clase_usuario` → tasa de retención (asistencias / total inscripciones)
+- `plan` → lista de planes disponibles
+
 ### Flujo de datos de admin
 
 ```
@@ -460,6 +499,11 @@ type Student = {
 - Featured hero + grid de cards con búsqueda y filtro por categoría
 - Datos desde Supabase via nested: `capsula` → `modulo` → `categoria`
 
+### Cápsula Individual (`(dashboard)/capsules/[id]/`)
+- Server component: `getCapsulaById(id)` + verifica sesión y membresía
+- Renderiza `VideoPlayerView` — reproductor Bunny Stream, progreso, comentarios mock, guía minuto a minuto, material descargable mock
+- Sin membresía: muestra pantalla de bloqueo con CTA a `/planes`
+
 ---
 
 ## 7. Landing Page (Pública)
@@ -490,10 +534,43 @@ type Student = {
 | `/api/bunny/get-video` | GET | `?videoId=xxx` | Metadata del video |
 | `/api/bunny/get-videos` | GET | `?page=&itemsPerPage=&search=&collection=&orderBy=` | Lista paginada |
 
-### Admin
-- `GET /api/admin/membresias` — Membresías con plan (bypass RLS vía service_role key)
+### Admin API (bypass RLS con service_role key)
+- `GET /api/admin/membresias` — Membresías con plan
   - Verifica sesión y rol admin/profesor
   - Retorna `MembresiaConPlan[]` agrupado por usuario
+- `POST /api/admin/students` — Crear alumno/profesor manualmente
+  - Verifica sesión y rol admin
+  - Crea usuario en `auth.users` (vía adminClient con service_role) + registro en `usuario` + membresía opcional
+  - Retorna datos del usuario creado + `tempPassword`
+- `GET|POST|PUT|DELETE /api/admin/profesores` — CRUD Profesores
+  - `GET` — Lista profesores con total de clases y cápsulas asociadas (incluye listado expandible)
+  - `GET ?tipo=dropdown` — Lista profesores para selectores (id, nombre)
+  - `POST` — Crea profesor (crea auth user + usuario con rol=profesor, devuelve contraseña temporal)
+  - `PUT` — Actualiza nombre, email, telefono
+  - `DELETE ?id=xxx` — Elimina profesor (solo si no tiene clases o cápsulas asociadas — error 409)
+- `GET|POST|PUT|DELETE /api/admin/capsulas` — CRUD Cápsulas
+  - `GET ?tipo=capsulas` (default) — Lista cápsulas con módulo, ordenadas por order_index
+  - `GET ?tipo=modulos` — Lista módulos para dropdown
+  - `POST` — Crear cápsula (titulo, imagen, creado, duracion, modulo_id, bunny_video_id, order_index)
+  - `PUT` — Actualizar cápsula
+  - `DELETE ?id=xxx` — Elimina cápsula
+- `GET|POST|PUT|DELETE /api/admin/modulos` — CRUD Módulos
+  - Verifica sesión y rol admin
+  - `GET ?tipo=modulos` (default) — Lista módulos con categoría + total cápsulas
+  - `GET ?tipo=categorias` — Lista categorías disponibles
+  - `POST` — Crear módulo (nombre, descripcion, categoria_id)
+  - `PUT` — Actualizar módulo
+  - `DELETE ?id=xxx` — Elimina módulo (solo si no tiene cápsulas asociadas — error 409 si tiene)
+- `GET|POST|PUT|DELETE|PATCH /api/admin/clases` — CRUD Clases + Asistencia
+  - Verifica sesión y rol admin
+  - `GET ?tipo=clases` (default) — Lista clases con horarios, sede, inscritos
+  - `GET ?tipo=sedes` — Lista sedes disponibles
+  - `GET ?tipo=asistencia-general` — Todos los registros de clase_usuario con nombres
+  - `GET ?tipo=asistencia&clase_id=xxx` — Detalle de asistencia por clase (horarios + inscripciones)
+  - `POST` — Crear clase + horarios
+  - `PUT` — Actualizar clase + reemplazar horarios
+  - `DELETE ?id=xxx` — Eliminar clase + horarios + clase_usuario asociados
+  - `PATCH { accion: "registrar-asistencia", clase_id, usuario_id, asistencia }` — Marcar asistencia
 
 ---
 
@@ -503,9 +580,9 @@ type Student = {
 **Puerto:** 3001
 **Tecnología:** Express + whatsapp-web.js + Supabase
 
-**Funciones:**
+**Funciones actuales:**
 - `getProximaClaseUsuario(usuarioId)` — próxima clase del usuario (clase_usuario → horario → clase)
-- `confirmarAsistencia(usuarioId)` — marca `asistencia = true`
+- `confirmarAsistencia(usuarioId)` — marca `asistencia = true` (provisional, se refactorizará)
 - `liberarCupoFantasma(usuarioId)` — elimina inscripción
 - `procesarMensajeWhatsApp(telefono, texto)` — busca usuario por teléfono, responde "SI" o "NO"
 
@@ -516,6 +593,32 @@ type Student = {
 
 **Webhook endpoint:** `POST /whatsapp-webhook`
 
+### Flujo de Asistencia (Futuro)
+
+Las clases son **presenciales**. El flujo planeado es:
+
+```
+1. Alumno responde "SI" por WhatsApp
+   → Se registra intención de asistir (ej: asistencia = "pendiente")
+
+2. La asistencia se confirma REAL cuando:
+   a) El horario de la clase ya comenzó (time threshold mínimo),
+      O
+   b) El alumno escanea un código QR en la sede
+
+   → En ese momento pasa a asistencia = true
+```
+
+**Estados de `clase_usuario.asistencia` planeados:**
+| Estado | Significado |
+|--------|-------------|
+| `null` | Inscrito, sin confirmar |
+| `'pendiente'` | Confirmó vía WhatsApp que asistirá |
+| `true` | Asistió realmente (QR pass o tiempo cumplido) |
+| `false` | Ausente |
+
+> Actualmente `asistencia` es BOOLEAN. Habrá que migrar a un tipo más expresivo cuando se implemente QR + threshold.
+
 ---
 
 ## 10. Capa de Datos (`src/data/`)
@@ -525,9 +628,12 @@ type Student = {
 | `auth.ts` | browser | `getCurrentUser()`, `getUsuario()`, `signOut()`, `signInWithGoogle()`, `onAuthStateChange()` | Autenticación |
 | `plans.ts` | browser | `getPlanes()`, `getPlanesLimit()`, `getUsers()` | Planes + Admin users |
 | `membresia.ts` | browser | `userHasMembresia()`, `getMembresiaByUser()`, `getAllMembresiasConPlan()`, `getAdminMembresias()`, `createMembresia()` | Membresías |
-| `capsules.ts` | server | `getCapsulas()` | Cápsulas SSR |
+| `capsules.ts` | server | `getCapsulas()`, `getCapsulaById()` | Cápsulas SSR + detalle individual |
 | `capsules-client.ts` | browser | `getCapsulasClient()` | Cápsulas CSR |
-| `clases.ts` | browser | `getProximaClase(userId)` | Vía RPC `get_proxima_clase` |
+| `clases.ts` | browser | `getProximaClase(userId)` + `getClases()`, `getSedes()`, `createClase()`, `updateClase()`, `deleteClase()`, `getAsistenciaGeneral()`, `getAsistenciaPorClase()`, `registrarAsistencia()` | Vía RPC + admin API |
+| `modulos.ts` | browser | `getModulos()`, `getCategorias()`, `createModulo()`, `updateModulo()`, `deleteModulo()` | Admin API |
+| `capsulas-admin.ts` | browser | `getCapsulasAdmin()`, `getModulosOptions()`, `createCapsula()`, `updateCapsula()`, `deleteCapsula()` | Admin API |
+| `profesores.ts` | browser | `getProfesores()`, `getProfesoresDropdown()`, `createProfesor()`, `updateProfesor()`, `deleteProfesor()` | Admin API |
 | `fichaMedica.ts` | browser | `updateUserProfile()`, `createFichaMedica()`, `userHasFichaMedica()`, `getFichaMedicaByUser()`, `calculateIMC()`, `getIMCStatus()` | Ficha médica |
 
 ---
@@ -546,12 +652,12 @@ type Student = {
 
 ## 12. Pendientes / Problemas Conocidos
 
-1. **Ruta `/perfil` no existe** — AuthGuard redirige allí pero no hay página
+1. ~~**Ruta `/perfil` no existe**~~ ✅ Resuelto — página en `(public)/perfil/page.tsx`
 2. **RLS en `membresia`** — No hay policy para admin/staff, se usa API route con service_role key como workaround
-3. **Falta `SUPABASE_SERVICE_ROLE_KEY`** en `.env.local` — necesario para que admin vea membresías
-4. **Rutas del sidebar admin no existen** — `/admin/analiticas`, `/admin/clases`, `/admin/modulos`, `/admin/capsulas`, `/admin/profesores`
-5. **Admin page sin `AuthGuard`** — cualquiera puede acceder a `/admin`
-6. **CreateStudentModal no persiste en Supabase** — solo guarda en estado local
+3. **Falta `SUPABASE_SERVICE_ROLE_KEY`** en `.env.local` — necesario para que admin vea membresías y cree usuarios
+4. ~~**Rutas del sidebar admin no existen**~~ ✅ Todas las rutas del sidebar implementadas: analíticas, clases, módulos, cápsulas, profesores
+5. ~~**Admin page sin `AuthGuard`**~~ ✅ Resuelto — `layout.tsx` tiene `<AuthGuard allowedRoles={["administrador"]}>`
+6. **CreateStudentModal no persiste apoderados con hijos** — el modal crea el usuario pero no vincula hijos al apoderado
 7. **`sidebar-collapsed` no persiste** en el Sidebar de admin (sí en SidebarUsuarioNuevo)
 8. **`SideBarUsuario` legacy** — sidebar viejo con nombre "Kinetic", no usado actualmente
 9. **TopNavBar.jsx** — links del menú apuntan a `#` (placeholder)
