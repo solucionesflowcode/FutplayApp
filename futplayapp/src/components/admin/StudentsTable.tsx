@@ -1,33 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Eye, Pencil, Trash2, Heart, X, Loader2 } from "lucide-react";
+import { getFichaMedicaByUser, type FichaMedicaData } from "@/data/fichaMedica";
 
 export type Student = {
   id: string;
   name: string;
-  role: string; // se muestra como "Usuario"
+  role: string;
   rut?: string;
   phone?: string;
   plan: string;
   tokens: number;
   status: string;
-  medicalFileUrl?: string; // 👈 PRO (para Supabase)
+  medicalFileUrl?: string;
   children?: any[];
+};
+
+type FichaModalState = {
+  open: boolean;
+  loading: boolean;
+  error: string | null;
+  data: (FichaMedicaData & { usuario_id: string }) | null;
 };
 
 type Props = {
   students: Student[];
-  onStatusChange?: (userId: string, newStatus: string) => void;
-  onView?: (student: Student) => void;
-  onEdit?: (student: Student) => void;
-  onDelete?: (student: Student) => void;
 };
 
-export default function StudentsTable({ students, onStatusChange, onView, onEdit, onDelete }: Props) {
+export default function StudentsTable({ students }: Props) {
 
   const [page, setPage] = useState(1);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [fichaModal, setFichaModal] = useState<FichaModalState>({
+    open: false, loading: false, error: null, data: null,
+  });
   const itemsPerPage = 4;
 
   const totalPages = Math.ceil(students.length / itemsPerPage);
@@ -36,6 +42,20 @@ export default function StudentsTable({ students, onStatusChange, onView, onEdit
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
+
+  const openFicha = async (userId: string) => {
+    setFichaModal({ open: true, loading: true, error: null, data: null });
+    const data = await getFichaMedicaByUser(userId);
+    if (data) {
+      setFichaModal({ open: true, loading: false, error: null, data });
+    } else {
+      setFichaModal({ open: true, loading: false, error: "No tiene ficha médica registrada.", data: null });
+    }
+  };
+
+  const closeFicha = () => {
+    setFichaModal({ open: false, loading: false, error: null, data: null });
+  };
 
   return (
     <div className="bg-white shadow-sm rounded-lg w-full p-4 mt-6">
@@ -61,7 +81,6 @@ export default function StudentsTable({ students, onStatusChange, onView, onEdit
             {currentData.map((student) => (
               <tr key={student.id} className="border-b hover:bg-gray-50">
 
-                {/* Nombre */}
                 <td className="p-3">
                   <div className="font-semibold text-black">
                     {student.name}
@@ -71,7 +90,6 @@ export default function StudentsTable({ students, onStatusChange, onView, onEdit
                   </div>
                 </td>
 
-                {/* Usuario */}
                 <td className="p-3">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -84,101 +102,55 @@ export default function StudentsTable({ students, onStatusChange, onView, onEdit
                   </span>
                 </td>
 
-                {/* RUT */}
                 <td className="p-3 text-gray-900 font-medium">
                   {student.rut}
                 </td>
 
-                {/* Teléfono */}
                 <td className="p-3 text-gray-900 font-medium">
                   {student.phone}
                 </td>
 
-                {/* Plan */}
                 <td className="p-3 text-gray-900 font-medium">
                   {student.plan}
                 </td>
 
-                {/* Tokens */}
                 <td className="p-3 text-gray-900 font-medium">
                   {student.tokens}
                 </td>
 
-                {/* Estado */}
                 <td className="p-3">
-                  {updatingId === student.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                  ) : (
-                    <select
-                      value={student.status}
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        setUpdatingId(student.id);
-                        fetch("/api/admin/students/status", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ userId: student.id, status: newStatus }),
-                        })
-                          .then((res) => res.json())
-                          .then((data) => {
-                            if (data.success) {
-                              onStatusChange?.(student.id, newStatus);
-                            }
-                          })
-                          .finally(() => setUpdatingId(null));
-                      }}
-                      className={`px-2 py-1 rounded text-xs font-medium border cursor-pointer appearance-none ${
-                        student.status === "Activo"
-                          ? "bg-green-100 text-green-600 border-green-300"
-                          : student.status === "Inactivo"
-                          ? "bg-yellow-100 text-yellow-600 border-yellow-300"
-                          : "bg-red-100 text-red-600 border-red-300"
-                      }`}
-                    >
-                      <option value="Activo" className="bg-white text-green-600">Activo</option>
-                      <option value="Inactivo" className="bg-white text-yellow-600">Inactivo</option>
-                      <option value="Vencido" className="bg-white text-red-600">Vencido</option>
-                    </select>
-                  )}
+                  <span
+                    className={`px-2 py-1 rounded text-xs ${
+                      student.status === "Activo"
+                        ? "bg-green-100 text-green-600"
+                        : student.status === "Inactivo"
+                        ? "bg-yellow-100 text-yellow-600"
+                        : "bg-red-100 text-red-600"
+                    }`}
+                  >
+                    {student.status}
+                  </span>
                 </td>
 
-                {/* ACCIONES */}
                 <td className="p-3 flex gap-2 items-center">
 
-                  {/* VER FICHA MÉDICA (PRO READY) */}
-                  {student.medicalFileUrl && (
-                    <button
-                      onClick={() => window.open(student.medicalFileUrl)}
-                      className="text-purple-600 text-xs border px-2 py-1 rounded hover:bg-purple-100"
-                    >
-                      Ver ficha
-                    </button>
-                  )}
-
-                  {/* VER */}
                   <button
-                    onClick={() => onView?.(student)}
-                    className="text-blue-500 hover:scale-110 cursor-pointer"
-                    title="Ver detalle"
+                    onClick={() => openFicha(student.id)}
+                    className="flex items-center gap-1 text-purple-600 text-xs border px-2 py-1 rounded hover:bg-purple-100"
                   >
+                    <Heart size={14} />
+                    Ficha
+                  </button>
+
+                  <button className="text-blue-500 hover:scale-110">
                     <Eye size={16} />
                   </button>
 
-                  {/* EDITAR */}
-                  <button
-                    onClick={() => onEdit?.(student)}
-                    className="text-green-500 hover:scale-110 cursor-pointer"
-                    title="Editar"
-                  >
+                  <button className="text-green-500 hover:scale-110">
                     <Pencil size={16} />
                   </button>
 
-                  {/* ELIMINAR */}
-                  <button
-                    onClick={() => onDelete?.(student)}
-                    className="text-red-500 hover:scale-110 cursor-pointer"
-                    title="Eliminar"
-                  >
+                  <button className="text-red-500 hover:scale-110">
                     <Trash2 size={16} />
                   </button>
 
@@ -190,6 +162,85 @@ export default function StudentsTable({ students, onStatusChange, onView, onEdit
 
         </table>
       </div>
+
+      {/* FICHA MÉDICA MODAL */}
+      {fichaModal.open && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Ficha Médica</h2>
+              <button onClick={closeFicha} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            {fichaModal.loading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[#F39200]" />
+              </div>
+            )}
+
+            {fichaModal.error && (
+              <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-500">
+                {fichaModal.error}
+              </div>
+            )}
+
+            {fichaModal.data && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <p className="text-xs text-gray-500">Edad</p>
+                    <p className="font-semibold text-gray-900">{fichaModal.data.edad} años</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <p className="text-xs text-gray-500">Peso</p>
+                    <p className="font-semibold text-gray-900">{fichaModal.data.peso_kg} kg</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <p className="text-xs text-gray-500">Estatura</p>
+                    <p className="font-semibold text-gray-900">{fichaModal.data.estatura_cm} cm</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <p className="text-xs text-gray-500">IMC</p>
+                    <p className="font-semibold text-gray-900">{fichaModal.data.imc}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <p className="text-xs text-gray-500">Grupo Sanguíneo</p>
+                    <p className="font-semibold text-gray-900">{fichaModal.data.grupo_sanguineo || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500">Enfermedades</p>
+                  <p className="font-medium text-gray-900">{fichaModal.data.enfermedades || "Ninguna"}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500">Alergias</p>
+                  <p className="font-medium text-gray-900">{fichaModal.data.alergias || "Ninguna"}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500">Medicamentos</p>
+                  <p className="font-medium text-gray-900">{fichaModal.data.medicamentos || "Ninguno"}</p>
+                </div>
+                {fichaModal.data.observaciones && (
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <p className="text-xs text-gray-500">Observaciones</p>
+                    <p className="font-medium text-gray-900">{fichaModal.data.observaciones}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={closeFicha}
+                  className="w-full mt-2 py-2 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-3">

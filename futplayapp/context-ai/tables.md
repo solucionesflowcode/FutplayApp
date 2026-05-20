@@ -1,0 +1,16 @@
+| table_schema | table_name    |
+| ------------ | ------------- |
+| public       | boleta        |
+| public       | boleta_item   |
+| public       | capsula       |
+| public       | categoria     |
+| public       | clase         |
+| public       | clase_usuario |
+| public       | ficha_medica  |
+| public       | horario       |
+| public       | membresia     |
+| public       | modulo        |
+| public       | plan          |
+| public       | producto      |
+| public       | sede          |
+| public       | usuario       |
