@@ -13,7 +13,7 @@ const recordatoriosEnviados = new Set();
 try {
   const data = fs.readFileSync(RECORDATORIOS_FILE, 'utf8');
   JSON.parse(data).forEach(id => recordatoriosEnviados.add(id));
-} catch {}
+} catch { }
 
 function guardarRecordatorios() {
   fs.writeFileSync(RECORDATORIOS_FILE, JSON.stringify([...recordatoriosEnviados]));
@@ -98,7 +98,7 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
   cron.schedule('*/15 * * * *', async () => {
     const ahora = new Date();
 
-    const horarios = await db.getHorarios24h();
+    const horarios = await db.getHorariosProximos();
     for (const h of horarios) {
       const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
       if (!inscripciones.length) continue;
@@ -112,7 +112,7 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
         const fecha = new Date(h.fecha_hora);
         const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
         const telefono = usuario.telefono.replace('+', '');
-        const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé SI para confirmar o NO para cancelar.`;
+        const mensaje = `Hola ${usuario.nombre}! Recuerda que mañana a las ${hora} tienes "${clase?.titulo || 'tu clase'}". Responde SI para confirmar o NO para cancelar.`;
 
         try {
           await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
@@ -153,6 +153,32 @@ app.post('/whatsapp-webhook', async (req, res) => {
   } catch (err) {
     console.error('Error en webhook:', err);
     res.sendStatus(200);
+  }
+});
+
+// ─── Forzar recordatorio ahora (testing) ───
+app.get('/test-reminder/:horarioId', async (req, res) => {
+  try {
+    const h = await db.getHorarioCompleto(req.params.horarioId);
+    if (!h) return res.status(404).send('Horario no encontrado');
+
+    const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
+    if (!inscripciones.length) return res.send('Sin alumnos sin confirmar');
+
+    const clase = await db.getClase(h.clase_id);
+    for (const insc of inscripciones) {
+      const usuario = await db.getUsuario(insc.usuario_id);
+      if (!usuario?.telefono) continue;
+      const fecha = new Date(h.fecha_hora);
+      const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
+      const telefono = usuario.telefono.replace('+', '');
+      const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé SI para confirmar o NO para cancelar.`;
+      await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
+      await db.setPendiente(insc.id);
+      res.send(`✅ Recordatorio enviado a ${usuario.nombre} (${telefono})`);
+    }
+  } catch (err) {
+    res.status(500).send('Error: ' + err.message);
   }
 });
 
