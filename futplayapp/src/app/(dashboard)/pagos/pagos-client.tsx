@@ -22,7 +22,6 @@ import {
     AlertCircle,
     Receipt,
     RotateCcw,
-    Sparkles,
     TrendingDown,
     TrendingUp,
     Zap,
@@ -43,6 +42,7 @@ import {
 import Link from "next/link";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import { getPlanes, type Plan } from "@/data/plans";
+import { getMisBoletas, getMiMembresia, type PagosBoleta, type PagosMembresia } from "@/data/pagos";
 import { useAuthUser } from "@/context";
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ type PaymentRecord = {
 type ActiveSubscription = {
     plan: string;
     planId: string;
-    estado: "activa" | "vencida" | "pendiente";
+    estado: "activa" | "vencida" | "inactiva";
     fecha_inicio: string;
     fecha_vencimiento: string;
     tokens_totales: number;
@@ -72,111 +72,6 @@ type ActiveSubscription = {
     metodo_pago: string;
     metodo_pago_icon: string;
 };
-
-// ─── Mock Data ────────────────────────────────────────────────────────
-
-const MOCK_SUSCRIPCION: ActiveSubscription = {
-    plan: "Plan Pro",
-    planId: "pro",
-    estado: "activa",
-    fecha_inicio: "2026-04-01",
-    fecha_vencimiento: "2026-05-31",
-    tokens_totales: 12,
-    tokens_usados: 5,
-    precio: 24990,
-    renovacion_automatica: true,
-    metodo_pago: "•••• 4242",
-    metodo_pago_icon: "visa",
-};
-
-const MOCK_HISTORIAL: PaymentRecord[] = [
-    {
-        id: "FAC-2026-005",
-        fecha: "2026-05-01T10:30:00",
-        descripcion: "Plan Pro · Mayo 2026",
-        monto: 24990,
-        estado: "aprobado",
-        metodo: "tarjeta",
-        factura_url: "#",
-    },
-    {
-        id: "FAC-2026-004",
-        fecha: "2026-04-15T14:22:00",
-        descripcion: "Token extra × 2",
-        monto: 9980,
-        estado: "aprobado",
-        metodo: "tarjeta",
-        factura_url: "#",
-    },
-    {
-        id: "FAC-2026-003",
-        fecha: "2026-04-01T09:15:00",
-        descripcion: "Plan Pro · Abril 2026",
-        monto: 24990,
-        estado: "aprobado",
-        metodo: "tarjeta",
-        factura_url: "#",
-    },
-    {
-        id: "FAC-2026-002",
-        fecha: "2026-03-01T11:00:00",
-        descripcion: "Plan Básico · Marzo 2026",
-        monto: 14990,
-        estado: "rechazado",
-        metodo: "tarjeta",
-    },
-    {
-        id: "FAC-2026-001",
-        fecha: "2026-02-28T16:45:00",
-        descripcion: "Plan Básico · Febrero 2026",
-        monto: 14990,
-        estado: "aprobado",
-        metodo: "transferencia",
-        factura_url: "#",
-    },
-    {
-        id: "FAC-2025-012",
-        fecha: "2025-12-15T08:30:00",
-        descripcion: "Plan Básico · Diciembre 2025",
-        monto: 14990,
-        estado: "anulado",
-        metodo: "tarjeta",
-    },
-    {
-        id: "FAC-2025-011",
-        fecha: "2025-12-01T10:00:00",
-        descripcion: "Plan Básico · Noviembre 2025",
-        monto: 14990,
-        estado: "aprobado",
-        metodo: "tarjeta",
-        factura_url: "#",
-    },
-    {
-        id: "FAC-2025-010",
-        fecha: "2025-11-20T13:20:00",
-        descripcion: "Token extra × 1",
-        monto: 4990,
-        estado: "pendiente",
-        metodo: "wallet",
-    },
-    {
-        id: "FAC-2025-009",
-        fecha: "2025-11-01T09:00:00",
-        descripcion: "Plan Básico · Octubre 2025",
-        monto: 14990,
-        estado: "aprobado",
-        metodo: "tarjeta",
-        factura_url: "#",
-    },
-    {
-        id: "FAC-2025-008",
-        fecha: "2025-10-05T17:10:00",
-        descripcion: "Plan Básico · Septiembre 2025",
-        monto: 14990,
-        estado: "rechazado",
-        metodo: "tarjeta",
-    },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -256,16 +151,91 @@ function suscripcionColor(estado: ActiveSubscription["estado"]) {
             return { bg: "bg-[#00A86B]/10", text: "text-[#00A86B]", dot: "bg-[#00A86B]", label: "Activa" };
         case "vencida":
             return { bg: "bg-[#ba1a1a]/10", text: "text-[#ba1a1a]", dot: "bg-[#ba1a1a]", label: "Vencida" };
-        case "pendiente":
-            return { bg: "bg-[#F28C28]/10", text: "text-[#F28C28]", dot: "bg-[#F28C28]", label: "Pendiente" };
+        case "inactiva":
+            return { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400", label: "Sin plan" };
     }
 }
 
 // ─── Dashboard Component ──────────────────────────────────────────────
 
-function PagosDashboard({ onNavigateCompra }: { onNavigateCompra: () => void }) {
-    const suscripcion = MOCK_SUSCRIPCION;
-    const historial = MOCK_HISTORIAL;
+function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => void; userId: string }) {
+    const [loading, setLoading] = useState(true);
+    const [rawBoletas, setRawBoletas] = useState<PagosBoleta[]>([]);
+    const [rawMembresia, setRawMembresia] = useState<PagosMembresia | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function fetchData() {
+            const [boletas, membresia] = await Promise.all([
+                getMisBoletas(userId),
+                getMiMembresia(userId),
+            ]);
+            if (!cancelled) {
+                setRawBoletas(boletas);
+                setRawMembresia(membresia);
+                setLoading(false);
+            }
+        }
+        fetchData();
+        return () => { cancelled = true; };
+    }, [userId]);
+
+    const suscripcion: ActiveSubscription = useMemo(() => {
+        if (!rawMembresia) {
+            return {
+                plan: "Sin plan",
+                planId: "",
+                estado: "inactiva",
+                fecha_inicio: "",
+                fecha_vencimiento: "",
+                tokens_totales: 0,
+                tokens_usados: 0,
+                precio: 0,
+                renovacion_automatica: false,
+                metodo_pago: "—",
+                metodo_pago_icon: "credit-card",
+            };
+        }
+        const mesDate = new Date(rawMembresia.mes + "T00:00:00");
+        const vencimiento = new Date(mesDate.getFullYear(), mesDate.getMonth() + 1, 0);
+        const ahora = new Date();
+        const estadoSub = vencimiento >= ahora ? "activa" : "vencida";
+        return {
+            plan: rawMembresia.plan_nombre,
+            planId: rawMembresia.plan_id,
+            estado: estadoSub,
+            fecha_inicio: rawMembresia.mes,
+            fecha_vencimiento: vencimiento.toISOString().split("T")[0],
+            tokens_totales: rawMembresia.tokens_totales,
+            tokens_usados: rawMembresia.tokens_usados,
+            precio: rawMembresia.precio,
+            renovacion_automatica: false,
+            metodo_pago: "Flow",
+            metodo_pago_icon: "visa",
+        };
+    }, [rawMembresia]);
+
+    const historial: PaymentRecord[] = useMemo(() => {
+        return rawBoletas.map((b) => {
+            const estadoMap: Record<string, PaymentRecord["estado"]> = {
+                pagado: "aprobado",
+                rechazado: "rechazado",
+                pendiente: "pendiente",
+                anulado: "anulado",
+            };
+            const descripcion = b.items
+                .map((i) => i.plan_nombre || "Producto")
+                .join(", ");
+            return {
+                id: b.id.slice(0, 8),
+                fecha: b.created_at,
+                descripcion: descripcion || `Boleta ${b.id.slice(0, 8)}`,
+                monto: b.total,
+                estado: estadoMap[b.estado] || "pendiente",
+                metodo: "tarjeta",
+            };
+        });
+    }, [rawBoletas]);
 
     const stats = useMemo(() => {
         const activa = suscripcion.estado === "activa";
@@ -278,7 +248,9 @@ function PagosDashboard({ onNavigateCompra }: { onNavigateCompra: () => void }) 
     }, [suscripcion, historial]);
 
     const sc = suscripcionColor(suscripcion.estado);
-    const pctTokens = Math.round((suscripcion.tokens_usados / suscripcion.tokens_totales) * 100);
+    const pctTokens = suscripcion.tokens_totales > 0
+        ? Math.round((suscripcion.tokens_usados / suscripcion.tokens_totales) * 100)
+        : 0;
 
     const [busqueda, setBusqueda] = useState("");
     const [filtroEstado, setFiltroEstado] = useState<"todos" | PaymentRecord["estado"]>("todos");
@@ -292,6 +264,17 @@ function PagosDashboard({ onNavigateCompra }: { onNavigateCompra: () => void }) 
             return matchBusqueda && matchEstado;
         });
     }, [historial, busqueda, filtroEstado]);
+
+    if (loading) {
+        return (
+            <div className="flex-1 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#F28C28]" />
+                    <p className="text-gray-500 font-medium">Cargando tus pagos...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-8">
@@ -716,23 +699,6 @@ function PagosDashboard({ onNavigateCompra }: { onNavigateCompra: () => void }) 
                 </div>
             </div>
 
-            {/* Info banner */}
-            <div className="bg-white rounded-2xl border border-[#edeef0] p-5 md:p-6 flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#F28C28]/10 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-5 h-5 text-[#F28C28]" />
-                </div>
-                <div>
-                    <h4 className="text-sm font-bold text-[#00305B] mb-1">
-                        Próximamente: Pasarela de pago integrada
-                    </h4>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                        Estamos trabajando para integrar Flow y Webpay Plus directamente en la
-                        plataforma. Los pagos se procesarán de forma segura y recibirás tu factura
-                        electrónica automáticamente. Mientras tanto, los registros se muestran como
-                        historial de referencia.
-                    </p>
-                </div>
-            </div>
         </div>
     );
 }
@@ -750,13 +716,30 @@ function CheckoutView({
     const [checkoutState, setCheckoutState] = useState<CheckoutState>("idle");
     const [selectedMethod, setSelectedMethod] = useState("card");
     const [aceptaTerminos, setAceptaTerminos] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
+    const [pagoAutomatico, setPagoAutomatico] = useState(false);
 
-    const handlePagar = useCallback(() => {
+    const handlePagar = useCallback(async () => {
         setCheckoutState("processing");
-        setTimeout(() => {
-            setCheckoutState("success");
-        }, 2000);
-    }, []);
+        setErrorMsg("");
+        try {
+            const res = await fetch("/api/flow/create-order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    planId: plan.id,
+                    recurrencia: pagoAutomatico,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Error al crear orden");
+            sessionStorage.setItem("flowBoletaId", data.boletaId);
+            window.location.href = data.url;
+        } catch (err) {
+            setErrorMsg(err instanceof Error ? err.message : "Error al conectar con Flow");
+            setCheckoutState("error");
+        }
+    }, [plan.id, pagoAutomatico]);
 
     const resetCheckout = useCallback(() => {
         setCheckoutState("idle");
@@ -1002,6 +985,31 @@ function CheckoutView({
                             )}
                         </div>
 
+                        {/* Toggle pago automático */}
+                        <div className="bg-white rounded-xl border border-[#edeef0] p-4 flex items-start gap-3">
+                            <button
+                                onClick={() => setPagoAutomatico(!pagoAutomatico)}
+                                className={`relative shrink-0 mt-0.5 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                    pagoAutomatico ? "bg-[#00A86B]" : "bg-gray-200"
+                                }`}
+                            >
+                                <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                                        pagoAutomatico ? "translate-x-6" : "translate-x-1"
+                                    }`}
+                                />
+                            </button>
+                            <div>
+                                <p className="text-sm font-bold text-[#00305B]">
+                                    Pago automático mensual
+                                </p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Activa esta opción para que Flow cobre tu plan automáticamente
+                                    cada mes. No necesitarás volver a pagar manualmente.
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="space-y-4">
                             <label className="flex items-start gap-3 cursor-pointer group">
                                 <input
@@ -1109,8 +1117,7 @@ function CheckoutView({
                             Error en el pago
                         </h3>
                         <p className="text-gray-500 text-sm">
-                            No se pudo procesar tu pago. Revisa los datos e intenta nuevamente. Si el
-                            problema persiste, contacta a soporte.
+                            {errorMsg || "No se pudo procesar tu pago. Revisa los datos e intenta nuevamente."}
                         </p>
                         <div className="flex flex-col gap-3 mt-8">
                             <button
@@ -1139,24 +1146,75 @@ export default function PagosClient() {
     const searchParams = useSearchParams();
     const { usuario } = useAuthUser();
     const planId = searchParams.get("id");
+    const flowToken = searchParams.get("token");
+    const flowPayment = searchParams.get("flowPayment");
+    const flowBoletaId = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        return searchParams.get("boletaId") || sessionStorage.getItem("flowBoletaId");
+    }, [searchParams]);
 
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [confirmingPayment, setConfirmingPayment] = useState(true);
+    const [confirmError, setConfirmError] = useState("");
+    const [tienePlanActivo, setTienePlanActivo] = useState(false);
 
     useEffect(() => {
+        if (!planId || !usuario) {
+            setLoading(false);
+            return;
+        }
         const fetchPlanes = async () => {
             try {
-                const data = await getPlanes();
-                setPlanes(data);
+                const [planesData, membresia] = await Promise.all([
+                    getPlanes(),
+                    getMiMembresia(usuario.id),
+                ]);
+                setPlanes(planesData);
+                if (membresia) {
+                    const vencimiento = new Date(membresia.mes + "T00:00:00");
+                    vencimiento.setMonth(vencimiento.getMonth() + 1);
+                    vencimiento.setDate(0);
+                    setTienePlanActivo(vencimiento >= new Date());
+                }
             } catch (err) {
-                console.error("Error obteniendo planes:", err);
+                console.error("Error obteniendo datos:", err);
             } finally {
                 setLoading(false);
             }
         };
-        if (planId) fetchPlanes();
-        else setLoading(false);
-    }, [planId]);
+        fetchPlanes();
+    }, [planId, usuario]);
+
+    useEffect(() => {
+        if (!flowToken) {
+            setConfirmingPayment(false);
+            return;
+        }
+        if (!flowBoletaId) {
+            console.warn("Sin boletaId — saltando confirmación (webhook async)");
+            setConfirmingPayment(false);
+            return;
+        }
+        const confirm = async () => {
+            try {
+                const res = await fetch(
+                    `/api/flow/confirm?token=${encodeURIComponent(flowToken)}&boletaId=${encodeURIComponent(flowBoletaId)}`
+                );
+                const data = await res.json();
+                if (!res.ok || data.error) {
+                    setConfirmError(data.error || "Error al confirmar pago");
+                } else if (data.estado !== "pagado") {
+                    setConfirmError(`Estado inesperado: ${data.estado}`);
+                }
+            } catch {
+                setConfirmError("Error de conexión al confirmar pago");
+            } finally {
+                setConfirmingPayment(false);
+            }
+        };
+        confirm();
+    }, [flowToken, flowBoletaId]);
 
     const plan = useMemo(
         () => planes.find((p) => p.id === planId) ?? null,
@@ -1172,11 +1230,102 @@ export default function PagosClient() {
         window.history.pushState({}, "", newUrl);
     }, []);
 
-    if (!planId) {
+    const handleFlowReturn = useCallback(() => {
+        sessionStorage.removeItem("flowBoletaId");
+        const params = new URLSearchParams(window.location.search);
+        params.delete("token");
+        params.delete("flowPayment");
+        params.delete("flowOrder");
+        params.delete("boletaId");
+        const newUrl = params.toString()
+            ? `${window.location.pathname}?${params.toString()}`
+            : window.location.pathname;
+        window.history.pushState({}, "", newUrl);
+    }, []);
+
+    // ── Retorno desde Flow (token en URL) ──
+    if (flowToken || flowPayment) {
         return (
             <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
                 <TopNavBarUser />
-                <PagosDashboard onNavigateCompra={() => {}} />
+                <div className="flex-1 flex items-center justify-center p-4">
+                    {confirmingPayment ? (
+                        <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
+                            <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-[#F28C28] mx-auto" />
+                            <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
+                                Confirmando pago
+                            </h3>
+                            <p className="text-gray-500 text-sm">
+                                Estamos verificando el pago con Flow. Un momento por favor...
+                            </p>
+                        </div>
+                    ) : confirmError ? (
+                        <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
+                            <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+                                <AlertCircle className="w-10 h-10 text-[#ba1a1a]" />
+                            </div>
+                            <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
+                                Error de confirmación
+                            </h3>
+                            <p className="text-gray-500 text-sm">
+                                {confirmError}
+                            </p>
+                            <div className="flex flex-col gap-3 mt-8">
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold transition-all"
+                                >
+                                    Reintentar
+                                </button>
+                                <button
+                                    onClick={handleFlowReturn}
+                                    className="text-sm text-gray-500 hover:text-[#00305B] font-semibold transition-colors"
+                                >
+                                    Ir al Dashboard de todas formas
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
+                            <div className="w-20 h-20 rounded-full bg-[#00A86B]/10 flex items-center justify-center mx-auto">
+                                <CheckCircle2 className="w-10 h-10 text-[#00A86B]" />
+                            </div>
+                            <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
+                                ¡Pago exitoso!
+                            </h3>
+                            <p className="text-gray-500 text-sm">
+                                Tu pago ha sido procesado correctamente. Ya puedes disfrutar de todos
+                                los beneficios de tu plan.
+                            </p>
+                            <button
+                                onClick={handleFlowReturn}
+                                className="mt-8 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
+                            >
+                                Ir al Dashboard
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </main>
+        );
+    }
+
+    // ── Sin planId → Dashboard ──
+    if (!planId) {
+        if (!usuario) {
+            return (
+                <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
+                    <TopNavBarUser />
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#F28C28]" />
+                    </div>
+                </main>
+            );
+        }
+        return (
+            <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
+                <TopNavBarUser />
+                <PagosDashboard onNavigateCompra={() => {}} userId={usuario.id} />
             </main>
         );
     }
@@ -1213,6 +1362,36 @@ export default function PagosClient() {
                             className="inline-flex items-center gap-2 bg-[#F28C28] hover:bg-[#e07d1f] text-white px-8 py-3 rounded-xl font-bold transition-all"
                         >
                             Volver al dashboard
+                        </button>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
+    if (tienePlanActivo) {
+        return (
+            <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
+                <TopNavBarUser />
+                <div className="flex-1 flex items-center justify-center px-6">
+                    <div className="bg-white rounded-3xl shadow-xl p-12 max-w-md text-center">
+                        <div className="w-16 h-16 rounded-full bg-[#F28C28]/10 flex items-center justify-center mx-auto mb-4">
+                            <Crown className="w-8 h-8 text-[#F28C28]" />
+                        </div>
+                        <h2 className="text-2xl font-black text-[#00305B] mb-2">
+                            Ya tienes un plan activo
+                        </h2>
+                        <p className="text-gray-500 mb-2">
+                            Tienes el plan <span className="font-bold text-[#00305B] capitalize">{plan.nombre}</span> activo para este mes.
+                        </p>
+                        <p className="text-sm text-gray-400 mb-6">
+                            No puedes comprar otro plan hasta que termine el período actual.
+                        </p>
+                        <button
+                            onClick={handleBackToDashboard}
+                            className="inline-flex items-center gap-2 bg-[#F28C28] hover:bg-[#e07d1f] text-white px-8 py-3 rounded-xl font-bold transition-all"
+                        >
+                            Ir al Dashboard
                         </button>
                     </div>
                 </div>
