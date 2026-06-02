@@ -34,25 +34,16 @@ type SessionItem = {
 function flattenInscripciones(rows: ClaseInscripcionRow[]): SessionItem[] {
     const out: SessionItem[] = [];
     for (const row of rows) {
-        if (!row.clase) continue;
-        const raw = row.clase.horario;
-        const horarios = Array.isArray(raw)
-            ? raw
-            : raw
-              ? [raw]
-              : [];
-        for (const h of horarios) {
-            if (!h?.fecha_hora) continue;
-            out.push({
-                inscripcionId: row.id,
-                fecha_hora: h.fecha_hora,
-                asistencia: row.asistencia,
-                titulo: row.clase.titulo,
-                descripcion: row.clase.descripcion,
-                sede: row.clase.sede?.nombre ?? "",
-                claseId: row.clase.id,
-            });
-        }
+        if (!row.clase?.fecha_hora) continue;
+        out.push({
+            inscripcionId: row.id,
+            fecha_hora: row.clase.fecha_hora,
+            asistencia: row.asistencia,
+            titulo: row.clase.titulo,
+            descripcion: row.clase.descripcion,
+            sede: row.clase.sede?.nombre ?? "",
+            claseId: row.clase.id,
+        });
     }
     return out;
 }
