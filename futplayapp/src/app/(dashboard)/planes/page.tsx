@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import { getPlanes, type Plan } from "@/data/plans";
+import { getMiMembresia } from "@/data/pagos";
 import { useAuthUser } from "@/context";
 
 export default function PlanesPage() {
@@ -13,21 +14,31 @@ export default function PlanesPage() {
     const { usuario } = useAuthUser();
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [tienePlanActivo, setTienePlanActivo] = useState(false);
 
     useEffect(() => {
-        const fetchPlanes = async () => {
+        const fetchData = async () => {
             try {
-                const data = await getPlanes();
-                setPlanes(data);
+                const [planesData] = await Promise.all([getPlanes()]);
+                setPlanes(planesData);
+                if (usuario?.id) {
+                    const membresia = await getMiMembresia(usuario.id);
+                    if (membresia) {
+                        const vencimiento = new Date(membresia.mes + "T00:00:00");
+                        vencimiento.setMonth(vencimiento.getMonth() + 1);
+                        vencimiento.setDate(0);
+                        setTienePlanActivo(vencimiento >= new Date());
+                    }
+                }
             } catch (err) {
-                console.error("Error obteniendo planes:", err);
+                console.error("Error obteniendo datos:", err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchPlanes();
-    }, []);
+        fetchData();
+    }, [usuario]);
 
     const handleComprarPlan = (plan: Plan) => {
         if (!usuario?.id) return;
@@ -127,13 +138,16 @@ export default function PlanesPage() {
 
                                     <button 
                                         onClick={() => handleComprarPlan(plan)}
+                                        disabled={tienePlanActivo}
                                         className={`w-full mt-10 py-4 rounded-xl font-bold text-lg transition-all duration-300
-                                            ${isDestacado 
-                                                ? 'bg-[#F28C28] hover:bg-[#e07d1f] text-white shadow-[0_0_20px_rgba(242,140,40,0.4)] hover:shadow-[0_0_30px_rgba(242,140,40,0.6)] transform hover:-translate-y-1' 
-                                                : 'bg-gray-100 hover:bg-gray-200 text-[#004080] border border-gray-200 hover:border-gray-300'
+                                            ${tienePlanActivo
+                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                : isDestacado 
+                                                    ? 'bg-[#F28C28] hover:bg-[#e07d1f] text-white shadow-[0_0_20px_rgba(242,140,40,0.4)] hover:shadow-[0_0_30px_rgba(242,140,40,0.6)] transform hover:-translate-y-1' 
+                                                    : 'bg-gray-100 hover:bg-gray-200 text-[#004080] border border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
-                                        Comprar Plan
+                                        {tienePlanActivo ? "Plan activo" : "Comprar Plan"}
                                     </button>
                                 </div>
                             );

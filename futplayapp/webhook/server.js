@@ -34,8 +34,8 @@ function horasHasta(fecha_hora) {
 
 async function confirmarAsistencia(usuarioId) {
   const proxima = await db.getProximaClaseUsuario(usuarioId);
-  if (!proxima) return 'No tenés clases próximas agendadas.';
-  if (horasHasta(proxima.horario.fecha_hora) < 1) return 'Ya no alcanzás a confirmar, la clase empieza en menos de 1 hora.';
+  if (!proxima) return 'No tienes clases próximas agendadas.';
+  if (horasHasta(proxima.horario.fecha_hora) < 1) return 'Ya no alcanzas a confirmar, la clase empieza en menos de 1 hora.';
   const ok = await db.confirmarAsistencia(proxima.id);
   return ok ? `✅ Asistencia confirmada! Nos vemos en "${proxima.clase.titulo}".` : 'Error al confirmar. Intentalo de nuevo.';
 }
@@ -98,7 +98,7 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
   cron.schedule('*/15 * * * *', async () => {
     const ahora = new Date();
 
-    const horarios = await db.getHorariosProximos();
+    const horarios = await db.getHorarios24h();
     for (const h of horarios) {
       const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
       if (!inscripciones.length) continue;
@@ -159,8 +159,9 @@ app.post('/whatsapp-webhook', async (req, res) => {
 // ─── Forzar recordatorio ahora (testing) ───
 app.get('/test-reminder/:horarioId', async (req, res) => {
   try {
-    const h = await db.getHorarioCompleto(req.params.horarioId);
-    if (!h) return res.status(404).send('Horario no encontrado');
+    const horarios = await db.getHorarios24h();
+    const h = horarios.find(x => x.id === req.params.horarioId);
+    if (!h) return res.status(404).send('Horario no está en ventana 24h');
 
     const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
     if (!inscripciones.length) return res.send('Sin alumnos sin confirmar');
