@@ -1,25 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChartNoAxesCombined } from "lucide-react";
-import { getFichaMedicaByUser } from "@/data/fichaMedica";
+import { ClipboardPlus, HeartPulse, Activity, Scale, Ruler, Droplets, Pill, AlertCircle, FileText, User, Stethoscope } from "lucide-react";
+import { getFichaMedicaByUser, getIMCStatus } from "@/data/fichaMedica";
 import { createClient } from "@/utils/supabase/client";
+import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 
 type Ficha = {
+    edad: number;
     peso_kg: number;
+    estatura_cm: number;
     imc: number;
+    grupo_sanguineo: string;
+    enfermedades: string;
+    alergias: string;
+    medicamentos: string;
+    observaciones: string;
     usuario_id: string;
 };
 
 export default function MetricasCorporales() {
     const [ficha, setFicha] = useState<Ficha | null>(null);
+    const [rut, setRut] = useState("");
     const [loading, setLoading] = useState(true);
+    const [showFichaModal, setShowFichaModal] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
             const supabase = createClient();
 
-            // 🔑 obtener usuario logeado
             const {
                 data: { user },
             } = await supabase.auth.getUser();
@@ -29,8 +39,13 @@ export default function MetricasCorporales() {
                 return;
             }
 
-            const data = await getFichaMedicaByUser(user.id);
-            setFicha(data);
+            setUserId(user.id);
+            const [fichaData, usuarioData] = await Promise.all([
+                getFichaMedicaByUser(user.id),
+                supabase.from("usuario").select("rut").eq("id", user.id).maybeSingle(),
+            ]);
+            setFicha(fichaData);
+            if (usuarioData.data?.rut) setRut(usuarioData.data.rut);
             setLoading(false);
         };
 
@@ -38,86 +53,164 @@ export default function MetricasCorporales() {
     }, []);
 
     if (loading) return <p className="text-white">Cargando...</p>;
-    if (!ficha) return <p className="text-white">Sin datos</p>;
+    if (!ficha) return (
+        <>
+            <div className="w-full min-w-[300px] h-[250px] bg-gradient-to-br from-[#002447] to-[#00305B] rounded-2xl shadow-xl border border-white/10 flex flex-col items-center justify-center text-center p-6 gap-3">
+                <div className="bg-white/10 p-3 rounded-full">
+                    <ClipboardPlus className="text-[#F39200]" size={28} />
+                </div>
+                <p className="text-white text-base font-extrabold leading-tight">
+                    Completa tu ficha médica
+                </p>
+                <p className="text-gray-400 text-xs max-w-[220px]">
+                    Necesitas tener tu ficha médica al día para poder comprar un plan y entrenar.
+                </p>
+                <button
+                    onClick={() => setShowFichaModal(true)}
+                    className="bg-[#F39200] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#d47d00] transition-all shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer"
+                >
+                    <ClipboardPlus size={16} />
+                    Completar ficha
+                </button>
+            </div>
+            <FichaMedicaModal
+                open={showFichaModal}
+                onClose={() => setShowFichaModal(false)}
+                onSuccess={() => {
+                    setShowFichaModal(false);
+                    window.location.reload();
+                }}
+                userId={userId || ""}
+            />
+        </>
+    );
 
-    const peso = ficha.peso_kg;
-    const imc = ficha.imc;
+    const imcStatus = getIMCStatus(ficha.imc);
 
-    // puedes calcular esto si no lo tienes en DB
-    const cambioPeso = 0;
-    const grasa = 15; // si no lo tienes aún
-
-    const imcEstado =
-        imc < 18.5
-            ? { label: "Bajo peso", color: "bg-yellow-500" }
-            : imc < 25
-                ? { label: "Saludable", color: "bg-green-500" }
-                : { label: "Sobrepeso", color: "bg-red-500" };
-
-    const grasaColor =
-        grasa < 10
-            ? "from-yellow-400 to-orange-500"
-            : grasa < 20
-                ? "from-green-400 to-emerald-600"
-                : "from-red-400 to-red-600";
+    const hasMedicalInfo = (val: string) =>
+        val && val !== "Ninguna" && val !== "ninguna" && val !== "Ninguno" && val !== "ninguno";
 
     return (
-        <div className="w-full relative h-[250px] min-w-[300px] bg-gradient-to-br from-[#002447] to-[#00305B] px-6 py-7 rounded-2xl shadow-xl overflow-hidden border border-white/10">
-
-            <ChartNoAxesCombined
-                size={60}
-                className="absolute right-4 top-2 text-white/5"
-            />
-
-            <h1 className="text-[#A3C9FF] text-[10px] uppercase tracking-wider">
-                Métricas Corporales
-            </h1>
-
-            <div className="flex flex-col justify-between pt-6 h-full">
-
-                {/* Peso */}
-                <div className="flex justify-between items-center">
-                    <p className="text-white text-[12px] font-semibold">Peso</p>
-
-                    <div className="flex flex-col items-end">
-                        <p className="text-[#FFDCBD] text-[16px] font-bold">
-                            {peso}kg
-                        </p>
-
-                        <p className="text-[9px] text-green-400">
-                            {cambioPeso}kg vs mes ant.
-                        </p>
+        <div className="w-full flex flex-col gap-6">
+            {/* TOP: Métricas */}
+            <div className="w-full bg-gradient-to-br from-[#002447] to-[#00305B] px-6 py-7 rounded-2xl shadow-xl border border-white/10">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-[#F39200]/20 p-2.5 rounded-xl">
+                        <HeartPulse className="text-[#F39200]" size={20} />
+                    </div>
+                    <div>
+                        <h2 className="text-white text-sm font-extrabold tracking-wide">
+                            Ficha Médica
+                        </h2>
+                        {rut && <p className="text-white/40 text-[10px] font-mono">RUT {rut}</p>}
                     </div>
                 </div>
 
-                {/* IMC */}
-                <div className="flex justify-between items-center">
-                    <p className="text-white text-[12px] font-semibold">IMC</p>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/5 rounded-xl p-3.5 border border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                            <User size={13} className="text-[#F39200]/70" />
+                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Edad</span>
+                        </div>
+                        <p className="text-white text-lg font-bold">{ficha.edad} <span className="text-xs font-normal text-white/50">años</span></p>
+                    </div>
 
-                    <div className="flex flex-col items-end">
-                        <p className="text-[#FFDCBD] text-[16px] font-bold">
-                            {imc}
-                        </p>
+                    <div className="bg-white/5 rounded-xl p-3.5 border border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Droplets size={13} className="text-red-400/70" />
+                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Grupo Sang.</span>
+                        </div>
+                        <p className="text-white text-lg font-bold">{ficha.grupo_sanguineo}</p>
+                    </div>
 
-                        <span className={`text-[9px] px-2 py-0.5 rounded-full text-white ${imcEstado.color}`}>
-                            {imcEstado.label}
-                        </span>
+                    <div className="bg-white/5 rounded-xl p-3.5 border border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Scale size={13} className="text-[#F39200]/70" />
+                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Peso</span>
+                        </div>
+                        <p className="text-white text-lg font-bold">{ficha.peso_kg} <span className="text-xs font-normal text-white/50">kg</span></p>
+                    </div>
+
+                    <div className="bg-white/5 rounded-xl p-3.5 border border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Ruler size={13} className="text-[#F39200]/70" />
+                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Estatura</span>
+                        </div>
+                        <p className="text-white text-lg font-bold">{ficha.estatura_cm} <span className="text-xs font-normal text-white/50">cm</span></p>
+                    </div>
+
+                    <div className="bg-white/5 rounded-xl p-3.5 border border-white/5 col-span-2">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Activity size={13} className="text-[#F39200]/70" />
+                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">IMC</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <p className="text-white text-lg font-bold">{ficha.imc}</p>
+                            <span className={`text-[11px] px-3 py-1 rounded-full font-bold ${imcStatus.color.replace("text-", "text-")} bg-white/10`}>
+                                {imcStatus.label}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* BOTTOM: Historial médico */}
+            <div className="w-full bg-gradient-to-br from-[#002447] to-[#00305B] px-6 py-7 rounded-2xl shadow-xl border border-white/10">
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="bg-[#F39200]/20 p-2.5 rounded-xl">
+                        <HeartPulse className="text-[#F39200]" size={20} />
+                    </div>
+                    <div>
+                        <h2 className="text-white text-sm font-extrabold tracking-wide">
+                            Historial Médico
+                        </h2>
                     </div>
                 </div>
 
-                {/* Grasa */}
-                <div>
-                    <div className="flex text-[12px] font-semibold justify-between text-white">
-                        <p>Grasa Corporal</p>
-                        <p className="text-[15px] font-bold">{grasa}%</p>
-                    </div>
+                <div className="space-y-4">
+                    {hasMedicalInfo(ficha.enfermedades) && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <Stethoscope size={13} className="text-red-400/70" />
+                                <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Enfermedades</span>
+                            </div>
+                            <p className="text-white/80 text-sm">{ficha.enfermedades}</p>
+                        </div>
+                    )}
 
-                    <div className="w-full bg-white/10 rounded-full h-2 mt-2">
-                        <div
-                            className={`h-2 rounded-full bg-gradient-to-r ${grasaColor}`}
-                            style={{ width: `${Math.min(grasa, 100)}%` }}
-                        />
-                    </div>
+                    {hasMedicalInfo(ficha.alergias) && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <AlertCircle size={13} className="text-yellow-400/70" />
+                                <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Alergias</span>
+                            </div>
+                            <p className="text-white/80 text-sm">{ficha.alergias}</p>
+                        </div>
+                    )}
+
+                    {hasMedicalInfo(ficha.medicamentos) && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <Pill size={13} className="text-blue-400/70" />
+                                <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Medicamentos</span>
+                            </div>
+                            <p className="text-white/80 text-sm">{ficha.medicamentos}</p>
+                        </div>
+                    )}
+
+                    {hasMedicalInfo(ficha.observaciones) && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <FileText size={13} className="text-white/40" />
+                                <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Observaciones</span>
+                            </div>
+                            <p className="text-white/80 text-sm whitespace-pre-wrap">{ficha.observaciones}</p>
+                        </div>
+                    )}
+
+                    {!hasMedicalInfo(ficha.enfermedades) && !hasMedicalInfo(ficha.alergias) && !hasMedicalInfo(ficha.medicamentos) && !hasMedicalInfo(ficha.observaciones) && (
+                        <p className="text-white/40 text-sm">Sin información médica adicional registrada.</p>
+                    )}
                 </div>
             </div>
         </div>

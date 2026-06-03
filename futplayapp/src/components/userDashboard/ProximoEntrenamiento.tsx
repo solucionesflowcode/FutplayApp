@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthUser } from "@/context";
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import { Lock, CalendarPlus, Sparkles } from "lucide-react";
 import { userHasMembresia } from "@/data/membresia";
 import { getProximaClase } from "@/data/clases";
 
@@ -52,52 +52,22 @@ export default function ProximoEntrenamiento() {
     // 🧠 Si NO tiene plan → mostrar bloqueado
     if (!hasPlan) {
         return (
-            <div className="relative w-full min-w-[380px] h-[250px] bg-gray-100 px-6 pt-4 rounded-xl border-l-4 border-gray-400 shadow-lg overflow-hidden">
-
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center text-center z-10">
-
-                    <Lock className="text-gray-500 mb-2" size={28} />
-
-                    <p className="text-gray-700 font-semibold text-sm mb-2">
-                        Desbloquea tus entrenamientos
-                    </p>
-
-                    <p className="text-gray-500 text-xs mb-4 max-w-[220px]">
-                        Compra una membresía para ver tu próximo entrenamiento,
-                        acceder a clases y métricas.
-                    </p>
-
-                    <Link href="/planes">
-                        <button className="bg-[#8A5100] text-white px-5 py-2 rounded-lg text-sm hover:opacity-90 transition">
-                            Ver planes
-                        </button>
-                    </Link>
+            <div className="w-full min-w-[380px] h-[250px] bg-gradient-to-br from-[#FFF8F0] to-[#FFE4CC] px-8 pt-6 rounded-xl shadow-lg flex flex-col items-center justify-center text-center gap-3">
+                <div className="bg-[#F39200]/10 p-3 rounded-full">
+                    <Lock className="text-[#F39200]" size={28} />
                 </div>
-
-                {/* Contenido base (difuminado visualmente) */}
-                <div className="opacity-40">
-                    <div className="flex justify-between">
-                        <h1 className="text-[15px] font-semibold">
-                            Próximo Entrenamiento
-                        </h1>
-                        <p className="text-[12px]">Hoy, --:--</p>
-                    </div>
-
-                    <div className="mt-5">
-                        <p className="font-bold text-[20px]">
-                            Entrenamiento bloqueado
-                        </p>
-                        <p className="text-[12px]">
-                            Adquiere una membresía para ver detalles.
-                        </p>
-                    </div>
-
-                    <div className="mt-5 text-[10px]">
-                        CUENTA REGRESIVA:
-                        <p className="text-[20px] font-semibold">--:--</p>
-                    </div>
-                </div>
+                <p className="text-[#00305B] text-lg font-extrabold leading-tight">
+                    Desbloquea tus <br />entrenamientos
+                </p>
+                <p className="text-gray-500 text-xs max-w-[250px]">
+                    Compra una membresía para acceder a clases, métricas y mucho más.
+                </p>
+                <Link href="/planes">
+                    <button className="bg-[#F39200] text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-[#d47d00] transition-all shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer">
+                        <Sparkles size={16} />
+                        Ver planes
+                    </button>
+                </Link>
             </div>
         );
     }
@@ -105,10 +75,22 @@ export default function ProximoEntrenamiento() {
     // 🧠 Si tiene plan pero no hay clases
     if (!clase) {
         return (
-            <div className="w-full min-w-[380px] h-[250px] bg-white px-6 pt-4 rounded-xl shadow-lg flex items-center justify-center">
-                <p className="text-gray-500 text-sm">
-                    No tienes entrenamientos próximos
+            <div className="w-full min-w-[380px] h-[250px] bg-gradient-to-br from-[#FFF8F0] to-[#FFE4CC] px-8 pt-6 rounded-xl shadow-lg flex flex-col items-center justify-center text-center gap-3">
+                <div className="bg-[#F39200]/10 p-3 rounded-full">
+                    <CalendarPlus className="text-[#F39200]" size={28} />
+                </div>
+                <p className="text-[#00305B] text-lg font-extrabold leading-tight">
+                    Aún no tienes <br />clases agendadas
                 </p>
+                <p className="text-gray-500 text-xs max-w-[250px]">
+                    Revisa los horarios disponibles y reserva tu próximo entrenamiento.
+                </p>
+                <Link href="/misclases">
+                    <button className="mt-1 bg-[#F39200] text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-[#d47d00] transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                        <Sparkles size={16} />
+                        Explorar clases
+                    </button>
+                </Link>
             </div>
         );
     }

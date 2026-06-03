@@ -1,21 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Users,
   LayoutDashboard,
   MapPin,
-  PersonStanding,
   CalendarDays,
-  BarChart3,
-  Settings,
   LogOut,
   Menu,
   X,
-  Crown
+  Crown,
+  GraduationCap,
+  Shield
 } from "lucide-react";
+import { useAuthUser } from "@/context";
 
 const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -23,13 +23,20 @@ const menuItems = [
   { name: "Capsulas", href: "/capsules", icon: Users },
   { name: "Pagos", href: "/pagos", icon: MapPin },
   { name: "Mis Clases", href: "/misclases", icon: CalendarDays },
-  { name: "Ayuda", href: "/ayuda", icon: Settings },
 ];
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+
+  const router = useRouter();
+  const { signOut } = useAuthUser();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/login");
+  };
 
   // persistencia segura para evitar sobreescritura errónea
   useEffect(() => {
@@ -47,6 +54,7 @@ export default function Sidebar() {
   }, [collapsed, isMounted]);
 
   const pathname = usePathname();
+  const { usuario } = useAuthUser();
 
   return (
     <>
@@ -102,12 +110,27 @@ export default function Sidebar() {
               );
             })}
 
+            <div className="space-y-1">
+              {usuario?.rol === "profesor" && (
+                <Link href="/profesor" onClick={() => setOpen(false)}>
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-gray-400 hover:bg-white/5 hover:text-white">
+                    <GraduationCap size={20} className="text-gray-500" />
+                    <span className="text-sm">Panel Profesor</span>
+                  </div>
+                </Link>
+              )}
+              {usuario?.rol === "administrador" && (
+                <Link href="/admin" onClick={() => setOpen(false)}>
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-gray-400 hover:bg-white/5 hover:text-white">
+                    <Shield size={20} className="text-gray-500" />
+                    <span className="text-sm">Panel Admin</span>
+                  </div>
+                </Link>
+              )}
+            </div>
+
             <div className="border-t border-gray-800 mt-4 pt-4 space-y-1">
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-                <Settings size={20} />
-                <span className="text-sm">Ajustes</span>
-              </button>
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all">
+              <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all cursor-pointer">
                 <LogOut size={20} />
                 <span className="text-sm">Cerrar Sesión</span>
               </button>
@@ -151,13 +174,41 @@ export default function Sidebar() {
           })}
         </nav>
 
+        {/* Role-based panel access */}
+        <div className="space-y-1 mb-4">
+          {usuario?.rol === "profesor" && (
+            <Link href="/profesor">
+              <div className={`
+                flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+                ${pathname.startsWith("/profesor")
+                  ? "bg-[#F28C28] text-white shadow-md font-semibold"
+                  : "text-gray-400 hover:bg-white/5 hover:text-white"
+                }
+              `}>
+                <GraduationCap size={20} className="text-gray-500 group-hover:text-white" />
+                <span className="text-sm">Panel Profesor</span>
+              </div>
+            </Link>
+          )}
+          {usuario?.rol === "administrador" && (
+            <Link href="/admin">
+              <div className={`
+                flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+                ${pathname.startsWith("/admin")
+                  ? "bg-[#F28C28] text-white shadow-md font-semibold"
+                  : "text-gray-400 hover:bg-white/5 hover:text-white"
+                }
+              `}>
+                <Shield size={20} className="text-gray-500 group-hover:text-white" />
+                <span className="text-sm">Panel Admin</span>
+              </div>
+            </Link>
+          )}
+        </div>
+
         {/* Footer */}
         <div className="border-t border-gray-800 pt-4 space-y-2">
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-            <Settings size={20} />
-            <span className="text-sm">Ajustes</span>
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all">
+          <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all cursor-pointer">
             <LogOut size={20} />
             <span className="text-sm">Cerrar Sesión</span>
           </button>

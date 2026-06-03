@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuthUser } from "@/context";
 
 import { 
   Users, 
@@ -29,8 +30,15 @@ const menuItems = [
 export default function Sidebar() {
 
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuthUser();
 
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/login");
+  };
 
   return (
     <aside className={`
@@ -105,7 +113,7 @@ export default function Sidebar() {
           {!collapsed && <span className="text-sm">Ajustes</span>}
         </button>
 
-        <button className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl">
+        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl cursor-pointer">
           <LogOut size={20} />
           {!collapsed && <span className="text-sm">Cerrar sesión</span>}
         </button>
