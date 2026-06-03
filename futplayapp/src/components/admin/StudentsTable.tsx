@@ -35,6 +35,7 @@ type Props = {
 export default function StudentsTable({ students, onStatusChange, onView, onEdit, onDelete }: Props) {
 
   const [page, setPage] = useState(1);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [fichaModal, setFichaModal] = useState<FichaModalState>({
     open: false, loading: false, error: null, data: null,
   });
@@ -167,15 +168,15 @@ export default function StudentsTable({ students, onStatusChange, onView, onEdit
                     Ficha
                   </button>
 
-                  <button className="text-blue-500 hover:scale-110">
+                  <button onClick={() => onView?.(student)} className="text-blue-500 hover:scale-110">
                     <Eye size={16} />
                   </button>
 
-                  <button className="text-green-500 hover:scale-110">
+                  <button onClick={() => onEdit?.(student)} className="text-green-500 hover:scale-110">
                     <Pencil size={16} />
                   </button>
 
-                  <button className="text-red-500 hover:scale-110">
+                  <button onClick={() => onDelete?.(student)} className="text-red-500 hover:scale-110">
                     <Trash2 size={16} />
                   </button>
 
@@ -295,9 +296,7 @@ export default function StudentsTable({ students, onStatusChange, onView, onEdit
           </button>
 
           {/* NÚMEROS */}
-          {[1, 2, 3]
-            .filter((n) => n <= totalPages)
-            .map((num) => (
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
               <button
                 key={num}
                 onClick={() => setPage(num)}

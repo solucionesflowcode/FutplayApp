@@ -529,9 +529,9 @@ function AsistenciaGeneral({
 
   const resumen = {
     total: data.length,
-    presentes: data.filter((d) => d.asistencia === true).length,
-    ausentes: data.filter((d) => d.asistencia === false).length,
-    pendientes: data.filter((d) => d.asistencia === null).length,
+    presentes: data.filter((d) => d.asistencia === "asistio").length,
+    ausentes: data.filter((d) => d.asistencia === "no_asistio").length,
+    pendientes: data.filter((d) => !d.asistencia || d.asistencia === "sin_confirmar" || d.asistencia === "pendiente").length,
   };
 
   return (
@@ -575,11 +575,11 @@ function AsistenciaGeneral({
                 <td className="p-3 font-medium text-gray-900">{item.usuario_nombre}</td>
                 <td className="p-3 text-gray-600">{item.clase_titulo}</td>
                 <td className="p-3">
-                  {item.asistencia === true ? (
+                  {item.asistencia === "asistio" ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
                       <Check size={12} /> Presente
                     </span>
-                  ) : item.asistencia === false ? (
+                  ) : item.asistencia === "no_asistio" ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
                       <X size={12} /> Ausente
                     </span>
@@ -661,11 +661,11 @@ function AsistenciaDetalle({
               <tr key={ins.id} className="border-b hover:bg-gray-50/50">
                 <td className="p-3 font-medium text-gray-900">{ins.usuario_nombre}</td>
                 <td className="p-3">
-                  {ins.asistencia === true ? (
+                  {ins.asistencia === "asistio" ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
                       <Check size={12} /> Presente
                     </span>
-                  ) : ins.asistencia === false ? (
+                  ) : ins.asistencia === "no_asistio" ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
                       <X size={12} /> Ausente
                     </span>
@@ -700,9 +700,9 @@ function AsistenciaDetalle({
       <div className="p-3 border-t border-gray-100 flex items-center gap-4 text-sm">
         <Users size={16} className="text-gray-400" />
         <span className="text-gray-600">
-          <strong className="text-green-600">{inscripciones.filter((i: any) => i.asistencia === true).length}</strong> presentes ·{" "}
-          <strong className="text-red-500">{inscripciones.filter((i: any) => i.asistencia === false).length}</strong> ausentes ·{" "}
-          <strong className="text-gray-400">{inscripciones.filter((i: any) => i.asistencia === null).length}</strong> pendientes
+          <strong className="text-green-600">{inscripciones.filter((i: any) => i.asistencia === "asistio").length}</strong> presentes ·{" "}
+          <strong className="text-red-500">{inscripciones.filter((i: any) => i.asistencia === "no_asistio").length}</strong> ausentes ·{" "}
+          <strong className="text-gray-400">{inscripciones.filter((i: any) => i.asistencia !== "asistio" && i.asistencia !== "no_asistio").length}</strong> pendientes
         </span>
       </div>
     </div>
