@@ -35,7 +35,7 @@ export default function Sidebar() {
   return (
     <aside className={`
       ${collapsed ? "w-20" : "w-64"}
-      bg-[#001529] h-screen text-white flex flex-col p-4 shrink-0 transition-all duration-300
+      bg-[#001529] h-screen sticky top-0 text-white flex flex-col p-4 shrink-0 transition-all duration-300
     `}>
 
       {/* HEADER */}
