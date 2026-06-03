@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Users,
@@ -33,6 +33,14 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+
+  const router = useRouter();
+  const { signOut } = useAuthUser();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/login");
+  };
 
   // persistencia segura para evitar sobreescritura errónea
   useEffect(() => {
@@ -130,7 +138,7 @@ export default function Sidebar() {
                 <Settings size={20} />
                 <span className="text-sm">Ajustes</span>
               </button>
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all">
+              <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all cursor-pointer">
                 <LogOut size={20} />
                 <span className="text-sm">Cerrar Sesión</span>
               </button>
@@ -212,7 +220,7 @@ export default function Sidebar() {
             <Settings size={20} />
             <span className="text-sm">Ajustes</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all">
+          <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all cursor-pointer">
             <LogOut size={20} />
             <span className="text-sm">Cerrar Sesión</span>
           </button>
