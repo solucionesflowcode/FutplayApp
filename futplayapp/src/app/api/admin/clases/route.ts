@@ -267,6 +267,8 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "clase_id y usuario_id requeridos" }, { status: 400 });
       }
 
+      const estado = asistencia ? "asistio" : "no_asistio";
+
       const { data: existing } = await admin
         .from("clase_usuario")
         .select("id")
@@ -275,9 +277,9 @@ export async function PATCH(request: Request) {
         .maybeSingle();
 
       if (existing) {
-        await admin.from("clase_usuario").update({ asistencia }).eq("id", existing.id);
+        await admin.from("clase_usuario").update({ asistencia: estado }).eq("id", existing.id);
       } else {
-        await admin.from("clase_usuario").insert({ clase_id, usuario_id, asistencia });
+        await admin.from("clase_usuario").insert({ clase_id, usuario_id, asistencia: estado });
       }
 
       return NextResponse.json({ success: true });
