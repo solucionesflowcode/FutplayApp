@@ -25,18 +25,6 @@ export default function PlanesPage() {
         return () => clearTimeout(t);
     }, []);
 
-    // Detect BFCache restore: the 5s timeout above may have been cleared when navigating away,
-    // and the browser may restore the page with stale loading=true. Force a reload.
-    useEffect(() => {
-        const handler = (e: PageTransitionEvent) => {
-            if (e.persisted) {
-                window.location.reload();
-            }
-        };
-        window.addEventListener("pageshow", handler);
-        return () => window.removeEventListener("pageshow", handler);
-    }, []);
-
     // Cleanup orphaned flowBoletaId when landing on /planes (e.g. after back navigation from Flow)
     useEffect(() => {
         const boletaId = sessionStorage.getItem("flowBoletaId");
