@@ -2,34 +2,32 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-export async function POST(request: Request) {
-  const cookieStore = await cookies();
+function getAdminClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY");
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceKey,
+    { cookies: { getAll() { return []; }, setAll() {} } }
+  );
+}
 
+async function verifyAdmin() {
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll() {},
-      },
-    }
+    { cookies: { getAll() { return cookieStore.getAll(); }, setAll() {} } }
   );
-
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
+  if (!user) return null;
+  const { data: usuario } = await supabase.from("usuario").select("rol").eq("id", user.id).single();
+  return usuario?.rol === "administrador" ? user : null;
+}
 
-  const { data: usuario } = await supabase
-    .from("usuario")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "administrador") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-  }
+export async function POST(request: Request) {
+  const user = await verifyAdmin();
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const body = await request.json();
   const { email, nombre, rol, rut, telefono, plan_id } = body;
@@ -48,24 +46,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    return NextResponse.json(
-      { error: "Falta SUPABASE_SERVICE_ROLE_KEY en .env.local" },
-      { status: 500 }
-    );
-  }
-
-  const adminClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    {
-      cookies: {
-        getAll() { return []; },
-        setAll() {},
-      },
-    }
-  );
+  const adminClient = getAdminClient();
 
   const tempPassword = Math.random().toString(36).slice(-10) + "Aa1!";
 
@@ -146,4 +127,55 @@ export async function POST(request: Request) {
     membresia,
     tempPassword,
   });
+}
+
+export async function PUT(request: Request) {
+  const user = await verifyAdmin();
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
+  try {
+    const admin = getAdminClient();
+    const body = await request.json();
+
+    if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
+
+    const updateData: any = {};
+    if (body.nombre !== undefined) updateData.nombre = body.nombre;
+    if (body.email !== undefined) updateData.email = body.email;
+    if (body.rut !== undefined) updateData.rut = body.rut;
+    if (body.telefono !== undefined) updateData.telefono = body.telefono;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
+    }
+
+    const { error } = await admin.from("usuario").update(updateData).eq("id", body.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const user = await verifyAdmin();
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
+  try {
+    const admin = getAdminClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
+
+    await admin.auth.admin.deleteUser(id);
+
+    const { error } = await admin.from("usuario").delete().eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
