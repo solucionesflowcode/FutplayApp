@@ -7,10 +7,7 @@ import {
   Users,
   LayoutDashboard,
   MapPin,
-  PersonStanding,
   CalendarDays,
-  BarChart3,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -26,7 +23,6 @@ const menuItems = [
   { name: "Capsulas", href: "/capsules", icon: Users },
   { name: "Pagos", href: "/pagos", icon: MapPin },
   { name: "Mis Clases", href: "/misclases", icon: CalendarDays },
-  { name: "Ayuda", href: "/ayuda", icon: Settings },
 ];
 
 export default function Sidebar() {
@@ -134,10 +130,6 @@ export default function Sidebar() {
             </div>
 
             <div className="border-t border-gray-800 mt-4 pt-4 space-y-1">
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-                <Settings size={20} />
-                <span className="text-sm">Ajustes</span>
-              </button>
               <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all cursor-pointer">
                 <LogOut size={20} />
                 <span className="text-sm">Cerrar Sesión</span>
@@ -216,10 +208,6 @@ export default function Sidebar() {
 
         {/* Footer */}
         <div className="border-t border-gray-800 pt-4 space-y-2">
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-            <Settings size={20} />
-            <span className="text-sm">Ajustes</span>
-          </button>
           <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all cursor-pointer">
             <LogOut size={20} />
             <span className="text-sm">Cerrar Sesión</span>
