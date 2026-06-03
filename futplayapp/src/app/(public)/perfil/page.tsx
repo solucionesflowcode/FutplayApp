@@ -11,7 +11,7 @@ export default function PerfilPage() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.push("/home");
+    router.push("/login");
   };
 
   if (loading) {

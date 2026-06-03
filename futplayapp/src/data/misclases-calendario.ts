@@ -7,8 +7,8 @@ export type ClaseInscripcionRow = {
         id: string;
         titulo: string;
         descripcion: string | null;
+        fecha_hora: string | null;
         sede: { nombre: string } | null;
-        horario: { fecha_hora: string }[] | { fecha_hora: string } | null;
     } | null;
 };
 
@@ -20,15 +20,13 @@ export async function getMisClasesInscripciones(
     const { data, error } = await supabase
         .from("clase_usuario")
         .select(
-            `id, asistencia, horario:horario_id (
-        fecha_hora,
-        clase:clase_id (
+            `id, asistencia, clase:clase_id (
           id,
           titulo,
           descripcion,
+          fecha_hora,
           sede:sede_id ( nombre )
-        )
-      )`,
+        )`,
         )
         .eq("usuario_id", userId);
 
@@ -40,11 +38,6 @@ export async function getMisClasesInscripciones(
     return (data ?? []).map((item: any) => ({
         id: item.id,
         asistencia: item.asistencia,
-        clase: item.horario?.clase
-            ? {
-                  ...item.horario.clase,
-                  horario: { fecha_hora: item.horario.fecha_hora },
-              }
-            : null,
+        clase: item.clase ?? null,
     })) as ClaseInscripcionRow[];
 }

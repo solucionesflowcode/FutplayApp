@@ -26,11 +26,16 @@ type FichaModalState = {
 
 type Props = {
   students: Student[];
+  onStatusChange?: (id: string, status: string) => void;
+  onView?: (student: Student) => void;
+  onEdit?: (student: Student) => void;
+  onDelete?: (student: Student) => void;
 };
 
-export default function StudentsTable({ students }: Props) {
+export default function StudentsTable({ students, onStatusChange, onView, onEdit, onDelete }: Props) {
 
   const [page, setPage] = useState(1);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [fichaModal, setFichaModal] = useState<FichaModalState>({
     open: false, loading: false, error: null, data: null,
   });
@@ -92,11 +97,10 @@ export default function StudentsTable({ students }: Props) {
 
                 <td className="p-3">
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      student.role === "Alumno"
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${student.role === "Alumno"
                         ? "bg-blue-100 text-blue-700"
                         : "bg-purple-100 text-purple-700"
-                    }`}
+                      }`}
                   >
                     {student.role}
                   </span>
@@ -119,17 +123,39 @@ export default function StudentsTable({ students }: Props) {
                 </td>
 
                 <td className="p-3">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      student.status === "Activo"
-                        ? "bg-green-100 text-green-600"
-                        : student.status === "Inactivo"
-                        ? "bg-yellow-100 text-yellow-600"
-                        : "bg-red-100 text-red-600"
-                    }`}
-                  >
-                    {student.status}
-                  </span>
+                  {updatingId === student.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  ) : (
+                    <select
+                      value={student.status}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        setUpdatingId(student.id);
+                        fetch("/api/admin/students/status", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ userId: student.id, status: newStatus }),
+                        })
+                          .then((res) => res.json())
+                          .then((data) => {
+                            if (data.success) {
+                              onStatusChange?.(student.id, newStatus);
+                            }
+                          })
+                          .finally(() => setUpdatingId(null));
+                      }}
+                      className={`px-2 py-1 rounded text-xs font-medium border cursor-pointer appearance-none ${student.status === "Activo"
+                          ? "bg-green-100 text-green-600 border-green-300"
+                          : student.status === "Inactivo"
+                            ? "bg-yellow-100 text-yellow-600 border-yellow-300"
+                            : "bg-red-100 text-red-600 border-red-300"
+                        }`}
+                    >
+                      <option value="Activo" className="bg-white text-green-600">Activo</option>
+                      <option value="Inactivo" className="bg-white text-yellow-600">Inactivo</option>
+                      <option value="Vencido" className="bg-white text-red-600">Vencido</option>
+                    </select>
+                  )}
                 </td>
 
                 <td className="p-3 flex gap-2 items-center">
@@ -142,15 +168,15 @@ export default function StudentsTable({ students }: Props) {
                     Ficha
                   </button>
 
-                  <button className="text-blue-500 hover:scale-110">
+                  <button onClick={() => onView?.(student)} className="text-blue-500 hover:scale-110">
                     <Eye size={16} />
                   </button>
 
-                  <button className="text-green-500 hover:scale-110">
+                  <button onClick={() => onEdit?.(student)} className="text-green-500 hover:scale-110">
                     <Pencil size={16} />
                   </button>
 
-                  <button className="text-red-500 hover:scale-110">
+                  <button onClick={() => onDelete?.(student)} className="text-red-500 hover:scale-110">
                     <Trash2 size={16} />
                   </button>
 
@@ -253,11 +279,11 @@ export default function StudentsTable({ students }: Props) {
 
         <div className="flex gap-2 items-center">
 
-  {/* ANTERIOR */}
-  <button
-    onClick={() => setPage(page - 1)}
-    disabled={page === 1}
-    className="
+          {/* ANTERIOR */}
+          <button
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+            className="
       px-4 py-2 rounded-lg font-medium
       bg-white border border-gray-300
       text-gray-700
@@ -265,36 +291,33 @@ export default function StudentsTable({ students }: Props) {
       disabled:opacity-40 disabled:cursor-not-allowed
       transition-all
     "
-  >
-    Anterior
-  </button>
+          >
+            Anterior
+          </button>
 
-  {/* NÚMEROS */}
-  {[1, 2, 3]
-    .filter((n) => n <= totalPages)
-    .map((num) => (
-      <button
-        key={num}
-        onClick={() => setPage(num)}
-        className={`
+          {/* NÚMEROS */}
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+              <button
+                key={num}
+                onClick={() => setPage(num)}
+                className={`
           px-4 py-2 rounded-lg font-semibold
           border transition-all
-          ${
-            page === num
-              ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-              : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-600"
-          }
+          ${page === num
+                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-600"
+                  }
         `}
-      >
-        {num}
-      </button>
-  ))}
+              >
+                {num}
+              </button>
+            ))}
 
-  {/* SIGUIENTE */}
-  <button
-    onClick={() => setPage(page + 1)}
-    disabled={page === totalPages}
-    className="
+          {/* SIGUIENTE */}
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+            className="
       px-4 py-2 rounded-lg font-medium
       bg-white border border-gray-300
       text-gray-700
@@ -302,11 +325,11 @@ export default function StudentsTable({ students }: Props) {
       disabled:opacity-40 disabled:cursor-not-allowed
       transition-all
     "
-  >
-    Siguiente
-  </button>
+          >
+            Siguiente
+          </button>
 
-</div>    
+        </div>
 
       </div>
 
