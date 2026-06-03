@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Shield, Zap, Crown, ArrowLeft, ClipboardPlus, X } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, Shield, Zap, Crown, ClipboardPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
+import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 import { getPlanes, type Plan } from "@/data/plans";
 import { getMiMembresia } from "@/data/pagos";
 import { useAuthUser } from "@/context";
@@ -12,11 +12,12 @@ import { userHasFichaMedica } from "@/data/fichaMedica";
 
 export default function PlanesPage() {
     const router = useRouter();
-    const { usuario } = useAuthUser();
+    const { usuario, user } = useAuthUser();
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
     const [tienePlanActivo, setTienePlanActivo] = useState(false);
     const [showFichaModal, setShowFichaModal] = useState(false);
+    const [openFicha, setOpenFicha] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -169,8 +170,8 @@ export default function PlanesPage() {
                 )}
             </div>
 
-            {/* Modal ficha médica */}
-            {showFichaModal && (
+            {/* Modal aviso ficha médica requerida */}
+            {showFichaModal && !openFicha && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-xl text-center">
                         <button onClick={() => setShowFichaModal(false)} className="float-right p-1 hover:bg-gray-100 rounded-lg">
@@ -183,14 +184,25 @@ export default function PlanesPage() {
                         <p className="text-gray-500 text-sm mb-6">
                             Necesitas completar tu ficha médica antes de poder comprar un plan. Es un requisito obligatorio para entrenar con nosotros.
                         </p>
-                        <Link href="/perfil" onClick={() => setShowFichaModal(false)}>
-                            <button className="w-full bg-[#F39200] text-white py-3 rounded-xl font-bold hover:bg-[#d47d00] transition-all cursor-pointer">
-                                Completar ficha médica
-                            </button>
-                        </Link>
+                        <button
+                            onClick={() => setOpenFicha(true)}
+                            className="w-full bg-[#F39200] text-white py-3 rounded-xl font-bold hover:bg-[#d47d00] transition-all cursor-pointer"
+                        >
+                            Completar ficha médica
+                        </button>
                     </div>
                 </div>
             )}
+
+            <FichaMedicaModal
+                open={openFicha}
+                onClose={() => setOpenFicha(false)}
+                onSuccess={() => {
+                    setOpenFicha(false);
+                    setShowFichaModal(false);
+                }}
+                userId={user?.id || ""}
+            />
         </main>
     );
 }
