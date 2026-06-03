@@ -157,6 +157,7 @@ export async function POST(request: Request) {
       urlConfirmation: `${publicUrl}/api/flow/webhook`,
       urlReturn: `http://localhost:3000/pagos?token={token}`,
       timeout: 1800,
+      paymentMethod: 1, // solo tarjetas crédito + débito
       ...(conRecurrencia ? { recurrence: { period: 30 } } : {}),
     });
 
