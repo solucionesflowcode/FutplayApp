@@ -19,13 +19,47 @@ export default function PlanesPage() {
     const [showFichaModal, setShowFichaModal] = useState(false);
     const [openFicha, setOpenFicha] = useState(false);
 
+    // Force loading off after 5 seconds max (independent of any fetch)
     useEffect(() => {
+        const t = setTimeout(() => setLoading(false), 5000);
+        return () => clearTimeout(t);
+    }, []);
+
+    // Detect BFCache restore: the 5s timeout above may have been cleared when navigating away,
+    // and the browser may restore the page with stale loading=true. Force a reload.
+    useEffect(() => {
+        const handler = (e: PageTransitionEvent) => {
+            if (e.persisted) {
+                window.location.reload();
+            }
+        };
+        window.addEventListener("pageshow", handler);
+        return () => window.removeEventListener("pageshow", handler);
+    }, []);
+
+    // Cleanup orphaned flowBoletaId when landing on /planes (e.g. after back navigation from Flow)
+    useEffect(() => {
+        const boletaId = sessionStorage.getItem("flowBoletaId");
+        if (!boletaId) return;
+        sessionStorage.removeItem("flowBoletaId");
+        fetch("/api/flow/cancel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ boletaId }),
+        }).catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
         const fetchData = async () => {
             try {
                 const [planesData] = await Promise.all([getPlanes()]);
+                if (cancelled) return;
                 setPlanes(planesData);
                 if (usuario?.id) {
                     const membresia = await getMiMembresia(usuario.id);
+                    if (cancelled) return;
                     if (membresia) {
                         const vencimiento = new Date(membresia.mes + "T00:00:00");
                         vencimiento.setMonth(vencimiento.getMonth() + 1);
@@ -36,11 +70,13 @@ export default function PlanesPage() {
             } catch (err) {
                 console.error("Error obteniendo datos:", err);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
 
         fetchData();
+
+        return () => { cancelled = true; };
     }, [usuario]);
 
     const handleComprarPlan = async (plan: Plan) => {
@@ -49,6 +85,16 @@ export default function PlanesPage() {
         if (!tieneFicha) {
             setShowFichaModal(true);
             return;
+        }
+        // Cancel any orphaned boleta from a previous Flow session
+        const bId = typeof window !== "undefined" ? sessionStorage.getItem("flowBoletaId") : null;
+        if (bId) {
+            await fetch("/api/flow/cancel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ boletaId: bId }),
+            });
+            sessionStorage.removeItem("flowBoletaId");
         }
         router.push(`/pagos?id=${plan.id}`);
     };

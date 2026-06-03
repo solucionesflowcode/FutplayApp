@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
 import { createMockServerClient, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
+import { mockPaymentStatus } from "@/tests/helpers/flow";
 
 // ── Env vars ────────────────────────────────────────
 
@@ -60,7 +61,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("retorna 404 si la boleta no existe", async () => {
-        vi.mocked(getFlowPaymentStatus).mockResolvedValue({ status: 2 });
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2 }));
         __setTableData("boleta", null, { message: "No rows" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
@@ -71,7 +72,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("retorna estado pagado si Flow aprueba y boleta estaba pendiente", async () => {
-        vi.mocked(getFlowPaymentStatus).mockResolvedValue({ status: 2 });
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2 }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
@@ -82,7 +83,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("retorna estado rechazado si Flow no aprueba (status !== 2)", async () => {
-        vi.mocked(getFlowPaymentStatus).mockResolvedValue({ status: 1 });
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 1 }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
@@ -92,7 +93,7 @@ describe("GET /api/flow/confirm", () => {
         expect(json.estado).toBe("rechazado");
     });
 
-    it("retorna pagado con fallback cuando getFlowPaymentStatus lanza error", async () => {
+    it("retorna pendiente si getFlowPaymentStatus lanza error (sandbox fallback)", async () => {
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Sandbox error"));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
 
@@ -100,11 +101,11 @@ describe("GET /api/flow/confirm", () => {
 
         expect(res.status).toBe(200);
         const json = await res.json();
-        expect(json.estado).toBe("pagado");
+        expect(json.estado).toBe("pendiente");
     });
 
     it("retorna 'Ya procesado' si la boleta ya estaba pagada", async () => {
-        vi.mocked(getFlowPaymentStatus).mockResolvedValue({ status: 2 });
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2 }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pagado" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));

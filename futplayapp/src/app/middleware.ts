@@ -8,6 +8,9 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  // Prevent browser caching on all pages so back-navigation from external sites always re-executes JS
+  supabaseResponse.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+
 const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
