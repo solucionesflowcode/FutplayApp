@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import ProximoEntrenamiento from "../../../components/userDashboard/ProximoEntrenamiento";
 import MiAsistencia from "../../../components/userDashboard/MiAsistencia";
@@ -8,9 +9,30 @@ import Recordatorio from "../../../components/userDashboard/Recordatorio";
 import PlanesRender from "../../../components/userDashboard/PlanesRender";
 import CapsulasClient from "../../../components/userDashboard/CapsulasClient";
 import { useAuthUser } from "@/context";
+import { createClient } from "@/utils/supabase/client";
 
 export default function DashboardClient() {
     const { usuario } = useAuthUser();
+    const [tienePlan, setTienePlan] = useState(true);
+    const [planChecked, setPlanChecked] = useState(false);
+
+    useEffect(() => {
+        const check = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data } = await supabase
+                .from("membresia")
+                .select("id")
+                .eq("usuario_id", user.id)
+                .gte("mes", new Date().toISOString().split("T")[0])
+                .limit(1)
+                .maybeSingle();
+            setTienePlan(!!data);
+            setPlanChecked(true);
+        };
+        check();
+    }, []);
 
     const formattedUser = {
         ...usuario,
@@ -47,15 +69,21 @@ export default function DashboardClient() {
                     <div className="w-full">
                         <PlanesRender />
                     </div>
-                    <div className="flex gap-6 w-full">
-                        <div className="flex-1">
+                    {planChecked && tienePlan ? (
+                        <div className="flex gap-6 w-full">
+                            <div className="flex-1">
+                                <MetricasCorporales />
+                            </div>
+                            <div className="flex-1 flex flex-col gap-6">
+                                <MiAsistencia />
+                                <ProximaRenovacion />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="w-full">
                             <MetricasCorporales />
                         </div>
-                        <div className="flex-1 flex flex-col gap-6">
-                            <MiAsistencia />
-                            <ProximaRenovacion />
-                        </div>
-                    </div>
+                    )}
                     <div className="w-full h-auto">
                         <CapsulasClient />
                     </div>
