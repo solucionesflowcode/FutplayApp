@@ -37,6 +37,11 @@ const supabase = createServerClient(
     await supabase.auth.getUser();
   }
 
+  // Prevent browser caching on all pages so back-navigation from external sites always
+  // re-executes JS. MUST be set AFTER supabase.auth.getUser() because its cookie-refresh
+  // logic can replace supabaseResponse via setAll(), discarding any previous headers.
+  supabaseResponse.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+
   return supabaseResponse;
 }
 

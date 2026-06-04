@@ -7,6 +7,8 @@ import Link from "next/link";
 import { Crown, CheckCircle2 } from "lucide-react";
 import { getPlanesLimit, type Plan } from "@/data/plans";
 import { userHasMembresia } from "@/data/membresia";
+import { userHasFichaMedica } from "@/data/fichaMedica";
+import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 
 export default function PlanesRender() {
     const router = useRouter();
@@ -14,6 +16,8 @@ export default function PlanesRender() {
     const [hasPlan, setHasPlan] = useState<boolean | null>(null);
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showFichaModal, setShowFichaModal] = useState(false);
+    const [pendingPlan, setPendingPlan] = useState<Plan | null>(null);
 
     useEffect(() => {
         const fetchMembresiaYPlanes = async () => {
@@ -40,8 +44,14 @@ export default function PlanesRender() {
         fetchMembresiaYPlanes();
     }, [usuario]);
 
-    const handleComprarPlan = (plan: Plan) => {
+    const handleComprarPlan = async (plan: Plan) => {
         if (!usuario?.id) return;
+        const tieneFicha = await userHasFichaMedica(usuario.id);
+        if (!tieneFicha) {
+            setPendingPlan(plan);
+            setShowFichaModal(true);
+            return;
+        }
         router.push(`/pagos?id=${plan.id}`);
     };
 
@@ -115,6 +125,22 @@ export default function PlanesRender() {
                     )}
                 </div>
             </div>
+
+            {/* Modal ficha médica */}
+            <FichaMedicaModal
+                open={showFichaModal}
+                onClose={() => { setShowFichaModal(false); setPendingPlan(null); }}
+                onSuccess={() => {
+                    setShowFichaModal(false);
+                    if (pendingPlan) {
+                        router.push(`/pagos?id=${pendingPlan.id}`);
+                    }
+                    setPendingPlan(null);
+                }}
+                planId={pendingPlan?.id}
+                planName={pendingPlan?.nombre}
+                userId={usuario?.id || ""}
+            />
         </div>
     );
 }
