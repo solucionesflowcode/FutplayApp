@@ -1,0 +1,16 @@
+| enum_name   | enum_value              |
+| ----------- | ----------------------- |
+| asistencia  | sin_confirmar           |
+| asistencia  | pendiente               |
+| asistencia  | confirmado_whatsapp     |
+| asistencia  | asistio                 |
+| asistencia  | no_asistio              |
+| asistencia  | cancelado               |
+| asistencia  | cancelado_sin_reembolso |
+| estado      | pendiente               |
+| estado      | pagado                  |
+| estado      | rechazado               |
+| estado      | anulado                 |
+| rol_usuario | jugador                 |
+| rol_usuario | profesor                |
+| rol_usuario | administrador           |

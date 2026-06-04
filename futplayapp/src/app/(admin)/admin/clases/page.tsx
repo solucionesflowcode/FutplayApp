@@ -12,7 +12,6 @@ import {
   X,
   Check,
   ChevronLeft,
-  Clock,
   Users,
   PersonStanding,
 } from "lucide-react";
@@ -41,8 +40,7 @@ type ClaseForm = {
   sede_id: string;
   cupo_maximo: number;
   profesor_id: string;
-  hora: string;
-  fecha: string;
+  horarios: string[];
 };
 
 const emptyForm: ClaseForm = {
@@ -51,8 +49,7 @@ const emptyForm: ClaseForm = {
   sede_id: "",
   cupo_maximo: 15,
   profesor_id: "",
-  hora: "",
-  fecha: "",
+  horarios: [],
 };
 
 export default function ClasesPage() {
@@ -101,8 +98,7 @@ export default function ClasesPage() {
       sede_id: c.sede_id,
       cupo_maximo: c.cupo_maximo,
       profesor_id: c.profesor_id || "",
-      hora: c.fecha_hora ? c.fecha_hora.slice(11, 16) : "",
-      fecha: c.fecha_hora ? c.fecha_hora.slice(0, 10) : "",
+      horarios: c.horarios.map((h) => h.fecha_hora.slice(0, 16)),
     });
     setModal("edit");
   };
@@ -118,12 +114,8 @@ export default function ClasesPage() {
     const fecha_hora = form.fecha && form.hora ? `${form.fecha}T${form.hora}` : undefined;
 
     const payload = {
-      titulo: form.titulo,
-      descripcion: form.descripcion,
-      sede_id: form.sede_id,
-      cupo_maximo: form.cupo_maximo,
-      profesor_id: form.profesor_id || undefined,
-      fecha_hora,
+      ...form,
+      horarios: form.horarios.filter(Boolean),
     };
 
     const res = modal === "create"
@@ -198,7 +190,7 @@ export default function ClasesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900">Gestión de Clases</h1>
-            <p className="text-gray-500 text-sm mt-1">Administra horarios, sedes y cupos de clases</p>
+            <p className="text-gray-500 text-sm mt-1">Administra clases, sedes y cupos</p>
           </div>
           <div className="flex gap-3">
             {view !== "list" && (
@@ -257,7 +249,7 @@ export default function ClasesPage() {
                     <th className="p-3 font-semibold">Sede</th>
                     <th className="p-3 font-semibold">Cupo</th>
                     <th className="p-3 font-semibold">Inscritos</th>
-                    <th className="p-3 font-semibold">Próximo Horario</th>
+                    <th className="p-3 font-semibold">Fecha</th>
                     <th className="p-3 font-semibold">Acciones</th>
                   </tr>
                 </thead>
@@ -269,7 +261,7 @@ export default function ClasesPage() {
                       </td>
                     </tr>
                   ) : filtered.map((c) => {
-                    const prox = c.fecha_hora && new Date(c.fecha_hora) > new Date() ? c.fecha_hora : null;
+                    const prox = c.horarios?.find((h) => new Date(h.fecha_hora) > new Date());
                     return (
                       <tr key={c.id} className="border-b hover:bg-gray-50/50">
                         <td className="p-3">
@@ -297,12 +289,12 @@ export default function ClasesPage() {
                           <span className="text-gray-400">/{c.cupo_maximo}</span>
                         </td>
                         <td className="p-3">
-                          {prox ? (
+                          {c.fecha_hora ? (
                             <span className="text-xs text-gray-600">
-                              {formatFecha(prox)} {formatHora(prox)}
+                              {formatFecha(prox.fecha_hora)} {formatHora(prox.fecha_hora)}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400">Sin horarios</span>
+                            <span className="text-xs text-gray-400">Sin fecha</span>
                           )}
                         </td>
                         <td className="p-3">
@@ -438,21 +430,35 @@ export default function ClasesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Horario</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={form.hora}
-                    onChange={(e) => setForm((p) => ({ ...p, hora: e.target.value }))}
-                    className="w-[140px] px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    placeholder="HH:MM"
-                  />
-                  <input
-                    type="date"
-                    value={form.fecha}
-                    onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value }))}
-                    className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-500">Horarios</label>
+                  <button
+                    onClick={addHorario}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+                  >
+                    + Agregar horario
+                  </button>
+                </div>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {form.horarios.length === 0 && (
+                    <p className="text-xs text-gray-400 py-2">Sin horarios agregados</p>
+                  )}
+                  {form.horarios.map((h, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="datetime-local"
+                        value={h}
+                        onChange={(e) => setHorario(idx, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                      />
+                      <button
+                        onClick={() => removeHorario(idx)}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -601,21 +607,23 @@ function AsistenciaDetalle({
       <div className="p-4 border-b border-gray-100">
         <h2 className="text-lg font-bold text-gray-900">{clase.titulo}</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Cupo: {inscripciones.length}/{clase.cupo_maximo}
+          Cupo: {inscripciones.length}/{clase.cupo_maximo} · {horarios.length} horario{horarios.length !== 1 ? "s" : ""}
         </p>
       </div>
 
-      {clase.fecha_hora && (
+      {horarios.length > 0 && (
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-600">
-            <Clock size={12} />
-            {new Date(clase.fecha_hora).toLocaleDateString("es-CL", {
-              day: "2-digit", month: "short", year: "numeric",
-            })}{" "}
-            {new Date(clase.fecha_hora).toLocaleTimeString("es-CL", {
-              hour: "2-digit", minute: "2-digit",
-            })}
-          </span>
+          {horarios.map((h: any) => (
+            <span key={h.id} className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-600">
+              <Clock size={12} />
+              {new Date(h.fecha_hora).toLocaleDateString("es-CL", {
+                day: "2-digit", month: "short", year: "numeric",
+              })}{" "}
+              {new Date(h.fecha_hora).toLocaleTimeString("es-CL", {
+                hour: "2-digit", minute: "2-digit",
+              })}
+            </span>
+          ))}
         </div>
       )}
 
