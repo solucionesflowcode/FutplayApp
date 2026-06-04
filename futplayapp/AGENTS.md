@@ -12,7 +12,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ```
 src/
-├── app/                              # App Router de Next.js
+├── proxy.ts                       # Proxy de Supabase (Next.js 16, reemplaza middleware.ts)
+├── app/                           # App Router de Next.js
 │   ├── (public)/                      # Grupo de rutas públicas
 │   │   ├── home/page.tsx              # Landing page
 │   │   ├── login/page.tsx             # Página de login
@@ -27,8 +28,7 @@ src/
 │   │           └── route.ts          # Callback OAuth de Google
 │   ├── layout.tsx                    # Layout raíz (AuthProvider)
 │   ├── page.tsx                      # Redirector según rol
-│   ├── globals.css                    # Estilos globales
-│   └── middleware.ts                  # Middleware de Supabase
+│   └── globals.css                    # Estilos globales
 ├── components/                       # Componentes reutilizables
 │   ├── landingPage/
 │   ├── Login/
@@ -40,7 +40,8 @@ src/
 └── utils/supabase/                   # Clientes de Supabase
     ├── client.ts                      # Cliente browser
     ├── server.ts                      # Cliente server
-    └── middleware.ts                  # Middleware helper
+    ├── middleware.ts                  # Helper para proxy/createServerClient
+    └── admin.ts                       # verifyAdmin() compartido para API routes
 ```
 
 ---

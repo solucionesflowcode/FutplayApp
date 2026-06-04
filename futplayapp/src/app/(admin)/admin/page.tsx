@@ -91,7 +91,6 @@ export default function AdminPage() {
 
       <StudentsTable
         students={filtered}
-        onStatusChange={fetchUsers}
         onView={setViewStudent}
         onEdit={setEditStudent}
         onDelete={handleDelete}
