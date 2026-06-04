@@ -7,6 +7,7 @@ import {
     updateUserProfile,
     calculateIMC,
     getIMCStatus,
+    calcularEdad,
 } from "@/data/fichaMedica";
 
 type Props = {
@@ -47,7 +48,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
     const [rutError, setRutError] = useState("");
     const [telefono, setTelefono] = useState("+569");
     const [telefonoError, setTelefonoError] = useState("");
-    const [edad, setEdad] = useState("");
+    const [fechaNacimiento, setFechaNacimiento] = useState("");
     const [peso, setPeso] = useState("");
     const [estatura, setEstatura] = useState("");
     const [grupoSanguineo, setGrupoSanguineo] = useState("");
@@ -75,7 +76,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
         setRutError("");
         setTelefono("+569");
         setTelefonoError("");
-        setEdad("");
+        setFechaNacimiento("");
         setPeso("");
         setEstatura("");
         setGrupoSanguineo("");
@@ -115,7 +116,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
     };
 
     const validateStep1 = () => {
-        return rut.trim() !== "" && !rutError && telefono.length === 12 && !telefonoError && edad.trim() !== "" && peso.trim() !== "" && estatura.trim() !== "" && grupoSanguineo.trim() !== "";
+        return rut.trim() !== "" && !rutError && telefono.length === 12 && !telefonoError && fechaNacimiento.trim() !== "" && peso.trim() !== "" && estatura.trim() !== "" && grupoSanguineo.trim() !== "";
     };
 
     const validateStep2 = () => {
@@ -137,7 +138,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
         }
 
         const fichaSuccess = await createFichaMedica(userId, {
-            edad: parseInt(edad),
+            fecha_nacimiento: fechaNacimiento.trim(),
             peso_kg: parseFloat(peso),
             estatura_cm: parseInt(estatura),
             imc: imcValue,
@@ -298,10 +299,18 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                     <h3 className="text-sm font-bold text-[#00305B] uppercase tracking-wider">Datos Físicos</h3>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
-                                    <InputField label="Edad" placeholder="25" value={edad} onChange={(v) => { const n = parseInt(v); if (v === "" || (n >= 0 && n <= 99)) setEdad(v); }} type="number" />
+                                    <InputField label="Fecha de Nacimiento" value={fechaNacimiento} onChange={(v) => setFechaNacimiento(v)} type="date" />
                                     <InputField label="Peso (kg)" placeholder="75.5" value={peso} onChange={setPeso} type="number" icon={<Scale size={14} />} />
                                     <InputField label="Estatura (cm)" placeholder="175" value={estatura} onChange={setEstatura} type="number" icon={<Ruler size={14} />} />
                                 </div>
+
+                                {/* Edad calculada */}
+                                {fechaNacimiento.length === 10 && (
+                                    <div className="mt-2 text-xs text-slate-400 flex items-center gap-1">
+                                        <User size={12} />
+                                        Edad: <span className="font-semibold text-slate-600">{calcularEdad(fechaNacimiento)} años</span>
+                                    </div>
+                                )}
 
                                 {/* IMC Badge */}
                                 <div className={`mt-4 overflow-hidden transition-all duration-500 ${imc !== null ? "max-h-20 opacity-100" : "max-h-0 opacity-0"}`}>
@@ -432,7 +441,7 @@ function InputField({
     type = "text",
 }: {
     label: string;
-    placeholder: string;
+    placeholder?: string;
     value: string;
     onChange: (v: string) => void;
     icon?: React.ReactNode;
