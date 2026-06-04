@@ -61,6 +61,8 @@ declare module "lucide-react" {
   export const Trash2: Icon;
   export const TrendingUp: Icon;
   export const User: Icon;
+  export const UserCheck: Icon;
+  export const UserPlus: Icon;
   export const Wallet: Icon;
   export const X: Icon;
   export const Zap: Icon;
