@@ -3,7 +3,6 @@ export type Profesor = {
   nombre: string;
   email: string;
   telefono: string;
-  especialidad: string;
   foto_url: string;
   created_at: string;
   total_clases: number;
@@ -15,6 +14,13 @@ export type Profesor = {
 export type ProfesorDropdown = {
   id: string;
   nombre: string;
+};
+
+export type UsuarioSearchResult = {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: string;
 };
 
 export async function getProfesores(): Promise<Profesor[]> {
@@ -35,11 +41,38 @@ export async function getProfesoresDropdown(): Promise<ProfesorDropdown[]> {
   return res.json();
 }
 
+export async function searchUsuarioPorEmail(
+  email: string
+): Promise<UsuarioSearchResult[]> {
+  const res = await fetch(
+    `/api/admin/profesores?tipo=buscar&email=${encodeURIComponent(email)}`
+  );
+  if (!res.ok) {
+    const body = await res.json();
+    throw new Error(body.error || "Error al buscar usuario");
+  }
+  return res.json();
+}
+
+export async function cambiarRolAProfesor(
+  id: string
+): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch("/api/admin/profesores", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, rol: "profesor" }),
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    return { success: false, error: body.error };
+  }
+  return { success: true };
+}
+
 export async function createProfesor(data: {
   nombre: string;
   email: string;
   telefono?: string;
-  especialidad?: string;
   foto_url?: string;
 }): Promise<{ success: boolean; error?: string; tempPassword?: string }> {
   const res = await fetch("/api/admin/profesores", {
@@ -60,7 +93,6 @@ export async function updateProfesor(data: {
   nombre?: string;
   email?: string;
   telefono?: string;
-  especialidad?: string;
   foto_url?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/profesores", {

@@ -26,9 +26,12 @@ type FichaModalState = {
 
 type Props = {
   students: Student[];
+  onView?: (student: Student) => void;
+  onEdit?: (student: Student) => void;
+  onDelete?: (student: Student) => void;
 };
 
-export default function StudentsTable({ students }: Props) {
+export default function StudentsTable({ students, onView, onEdit, onDelete }: Props) {
 
   const [page, setPage] = useState(1);
   const [fichaModal, setFichaModal] = useState<FichaModalState>({
@@ -142,15 +145,15 @@ export default function StudentsTable({ students }: Props) {
                     Ficha
                   </button>
 
-                  <button className="text-blue-500 hover:scale-110">
+                  <button onClick={() => onView?.(student)} className="text-blue-500 hover:scale-110">
                     <Eye size={16} />
                   </button>
 
-                  <button className="text-green-500 hover:scale-110">
+                  <button onClick={() => onEdit?.(student)} className="text-green-500 hover:scale-110">
                     <Pencil size={16} />
                   </button>
 
-                  <button className="text-red-500 hover:scale-110">
+                  <button onClick={() => onDelete?.(student)} className="text-red-500 hover:scale-110">
                     <Trash2 size={16} />
                   </button>
 

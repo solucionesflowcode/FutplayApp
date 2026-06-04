@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { verifyAdmin } from "@/utils/supabase/admin";
 
 function getAdminClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -10,19 +10,6 @@ function getAdminClient() {
     serviceKey,
     { cookies: { getAll() { return []; }, setAll() {} } }
   );
-}
-
-async function verifyAdmin() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll(); }, setAll() {} } }
-  );
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: usuario } = await supabase.from("usuario").select("rol").eq("id", user.id).single();
-  return usuario?.rol === "administrador" ? user : null;
 }
 
 export async function GET(request: Request) {
@@ -44,9 +31,25 @@ export async function GET(request: Request) {
       return NextResponse.json(data || []);
     }
 
+    if (tipo === "buscar") {
+      const email = searchParams.get("email");
+      if (!email || email.length < 3) {
+        return NextResponse.json({ error: "Ingresa al menos 3 caracteres" }, { status: 400 });
+      }
+      const { data } = await admin
+        .from("usuario")
+        .select("id, nombre, email, rol")
+        .ilike("email", `%${email}%`)
+        .limit(10);
+      const filtered = (data || []).filter(
+        (u) => u.rol !== "profesor" && u.rol !== "administrador"
+      );
+      return NextResponse.json(filtered);
+    }
+
     const { data: profesores, error } = await admin
       .from("usuario")
-      .select("id, nombre, email, telefono, especialidad, foto_url, created_at")
+      .select("id, nombre, email, telefono, foto_url, created_at")
       .eq("rol", "profesor")
       .order("nombre");
 
@@ -82,7 +85,6 @@ export async function GET(request: Request) {
       nombre: p.nombre,
       email: p.email || "",
       telefono: p.telefono || "",
-      especialidad: p.especialidad || "",
       foto_url: p.foto_url || "",
       created_at: p.created_at,
       total_clases: clasesPorProfesor.get(p.id)?.length || 0,
@@ -107,6 +109,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Faltan campos: email, nombre" }, { status: 400 });
     }
 
+    body.email = body.email.toLowerCase().trim();
+
+    // Verificar si el email ya existe (en usuario o en auth.users)
+    const { data: existing } = await admin
+      .from("usuario")
+      .select("id, email")
+      .eq("email", body.email.toLowerCase().trim())
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Ya existe un usuario registrado con este email en el sistema" },
+        { status: 409 }
+      );
+    }
+
+    // También verificar en auth.users directamente
+    const { data: existingAuth } = await admin.auth.admin.listUsers();
+    const authMatch = existingAuth?.users?.some(
+      (u) => u.email?.toLowerCase() === body.email.toLowerCase().trim()
+    );
+    if (authMatch) {
+      return NextResponse.json(
+        { error: "Este email ya tiene una cuenta de autenticación. Si es un usuario huérfano, elimínalo desde Supabase Dashboard." },
+        { status: 409 }
+      );
+    }
+
     const tempPassword = Math.random().toString(36).slice(-10) + "Aa1!";
 
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -116,6 +146,12 @@ export async function POST(request: Request) {
     });
 
     if (authError || !authData.user) {
+      if (authError?.message?.toLowerCase().includes("already registered")) {
+        return NextResponse.json(
+          { error: "Este email ya está registrado en el sistema de autenticación. Usa otro email o elimina el usuario huérfano desde Supabase Auth." },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: `Error al crear usuario de auth: ${authError?.message}` },
         { status: 500 }
@@ -124,18 +160,39 @@ export async function POST(request: Request) {
 
     const userId = authData.user.id;
 
-    const { error: usuarioError } = await admin.from("usuario").insert({
-      id: userId,
+    const usuarioData = {
       nombre: body.nombre,
       email: body.email,
-      rol: "profesor",
+      rol: "profesor" as const,
       telefono: body.telefono || null,
-      especialidad: body.especialidad || null,
       foto_url: body.foto_url || null,
-    });
+    };
+
+    // Verificar si ya existe una fila (trigger de Supabase la crea automáticamente)
+    const { data: existingRow } = await admin
+      .from("usuario")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    let usuarioError;
+    if (existingRow) {
+      ({ error: usuarioError } = await admin
+        .from("usuario")
+        .update(usuarioData)
+        .eq("id", userId));
+    } else {
+      ({ error: usuarioError } = await admin
+        .from("usuario")
+        .insert({ id: userId, ...usuarioData }));
+    }
 
     if (usuarioError) {
-      await admin.auth.admin.deleteUser(userId);
+      // Intentar limpiar el auth user huérfano
+      const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+      if (deleteError) {
+        console.error("Error al limpiar auth user huérfano:", deleteError.message);
+      }
       return NextResponse.json(
         { error: `Error al crear profesor: ${usuarioError.message}` },
         { status: 500 }
@@ -167,8 +224,27 @@ export async function PUT(request: Request) {
     if (body.nombre !== undefined) updateData.nombre = body.nombre;
     if (body.email !== undefined) updateData.email = body.email;
     if (body.telefono !== undefined) updateData.telefono = body.telefono;
-    if (body.especialidad !== undefined) updateData.especialidad = body.especialidad;
     if (body.foto_url !== undefined) updateData.foto_url = body.foto_url;
+    if (body.rol !== undefined) {
+      if (body.rol !== "profesor") {
+        return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
+      }
+      const { data: currentUser } = await admin
+        .from("usuario")
+        .select("rol")
+        .eq("id", body.id)
+        .single();
+      if (!currentUser) {
+        return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+      }
+      if (currentUser.rol !== "jugador") {
+        return NextResponse.json(
+          { error: "Solo se puede cambiar a profesor desde el rol jugador" },
+          { status: 400 }
+        );
+      }
+      updateData.rol = "profesor";
+    }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
