@@ -50,7 +50,10 @@ export async function getProximaClase(userId: string): Promise<Array<{
 
   if (error || !data?.length) return [];
 
-  const h = data[0].horario;
+  const h = data[0].horario as unknown as {
+    fecha_hora: string;
+    clase: { titulo: string; descripcion: string; sede: { nombre: string } };
+  };
   return [{
     titulo: h.clase.titulo,
     descripcion: h.clase.descripcion,
