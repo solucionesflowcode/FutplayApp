@@ -29,9 +29,17 @@ export async function GET(request: Request) {
             return NextResponse.json({ estado: "rechazado" });
         }
     } catch {
-        // Sandbox: getFlowPaymentStatus falla (code 105).
-        // No podemos saber si el pago fue exitoso o si el usuario canceló.
-        // Devolvemos "pendiente" — el webhook lo confirmará.
+        // getStatus falló (sandbox code 105 o token inválido).
+        // Verificar si el webhook ya procesó la boleta.
+        const { data: boleta } = await adminClient
+            .from("boleta")
+            .select("estado")
+            .eq("id", boletaId)
+            .single();
+
+        if (boleta?.estado === "pagado") {
+            return NextResponse.json({ estado: "pagado" });
+        }
         return NextResponse.json({ estado: "pendiente", message: "No se pudo verificar el pago. Se confirmará automáticamente." });
     }
 
