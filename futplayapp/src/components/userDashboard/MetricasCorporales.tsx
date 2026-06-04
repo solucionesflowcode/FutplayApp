@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { ClipboardPlus, HeartPulse, Activity, Scale, Ruler, Droplets, Pill, AlertCircle, FileText, User, Stethoscope } from "lucide-react";
-import { getFichaMedicaByUser, getIMCStatus } from "@/data/fichaMedica";
+import { getFichaMedicaByUser, getIMCStatus, calcularEdad } from "@/data/fichaMedica";
 import { createClient } from "@/utils/supabase/client";
 import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 
 type Ficha = {
-    edad: number;
+    fecha_nacimiento: string;
     peso_kg: number;
     estatura_cm: number;
     imc: number;
@@ -112,7 +112,7 @@ export default function MetricasCorporales() {
                             <User size={13} className="text-[#F39200]/70" />
                             <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Edad</span>
                         </div>
-                        <p className="text-white text-lg font-bold">{ficha.edad} <span className="text-xs font-normal text-white/50">años</span></p>
+                        <p className="text-white text-lg font-bold">{calcularEdad(ficha.fecha_nacimiento)} <span className="text-xs font-normal text-white/50">años</span></p>
                     </div>
 
                     <div className="bg-white/5 rounded-xl p-3.5 border border-white/5">
