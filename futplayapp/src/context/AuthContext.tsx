@@ -103,6 +103,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadUser, fetchUsuario]);
 
+  // Global BFCache recovery: when the page is restored from bfcache (e.g. after returning
+  // from Flow sandbox), JS state may be stale (loading spinners stuck, etc). Force a reload
+  // so React fully re-initializes. Uses `window.onpageshow` (property) instead of
+  // addEventListener/removeEventListener because:
+  //   1. addEventListener listeners are removed during cleanup when window.location.replace()
+  //      navigates away, before BFCache freezes the page.
+  //   2. window.onpageshow is a property of the window object itself, preserved in BFCache
+  //      and immune to cleanup removal.
+  // No cleanup is returned — React does not require one.
+  useEffect(() => {
+    window.onpageshow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        window.location.reload();
+      }
+    };
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{

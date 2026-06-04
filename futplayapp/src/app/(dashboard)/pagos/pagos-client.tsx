@@ -3,41 +3,38 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-    ArrowLeft,
-    ArrowUpRight,
+    AlertCircle,
+    ArrowRight,
     Ban,
+    Building2,
+    Calendar,
+    Check,
     CheckCircle2,
+    ChevronDown,
     ChevronRight,
+    ChevronUp,
+    Clock,
     CreditCard,
     Crown,
     Download,
     ExternalLink,
+    FileText,
+    Hourglass,
     Landmark,
     Loader2,
     Lock,
+    Receipt,
+    RefreshCw,
+    RotateCcw,
+    Search,
     Shield,
     ShieldCheck,
     Smartphone,
-    Building2,
-    AlertCircle,
-    Receipt,
-    RotateCcw,
-    TrendingDown,
+    Sparkles,
     TrendingUp,
-    Zap,
-    X,
-    Calendar,
-    Clock,
-    CreditCard as CreditCardIcon,
-    MoreHorizontal,
     Wallet,
-    Search,
-    Filter,
-    ChevronDown,
-    Eye,
-    FileText,
-    RefreshCw,
-    Trash2,
+    X,
+    Zap,
 } from "lucide-react";
 import Link from "next/link";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
@@ -79,12 +76,6 @@ const BENEFICIOS_BASE = [
     "Acceso prioritario a reservas en todas nuestras sedes",
     "Acceso completo a biblioteca de cápsulas e-learning",
     "Análisis de métricas corporales y seguimiento de progreso",
-];
-
-const METODOS_PAGO = [
-    { id: "card", label: "Tarjeta de crédito/débito", icon: CreditCard },
-    { id: "transfer", label: "Transferencia bancaria", icon: Landmark },
-    { id: "wallet", label: "Wallet / Pago móvil", icon: Smartphone },
 ];
 
 function formatCLP(n: number) {
@@ -137,7 +128,7 @@ function estadoBadge(estado: PaymentRecord["estado"]) {
 function metodoIcon(metodo: PaymentRecord["metodo"]) {
     switch (metodo) {
         case "tarjeta":
-            return <CreditCardIcon className="w-3.5 h-3.5" />;
+            return <CreditCard className="w-3.5 h-3.5" />;
         case "transferencia":
             return <Landmark className="w-3.5 h-3.5" />;
         case "wallet":
@@ -714,7 +705,6 @@ function CheckoutView({
 }) {
     const router = useRouter();
     const [checkoutState, setCheckoutState] = useState<CheckoutState>("idle");
-    const [selectedMethod, setSelectedMethod] = useState("card");
     const [aceptaTerminos, setAceptaTerminos] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
     const [pagoAutomatico, setPagoAutomatico] = useState(false);
@@ -734,7 +724,7 @@ function CheckoutView({
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Error al crear orden");
             sessionStorage.setItem("flowBoletaId", data.boletaId);
-            window.location.href = data.url;
+            window.location.replace(data.url);
         } catch (err) {
             setErrorMsg(err instanceof Error ? err.message : "Error al conectar con Flow");
             setCheckoutState("error");
@@ -757,13 +747,6 @@ function CheckoutView({
         <>
             <div className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-10">
                 <div className="flex items-center gap-4 mb-8">
-                    <button
-                        onClick={onBack}
-                        className="p-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
-                        aria-label="Volver"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-[#00305B]" />
-                    </button>
                     <div>
                         <h1 className="text-2xl md:text-3xl font-black text-[#00305B] tracking-tight">
                             Finalizar compra
@@ -886,103 +869,6 @@ function CheckoutView({
                                     IVA incluido. Factura electrónica disponible.
                                 </p>
                             </div>
-                        </div>
-
-                        <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] p-6 md:p-8">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-gray-400 mb-5">
-                                Método de pago
-                            </h3>
-                            <div className="space-y-2.5">
-                                {METODOS_PAGO.map((metodo) => {
-                                    const Icon = metodo.icon;
-                                    const isSelected = selectedMethod === metodo.id;
-                                    return (
-                                        <button
-                                            key={metodo.id}
-                                            onClick={() => setSelectedMethod(metodo.id)}
-                                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all text-left ${
-                                                isSelected
-                                                    ? "border-[#F28C28] bg-[#F28C28]/5 shadow-sm"
-                                                    : "border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-50"
-                                            }`}
-                                        >
-                                            <div
-                                                className={`p-2 rounded-lg ${
-                                                    isSelected
-                                                        ? "bg-[#F28C28] text-white"
-                                                        : "bg-gray-200 text-gray-500"
-                                                } transition-all`}
-                                            >
-                                                <Icon className="w-4 h-4" />
-                                            </div>
-                                            <span
-                                                className={`flex-1 text-sm font-semibold ${
-                                                    isSelected ? "text-[#00305B]" : "text-gray-600"
-                                                }`}
-                                            >
-                                                {metodo.label}
-                                            </span>
-                                            <div
-                                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                                                    isSelected
-                                                        ? "border-[#F28C28]"
-                                                        : "border-gray-300"
-                                                }`}
-                                            >
-                                                {isSelected && (
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-[#F28C28]" />
-                                                )}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            {selectedMethod === "card" && (
-                                <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <CreditCard className="w-5 h-5 text-gray-400" />
-                                        <span className="text-sm font-semibold text-gray-600">
-                                            Datos de tarjeta
-                                        </span>
-                                    </div>
-                                    <div className="space-y-2.5">
-                                        <div className="h-10 bg-white rounded-lg border border-gray-200 px-3 flex items-center">
-                                            <span className="text-gray-300 text-sm">
-                                                •••• •••• •••• ••••
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2.5">
-                                            <div className="h-10 bg-white rounded-lg border border-gray-200 px-3 flex items-center">
-                                                <span className="text-gray-300 text-sm">MM/AA</span>
-                                            </div>
-                                            <div className="h-10 bg-white rounded-lg border border-gray-200 px-3 flex items-center">
-                                                <span className="text-gray-300 text-sm">CVV</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 mt-2.5 text-center">
-                                        Los datos de pago serán procesados de forma segura por Flow.
-                                    </p>
-                                </div>
-                            )}
-
-                            {selectedMethod === "transfer" && (
-                                <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <p className="text-sm text-gray-500">
-                                        Recibirás los datos de la cuenta bancaria para realizar la
-                                        transferencia una vez confirmes tu compra.
-                                    </p>
-                                </div>
-                            )}
-
-                            {selectedMethod === "wallet" && (
-                                <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <p className="text-sm text-gray-500">
-                                        Podrás pagar con tu billetera digital preferida al confirmar.
-                                    </p>
-                                </div>
-                            )}
                         </div>
 
                         {/* Toggle pago automático */}
@@ -1143,33 +1029,39 @@ function CheckoutView({
 // ─── Main Entry Point ─────────────────────────────────────────────────
 
 export default function PagosClient() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { usuario } = useAuthUser();
     const planId = searchParams.get("id");
     const flowToken = searchParams.get("token");
     const flowPayment = searchParams.get("flowPayment");
-    const flowBoletaId = useMemo(() => {
-        if (typeof window === "undefined") return null;
-        return searchParams.get("boletaId") || sessionStorage.getItem("flowBoletaId");
-    }, [searchParams]);
 
+    // ── All hooks FIRST (before any early return) ──
     const [planes, setPlanes] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
     const [confirmingPayment, setConfirmingPayment] = useState(true);
     const [confirmError, setConfirmError] = useState("");
+    const [confirmPending, setConfirmPending] = useState(false);
     const [tienePlanActivo, setTienePlanActivo] = useState(false);
+
+    const flowBoletaId = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        return searchParams.get("boletaId") || sessionStorage.getItem("flowBoletaId");
+    }, [searchParams]);
 
     useEffect(() => {
         if (!planId || !usuario) {
             setLoading(false);
             return;
         }
+        let cancelled = false;
         const fetchPlanes = async () => {
             try {
                 const [planesData, membresia] = await Promise.all([
                     getPlanes(),
                     getMiMembresia(usuario.id),
                 ]);
+                if (cancelled) return;
                 setPlanes(planesData);
                 if (membresia) {
                     const vencimiento = new Date(membresia.mes + "T00:00:00");
@@ -1180,10 +1072,17 @@ export default function PagosClient() {
             } catch (err) {
                 console.error("Error obteniendo datos:", err);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
         fetchPlanes();
+        const timeout = setTimeout(() => {
+            if (!cancelled) setLoading(false);
+        }, 10000);
+        return () => {
+            cancelled = true;
+            clearTimeout(timeout);
+        };
     }, [planId, usuario]);
 
     useEffect(() => {
@@ -1204,6 +1103,8 @@ export default function PagosClient() {
                 const data = await res.json();
                 if (!res.ok || data.error) {
                     setConfirmError(data.error || "Error al confirmar pago");
+                } else if (data.estado === "pendiente") {
+                    setConfirmPending(true);
                 } else if (data.estado !== "pagado") {
                     setConfirmError(`Estado inesperado: ${data.estado}`);
                 }
@@ -1215,6 +1116,28 @@ export default function PagosClient() {
         };
         confirm();
     }, [flowToken, flowBoletaId]);
+
+    // On mount (and BFCache restore via pageshow):
+    // if user returned from Flow without paying (flowBoletaId in sessionStorage, no token in URL),
+    // cancel the boleta (best-effort, async) and redirect to /planes immediately.
+    useEffect(() => {
+        const redirectIfOrphaned = () => {
+            if (flowToken || flowPayment) return;
+            const boletaId = sessionStorage.getItem("flowBoletaId");
+            if (!boletaId) return;
+            sessionStorage.removeItem("flowBoletaId");
+            fetch("/api/flow/cancel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ boletaId }),
+            }).catch(() => {});
+            window.location.href = "/planes";
+        };
+        redirectIfOrphaned();
+        window.addEventListener("pageshow", (e) => {
+            if (e.persisted) redirectIfOrphaned();
+        });
+    }, []);
 
     const plan = useMemo(
         () => planes.find((p) => p.id === planId) ?? null,
@@ -1258,6 +1181,49 @@ export default function PagosClient() {
                             <p className="text-gray-500 text-sm">
                                 Estamos verificando el pago con Flow. Un momento por favor...
                             </p>
+                        </div>
+                    ) : confirmPending ? (
+                        <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
+                            <div className="w-20 h-20 rounded-full bg-[#F28C28]/10 flex items-center justify-center mx-auto">
+                                <Hourglass className="w-10 h-10 text-[#F28C28]" />
+                            </div>
+                            <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
+                                Pago pendiente
+                            </h3>
+                            <p className="text-gray-500 text-sm">
+                                No pudimos verificar tu pago automáticamente. Si completaste el pago, se confirmará en segundos. Si cancelaste la compra en el banco, cancélala aquí:
+                            </p>
+                            <div className="flex flex-col gap-3 mt-8">
+                                <button
+                                    onClick={async () => {
+                                        const bId = sessionStorage.getItem("flowBoletaId");
+                                        if (bId) {
+                                            await fetch("/api/flow/cancel", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ boletaId: bId }),
+                                            });
+                                            sessionStorage.removeItem("flowBoletaId");
+                                        }
+                                        handleFlowReturn();
+                                    }}
+                                    className="w-full py-3.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-all"
+                                >
+                                    Cancelar compra
+                                </button>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold transition-all"
+                                >
+                                    Reintentar
+                                </button>
+                                <button
+                                    onClick={handleFlowReturn}
+                                    className="text-sm text-gray-500 hover:text-[#00305B] font-semibold transition-colors"
+                                >
+                                    Ir al Dashboard
+                                </button>
+                            </div>
                         </div>
                     ) : confirmError ? (
                         <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
