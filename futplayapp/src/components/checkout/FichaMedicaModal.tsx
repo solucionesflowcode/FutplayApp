@@ -13,14 +13,40 @@ type Props = {
     open: boolean;
     onClose: () => void;
     onSuccess: () => void;
-    planId: string;
-    planName: string;
+    planId?: string;
+    planName?: string;
     userId: string;
 };
 
+function formatRut(value: string): string {
+    const clean = value.replace(/[^0-9kK\-]/g, "").replace(/-/g, "").toUpperCase();
+    if (clean.length <= 1) return clean;
+    const cuerpo = clean.slice(0, -1);
+    const dv = clean.slice(-1);
+    return `${cuerpo}-${dv}`;
+}
+
+function validateRut(rut: string): boolean {
+    const clean = rut.replace(/-/g, "").toUpperCase();
+    if (clean.length < 2) return false;
+    const cuerpo = clean.slice(0, -1);
+    const dv = clean.slice(-1);
+    let suma = 0;
+    let multiplo = 2;
+    for (let i = cuerpo.length - 1; i >= 0; i--) {
+        suma += parseInt(cuerpo[i]) * multiplo;
+        multiplo = multiplo === 7 ? 2 : multiplo + 1;
+    }
+    const dvEsperado = 11 - (suma % 11);
+    const dvCalculado = dvEsperado === 11 ? "0" : dvEsperado === 10 ? "K" : dvEsperado.toString();
+    return dv === dvCalculado;
+}
+
 export default function FichaMedicaModal({ open, onClose, onSuccess, planId, planName, userId }: Props) {
     const [rut, setRut] = useState("");
-    const [telefono, setTelefono] = useState("");
+    const [rutError, setRutError] = useState("");
+    const [telefono, setTelefono] = useState("+569");
+    const [telefonoError, setTelefonoError] = useState("");
     const [edad, setEdad] = useState("");
     const [peso, setPeso] = useState("");
     const [estatura, setEstatura] = useState("");
@@ -46,7 +72,9 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
 
     const resetForm = () => {
         setRut("");
-        setTelefono("");
+        setRutError("");
+        setTelefono("+569");
+        setTelefonoError("");
         setEdad("");
         setPeso("");
         setEstatura("");
@@ -59,13 +87,35 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
         setError(null);
     };
 
+    const handleRutChange = (value: string) => {
+        const formatted = formatRut(value);
+        setRut(formatted);
+        if (formatted.length >= 3) {
+            setRutError(validateRut(formatted) ? "" : "RUT inválido");
+        } else {
+            setRutError("");
+        }
+    };
+
+    const handleTelefonoChange = (value: string) => {
+        const digits = value.replace(/[^0-9]/g, "");
+        const formatted = `+569${digits.slice(3, 11)}`;
+        setTelefono(formatted);
+        const rest = formatted.slice(3);
+        if (rest.length > 0 && rest.length < 8) {
+            setTelefonoError("Deben ser 8 dígitos después del prefijo");
+        } else {
+            setTelefonoError("");
+        }
+    };
+
     const handleClose = () => {
         resetForm();
         onClose();
     };
 
     const validateStep1 = () => {
-        return rut.trim() !== "" && telefono.trim() !== "" && edad.trim() !== "" && peso.trim() !== "" && estatura.trim() !== "" && grupoSanguineo.trim() !== "";
+        return rut.trim() !== "" && !rutError && telefono.length === 12 && !telefonoError && edad.trim() !== "" && peso.trim() !== "" && estatura.trim() !== "" && grupoSanguineo.trim() !== "";
     };
 
     const validateStep2 = () => {
@@ -78,7 +128,8 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
 
         const imcValue = calculateIMC(parseFloat(peso), parseFloat(estatura));
 
-        const success = await updateUserProfile(userId, { rut: rut.trim(), telefono: telefono.trim() });
+        const cleanedRut = rut.replace(/[^0-9kK\-]/g, "").toUpperCase();
+        const success = await updateUserProfile(userId, { rut: cleanedRut, telefono: telefono.trim() });
         if (!success) {
             setError("Error al guardar datos personales. Intenta nuevamente.");
             setSaving(false);
@@ -129,9 +180,15 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                 <h2 className="text-xl font-bold text-white tracking-tight">
                                     Ficha Médica
                                 </h2>
-                                <p className="text-white/60 text-sm mt-0.5">
-                                    Plan <span className="text-[#F28C28] font-semibold">{planName}</span>
-                                </p>
+                                {planName ? (
+                                    <p className="text-white/60 text-sm mt-0.5">
+                                        Plan <span className="text-[#F28C28] font-semibold">{planName}</span>
+                                    </p>
+                                ) : (
+                                    <p className="text-white/60 text-sm mt-0.5">
+                                        Completa tus datos para continuar
+                                    </p>
+                                )}
                             </div>
                         </div>
                         <button
@@ -179,8 +236,58 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                     <h3 className="text-sm font-bold text-[#00305B] uppercase tracking-wider">Identificación</h3>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <InputField label="RUT" placeholder="12.345.678-9" value={rut} onChange={setRut} />
-                                    <InputField label="Teléfono" placeholder="+56912345678" value={telefono} onChange={setTelefono} icon={<Phone size={14} />} type="tel" />
+                                    <div>
+                                            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                                                RUT <span className="text-red-400">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    value={rut}
+                                                    onChange={(e) => handleRutChange(e.target.value)}
+                                                    placeholder="12345678-9"
+                                                    maxLength={12}
+                                                    className="w-full px-4 py-3 rounded-xl border-2 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all font-mono tracking-wider"
+                                                    style={{
+                                                        borderColor: rutError ? "#ef4444" : rut.length >= 3 && !rutError ? "#22c55e" : "#e2e8f0",
+                                                        backgroundColor: rutError ? "#fef2f2" : rut.length >= 3 && !rutError ? "#f0fdf4" : undefined,
+                                                    }}
+                                                />
+                                            </div>
+                                            {rutError && (
+                                                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                                                    <AlertCircle size={12} />
+                                                    {rutError}
+                                                </p>
+                                            )}
+                                        </div>
+                                    <div>
+                                            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                                                Teléfono <span className="text-red-400">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="tel"
+                                                    value={telefono}
+                                                    onChange={(e) => handleTelefonoChange(e.target.value)}
+                                                    placeholder="+56912345678"
+                                                    className="w-full px-4 py-3 rounded-xl border-2 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all font-mono tracking-wider"
+                                                    style={{
+                                                        borderColor: telefonoError ? "#ef4444" : telefono.length === 12 ? "#22c55e" : "#e2e8f0",
+                                                        backgroundColor: telefonoError ? "#fef2f2" : telefono.length === 12 ? "#f0fdf4" : undefined,
+                                                    }}
+                                                />
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                                    <Phone size={14} />
+                                                </div>
+                                            </div>
+                                            {telefonoError && (
+                                                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                                                    <AlertCircle size={12} />
+                                                    {telefonoError}
+                                                </p>
+                                            )}
+                                        </div>
                                 </div>
                             </div>
 
@@ -191,7 +298,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                     <h3 className="text-sm font-bold text-[#00305B] uppercase tracking-wider">Datos Físicos</h3>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
-                                    <InputField label="Edad" placeholder="25" value={edad} onChange={setEdad} type="number" />
+                                    <InputField label="Edad" placeholder="25" value={edad} onChange={(v) => { const n = parseInt(v); if (v === "" || (n >= 0 && n <= 99)) setEdad(v); }} type="number" />
                                     <InputField label="Peso (kg)" placeholder="75.5" value={peso} onChange={setPeso} type="number" icon={<Scale size={14} />} />
                                     <InputField label="Estatura (cm)" placeholder="175" value={estatura} onChange={setEstatura} type="number" icon={<Ruler size={14} />} />
                                 </div>
