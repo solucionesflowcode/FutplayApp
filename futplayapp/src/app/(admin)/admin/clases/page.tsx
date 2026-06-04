@@ -12,7 +12,6 @@ import {
   X,
   Check,
   ChevronLeft,
-  Clock,
   Users,
   PersonStanding,
 } from "lucide-react";
@@ -41,7 +40,7 @@ type ClaseForm = {
   sede_id: string;
   cupo_maximo: number;
   profesor_id: string;
-  horarios: string[];
+  fecha_hora: string;
 };
 
 const emptyForm: ClaseForm = {
@@ -50,7 +49,7 @@ const emptyForm: ClaseForm = {
   sede_id: "",
   cupo_maximo: 15,
   profesor_id: "",
-  horarios: [],
+  fecha_hora: "",
 };
 
 export default function ClasesPage() {
@@ -99,7 +98,7 @@ export default function ClasesPage() {
       sede_id: c.sede_id,
       cupo_maximo: c.cupo_maximo,
       profesor_id: c.profesor_id || "",
-      horarios: c.horarios.map((h) => h.fecha_hora.slice(0, 16)),
+      fecha_hora: c.fecha_hora ? c.fecha_hora.slice(0, 16) : "",
     });
     setModal("edit");
   };
@@ -114,7 +113,7 @@ export default function ClasesPage() {
 
     const payload = {
       ...form,
-      horarios: form.horarios.filter(Boolean),
+      fecha_hora: form.fecha_hora || undefined,
     };
 
     const res = modal === "create"
@@ -134,7 +133,7 @@ export default function ClasesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar esta clase? También se eliminarán sus horarios e inscripciones.")) return;
+    if (!confirm("¿Eliminar esta clase? También se eliminarán sus inscripciones.")) return;
     setLoading(true);
     await deleteClase(id);
     fetchClases();
@@ -163,25 +162,6 @@ export default function ClasesPage() {
     setDetalleClase(data);
   };
 
-  const addHorario = () => {
-    setForm((prev) => ({ ...prev, horarios: [...prev.horarios, ""] }));
-  };
-
-  const removeHorario = (idx: number) => {
-    setForm((prev) => ({
-      ...prev,
-      horarios: prev.horarios.filter((_, i) => i !== idx),
-    }));
-  };
-
-  const setHorario = (idx: number, value: string) => {
-    setForm((prev) => {
-      const h = [...prev.horarios];
-      h[idx] = value;
-      return { ...prev, horarios: h };
-    });
-  };
-
   const formatFecha = (f: string) => {
     const d = new Date(f);
     return d.toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" });
@@ -208,7 +188,7 @@ export default function ClasesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900">Gestión de Clases</h1>
-            <p className="text-gray-500 text-sm mt-1">Administra horarios, sedes y cupos de clases</p>
+            <p className="text-gray-500 text-sm mt-1">Administra clases, sedes y cupos</p>
           </div>
           <div className="flex gap-3">
             {view !== "list" && (
@@ -267,7 +247,7 @@ export default function ClasesPage() {
                     <th className="p-3 font-semibold">Sede</th>
                     <th className="p-3 font-semibold">Cupo</th>
                     <th className="p-3 font-semibold">Inscritos</th>
-                    <th className="p-3 font-semibold">Próximo Horario</th>
+                    <th className="p-3 font-semibold">Fecha</th>
                     <th className="p-3 font-semibold">Acciones</th>
                   </tr>
                 </thead>
@@ -279,7 +259,6 @@ export default function ClasesPage() {
                       </td>
                     </tr>
                   ) : filtered.map((c) => {
-                    const prox = c.horarios?.find((h) => new Date(h.fecha_hora) > new Date());
                     return (
                       <tr key={c.id} className="border-b hover:bg-gray-50/50">
                         <td className="p-3">
@@ -307,12 +286,12 @@ export default function ClasesPage() {
                           <span className="text-gray-400">/{c.cupo_maximo}</span>
                         </td>
                         <td className="p-3">
-                          {prox ? (
+                          {c.fecha_hora ? (
                             <span className="text-xs text-gray-600">
-                              {formatFecha(prox.fecha_hora)} {formatHora(prox.fecha_hora)}
+                              {formatFecha(c.fecha_hora)} {formatHora(c.fecha_hora)}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400">Sin horarios</span>
+                            <span className="text-xs text-gray-400">Sin fecha</span>
                           )}
                         </td>
                         <td className="p-3">
@@ -448,36 +427,13 @@ export default function ClasesPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-gray-500">Horarios</label>
-                  <button
-                    onClick={addHorario}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
-                  >
-                    + Agregar horario
-                  </button>
-                </div>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {form.horarios.length === 0 && (
-                    <p className="text-xs text-gray-400 py-2">Sin horarios agregados</p>
-                  )}
-                  {form.horarios.map((h, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <input
-                        type="datetime-local"
-                        value={h}
-                        onChange={(e) => setHorario(idx, e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                      />
-                      <button
-                        onClick={() => removeHorario(idx)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha y Hora</label>
+                <input
+                  type="datetime-local"
+                  value={form.fecha_hora}
+                  onChange={(e) => setForm((p) => ({ ...p, fecha_hora: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                />
               </div>
 
               {error && (
@@ -618,32 +574,23 @@ function AsistenciaDetalle({
   data: any;
   onToggle: (usuarioId: string, asistencia: boolean) => void;
 }) {
-  const { clase, horarios, inscripciones } = data;
+  const { clase, inscripciones } = data;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200">
       <div className="p-4 border-b border-gray-100">
         <h2 className="text-lg font-bold text-gray-900">{clase.titulo}</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Cupo: {inscripciones.length}/{clase.cupo_maximo} · {horarios.length} horario{horarios.length !== 1 ? "s" : ""}
+          Cupo: {inscripciones.length}/{clase.cupo_maximo}
+          {clase.fecha_hora && (
+            <> · {new Date(clase.fecha_hora).toLocaleDateString("es-CL", {
+              day: "2-digit", month: "short", year: "numeric",
+            })} {new Date(clase.fecha_hora).toLocaleTimeString("es-CL", {
+              hour: "2-digit", minute: "2-digit",
+            })}</>
+          )}
         </p>
       </div>
-
-      {horarios.length > 0 && (
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex flex-wrap gap-2">
-          {horarios.map((h: any) => (
-            <span key={h.id} className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-600">
-              <Clock size={12} />
-              {new Date(h.fecha_hora).toLocaleDateString("es-CL", {
-                day: "2-digit", month: "short", year: "numeric",
-              })}{" "}
-              {new Date(h.fecha_hora).toLocaleTimeString("es-CL", {
-                hour: "2-digit", minute: "2-digit",
-              })}
-            </span>
-          ))}
-        </div>
-      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

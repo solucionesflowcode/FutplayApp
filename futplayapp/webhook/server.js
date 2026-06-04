@@ -7,6 +7,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
 const db = require('./data');
+const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp } = require('./handlers');
 
 const RECORDATORIOS_FILE = path.join(__dirname, '.recordatorios.json');
 const recordatoriosEnviados = new Set();
@@ -27,40 +28,6 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 if (!supabaseUrl) { console.error('Falta NEXT_PUBLIC_SUPABASE_URL'); process.exit(1); }
 if (!process.env.SUPABASE_SERVICE_ROLE_KEY) console.warn('AVISO: Sin SUPABASE_SERVICE_ROLE_KEY. Solo lectura.');
 db.init(supabaseUrl, supabaseKey);
-
-function horasHasta(fecha_hora) {
-  return (new Date(fecha_hora) - new Date()) / (1000 * 60 * 60);
-}
-
-async function confirmarAsistencia(usuarioId) {
-  const proxima = await db.getProximaClaseUsuario(usuarioId);
-  if (!proxima) return 'No tienes clases próximas agendadas.';
-  if (horasHasta(proxima.horario.fecha_hora) < 1) return 'Ya no alcanzas a confirmar, la clase empieza en menos de 1 hora.';
-  const ok = await db.confirmarAsistencia(proxima.id);
-  return ok ? `✅ Asistencia confirmada! Nos vemos en "${proxima.clase.titulo}".` : 'Error al confirmar. Intentalo de nuevo.';
-}
-
-async function cancelarAsistencia(usuarioId) {
-  const proxima = await db.getProximaClaseUsuario(usuarioId);
-  if (!proxima) return 'No tenés clases próximas agendadas.';
-  const horas = horasHasta(proxima.horario.fecha_hora);
-  if (horas >= 3) {
-    await db.updateAsistencia(proxima.id, 'cancelado');
-    await db.devolverToken(usuarioId);
-    return '❌ Clase cancelada. Te devolvimos el token.';
-  }
-  await db.updateAsistencia(proxima.id, 'cancelado_sin_reembolso');
-  return '❌ Clase cancelada. Como faltan menos de 3h, no se devuelve el token.';
-}
-
-async function procesarMensajeWhatsApp(telefono, texto) {
-  const textoUpper = texto.toUpperCase().trim();
-  const usuario = await db.buscarUsuarioPorTelefono(telefono);
-  if (!usuario) return 'No estás registrado en la academia. Contactate con la administración.';
-  if (textoUpper === 'SI' || textoUpper === 'CONFIRMAR') return await confirmarAsistencia(usuario.id);
-  if (textoUpper === 'NO' || textoUpper === 'CANCELAR') return await cancelarAsistencia(usuario.id);
-  return null;
-}
 
 // ─── WhatsApp Client ───
 const whatsapp = new Client({
@@ -87,7 +54,7 @@ whatsapp.on('message', async msg => {
     telefono = msg.from.replace('@c.us', '');
   }
 
-  const respuesta = await procesarMensajeWhatsApp(telefono, msg.body);
+  const respuesta = await procesarMensajeWhatsApp(telefono, msg.body, db);
   if (respuesta) await msg.reply(respuesta);
 });
 
@@ -147,7 +114,7 @@ app.post('/whatsapp-webhook', async (req, res) => {
       if (!message) return res.sendStatus(200);
       const telefono = message.key?.remoteJid?.split('@')[0];
       const texto = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
-      if (telefono && texto) await procesarMensajeWhatsApp(telefono, texto);
+      if (telefono && texto) await procesarMensajeWhatsApp(telefono, texto, db);
     }
     res.sendStatus(200);
   } catch (err) {
