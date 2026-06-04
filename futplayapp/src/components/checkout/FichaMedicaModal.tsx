@@ -299,7 +299,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                     <h3 className="text-sm font-bold text-[#00305B] uppercase tracking-wider">Datos Físicos</h3>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
-                                    <InputField label="Fecha de Nacimiento" placeholder="AAAA-MM-DD" value={fechaNacimiento} onChange={(v) => { const cleaned = v.replace(/[^0-9-]/g, "").slice(0, 10); setFechaNacimiento(cleaned); }} type="text" />
+                                    <InputField label="Fecha de Nacimiento" value={fechaNacimiento} onChange={(v) => setFechaNacimiento(v)} type="date" />
                                     <InputField label="Peso (kg)" placeholder="75.5" value={peso} onChange={setPeso} type="number" icon={<Scale size={14} />} />
                                     <InputField label="Estatura (cm)" placeholder="175" value={estatura} onChange={setEstatura} type="number" icon={<Ruler size={14} />} />
                                 </div>
@@ -441,7 +441,7 @@ function InputField({
     type = "text",
 }: {
     label: string;
-    placeholder: string;
+    placeholder?: string;
     value: string;
     onChange: (v: string) => void;
     icon?: React.ReactNode;
