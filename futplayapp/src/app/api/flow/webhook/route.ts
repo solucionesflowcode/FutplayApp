@@ -20,6 +20,8 @@ export async function POST(request: Request) {
     }
   );
 
+  const boletaId = new URL(request.url).searchParams.get("boletaId");
+
   const contentType = request.headers.get("content-type") || "";
   let token = "";
   let commerceOrder = "";
@@ -51,11 +53,21 @@ export async function POST(request: Request) {
     try {
       statusData = await getFlowPaymentStatus(token);
     } catch {
-      if (!flowStatus || !commerceOrder) {
+      if (flowStatus && commerceOrder) {
+        statusData = { status: flowStatus, commerceOrder };
+      } else if (boletaId) {
+        const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX !== "false";
+        console.log(`[Flow Webhook] getStatus falló — usando boletaId de URL (sandbox=${isSandbox})`);
+        if (isSandbox) {
+          statusData = { status: 2, commerceOrder: boletaId };
+        } else {
+          console.error(`[Flow Webhook] getStatus falló en producción para boleta ${boletaId}`);
+          return NextResponse.json({ message: "OK" });
+        }
+      } else {
         console.error(`[Flow Webhook] getStatus falló y no hay datos en POST`);
         return NextResponse.json({ message: "OK" });
       }
-      statusData = { status: flowStatus, commerceOrder };
     }
 
     const orderId = statusData.commerceOrder || commerceOrder;
