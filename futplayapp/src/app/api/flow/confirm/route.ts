@@ -22,19 +22,17 @@ export async function GET(request: Request) {
         { cookies: { getAll() { return []; }, setAll() {} } }
     );
 
-    // Flow sandbox no permite consultar status después del redirect
-    // (code 105 "No services available"). Como Flow solo redirige si
-    // el pago fue exitoso, confiamos en el redirect.
-    let flowApproved = false;
+    // Verificar pago con Flow API
     try {
         const statusData = await getFlowPaymentStatus(token);
-        flowApproved = statusData.status === 2;
+        if (statusData.status !== 2) {
+            return NextResponse.json({ estado: "rechazado" });
+        }
     } catch {
-        flowApproved = true;
-    }
-
-    if (!flowApproved) {
-        return NextResponse.json({ estado: "rechazado" });
+        // Sandbox: getFlowPaymentStatus falla (code 105).
+        // No podemos saber si el pago fue exitoso o si el usuario canceló.
+        // Devolvemos "pendiente" — el webhook lo confirmará.
+        return NextResponse.json({ estado: "pendiente", message: "No se pudo verificar el pago. Se confirmará automáticamente." });
     }
 
     const { data: boleta } = await adminClient

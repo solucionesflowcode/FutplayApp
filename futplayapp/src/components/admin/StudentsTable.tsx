@@ -26,7 +26,7 @@ type FichaModalState = {
 
 type Props = {
   students: Student[];
-  onStatusChange?: (userId: string, newStatus: string) => void;
+  onStatusChange?: (id: string, status: string) => void;
   onView?: (student: Student) => void;
   onEdit?: (student: Student) => void;
   onDelete?: (student: Student) => void;
