@@ -54,7 +54,7 @@ export async function getMisBoletas(userId: string): Promise<PagosBoleta[]> {
         total: b.total,
         created_at: b.created_at,
         transaccion_id: b.transaccion_id,
-        items: (b.boleta_item || []).map((item) => ({
+        items: (b.boleta_item || []).map((item: any) => ({
             id: item.id,
             plan_id: item.plan_id,
             plan_nombre: item.plan?.nombre || null,

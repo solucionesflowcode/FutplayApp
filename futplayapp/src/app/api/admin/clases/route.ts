@@ -61,8 +61,6 @@ export async function GET(request: Request) {
       const { data: clase } = await admin.from("clase").select("*").eq("id", claseId).single();
       if (!clase) return NextResponse.json({ error: "Clase no encontrada" }, { status: 404 });
 
-      const { data: horarios } = await admin.from("horario").select("*").eq("clase_id", claseId).order("fecha_hora");
-
       const { data: inscripciones } = await admin
         .from("clase_usuario")
         .select("id, usuario_id, asistencia")
@@ -74,7 +72,6 @@ export async function GET(request: Request) {
 
       return NextResponse.json({
         clase,
-        horarios: horarios || [],
         inscripciones: (inscripciones || []).map((i) => ({
           ...i,
           usuario_nombre: usuarioMap.get(i.usuario_id) || "—",
@@ -91,12 +88,6 @@ export async function GET(request: Request) {
 
     const claseIds = (clases || []).map((c) => c.id);
 
-    const { data: horarios } = await admin
-      .from("horario")
-      .select("*")
-      .in("clase_id", claseIds)
-      .order("fecha_hora");
-
     const { data: sedes } = await admin.from("sede").select("*");
     const sedeMap = new Map((sedes || []).map((s) => [s.id, s.nombre]));
 
@@ -105,13 +96,6 @@ export async function GET(request: Request) {
       ? await admin.from("usuario").select("id, nombre").in("id", profesorIds)
       : { data: [] };
     const profesorMap = new Map((profesores || []).map((p) => [p.id, p.nombre]));
-
-    const horariosPorClase = new Map<string, any[]>();
-    (horarios || []).forEach((h) => {
-      const list = horariosPorClase.get(h.clase_id) || [];
-      list.push(h);
-      horariosPorClase.set(h.clase_id, list);
-    });
 
     const { data: counts } = await admin
       .from("clase_usuario")
@@ -127,7 +111,6 @@ export async function GET(request: Request) {
       ...c,
       sede_nombre: sedeMap.get(c.sede_id) || "—",
       profesor_nombre: c.profesor_id ? profesorMap.get(c.profesor_id) || "" : "",
-      horarios: horariosPorClase.get(c.id) || [],
       inscritos: inscritosPorClase.get(c.id) || 0,
     })));
   } catch (err: any) {
@@ -154,6 +137,7 @@ export async function POST(request: Request) {
       cupo_maximo: body.cupo_maximo || 15,
     };
     if (body.profesor_id !== undefined) insertData.profesor_id = body.profesor_id;
+    if (body.fecha_hora) insertData.fecha_hora = body.fecha_hora;
 
     const { data: clase, error } = await admin
       .from("clase")
@@ -162,15 +146,6 @@ export async function POST(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    if (body.horarios?.length > 0) {
-      const horariosData = body.horarios.map((h: string) => ({
-        clase_id: clase.id,
-        fecha_hora: h,
-      }));
-      const { error: horariosError } = await admin.from("horario").insert(horariosData);
-      if (horariosError) console.error("Error inserting horarios:", horariosError);
-    }
 
     return NextResponse.json(clase);
   } catch (err: any) {
@@ -194,23 +169,11 @@ export async function PUT(request: Request) {
     if (body.sede_id !== undefined) updateData.sede_id = body.sede_id;
     if (body.cupo_maximo !== undefined) updateData.cupo_maximo = body.cupo_maximo;
     if (body.profesor_id !== undefined) updateData.profesor_id = body.profesor_id;
+    if (body.fecha_hora !== undefined) updateData.fecha_hora = body.fecha_hora;
 
     if (Object.keys(updateData).length > 0) {
       const { error } = await admin.from("clase").update(updateData).eq("id", body.id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (body.horarios !== undefined) {
-      await admin.from("horario").delete().eq("clase_id", body.id);
-
-      if (body.horarios.length > 0) {
-        const horariosData = body.horarios.map((h: string) => ({
-          clase_id: body.id,
-          fecha_hora: h,
-        }));
-        const { error: horariosError } = await admin.from("horario").insert(horariosData);
-        if (horariosError) console.error("Error updating horarios:", horariosError);
-      }
     }
 
     return NextResponse.json({ success: true });
@@ -231,7 +194,6 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
     await admin.from("clase_usuario").delete().eq("clase_id", id);
-    await admin.from("horario").delete().eq("clase_id", id);
     const { error } = await admin.from("clase").delete().eq("id", id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

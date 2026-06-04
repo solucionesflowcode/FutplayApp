@@ -7,13 +7,13 @@ export type ClaseRow = {
   sede_id: string;
   cupo_maximo: number;
   profesor_id: string | null;
+  fecha_hora: string | null;
   created_at: string;
 };
 
 export type ClaseConRelaciones = ClaseRow & {
   sede_nombre: string;
   profesor_nombre: string;
-  horarios: { id: string; fecha_hora: string }[];
   inscritos: number;
 };
 
@@ -33,29 +33,33 @@ export async function getProximaClase(userId: string): Promise<Array<{
   const { data, error } = await supabase
     .from("clase_usuario")
     .select(`
-            horario!inner (
+            clase!inner (
+                titulo,
+                descripcion,
                 fecha_hora,
-                clase!inner (
-                    titulo,
-                    descripcion,
-                    sede!inner (nombre)
-                )
+                sede!inner (nombre)
             )
         `)
     .eq("usuario_id", userId)
     .in("asistencia", ["sin_confirmar", "pendiente", "confirmado_whatsapp"])
-    .gte("horario.fecha_hora", new Date().toISOString())
-    .order("horario.fecha_hora", { ascending: true })
+    .not("clase.fecha_hora", "is", null)
+    .gte("clase.fecha_hora", new Date().toISOString())
+    .order("clase.fecha_hora", { ascending: true })
     .limit(1);
 
   if (error || !data?.length) return [];
 
-  const h = data[0].horario;
+  const c = data[0].clase as unknown as {
+    titulo: string;
+    descripcion: string;
+    fecha_hora: string;
+    sede: { nombre: string };
+  };
   return [{
-    titulo: h.clase.titulo,
-    descripcion: h.clase.descripcion,
-    fecha_hora: h.fecha_hora,
-    sede: h.clase.sede.nombre,
+    titulo: c.titulo,
+    descripcion: c.descripcion,
+    fecha_hora: c.fecha_hora,
+    sede: c.sede.nombre,
   }];
 }
 
@@ -85,7 +89,7 @@ export async function createClase(data: {
   sede_id: string;
   cupo_maximo: number;
   profesor_id?: string;
-  horarios: string[];
+  fecha_hora?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/clases", {
     method: "POST",
@@ -106,7 +110,7 @@ export async function updateClase(data: {
   sede_id?: string;
   cupo_maximo?: number;
   profesor_id?: string | null;
-  horarios?: string[];
+  fecha_hora?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/clases", {
     method: "PUT",
