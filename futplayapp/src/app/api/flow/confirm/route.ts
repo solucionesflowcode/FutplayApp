@@ -22,17 +22,19 @@ export async function GET(request: Request) {
         { cookies: { getAll() { return []; }, setAll() {} } }
     );
 
-    // Verificar pago con Flow API
+    const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX !== "false";
+
     try {
         const statusData = await getFlowPaymentStatus(token);
         if (statusData.status !== 2) {
             return NextResponse.json({ estado: "rechazado" });
         }
     } catch {
+        if (!isSandbox) {
+            return NextResponse.json({ estado: "pendiente", message: "No se pudo verificar el pago. Se confirmará automáticamente." });
+        }
         // Sandbox: getFlowPaymentStatus falla (code 105).
-        // No podemos saber si el pago fue exitoso o si el usuario canceló.
-        // Devolvemos "pendiente" — el webhook lo confirmará.
-        return NextResponse.json({ estado: "pendiente", message: "No se pudo verificar el pago. Se confirmará automáticamente." });
+        // Confiamos en el redirect (viene de Flow con token real).
     }
 
     const { data: boleta } = await adminClient

@@ -87,14 +87,18 @@ export type PaymentStatus = {
 // ──────────────────────────────────────────────
 
 function toUrlEncoded(params: Record<string, string | number>): string {
+  const TOKEN_HOLDER = "___FLOW_TOKEN___";
   const pairs: string[] = [];
   for (const [key, value] of Object.entries(params)) {
     const k = encodeURIComponent(key)
       .replace(/%5B/gi, "[")
       .replace(/%5D/gi, "]");
-    const v = encodeURIComponent(String(value))
-      .replace(/%20/g, "+");
-    pairs.push(`${k}=${v}`);
+    let sv = String(value);
+    const hasToken = sv.includes("{token}");
+    if (hasToken) sv = sv.replace(/\{token\}/g, TOKEN_HOLDER);
+    sv = encodeURIComponent(sv).replace(/%20/g, "+");
+    if (hasToken) sv = sv.replace(TOKEN_HOLDER, "{token}");
+    pairs.push(`${k}=${sv}`);
   }
   return pairs.join("&");
 }
