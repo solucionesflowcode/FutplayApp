@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import TopNavBarUser from "@/components/navbars/TopNavBarUser";
 import { useAuthUser } from "@/context";
 import {
-    getMisClasesInscripciones,
-    type ClaseInscripcionRow,
+    getAllClasesConInscripcion,
+    type ClaseConInscripcion,
 } from "@/data/misclases-calendario";
+import ReservarClaseModal from "@/components/misclases/ReservarClaseModal";
 import {
     AlertCircle,
     CheckCircle2,
@@ -22,7 +23,7 @@ import {
 type VisualEstado = "proxima" | "presente" | "ausente" | "neutral";
 
 type SessionItem = {
-    inscripcionId: string;
+    inscripcionId: string | null;
     fecha_hora: string;
     asistencia: string | boolean | null;
     titulo: string;
@@ -31,18 +32,18 @@ type SessionItem = {
     claseId: string;
 };
 
-function flattenInscripciones(rows: ClaseInscripcionRow[]): SessionItem[] {
+function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
     const out: SessionItem[] = [];
     for (const row of rows) {
-        if (!row.clase?.fecha_hora) continue;
+        if (!row.fecha_hora) continue;
         out.push({
-            inscripcionId: row.id,
-            fecha_hora: row.clase.fecha_hora,
+            inscripcionId: row.inscripcionId,
+            fecha_hora: row.fecha_hora,
             asistencia: row.asistencia,
-            titulo: row.clase.titulo,
-            descripcion: row.clase.descripcion,
-            sede: row.clase.sede?.nombre ?? "",
-            claseId: row.clase.id,
+            titulo: row.titulo,
+            descripcion: row.descripcion,
+            sede: row.sede?.nombre ?? "",
+            claseId: row.id,
         });
     }
     return out;
@@ -109,6 +110,13 @@ export default function MisClasesClient() {
         const n = new Date();
         return new Date(n.getFullYear(), n.getMonth(), 1);
     });
+    const [selectedClases, setSelectedClases] = useState<{
+        claseId: string;
+        titulo: string;
+        descripcion: string | null;
+        fecha_hora: string;
+        sede: string;
+    }[] | null>(null);
 
     const load = useCallback(async () => {
         if (!usuario?.id) {
@@ -116,8 +124,8 @@ export default function MisClasesClient() {
             return;
         }
         setLoading(true);
-        const rows = await getMisClasesInscripciones(usuario.id);
-        setSessions(flattenInscripciones(rows));
+        const rows = await getAllClasesConInscripcion(usuario.id);
+        setSessions(flattenClases(rows));
         setLoading(false);
     }, [usuario?.id]);
 
@@ -368,6 +376,12 @@ export default function MisClasesClient() {
                                     const hasProxima = estados.includes("proxima");
                                     const hasNeutral = estados.includes("neutral");
 
+                                    const unenrolledProximas = daySessions.filter(
+                                        (s) =>
+                                            s.inscripcionId === null &&
+                                            parseFechaLocal(s.fecha_hora).getTime() > Date.now(),
+                                    );
+
                                     let cellTone: "empty" | "presente" | "ausente" | "proxima" | "neutral" =
                                         "empty";
                                     if (daySessions.length) {
@@ -378,8 +392,9 @@ export default function MisClasesClient() {
                                         else if (hasNeutral || hasPresente) cellTone = "neutral";
                                     }
 
+                                    const isClickable = unenrolledProximas.length > 0;
                                     const baseCell =
-                                        "min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative transition-transform";
+                                        `min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative transition-transform ${isClickable ? "cursor-pointer hover:scale-[1.02]" : ""}`;
 
                                     let cellClass = `${baseCell} `;
                                     if (!inMonth) {
@@ -408,7 +423,24 @@ export default function MisClasesClient() {
                                     }
 
                                     return (
-                                        <div key={key} className={cellClass}>
+                                        <div
+                                            key={key}
+                                            className={cellClass}
+                                            onClick={
+                                                isClickable
+                                                    ? () =>
+                                                        setSelectedClases(
+                                                            unenrolledProximas.map((s) => ({
+                                                                claseId: s.claseId,
+                                                                titulo: s.titulo,
+                                                                descripcion: s.descripcion,
+                                                                fecha_hora: s.fecha_hora,
+                                                                sede: s.sede,
+                                                            })),
+                                                        )
+                                                    : undefined
+                                            }
+                                        >
                                             <span
                                                 className={`text-sm sm:text-lg font-bold ${
                                                     cellTone === "presente"
@@ -462,6 +494,22 @@ export default function MisClasesClient() {
                                 })}
                             </div>
                         </div>
+
+                        <ReservarClaseModal
+                            isOpen={selectedClases !== null}
+                            onClose={() => setSelectedClases(null)}
+                            clases={selectedClases ?? []}
+                            onAgendada={(claseId) => {
+                                setSessions((prev) =>
+                                    prev.map((s) =>
+                                        s.claseId === claseId
+                                            ? { ...s, inscripcionId: "temp" }
+                                            : s,
+                                    ),
+                                );
+                                setTimeout(() => setSelectedClases(null), 1200);
+                            }}
+                        />
 
                         {/* Resumen y métricas — debajo del calendario */}
                         <div className="space-y-6 mb-10">
@@ -618,7 +666,7 @@ export default function MisClasesClient() {
                                                         colSpan={4}
                                                         className="px-8 py-12 text-center text-slate-500 text-sm"
                                                     >
-                                                        No hay clases inscritas todavía.
+                                                        No hay clases disponibles todavía.
                                                     </td>
                                                 </tr>
                                             ) : (
@@ -635,7 +683,7 @@ export default function MisClasesClient() {
                                                                 : "Sin confirmar";
                                                     return (
                                                         <tr
-                                                            key={`${s.inscripcionId}-${s.fecha_hora}`}
+                                                            key={`${s.inscripcionId ?? s.claseId}-${s.fecha_hora}`}
                                                             className="hover:bg-[#f8f9fb]/80 transition-colors"
                                                         >
                                                             <td className="px-4 md:px-8 py-4 font-bold text-[#00305b] whitespace-nowrap text-sm">
