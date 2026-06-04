@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Eye, Pencil, Trash2, Heart, X, Loader2 } from "lucide-react";
-import { getFichaMedicaByUser, type FichaMedicaData } from "@/data/fichaMedica";
+import { getFichaMedicaByUser, calcularEdad, type FichaMedicaData } from "@/data/fichaMedica";
 
 export type Student = {
   id: string;
@@ -217,7 +217,7 @@ export default function StudentsTable({ students, onStatusChange, onView, onEdit
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 bg-gray-50 rounded-xl">
                     <p className="text-xs text-gray-500">Edad</p>
-                    <p className="font-semibold text-gray-900">{fichaModal.data.edad} años</p>
+                    <p className="font-semibold text-gray-900">{calcularEdad(fichaModal.data.fecha_nacimiento)} años</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-xl">
                     <p className="text-xs text-gray-500">Peso</p>

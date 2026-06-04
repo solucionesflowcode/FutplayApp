@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/client";
 
 export type FichaMedicaData = {
-    edad: number;
+    fecha_nacimiento: string;
     peso_kg: number;
     estatura_cm: number;
     imc: number;
@@ -11,6 +11,15 @@ export type FichaMedicaData = {
     medicamentos: string;
     observaciones: string;
 };
+
+export function calcularEdad(fechaNacimiento: string): number {
+    const hoy = new Date();
+    const nac = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const mes = hoy.getMonth() - nac.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
+    return edad;
+}
 
 export async function updateUserProfile(
     userId: string,
