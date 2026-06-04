@@ -14,8 +14,8 @@ import {
   ChevronUp,
   Pencil,
   Trash2,
-  UserCheck,
-  UserPlus,
+  Check,
+  Plus,
   Camera,
   Upload,
 } from "lucide-react";
@@ -213,7 +213,7 @@ export default function ProfesoresPage() {
         {/* ─── BUSCAR USUARIO POR EMAIL ─── */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <UserPlus size={16} />
+            <Plus size={16} />
             Agregar profesor por email
           </h2>
           <div className="flex gap-3">
@@ -269,7 +269,7 @@ export default function ProfesoresPage() {
                           {convertiendoId === u.id ? (
                             <Loader2 size={12} className="animate-spin" />
                           ) : (
-                            <UserCheck size={14} />
+                            <Check size={14} />
                           )}
                           Convertir a Profesor
                         </button>

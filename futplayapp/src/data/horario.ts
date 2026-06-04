@@ -4,6 +4,7 @@ export type Horario = {
   id: string;
   fecha_hora: string;
   clase_id: string;
+  usuario_id?: string;
 };
 
 export async function getHorariosEntre(desde: Date, hasta: Date) {
