@@ -79,7 +79,7 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
         const fecha = new Date(h.fecha_hora);
         const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
         const telefono = usuario.telefono.replace('+', '');
-        const mensaje = `Hola ${usuario.nombre}! Recuerda que mañana a las ${hora} tienes "${clase?.titulo || 'tu clase'}". Responde SI para confirmar o NO para cancelar.`;
+        const mensaje = `Hola ${usuario.nombre}! Recuerda que mañana a las ${hora} tienes "${clase?.titulo || 'tu clase'}". Responde *1* para confirmar o *2* para cancelar.`;
 
         try {
           await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
@@ -96,6 +96,10 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
     const pasados = await db.getHorariosPasados();
     for (const h of pasados) {
       await db.actualizarPorClaseYEstado(h.id, 'pendiente', 'cancelado_sin_reembolso');
+    }
+
+    const pasados1h = await db.getHorariosPasados1h();
+    for (const h of pasados1h) {
       await db.actualizarPorClaseYEstado(h.id, 'confirmado_whatsapp', 'no_asistio');
     }
   });
@@ -140,7 +144,7 @@ app.get('/test-reminder/:horarioId', async (req, res) => {
       const fecha = new Date(h.fecha_hora);
       const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
       const telefono = usuario.telefono.replace('+', '');
-      const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé SI para confirmar o NO para cancelar.`;
+      const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé *1* para confirmar o *2* para cancelar.`;
       await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
       await db.setPendiente(insc.id);
       res.send(`✅ Recordatorio enviado a ${usuario.nombre} (${telefono})`);
@@ -150,22 +154,7 @@ app.get('/test-reminder/:horarioId', async (req, res) => {
   }
 });
 
-// ─── QR Scanner ───
-app.get('/scan-qr/:horarioId', async (req, res) => {
-  try {
-    const registros = await db.getConfirmadosPorClase(req.params.horarioId);
-    if (!registros.length) return res.send('<h2>No hay alumnos con asistencia confirmada.</h2>');
-
-    for (const r of registros) await db.updateAsistencia(r.id, 'asistio');
-    res.send(`<h2>✅ Asistencia marcada para ${registros.length} alumno(s).</h2>`);
-  } catch (err) {
-    console.error('Error en /scan-qr:', err);
-    res.status(500).send('Error interno');
-  }
-});
-
 const PORT = process.env.WEBHOOK_PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Webhook Express activo en puerto ${PORT}`);
-  console.log(`QR Scanner: http://localhost:${PORT}/scan-qr/:horarioId`);
 });

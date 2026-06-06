@@ -105,11 +105,35 @@ async function getHorariosProximos() {
   return data ?? [];
 }
 
+async function getHorarios24h() {
+  const ahora = new Date();
+  const hasta = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
+
+  const { data } = await supabase
+    .from('horario')
+    .select('id, fecha_hora, clase_id')
+    .gte('fecha_hora', ahora.toISOString())
+    .lte('fecha_hora', hasta.toISOString());
+
+  return data ?? [];
+}
+
 async function getHorariosPasados() {
   const { data } = await supabase
     .from('horario')
     .select('id, clase_id')
     .lt('fecha_hora', new Date().toISOString());
+
+  return data ?? [];
+}
+
+async function getHorariosPasados1h() {
+  const haceUnaHora = new Date(Date.now() - 60 * 60 * 1000);
+
+  const { data } = await supabase
+    .from('horario')
+    .select('id, clase_id')
+    .lte('fecha_hora', haceUnaHora.toISOString());
 
   return data ?? [];
 }
@@ -172,15 +196,6 @@ async function getHorarioCompleto(horarioId) {
   return data;
 }
 
-async function getConfirmadosPorClase(horarioId) {
-  const { data } = await supabase
-    .from('clase_usuario')
-    .select('id')
-    .eq('horario_id', horarioId)
-    .eq('asistencia', 'confirmado_whatsapp');
-  return data ?? [];
-}
-
 module.exports = {
   init,
   getClient,
@@ -190,7 +205,9 @@ module.exports = {
   updateAsistencia,
   devolverToken,
   getHorariosProximos,
+  getHorarios24h,
   getHorariosPasados,
+  getHorariosPasados1h,
   getInscripcionesSinConfirmar,
   setPendiente,
   actualizarPorClaseYEstado,
@@ -198,5 +215,4 @@ module.exports = {
   getUsuario,
   getHorario,
   getHorarioCompleto,
-  getConfirmadosPorClase,
 };

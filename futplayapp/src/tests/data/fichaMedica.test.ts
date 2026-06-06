@@ -92,7 +92,7 @@ describe("userHasFichaMedica", () => {
 
 describe("createFichaMedica", () => {
     const FICHA_DATA = {
-        edad: 25,
+        fecha_nacimiento: "2000-06-06",
         peso_kg: 70,
         estatura_cm: 175,
         imc: 22.9,
