@@ -73,13 +73,39 @@ export default function ProfesorClient() {
               onSelectClase={setSelectedClaseId}
             />
 
-            {selectedClaseId && (
-              <ControlAsistencia
-                claseId={selectedClaseId}
-                isMine={clases.find((c) => c.claseId === selectedClaseId)?.isMine ?? false}
-                key={selectedClaseId}
-              />
-            )}
+            {selectedClaseId && (() => {
+              const clase = clases.find((c) => c.claseId === selectedClaseId);
+              if (!clase) return null;
+              return (
+                <div>
+                  <div className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full shrink-0 ${clase.isMine ? "bg-emerald-500" : "bg-blue-500"}`} />
+                      <div>
+                        <h3 className="text-lg font-bold text-[#00305b]">{clase.titulo}</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {new Date(clase.fecha_hora).toLocaleDateString("es-CL", {
+                            day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit",
+                          })}
+                          {clase.sede ? ` · ${clase.sede}` : ""}
+                        </p>
+                      </div>
+                      {clase.isMine && (
+                        <span className="ml-auto text-[10px] font-bold uppercase bg-emerald-500 text-white px-3 py-1 rounded-full">
+                          Mi clase
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <ControlAsistencia
+                    claseId={selectedClaseId}
+                    fecha_hora={clase.fecha_hora}
+                    isMine={clase.isMine}
+                    key={selectedClaseId}
+                  />
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
