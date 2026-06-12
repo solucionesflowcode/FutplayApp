@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
   const adminClient = getAdminClient();
 
-  const tempPassword = Math.random().toString(36).slice(-10) + "Aa1!";
+  const tempPassword = crypto.randomUUID().slice(0, 10) + "Aa1!";
 
   const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email,
@@ -157,10 +157,10 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
-    await admin.auth.admin.deleteUser(id);
+    const { error: usuarioError } = await admin.from("usuario").delete().eq("id", id);
+    if (usuarioError) return NextResponse.json({ error: usuarioError.message }, { status: 500 });
 
-    const { error } = await admin.from("usuario").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await admin.auth.admin.deleteUser(id);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

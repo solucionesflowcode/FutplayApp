@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
-import { createMockServerClient, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
+import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser } from "@/tests/mocks/supabase";
 
 // ── Env vars ────────────────────────────────────────
 
 beforeAll(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
 });
 
@@ -13,6 +14,13 @@ afterAll(() => {
 });
 
 // ── Module mocks ────────────────────────────────────
+
+vi.mock("next/headers", () => ({
+    cookies: vi.fn(() => Promise.resolve({
+        getAll: () => [],
+        set: vi.fn(),
+    })),
+}));
 
 vi.mock("@supabase/ssr", () => ({
     createServerClient: vi.fn(() => createMockServerClient()),
@@ -32,6 +40,7 @@ function makeRequest(body: object): Request {
     });
 }
 
+const USER_ID = "user-123";
 const BOLETA_ID = "boleta-123";
 
 // ── Tests ───────────────────────────────────────────
@@ -39,6 +48,7 @@ const BOLETA_ID = "boleta-123";
 describe("POST /api/flow/cancel", () => {
     beforeEach(() => {
         __resetMocks();
+        __setAuthUser({ id: USER_ID });
     });
 
     it("retorna 400 si falta boletaId", async () => {
@@ -59,8 +69,18 @@ describe("POST /api/flow/cancel", () => {
         expect(json.error).toBe("Boleta no encontrada");
     });
 
+    it("retorna 403 si la boleta no pertenece al usuario", async () => {
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", usuario_id: "other-user" });
+
+        const res = await POST(makeRequest({ boletaId: BOLETA_ID }));
+
+        expect(res.status).toBe(403);
+        const json = await res.json();
+        expect(json.error).toBe("No autorizado");
+    });
+
     it("retorna 200 con estado anulado si la boleta estaba pendiente", async () => {
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", usuario_id: USER_ID });
 
         const res = await POST(makeRequest({ boletaId: BOLETA_ID }));
 
@@ -70,7 +90,7 @@ describe("POST /api/flow/cancel", () => {
     });
 
     it("no modifica boleta ya pagada", async () => {
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado" });
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", usuario_id: USER_ID });
 
         const res = await POST(makeRequest({ boletaId: BOLETA_ID }));
 
@@ -81,7 +101,7 @@ describe("POST /api/flow/cancel", () => {
     });
 
     it("no modifica boleta ya anulada", async () => {
-        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
+        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado", usuario_id: USER_ID });
 
         const res = await POST(makeRequest({ boletaId: BOLETA_ID }));
 
