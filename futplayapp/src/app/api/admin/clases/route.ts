@@ -197,11 +197,25 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
-    await admin.from("clase_usuario").delete().eq("clase_id", id);
+    // Get all registered students to return their tokens (before CASCADE delete removes records)
+    const { data: inscripciones } = await admin
+      .from("clase_usuario")
+      .select("usuario_id")
+      .eq("clase_id", id);
+
+    // Return 1 token to each registered student via devolver_token() RPC
+    if (inscripciones && inscripciones.length > 0) {
+      const userIds = [...new Set(inscripciones.map((i) => i.usuario_id))];
+      for (const uid of userIds) {
+        await admin.rpc("devolver_token", { p_usuario_id: uid });
+      }
+    }
+
+    // CASCADE DELETE removes clase_usuario records automatically
     const { error } = await admin.from("clase").delete().eq("id", id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, tokens_devueltos: inscripciones?.length || 0 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
