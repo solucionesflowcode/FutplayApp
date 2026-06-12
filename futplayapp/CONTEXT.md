@@ -663,3 +663,180 @@ Las clases son **presenciales**. El flujo planeado es:
 9. **TopNavBar.jsx** — links del menú apuntan a `#` (placeholder)
 10. **Membresía tiene campo `estado`** (boolean según triggers) — no incluido en los tipos actuales
 11. **Trigger `handle_new_user`** — asigna `rol = 'jugador'` por defecto a nuevos registros
+---
+
+---
+
+# Plan de Debug General
+
+Generado: 2026-06-12. Basado en auditoría completa del código fuente (todos los .ts, .tsx, .js, .sql).
+
+## ⚠️ CRÍTICO (P0) — hace algo inseguro o no funciona
+
+- [ ] **0. `src/data/horario.ts` y `clase_usuario.ts` también referencian schema eliminado**
+  - `src/data/horario.ts` líneas 13, 25, 36: queries a tabla `horario` que no existe. Rompe calendario del profesor.
+  - `src/data/clase_usuario.ts:44-47`: `actualizarAsistenciaPorHorario` referencia `horario_id` que no existe en `clase_usuario` (fue reemplazado por `clase_id`).
+  - **Fix**: migrar a schema actual (fecha_hora está ahora en `clase`).
+
+- [ ] **1. Webhook roto: schema desactualizado**
+  - `webhook/data.js`: referencia `clase_usuario.horario_id` y tabla `horario` que fueron eliminados del schema (reemplazados por `clase_usuario.clase_id` con fecha_hora directa en `clase`).
+  - **Impacto**: WhatsApp bot entero no funciona — confirmar/cancelar asistencia, recordatorios, scheduler, todo falla silenciosamente.
+  - **Fix**: Reescribir webhook/data.js usando schema actual.
+
+- [ ] **2. Bunny API routes sin autenticación**
+  - `src/app/api/bunny/create/route.ts`, `upload/route.ts`, `delete/route.ts`, `get-video/route.ts`, `get-videos/route.ts`
+  - Cualquier persona (sin sesión) puede crear/subir/borrar videos de Bunny.net.
+  - **Fix**: Agregar `verifyAdmin()` o al menos verificar sesión de Supabase.
+
+- [ ] **3. Secrets de Flow hardcodeados en test-flow.mjs**
+  - `test-flow.mjs` líneas 3-4: `FLOW_API_KEY` y `FLOW_SECRET_KEY` de producción en texto plano.
+  - **Fix**: Mover a `.env.local`, leer con `process.env`, agregar archivo a `.gitignore`.
+
+- [ ] **4. Service role key expuesta como `NEXT_PUBLIC_`**
+  - `.env.local`: variable `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` contiene la service_role key y tiene prefijo `NEXT_PUBLIC_`, expuesta al browser.
+  - **Fix**: Renombrar sin `NEXT_PUBLIC_`, verificar que ningún cliente browser la use.
+
+- [ ] **5. Flow webhook: verificación de pago bypassable**
+  - `src/app/api/flow/webhook/route.ts`: si `getFlowPaymentStatus` lanza error, confía en body POST sin verificar con Flow.
+  - **Fix**: No confiar en body no verificado; siempre validar con Flow API antes de marcar como pagado.
+
+## 🔴 ALTO (P1) — bug funcional, authorization o UX blocking
+
+### Seguridad y Auth
+
+- [ ] **6. Dashboard layout sin AuthGuard**
+  - `src/app/(dashboard)/layout.tsx`: no protege rutas. Usuarios no autenticados pueden acceder a /dashboard, /planes, /pagos, /misclases, /capsules, /configuracion.
+  - **Fix**: Agregar `<AuthGuard>` en dashboard layout.
+
+- [ ] **7. students/status route usa anon key para auth check**
+  - `src/app/api/admin/students/status/route.ts`: usa anon key + query manual a usuario.rol en vez de `verifyAdmin()`.
+  - **Fix**: Usar `verifyAdmin()` como las demás admin routes.
+
+### Membresía y Tokens
+
+- [ ] **8. Race condition en inscripción a clases**
+  - `src/app/api/clases/inscribir/route.ts`: entre el check de inscripción existente y el INSERT, dos requests concurrentes pueden crear duplicados.
+  - **Fix**: Agregar unique constraint `(usuario_id, clase_id)` + `ON CONFLICT DO NOTHING`.
+
+- [ ] **9. `membresia.ts` guarda fecha completa en columna `mes`**
+  - `src/data/membresia.ts:168`: `mes = "2026-06-12"` en vez de `"2026-06"`.
+  - Queries con `gte`/`lte` por mes fallan en los bordes del mes.
+  - **Fix**: `mes = now.toISOString().slice(0, 7)`.
+
+- [ ] **10. Membresía en cápsulas no filtra por mes actual**
+  - `src/app/(dashboard)/capsules/[id]/page.tsx:28-31`: query a membresía sin filtro de mes. Cualquier membresía pasada da acceso.
+  - **Fix**: Agregar filtro por mes actual (`.gte("mes", mesStart).lte("mes", mesEnd)`).
+
+### Webhook y WhatsApp
+
+- [ ] **11. devolverToken siempre dice éxito aunque falle**
+  - `webhook/handlers.js:19-20`: ignora el booleano de `devolverToken`. Siempre responde "Te devolvimos el token".
+  - **Fix**: Validar return y mensaje condicional.
+
+### Inscripción y Asistencia
+
+- [ ] **12. Profesor/clases excluye alumnos sin confirmar**
+  - `src/data/profesor-clases.ts:118`: filtro excluye `"sin_confirmar"` y `"pendiente"`.
+  - Alumnos recién inscritos invisibles en control de asistencia del profesor.
+  - **Fix**: Incluir esos estados en el `.in()`.
+
+### Profesor/Asistencia
+
+- [ ] **12b. `fetchProfesorClaseIds` busca en tabla incorrecta**
+  - `src/data/profesor-clases.ts:70-84`: busca `clase_usuario` filtrando por `usuario_id` = profesorId. Esto encuentra clases donde el profesor está inscrito COMO ALUMNO. La tabla correcta es `clase` con filtro por `profesor_id`.
+  - **Impacto**: el profesor nunca ve "Mis clases" en el calendario (nunca se marcan como `isMine: true`).
+  - **Fix**: cambiar a `.from("clase").select("id").eq("profesor_id", profesorId)`.
+
+- [ ] **12c. `cerrarAsistencia` y `ControlAsistencia` usan "no asistio" con espacio**
+  - `src/data/profesor-clases.ts:169` y `src/components/profesor/ControlAsistencia.tsx:96`: guardan `"no asistio"` (con espacio) en la BD, pero el valor correcto es `"no_asistio"` (con underscore) como se usa en el resto del sistema.
+  - **Impacto**: valor inconsistente en la BD, puede no ser reconocido por otras queries o validaciones.
+  - **Fix**: cambiar a `"no_asistio"`.
+
+### Flow/Pagos
+
+- [ ] **13b. create-order route hardcodea `localhost:3000` en urlReturn**
+  - `src/app/api/flow/create-order/route.ts:158`: `urlReturn: "http://localhost:3000/pagos?token={token}&boletaId=${boleta.id}"` — ignora la variable `publicUrl` definida en línea 149.
+  - **Impacto**: en producción, Flow redirige a localhost:3000 en vez del dominio real.
+  - **Fix**: `urlReturn: \`${publicUrl}/pagos?boletaId=${boleta.id}&flowReturn=1\``
+
+- [ ] **13. Type coercion bug en flow/confirm**
+  - `src/app/api/flow/confirm/route.ts:44`: `commerceOrder !== boletaId` — Flow puede devolver `commerceOrder` como número.
+  - **Fix**: `String(commerceOrder) !== boletaId`.
+
+- [ ] **14. Flow webhook: sandbox fallback traga errores de prod**
+  - `src/app/api/flow/webhook/route.ts:48-58`: si `getFlowPaymentStatus` falla en prod, retorna 200 OK y descarta la notificación.
+  - **Fix**: Log de error + al menos no hacer silent OK.
+
+### UI/UX
+
+- [ ] **15. FichaMedicaModal: campos médicos todos requeridos**
+  - `src/components/checkout/FichaMedicaModal.tsx:122-124`: `validateStep2` exige enfermedades, alergias, medicamentos, observaciones no vacíos. Usuarios sin condiciones deben escribir "Ninguna".
+  - **Fix**: Validar solo si hay contenido (strings vacías OK).
+
+- [ ] **16. Login: dos botones de Google idénticos**
+  - `src/components/Login/login.tsx:54-117`: "Iniciar Sesion" y "Registrarse" llaman exactamente la misma función `handleGoogleLogin`.
+  - **Fix**: Unificar en un botón o separar flujos reales.
+
+## 🟡 MEDIO (P2) — calidad, UX, errores visibles
+
+- [ ] **17. SidebarUsuarioNuevo muestra "Admin Panel" como subtítulo**
+  - `src/components/navbars/SidebarUsuarioNuevo.tsx:66`: estudiantes ven "Admin Panel". Debe mostrar algo como "Panel de Usuario".
+
+- [ ] **18. AdminHeader hardcodea "Pablo Escobar"**
+  - `src/components/admin/AdminHeader.tsx:150`: nombre hardcodeado. Usar `useAuthUser()`.
+
+- [ ] **19. SideBarUsuario.tsx (legacy): "Kinetic" + rutas rotas**
+  - `src/components/navbars/SideBarUsuario.tsx`: marca "Kinetic", rutas `/calendar`, `/payments`, `/classes` que no existen. Template de otro proyecto.
+  - **Fix**: Eliminar el archivo si no se usa.
+
+- [ ] **20. PróximoEntrenamiento: countdown estático (nunca hace tick)**
+  - `src/components/userDashboard/ProximoEntrenamiento.tsx:117-119`: diff calculado una vez al render. No hay setInterval.
+  - **Fix**: `useEffect` + `setInterval` cada 60s.
+
+- [ ] **21. VideoPlayerView: clases Tailwind dinámicas no se generan**
+  - `src/components/videoPlayer/VideoPlayerView.tsx:290-291`: `bg-${color}-500/10` etc. Tailwind JIT no genera clases por interpolación de strings.
+  - Badges de documentos sin color de fondo/texto.
+  - **Fix**: Mapeo de objeto con clases literales.
+
+- [ ] **22. FichaMedicaModal: parseInt trunca decimales de estatura**
+  - `src/components/checkout/FichaMedicaModal.tsx:143`: `parseInt(estatura)` → `175.5` se trunca a `175`.
+  - **Fix**: `parseFloat(estatura)`.
+
+- [ ] **23. clases.ts: acceso frágil a nested array de Supabase**
+  - `src/data/clases.ts:52-53`: `c?.[0]` asume respuesta array. Si Supabase devuelve objeto single, es `undefined`.
+  - **Fix**: `Array.isArray(c) ? c[0] : c`.
+
+- [ ] **24. MetricasCorporales: no-op .replace()**
+  - `src/components/userDashboard/MetricasCorporales.tsx:149`: `.replace("text-", "text-")` — se reemplaza a sí mismo.
+  - **Fix**: Usar `imcStatus.color` directamente.
+
+## 🟢 BAJO (P3) — deuda técnica, refactor, configuración
+
+- [ ] **25. test-flow.mjs usa URL tunnel hardcodeada**
+  - `BASE_URL = "https://113dd18786e138.lhr.life"`. Hacer configurable vía env var.
+
+- [ ] **26. Test setup silencia todo console output**
+  - `src/tests/setup.ts:5-9`: mockea `console.log/warn/error`. Dificulta debuggear tests fallidos.
+
+- [ ] **27. misclases-client.tsx usa localStorage directo sin try/catch**
+  - `loadCache`/`saveCache`: puede explotar si localStorage no disponible. Agregar try/catch.
+
+- [ ] **28. capsules-admin.ts: fallback silencioso enmascara errores de schema**
+  - Líneas 37-48: si query con `profesor_id` falla, reintenta sin él. Oculta errores de esquema.
+
+- [ ] **29. misclases-calendario.ts usa `any`**
+  - `src/data/misclases-calendario.ts:38`: `(clases ?? []).map((clase: any)`. Definir interfaz.
+
+- [ ] **30. Archivos muy grandes — refactorizar**
+  - `pagos-client.tsx` (~1400 líneas), `misclases-client.tsx` (~747 líneas). Separar en componentes.
+
+## ✅ REALIZADOS
+
+- [x] Flow: `{token}` en `urlReturn` eliminado, reemplazado por `flowReturn=1`
+- [x] Flow confirm: token opcional, fallback a estado Supabase
+- [x] Frontend pagos: detecta `flowReturn`, polling 15 intentos, cleanup orphaned
+- [x] Token consumption en inscripción a clases (antes del INSERT, rollback en fallo)
+- [x] Admin DELETE clase: devuelve tokens vía `devolver_token()` RPC
+- [x] CASCADE DELETE en `clase_usuario.clase_id` → `clase.id`
+- [x] Trigger `manejar_inscripcion_clase()` modificado: solo valida, no descuenta
+- [x] Función `devolver_token()` RPC desplegada en Supabase
