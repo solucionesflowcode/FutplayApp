@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -6,6 +7,24 @@ export async function POST(request: Request) {
 
     if (!boletaId) {
         return NextResponse.json({ error: "boletaId requerido" }, { status: 400 });
+    }
+
+    const cookieStore = await cookies();
+
+    const userClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() { return cookieStore.getAll(); },
+                setAll() {},
+            },
+        }
+    );
+
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+        return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,12 +40,16 @@ export async function POST(request: Request) {
 
     const { data: boleta } = await adminClient
         .from("boleta")
-        .select("id, estado")
+        .select("id, estado, usuario_id")
         .eq("id", boletaId)
         .single();
 
     if (!boleta) {
         return NextResponse.json({ error: "Boleta no encontrada" }, { status: 404 });
+    }
+
+    if (boleta.usuario_id !== user.id) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     if (boleta.estado !== "pendiente") {

@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
  * 1. Google redirige aquí con ?code=...
  * 2. Se intercambia el código por una sesión de Supabase
  * 3. Se guardan las cookies de sesión
- * 4. Se redirige a /perfil
+ * 4. Se redirige a / (raíz), que redirige según el rol
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);

@@ -8,13 +8,14 @@ export type Capsula = {
     coach: string;
     categoria: string;
     duracion: string;
+    descripcion: string | null;
     bunny_video_id: string | null;
 };
 
 async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
     const { data: capsulas, error: capsulasError } = await supabase
         .from("capsula")
-        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id")
+        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, descripcion")
         .order("order_index");
 
     if (capsulasError) {
@@ -65,6 +66,7 @@ async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
         coach: item.creado || "",
         categoria: item.modulo_id ? moduloMap.get(item.modulo_id) ?? "" : "",
         duracion: formatDuration(item.duracion),
+        descripcion: item.descripcion || null,
         bunny_video_id: item.bunny_video_id || null,
     }));
 }
@@ -81,7 +83,7 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
     
     const { data: item, error: capsulaError } = await supabase
         .from("capsula")
-        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id")
+        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, descripcion")
         .eq("id", id)
         .single();
 
@@ -113,6 +115,7 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
         coach: item.creado || "",
         categoria: categoria?.nombre ?? "",
         duracion: formatDuration(item.duracion),
+        descripcion: item.descripcion || null,
         bunny_video_id: item.bunny_video_id || null,
     };
 }

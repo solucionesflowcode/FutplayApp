@@ -85,6 +85,7 @@ declare module "lucide-react" {
   export const PersonStanding: Icon;
   export const Plus: Icon;
   export const Send: Icon;
+  export const Ticket: Icon;
   export const TrendingDown: Icon;
   export const Upload: Icon;
   export const Users: Icon;

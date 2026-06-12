@@ -8,9 +8,18 @@ import StatCard from "@/components/admin/StatCard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import EditStudentModal from "@/components/admin/EditStudentModal";
 import ViewStudentModal from "@/components/admin/ViewStudentModal";
+import { AuthGuard } from "@/context";
 import { getUsers } from "@/data/plans";
 
 export default function AdminPage() {
+  return (
+    <AuthGuard allowedRoles={["administrador"]}>
+      <AdminContent />
+    </AuthGuard>
+  );
+}
+
+function AdminContent() {
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);

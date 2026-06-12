@@ -1,4 +1,5 @@
 import { getCapsulaById } from "@/data/capsules";
+import { getDocumentosByCapsulaId } from "@/data/documentos";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import VideoPlayerView from "@/components/videoPlayer/VideoPlayerView";
@@ -31,10 +32,13 @@ export default async function Page({ params }: PageProps) {
 
     const hasMembresia = (membresiaData?.length ?? 0) > 0;
 
+    const documentos = await getDocumentosByCapsulaId(id);
+
     return (
         <VideoPlayerView 
             capsula={capsula} 
             hasMembership={hasMembresia} 
+            documentos={documentos}
         />
     );
 }
