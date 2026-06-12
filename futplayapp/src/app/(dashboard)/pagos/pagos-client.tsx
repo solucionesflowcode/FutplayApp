@@ -1035,6 +1035,7 @@ export default function PagosClient() {
     const planId = searchParams.get("id");
     const flowToken = searchParams.get("token");
     const flowPayment = searchParams.get("flowPayment");
+    const flowReturn = searchParams.get("flowReturn");
 
     // ── All hooks FIRST (before any early return) ──
     const [planes, setPlanes] = useState<Plan[]>([]);
@@ -1086,7 +1087,8 @@ export default function PagosClient() {
     }, [planId, usuario]);
 
     useEffect(() => {
-        if (!flowToken) {
+        const shouldConfirm = flowToken || flowReturn;
+        if (!shouldConfirm) {
             setConfirmingPayment(false);
             return;
         }
@@ -1097,17 +1099,39 @@ export default function PagosClient() {
         }
         const confirm = async () => {
             try {
-                const res = await fetch(
-                    `/api/flow/confirm?token=${encodeURIComponent(flowToken)}&boletaId=${encodeURIComponent(flowBoletaId)}`
-                );
-                const data = await res.json();
-                if (!res.ok || data.error) {
-                    setConfirmError(data.error || "Error al confirmar pago");
-                } else if (data.estado === "pendiente") {
-                    setConfirmPending(true);
-                } else if (data.estado !== "pagado") {
-                    setConfirmError(`Estado inesperado: ${data.estado}`);
+                const url = new URL("/api/flow/confirm", window.location.origin);
+                url.searchParams.set("boletaId", flowBoletaId);
+                if (flowToken && flowToken !== "{token}") {
+                    url.searchParams.set("token", flowToken);
                 }
+
+                let attempts = 0;
+                const maxAttempts = 15;
+
+                const poll = async (): Promise<void> => {
+                    const res = await fetch(url.toString());
+                    const data = await res.json();
+
+                    if (!res.ok || data.error) {
+                        setConfirmError(data.error || "Error al confirmar pago");
+                        return;
+                    }
+                    if (data.estado === "pagado") {
+                        return;
+                    }
+                    if (data.estado !== "pendiente") {
+                        setConfirmError(`Estado inesperado: ${data.estado}`);
+                        return;
+                    }
+                    if (attempts < maxAttempts) {
+                        attempts++;
+                        await new Promise((r) => setTimeout(r, 3000));
+                        return poll();
+                    }
+                    setConfirmPending(true);
+                };
+
+                await poll();
             } catch {
                 setConfirmError("Error de conexión al confirmar pago");
             } finally {
@@ -1115,14 +1139,16 @@ export default function PagosClient() {
             }
         };
         confirm();
-    }, [flowToken, flowBoletaId]);
+    }, [flowToken, flowBoletaId, flowReturn]);
 
     // On mount (and BFCache restore via pageshow):
     // if user returned from Flow without paying (flowBoletaId in sessionStorage, no token in URL),
     // cancel the boleta (best-effort, async) and redirect to /planes immediately.
     useEffect(() => {
         const redirectIfOrphaned = () => {
-            if (flowToken || flowPayment) return;
+            if (flowToken || flowPayment || flowReturn) return;
+            const boletaIdInUrl = searchParams.get("boletaId");
+            if (boletaIdInUrl) return;
             const boletaId = sessionStorage.getItem("flowBoletaId");
             if (!boletaId) return;
             sessionStorage.removeItem("flowBoletaId");
@@ -1166,8 +1192,8 @@ export default function PagosClient() {
         window.history.pushState({}, "", newUrl);
     }, []);
 
-    // ── Retorno desde Flow (token en URL) ──
-    if (flowToken || flowPayment) {
+    // ── Retorno desde Flow (token o flowReturn en URL) ──
+    if (flowToken || flowPayment || flowReturn) {
         return (
             <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
                 <TopNavBarUser />

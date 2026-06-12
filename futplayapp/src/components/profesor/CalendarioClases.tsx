@@ -227,8 +227,9 @@ export default function CalendarioClases({
               type="button"
               onClick={() => {
                 if (dayClases.length === 0) return;
-                const firstClaseId = dayClases[0].claseId;
-                onSelectClase(isSelectedDay ? null : firstClaseId);
+                const miClase = dayClases.find((c) => c.isMine);
+                const targetId = miClase?.claseId ?? dayClases[0].claseId;
+                onSelectClase(isSelectedDay ? null : targetId);
               }}
               disabled={dayClases.length === 0}
               className={`${cellClass} ${dayClases.length > 0 ? "cursor-pointer hover:scale-[1.02]" : "cursor-default"}`}
