@@ -23,7 +23,7 @@ interface AuthGuardProps {
  * Comportamiento:
  * - Muestra un loader mientras carga la sesión
  * - Redirige a /login si el usuario no está autenticado
- * - Redirige a /perfil si el usuario no tiene el rol requerido
+ * - Redirige a /login si el usuario no tiene el rol requerido
  * - Muestra el fallback personalizado si está definido
  * 
  * @param {AuthGuardProps} props
@@ -69,7 +69,7 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
 
   if (allowedRoles && (!usuario || !allowedRoles.includes(usuario.rol))) {
     if (fallback) return fallback;
-    router.push("/perfil");
+    router.push("/login");
     return null;
   }
 

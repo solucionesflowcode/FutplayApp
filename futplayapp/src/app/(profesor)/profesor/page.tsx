@@ -1,5 +1,10 @@
 import ProfesorClient from "./profesor-client";
+import { AuthGuard } from "@/context";
 
 export default function ProfesorPage() {
-  return <ProfesorClient />;
+  return (
+    <AuthGuard allowedRoles={["profesor", "administrador"]}>
+      <ProfesorClient />
+    </AuthGuard>
+  );
 }
