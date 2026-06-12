@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
  * - Sin usuario → /home
  * - administrador → /admin
  * - profesor → /dashboard
- * - jugador → /perfil
+ * - jugador → /dashboard
  */
 export default function Home() {
   const router = useRouter();

@@ -7,13 +7,14 @@ export type Capsula = {
     coach: string;
     categoria: string;
     duracion: string;
+    descripcion: string | null;
     bunny_video_id: string | null;
 };
 
 async function fetchCapsulaData(supabase: ReturnType<typeof createClient>): Promise<Capsula[]> {
     const { data: capsulas, error: capsulasError } = await supabase
         .from("capsula")
-        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id")
+        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, descripcion")
         .order("order_index");
 
     if (capsulasError) {
@@ -64,6 +65,7 @@ async function fetchCapsulaData(supabase: ReturnType<typeof createClient>): Prom
         coach: item.creado || "",
         categoria: item.modulo_id ? moduloMap.get(item.modulo_id) ?? "" : "",
         duracion: formatDuration(item.duracion),
+        descripcion: item.descripcion || null,
         bunny_video_id: item.bunny_video_id || null,
     }));
 }

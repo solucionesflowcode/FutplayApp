@@ -1,5 +1,10 @@
 import DashboardClient from "./dashboard-client";
+import { AuthGuard } from "@/context";
 
 export default function Page() {
-    return <DashboardClient />;
+    return (
+        <AuthGuard allowedRoles={["jugador", "profesor"]}>
+            <DashboardClient />
+        </AuthGuard>
+    );
 }

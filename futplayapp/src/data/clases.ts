@@ -48,17 +48,14 @@ export async function getProximaClase(userId: string): Promise<Array<{
 
   if (error || !data?.length) return [];
 
-  const c = data[0].clase as unknown as {
-    titulo: string;
-    descripcion: string;
-    fecha_hora: string;
-    sede: { nombre: string };
-  };
+  const c = data[0].clase;
+  const row = c?.[0];
+  if (!row) return [];
   return [{
-    titulo: c.titulo,
-    descripcion: c.descripcion,
-    fecha_hora: c.fecha_hora,
-    sede: c.sede.nombre,
+    titulo: row.titulo,
+    descripcion: row.descripcion,
+    fecha_hora: row.fecha_hora,
+    sede: (row.sede as { nombre: string }[])?.[0]?.nombre ?? "",
   }];
 }
 
