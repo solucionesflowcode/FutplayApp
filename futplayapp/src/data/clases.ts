@@ -143,7 +143,6 @@ export async function getAsistenciaGeneral(): Promise<any[]> {
 
 export async function getAsistenciaPorClase(claseId: string): Promise<{
   clase: any;
-  horarios: any[];
   inscripciones: any[];
 } | null> {
   const res = await fetch(`/api/admin/clases?tipo=asistencia&clase_id=${claseId}`);
