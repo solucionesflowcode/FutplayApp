@@ -24,22 +24,14 @@ export async function POST(request: Request) {
 
   const contentType = request.headers.get("content-type") || "";
   let token = "";
-  let commerceOrder = "";
-  let flowStatus = 0;
 
   if (contentType.includes("application/x-www-form-urlencoded")) {
     const text = await request.text();
-    console.log(`[Flow Webhook] Raw body: ${text}`);
     const params = new URLSearchParams(text);
     token = params.get("token") || "";
-    commerceOrder = params.get("commerceOrder") || "";
-    flowStatus = parseInt(params.get("status") || "0", 10);
   } else if (contentType.includes("application/json")) {
     const body = await request.json();
-    console.log(`[Flow Webhook] JSON body: ${JSON.stringify(body)}`);
     token = body.token || "";
-    commerceOrder = body.commerceOrder || "";
-    flowStatus = parseInt(body.status || "0", 10);
   } else {
     return NextResponse.json({ error: "Unsupported content-type" }, { status: 400 });
   }
@@ -53,24 +45,20 @@ export async function POST(request: Request) {
     try {
       statusData = await getFlowPaymentStatus(token);
     } catch {
-      if (flowStatus && commerceOrder) {
-        statusData = { status: flowStatus, commerceOrder };
-      } else if (boletaId) {
-        const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX !== "false";
-        console.log(`[Flow Webhook] getStatus falló — usando boletaId de URL (sandbox=${isSandbox})`);
-        if (isSandbox) {
-          statusData = { status: 2, commerceOrder: boletaId };
-        } else {
-          console.error(`[Flow Webhook] getStatus falló en producción para boleta ${boletaId}`);
-          return NextResponse.json({ message: "OK" });
-        }
-      } else {
-        console.error(`[Flow Webhook] getStatus falló y no hay datos en POST`);
+      const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX !== "false";
+      if (!isSandbox) {
+        console.error(`[Flow Webhook] getStatus falló en producción — ignorando`);
         return NextResponse.json({ message: "OK" });
       }
+      if (!boletaId) {
+        console.error(`[Flow Webhook] getStatus falló en sandbox y no hay boletaId en URL`);
+        return NextResponse.json({ message: "OK" });
+      }
+      console.log(`[Flow Webhook] Sandbox: getStatus falló, usando boletaId=${boletaId} de URL (generada por servidor)`);
+      statusData = { status: 2, commerceOrder: boletaId };
     }
 
-    const orderId = statusData.commerceOrder || commerceOrder;
+    const orderId = statusData.commerceOrder;
 
     if (statusData.status === 2) {
       const { data: boleta, error: findError } = await adminClient

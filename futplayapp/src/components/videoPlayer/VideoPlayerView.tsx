@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   Play,
   Lock,
-  CheckCircle2,
   Clock,
   Download,
   Send,
@@ -14,45 +13,68 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Capsula } from "@/data/capsules";
+import type { Documento } from "@/data/documentos";
+import type { Comentario } from "@/data/comentarios";
+import { getComentariosByCapsulaId, createComentario } from "@/data/comentarios";
+import { useAuthUser } from "@/context";
 
 interface VideoPlayerViewProps {
   capsula: Capsula;
   hasMembership: boolean;
+  documentos: Documento[];
   onUnlock?: () => void;
 }
 
-export default function VideoPlayerView({ capsula, hasMembership, onUnlock }: VideoPlayerViewProps) {
+const AVATAR_COLORS = [
+  "bg-blue-500", "bg-emerald-500", "bg-purple-500", "bg-rose-500",
+  "bg-amber-500", "bg-cyan-500", "bg-pink-500", "bg-indigo-500",
+];
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getInitials(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "ahora";
+  if (mins < 60) return `hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `hace ${days} días`;
+  return new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+}
+
+export default function VideoPlayerView({ capsula, hasMembership, documentos, onUnlock }: VideoPlayerViewProps) {
+  const { usuario } = useAuthUser();
   const [comment, setComment] = useState("");
-  const [completed, setCompleted] = useState(false);
+  const [comentarios, setComentarios] = useState<Comentario[]>([]);
+  const [sendingComment, setSendingComment] = useState(false);
 
-  // data mockeada simulando el contenido que trae el video por conceptos
-  const guideMoments = [
-    { time: "00:00", title: "Introducción y objetivos del módulo" },
-    { time: "02:15", title: "Fundamentos de la técnica avanzada" },
-    { time: "05:40", title: "Demostración en tiempo real" },
-    { time: "12:20", title: "Errores comunes y cómo evitarlos" },
-    { time: "18:45", title: "Resumen y ejercicios recomendados" },
-  ];
+  useEffect(() => {
+    getComentariosByCapsulaId(capsula.id).then(setComentarios);
+  }, [capsula.id]);
 
-  // Mock comentarios hardcodeados
-  const comments = [
-    {
-      id: 1,
-      user: "Alex Rodríguez",
-      avatar: "AR",
-      time: "hace 2 días",
-      text: "Excelente explicación sobre el posicionamiento del cuerpo. ¡Muy útil!",
-      color: "bg-blue-500",
-    },
-    {
-      id: 2,
-      user: "María G.",
-      avatar: "MG",
-      time: "hace 5 horas",
-      text: "La calidad del video es increíble. ¿Habrá una segunda parte?",
-      color: "bg-emerald-500",
-    },
-  ];
+  const handleSendComment = useCallback(async () => {
+    const text = comment.trim();
+    if (!text || !usuario) return;
+    setSendingComment(true);
+    const nuevo = await createComentario(capsula.id, usuario.id, text);
+    if (nuevo) {
+      setComentarios((prev) => [nuevo, ...prev]);
+      setComment("");
+    }
+    setSendingComment(false);
+  }, [comment, usuario, capsula.id]);
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 font-sans selection:bg-blue-500/30">
@@ -145,15 +167,11 @@ export default function VideoPlayerView({ capsula, hasMembership, onUnlock }: Vi
                 </span>
               </div>
               <div className="prose prose-invert max-w-none text-gray-400 leading-relaxed">
-                <p>
-                  En esta sesión intensiva, profundizaremos en las mecánicas clave que definen el éxito en el campo.
-                  Exploraremos técnicas de visión periférica, control de balón bajo presión y toma de decisiones
-                  en microsegundos.
-                </p>
-                <p className="mt-4">
-                  Diseñado para atletas que buscan dar el siguiente paso en su carrera profesional, combinando
-                  análisis táctico con práctica repetitiva de alto impacto.
-                </p>
+                {capsula.descripcion ? (
+                  <p>{capsula.descripcion}</p>
+                ) : (
+                  <p className="text-gray-500 italic">Sin descripción disponible.</p>
+                )}
               </div>
               <div className="flex items-center gap-6 mt-8 pt-8 border-t border-gray-800">
                 <div className="flex items-center gap-3">
@@ -181,52 +199,64 @@ export default function VideoPlayerView({ capsula, hasMembership, onUnlock }: Vi
             <section>
               <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
                 Comunidad
-                <span className="text-sm font-normal text-gray-500">(24)</span>
+                <span className="text-sm font-normal text-gray-500">({comentarios.length})</span>
               </h3>
 
               <div className="space-y-6">
                 {/* Input Comentario */}
-                <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 flex-shrink-0 flex items-center justify-center font-bold text-sm">
-                    TÚ
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <textarea
-                      placeholder="Comparte tu opinión o haz una pregunta..."
-                      className="w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-sm focus:outline-none focus:border-blue-500 transition-colors min-h-[100px] resize-none"
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                    />
-                    <div className="flex justify-end">
-                      <button className="flex items-center gap-2 px-6 py-2 bg-white text-gray-950 font-bold rounded-lg text-sm hover:bg-gray-200 transition-colors">
-                        <Send size={14} />
-                        Enviar
-                      </button>
+                {usuario && (
+                  <div className="flex gap-4">
+                    <div className={`w-10 h-10 rounded-full ${getAvatarColor(usuario.nombre || usuario.email || "U")} flex-shrink-0 flex items-center justify-center font-bold text-sm`}>
+                      {getInitials(usuario.nombre || usuario.email || "TÚ")}
                     </div>
-                  </div>
-                </div>
-
-                {/* Lista Comentarios */}
-                <div className="space-y-8 pt-4">
-                  {comments.map((c) => (
-                    <div key={c.id} className="flex gap-4">
-                      <div className={`w-10 h-10 rounded-full ${c.color} flex-shrink-0 flex items-center justify-center font-bold text-sm border-2 border-gray-950 shadow-lg`}>
-                        {c.avatar}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline gap-3 mb-1">
-                          <span className="font-bold text-sm">{c.user}</span>
-                          <span className="text-xs text-gray-500">{c.time}</span>
-                        </div>
-                        <p className="text-sm text-gray-400 leading-relaxed">
-                          {c.text}
-                        </p>
-                        <button className="mt-2 text-xs font-bold text-gray-500 hover:text-blue-400 transition-colors uppercase tracking-widest">
-                          Responder
+                    <div className="flex-1 space-y-3">
+                      <textarea
+                        placeholder="Comparte tu opinión o haz una pregunta..."
+                        className="w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-sm focus:outline-none focus:border-blue-500 transition-colors min-h-[100px] resize-none"
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          onClick={handleSendComment}
+                          disabled={!comment.trim() || sendingComment}
+                          className="flex items-center gap-2 px-6 py-2 bg-white text-gray-950 font-bold rounded-lg text-sm hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Send size={14} />
+                          {sendingComment ? "Enviando..." : "Enviar"}
                         </button>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                {/* Lista Comentarios */}
+                <div className="space-y-8 pt-4">
+                  {comentarios.length === 0 ? (
+                    <p className="text-center text-gray-500 text-sm py-8">
+                      No hay comentarios aún. ¡Sé el primero en comentar!
+                    </p>
+                  ) : (
+                    comentarios.map((c) => (
+                      <div key={c.id} className="flex gap-4">
+                        <div className={`w-10 h-10 rounded-full ${getAvatarColor(c.usuario?.nombre || "U")} flex-shrink-0 flex items-center justify-center font-bold text-sm border-2 border-gray-950 shadow-lg`}>
+                          {getInitials(c.usuario?.nombre || "?")}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-baseline gap-3 mb-1">
+                            <span className="font-bold text-sm">{c.usuario?.nombre || "Usuario"}</span>
+                            <span className="text-xs text-gray-500">{timeAgo(c.created_at)}</span>
+                          </div>
+                          <p className="text-sm text-gray-400 leading-relaxed">
+                            {c.contenido}
+                          </p>
+                          <button className="mt-2 text-xs font-bold text-gray-500 hover:text-blue-400 transition-colors uppercase tracking-widest">
+                            Responder
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </section>
@@ -236,80 +266,38 @@ export default function VideoPlayerView({ capsula, hasMembership, onUnlock }: Vi
           {/* Barra Lateral (1 Columna) */}
           <aside className="space-y-8">
 
-            {/* Widget de Progreso */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <CheckCircle2 size={60} className="text-emerald-500" />
-              </div>
-              <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4">Progreso</h4>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-3xl font-black">{completed ? "100%" : "0%"}</span>
-                <span className="text-xs text-gray-500 mb-1">Cápsula {completed ? "Completada" : "En curso"}</span>
-              </div>
-              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mb-6">
-                <div
-                  className={`h-full bg-emerald-500 transition-all duration-1000 ease-out ${completed ? "w-full" : "w-0"}`}
-                />
-              </div>
-              <button
-                onClick={() => setCompleted(!completed)}
-                className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${completed
-                  ? "bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-600/20"
-                  : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
-                  }`}
-              >
-                {completed ? <CheckCircle2 size={16} /> : null}
-                {completed ? "Completado" : "Marcar como completado"}
-              </button>
-            </div>
-
-            {/* Guía Minuto a Minuto */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
-              <div className="p-5 border-b border-gray-800 bg-gray-900/50">
-                <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500">Índice del video</h4>
-              </div>
-              <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
-                {guideMoments.map((moment, idx) => (
-                  <button
-                    key={idx}
-                    className="w-full text-left p-4 hover:bg-gray-800/50 transition-all border-b border-gray-800/50 last:border-0 group"
-                  >
-                    <div className="flex gap-4">
-                      <span className="font-mono text-blue-500 text-sm font-bold group-hover:text-blue-400 transition-colors">
-                        {moment.time}
-                      </span>
-                      <span className="text-xs text-gray-400 group-hover:text-gray-200 transition-colors leading-snug">
-                        {moment.title}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+  
 
             {/* Recursos Descargables */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
               <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4">Material de apoyo</h4>
-              <div className="space-y-3">
-                <button className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition-all group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                      <span className="text-[10px] font-black text-red-500">PDF</span>
-                    </div>
-                    <span className="text-xs font-semibold text-gray-300">Guía de Ejercicios.pdf</span>
-                  </div>
-                  <Download size={14} className="text-gray-500 group-hover:text-white transition-colors" />
-                </button>
-                <button className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition-all group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <span className="text-[10px] font-black text-blue-500">ZIP</span>
-                    </div>
-                    <span className="text-xs font-semibold text-gray-300">Material_Extra.zip</span>
-                  </div>
-                  <Download size={14} className="text-gray-500 group-hover:text-white transition-colors" />
-                </button>
-              </div>
+              {documentos.length === 0 ? (
+                <p className="text-xs text-gray-500 italic">Sin documentos disponibles.</p>
+              ) : (
+                <div className="space-y-3">
+                  {documentos.map((doc) => {
+                    const ext = doc.nombre.split(".").pop()?.toUpperCase() || "FILE";
+                    const color = ext === "PDF" ? "red" : ext === "ZIP" ? "blue" : "gray";
+                    return (
+                      <a
+                        key={doc.id}
+                        href={doc.url_archivo}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg bg-${color}-500/10 flex items-center justify-center`}>
+                            <span className={`text-[10px] font-black text-${color}-500`}>{ext}</span>
+                          </div>
+                          <span className="text-xs font-semibold text-gray-300">{doc.nombre}</span>
+                        </div>
+                        <Download size={14} className="text-gray-500 group-hover:text-white transition-colors" />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
           </aside>

@@ -41,6 +41,7 @@ export default function ElearningPage() {
           coach: item.creado || "",
           categoria: "",
           duracion: formatDuration(item.duracion),
+          descripcion: "",
           bunny_video_id: null,
         })),
       );

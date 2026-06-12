@@ -98,6 +98,25 @@ describe("createMembresia", () => {
 
         expect(result).toBe(false);
     });
+
+    it.each([
+        { plan: "Plan Amateur", tokens: 4 },
+        { plan: "Plan Pro", tokens: 6 },
+        { plan: "Plan Selección", tokens: 12 },
+    ])("asigna $tokens tokens totales al crear membresía de $plan", async ({ tokens }) => {
+        __setTableData("membresia", { id: "m-new" });
+
+        const result = await createMembresia(USER_ID, "p1", tokens);
+
+        expect(result).toBe(true);
+        const fromSpy = createClient().from as ReturnType<typeof vi.fn>;
+        const chain = fromSpy.mock.results[0]?.value;
+        const insertedData = chain.insert.mock.calls[0]?.[0];
+        expect(insertedData?.tokens_totales).toBe(tokens);
+        expect(insertedData?.tokens_usados).toBe(0);
+        expect(insertedData?.plan_id).toBe("p1");
+        expect(insertedData?.usuario_id).toBe(USER_ID);
+    });
 });
 
 describe("devolverToken", () => {

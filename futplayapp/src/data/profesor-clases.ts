@@ -70,17 +70,26 @@ async function fetchAllClases(): Promise<ClaseEvent[]> {
 async function fetchProfesorClaseIds(profesorId: string): Promise<Set<string>> {
   const supabase = createClient();
 
-  const { data, error } = await supabase
-    .from("clase_usuario")
-    .select("clase_id")
-    .eq("usuario_id", profesorId);
+  const [cuRes, claseRes] = await Promise.all([
+    supabase.from("clase_usuario").select("clase_id").eq("usuario_id", profesorId),
+    supabase.from("clase").select("id").eq("profesor_id", profesorId),
+  ]);
 
-  if (error) {
-    console.error("Error fetching profesor clase ids:", error.message);
-    return new Set();
+  const ids = new Set<string>();
+
+  if (!cuRes.error) {
+    for (const r of (cuRes.data ?? [])) ids.add(r.clase_id);
+  } else {
+    console.error("Error fetching profesor clase ids:", cuRes.error.message);
   }
 
-  return new Set(data?.map((r: { clase_id: string }) => r.clase_id) ?? []);
+  if (!claseRes.error) {
+    for (const r of (claseRes.data ?? [])) ids.add(r.id);
+  } else {
+    console.error("Error fetching profesor clase ids from clase:", claseRes.error.message);
+  }
+
+  return ids;
 }
 
 export async function getTodasLasClases(profesorId: string): Promise<ClaseEvent[]> {
@@ -156,6 +165,22 @@ export async function updateAsistencia(
   return true;
 }
 
+export async function autoCerrarConfirmados(claseId: string): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("clase_usuario")
+    .update({ asistencia: "no_asistio" })
+    .eq("clase_id", claseId)
+    .eq("asistencia", "confirmado_whatsapp");
+
+  if (error) {
+    console.error("Error auto-cerrando asistencia:", error.message);
+    return false;
+  }
+  return true;
+}
+
 export async function cerrarAsistencia(
   claseId: string,
   alumnosNoMarcados: string[],
@@ -166,7 +191,7 @@ export async function cerrarAsistencia(
 
   const { error } = await supabase
     .from("clase_usuario")
-    .update({ asistencia: "no asistio" })
+    .update({ asistencia: "no_asistio" })
     .in("id", alumnosNoMarcados);
 
   if (error) {
