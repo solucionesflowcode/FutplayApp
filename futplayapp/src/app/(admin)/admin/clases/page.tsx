@@ -181,20 +181,20 @@ export default function ClasesPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-6 w-full" style={{ maxWidth: "1216px" }}>
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
 
         {/* ─── HEADER ─── */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900">Gestión de Clases</h1>
             <p className="text-gray-500 text-sm mt-1">Administra clases, sedes y cupos</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {view !== "list" && (
               <button
                 onClick={() => { setView("list"); setDetalleClase(null); }}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 flex-1 sm:flex-initial"
               >
                 <ChevronLeft size={16} />
                 Volver
@@ -204,14 +204,14 @@ export default function ClasesPage() {
               <>
                 <button
                   onClick={handleVerAsistencia}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                  className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 flex-1 sm:flex-initial"
                 >
                   <CalendarCheck size={16} />
                   Ver Asistencia
                 </button>
                 <button
                   onClick={openCreate}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex-1 sm:flex-initial"
                 >
                   <Plus size={16} />
                   Nueva Clase
@@ -224,8 +224,8 @@ export default function ClasesPage() {
         {/* ─── VIEW: LIST ─── */}
         {view === "list" && (
           <div className="bg-white rounded-xl border border-gray-200">
-            <div className="p-4 border-b border-gray-100 flex items-center gap-4">
-              <div className="relative flex-1 max-w-xs">
+            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="relative w-full sm:max-w-xs">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
@@ -235,11 +235,11 @@ export default function ClasesPage() {
                   className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <span className="text-sm text-gray-500">{filtered.length} clase{filtered.length !== 1 ? "s" : ""}</span>
+              <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} clase{filtered.length !== 1 ? "s" : ""}</span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[800px]">
                 <thead>
                   <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                     <th className="p-3 font-semibold">Nombre</th>
@@ -258,70 +258,75 @@ export default function ClasesPage() {
                         {search ? "No se encontraron clases" : "No hay clases creadas aún"}
                       </td>
                     </tr>
-                  ) : filtered.map((c) => {
-                    return (
-                      <tr key={c.id} className="border-b hover:bg-gray-50/50">
-                        <td className="p-3">
-                          <p className="font-semibold text-gray-900">{c.titulo}</p>
-                          {c.descripcion && (
-                            <p className="text-xs text-gray-400 truncate max-w-[200px]">{c.descripcion}</p>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          {c.profesor_nombre ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold">
-                              <PersonStanding size={12} />
-                              {c.profesor_nombre}
+                  ) : (
+                    filtered.map((c) => {
+                      const fecha = c.fecha_hora ? formatFecha(c.fecha_hora) : "—";
+                      const hora = c.fecha_hora ? formatHora(c.fecha_hora) : "";
+                      return (
+                        <tr key={c.id} className="border-b hover:bg-gray-50/50">
+                          <td className="p-3">
+                            <div>
+                              <span className="font-semibold text-gray-900 block">{c.titulo}</span>
+                              {c.descripcion && (
+                                <span className="text-xs text-gray-500 block max-w-[200px] truncate">
+                                  {c.descripcion}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 text-gray-600">
+                            {c.profesor_nombre ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold">
+                                <PersonStanding size={12} />
+                                {c.profesor_nombre}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-gray-600">{c.sede_nombre}</td>
+                          <td className="p-3 text-gray-600">{c.cupo_maximo}</td>
+                          <td className="p-3">
+                            <span className="inline-flex items-center gap-1 text-gray-600">
+                              <Users size={14} />
+                              {c.inscritos}
                             </span>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-gray-600">{c.sede_nombre}</td>
-                        <td className="p-3 text-gray-600">{c.cupo_maximo}</td>
-                        <td className="p-3">
-                          <span className={`font-semibold ${c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
-                            {c.inscritos}
-                          </span>
-                          <span className="text-gray-400">/{c.cupo_maximo}</span>
-                        </td>
-                        <td className="p-3">
-                          {c.fecha_hora ? (
-                            <span className="text-xs text-gray-600">
-                              {formatFecha(c.fecha_hora)} {formatHora(c.fecha_hora)}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-400">Sin fecha</span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleAsistenciaClase(c.id)}
-                              className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
-                              title="Ver asistencia"
-                            >
-                              <CalendarCheck size={16} />
-                            </button>
-                            <button
-                              onClick={() => openEdit(c)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                              title="Editar"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(c.id)}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                              title="Eliminar"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="p-3 text-gray-600">
+                            <div>
+                              <span className="block font-semibold">{fecha}</span>
+                              <span className="text-xs text-gray-400 block">{hora}</span>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleAsistenciaClase(c.id)}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
+                                title="Ver asistencia"
+                              >
+                                <CalendarCheck size={16} />
+                              </button>
+                              <button
+                                onClick={() => openEdit(c)}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                title="Editar"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(c.id)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                                title="Eliminar"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -352,8 +357,8 @@ export default function ClasesPage() {
 
       {/* ─── MODAL CREATE/EDIT ─── */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">
                 {modal === "create" ? "Nueva Clase" : "Editar Clase"}
@@ -386,7 +391,7 @@ export default function ClasesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Sede *</label>
                   <select

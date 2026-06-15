@@ -15,7 +15,8 @@ import {
   Settings,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 
 const menuItems = [
@@ -27,7 +28,12 @@ const menuItems = [
   { name: "Profesores", href: "/admin/profesores", icon: PersonStanding },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  setMobileOpen?: (open: boolean) => void;
+}
+
+export default function Sidebar({ mobileOpen = false, setMobileOpen }: SidebarProps) {
 
   const pathname = usePathname();
   const router = useRouter();
@@ -41,85 +47,105 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className={`
-      ${collapsed ? "w-20" : "w-64"}
-      bg-[#001529] h-screen sticky top-0 text-white flex flex-col p-4 shrink-0 transition-all duration-300
-    `}>
+    <>
+      {/* Overlay para móviles */}
+      {mobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 md:hidden transition-opacity duration-300"
+          onClick={() => setMobileOpen?.(false)}
+        />
+      )}
 
-      {/* HEADER */}
-      <div className="mb-10 flex items-center justify-between">
+      <aside className={`
+        ${collapsed ? "w-20" : "w-64"}
+        bg-[#001529] h-screen text-white flex flex-col p-4 shrink-0 transition-all duration-300
+        fixed md:sticky top-0 left-0 z-50
+        transform ${mobileOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
+      `}>
 
-        {!collapsed && (
-          <div>
-            <h2 className="text-xl font-bold">FutPlay</h2>
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest">
-              Admin Panel
-            </p>
-          </div>
-        )}
+        {/* HEADER */}
+        <div className="mb-10 flex items-center justify-between">
 
-        {/* BOTÓN COLAPSAR */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-2 hover:bg-white/10 rounded-lg"
-        >
-          {collapsed ? <ChevronRight size={18}/> : <ChevronLeft size={18}/>}
-        </button>
+          {(!collapsed || mobileOpen) && (
+            <div>
+              <h2 className="text-xl font-bold">FutPlay</h2>
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest">
+                Admin Panel
+              </p>
+            </div>
+          )}
 
-      </div>
+          {/* BOTÓN COLAPSAR (Desktop) */}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-2 hover:bg-white/10 rounded-lg hidden md:block"
+          >
+            {collapsed ? <ChevronRight size={18}/> : <ChevronLeft size={18}/>}
+          </button>
 
-      {/* NAV */}
-      <nav className="flex-1 space-y-2">
+          {/* BOTÓN CERRAR (Mobile) */}
+          <button
+            onClick={() => setMobileOpen?.(false)}
+            className="p-2 hover:bg-white/10 rounded-lg md:hidden"
+          >
+            <X size={18}/>
+          </button>
 
-        {menuItems.map((item) => {
+        </div>
 
-          const isActive = item.href === '/admin' 
-            ? pathname === '/admin' 
-            : pathname.startsWith(item.href);
+        {/* NAV */}
+        <nav className="flex-1 space-y-2">
 
-          return (
-            <Link key={item.name} href={item.href}>
-              <div className={`
-                flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
-                ${isActive 
-                  ? "bg-[#F28C28] text-white shadow-md font-semibold"
-                  : "text-gray-400 hover:bg-white/5 hover:text-white"
-                }
-              `}>
+          {menuItems.map((item) => {
 
-                <item.icon 
-                  size={20}
-                  className={isActive ? "text-white" : "text-gray-500 group-hover:text-white"}
-                />
+            const isActive = item.href === '/admin' 
+              ? pathname === '/admin' 
+              : pathname.startsWith(item.href);
 
-                {!collapsed && (
-                  <span className="text-sm">
-                    {item.name}
-                  </span>
-                )}
+            return (
+              <Link key={item.name} href={item.href} onClick={() => setMobileOpen?.(false)}>
+                <div className={`
+                  flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
+                  ${isActive 
+                    ? "bg-[#F28C28] text-white shadow-md font-semibold"
+                    : "text-gray-400 hover:bg-white/5 hover:text-white"
+                  }
+                `}>
 
-              </div>
-            </Link>
-          );
-        })}
+                  <item.icon 
+                    size={20}
+                    className={isActive ? "text-white" : "text-gray-500 group-hover:text-white"}
+                  />
 
-      </nav>
+                  {(!collapsed || mobileOpen) && (
+                    <span className="text-sm">
+                      {item.name}
+                    </span>
+                  )}
 
-      {/* FOOTER */}
-      <div className="border-t border-gray-800 pt-4 space-y-2">
+                </div>
+              </Link>
+            );
+          })}
 
-        <button className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl">
-          <Settings size={20} />
-          {!collapsed && <span className="text-sm">Ajustes</span>}
-        </button>
+        </nav>
 
-        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl cursor-pointer">
-          <LogOut size={20} />
-          {!collapsed && <span className="text-sm">Cerrar sesión</span>}
-        </button>
+        {/* FOOTER */}
+        <div className="border-t border-gray-800 pt-4 space-y-2">
 
-      </div>
+          <button className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl">
+            <Settings size={20} />
+            {(!collapsed || mobileOpen) && <span className="text-sm">Ajustes</span>}
+          </button>
 
-    </aside>
+          <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl cursor-pointer">
+            <LogOut size={20} />
+            {(!collapsed || mobileOpen) && <span className="text-sm">Cerrar sesión</span>}
+          </button>
+
+        </div>
+
+      </aside>
+    </>
   );
 }
