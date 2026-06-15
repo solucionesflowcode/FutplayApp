@@ -22,37 +22,31 @@ async function buscarUsuarioPorTelefono(telefono) {
 async function getProximaClaseUsuario(usuarioId) {
   const { data: inscripciones } = await supabase
     .from('clase_usuario')
-    .select('id, horario_id')
+    .select('id, clase_id')
     .eq('usuario_id', usuarioId)
     .in('asistencia', ['sin_confirmar', 'pendiente']);
 
   if (!inscripciones?.length) return null;
 
-  const horarioIds = inscripciones.map(i => i.horario_id);
+  const claseIds = inscripciones.map(i => i.clase_id);
 
-  const { data: horario } = await supabase
-    .from('horario')
-    .select('id, fecha_hora, clase_id')
-    .in('id', horarioIds)
+  const { data: clase } = await supabase
+    .from('clase')
+    .select('id, titulo, fecha_hora')
+    .in('id', claseIds)
     .gte('fecha_hora', new Date().toISOString())
     .order('fecha_hora', { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  if (!horario) return null;
+  if (!clase) return null;
 
-  const claseUsuario = inscripciones.find(i => i.horario_id === horario.id);
-
-  const { data: clase } = await supabase
-    .from('clase')
-    .select('titulo')
-    .eq('id', horario.clase_id)
-    .single();
+  const claseUsuario = inscripciones.find(i => i.clase_id === clase.id);
 
   return {
     id: claseUsuario.id,
-    clase: { titulo: clase?.titulo ?? 'Clase' },
-    horario: { fecha_hora: horario.fecha_hora }
+    clase: { titulo: clase.titulo ?? 'Clase' },
+    horario: { fecha_hora: clase.fecha_hora }
   };
 }
 
@@ -97,12 +91,12 @@ async function getHorariosProximos() {
   const hasta = new Date(ahora.getTime() + 30 * 60 * 60 * 1000);
 
   const { data } = await supabase
-    .from('horario')
-    .select('id, fecha_hora, clase_id')
+    .from('clase')
+    .select('id, fecha_hora')
     .gte('fecha_hora', ahora.toISOString())
     .lte('fecha_hora', hasta.toISOString());
 
-  return data ?? [];
+  return (data ?? []).map(c => ({ id: c.id, fecha_hora: c.fecha_hora, clase_id: c.id }));
 }
 
 async function getHorarios24h() {
@@ -110,39 +104,39 @@ async function getHorarios24h() {
   const hasta = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
 
   const { data } = await supabase
-    .from('horario')
-    .select('id, fecha_hora, clase_id')
+    .from('clase')
+    .select('id, fecha_hora')
     .gte('fecha_hora', ahora.toISOString())
     .lte('fecha_hora', hasta.toISOString());
 
-  return data ?? [];
+  return (data ?? []).map(c => ({ id: c.id, fecha_hora: c.fecha_hora, clase_id: c.id }));
 }
 
 async function getHorariosPasados() {
   const { data } = await supabase
-    .from('horario')
-    .select('id, clase_id')
+    .from('clase')
+    .select('id')
     .lt('fecha_hora', new Date().toISOString());
 
-  return data ?? [];
+  return (data ?? []).map(c => ({ id: c.id, clase_id: c.id }));
 }
 
 async function getHorariosPasados1h() {
   const haceUnaHora = new Date(Date.now() - 60 * 60 * 1000);
 
   const { data } = await supabase
-    .from('horario')
-    .select('id, clase_id')
+    .from('clase')
+    .select('id')
     .lte('fecha_hora', haceUnaHora.toISOString());
 
-  return data ?? [];
+  return (data ?? []).map(c => ({ id: c.id, clase_id: c.id }));
 }
 
-async function getInscripcionesSinConfirmar(horarioId) {
+async function getInscripcionesSinConfirmar(claseId) {
   const { data } = await supabase
     .from('clase_usuario')
     .select('id, usuario_id')
-    .eq('horario_id', horarioId)
+    .eq('clase_id', claseId)
     .eq('asistencia', 'sin_confirmar');
 
   return data ?? [];
@@ -152,11 +146,11 @@ async function setPendiente(claseUsuarioId) {
   await supabase.from('clase_usuario').update({ asistencia: 'pendiente' }).eq('id', claseUsuarioId);
 }
 
-async function actualizarPorClaseYEstado(horarioId, desde, hacia) {
+async function actualizarPorClaseYEstado(claseId, desde, hacia) {
   await supabase
     .from('clase_usuario')
     .update({ asistencia: hacia })
-    .eq('horario_id', horarioId)
+    .eq('clase_id', claseId)
     .eq('asistencia', desde);
 }
 
@@ -178,22 +172,22 @@ async function getUsuario(usuarioId) {
   return data;
 }
 
-async function getHorario(horarioId) {
+async function getHorario(claseId) {
   const { data } = await supabase
-    .from('horario')
-    .select('clase_id')
-    .eq('id', horarioId)
+    .from('clase')
+    .select('id')
+    .eq('id', claseId)
     .single();
-  return data;
+  return data ? { clase_id: data.id } : null;
 }
 
-async function getHorarioCompleto(horarioId) {
+async function getHorarioCompleto(claseId) {
   const { data } = await supabase
-    .from('horario')
-    .select('id, fecha_hora, clase_id')
-    .eq('id', horarioId)
+    .from('clase')
+    .select('id, fecha_hora')
+    .eq('id', claseId)
     .single();
-  return data;
+  return data ? { id: data.id, fecha_hora: data.fecha_hora, clase_id: data.id } : null;
 }
 
 module.exports = {
