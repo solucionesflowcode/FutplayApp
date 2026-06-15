@@ -32,6 +32,7 @@ import {
   type ModuloOption,
 } from "@/data/capsulas-admin";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
+import { getDocumentosByCapsula, createDocumento, deleteDocumento } from "@/data/documentos-admin";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -45,6 +46,7 @@ type FormData = {
   profesor_id: string;
   bunny_video_id: string;
   order_index: number;
+  descripcion: string;
 };
 
 const emptyForm: FormData = {
@@ -56,6 +58,7 @@ const emptyForm: FormData = {
   profesor_id: "",
   bunny_video_id: "",
   order_index: 0,
+  descripcion: "",
 };
 
 const allowedExtensions = [".mp4", ".mov", ".webm", ".avi", ".mkv", ".ogg", ".wmv"];
@@ -83,6 +86,23 @@ export default function CapsulasPage() {
   const [videoStatus, setVideoStatus] = useState<number | null>(null);
   const [showManualId, setShowManualId] = useState<boolean>(false);
   const [isDragActive, setIsDragActive] = useState<boolean>(false);
+
+  // Estados para Miniatura (S3)
+  const [miniaturaFile, setMiniaturaFile] = useState<File | null>(null);
+  const [miniaturaUploading, setMiniaturaUploading] = useState<boolean>(false);
+  const [miniaturaProgress, setMiniaturaProgress] = useState<number>(0);
+  const [miniaturaStatus, setMiniaturaStatus] = useState<string>("");
+  const [isDragMiniActive, setIsDragMiniActive] = useState<boolean>(false);
+
+  // Estados para Documento (PDF S3 — tabla documento)
+  const [documentoFile, setDocumentoFile] = useState<File | null>(null);
+  const [documentoUploading, setDocumentoUploading] = useState<boolean>(false);
+  const [documentoProgress, setDocumentoProgress] = useState<number>(0);
+  const [documentoStatus, setDocumentoStatus] = useState<string>("");
+  const [isDragDocActive, setIsDragDocActive] = useState<boolean>(false);
+  const [pendingDoc, setPendingDoc] = useState<{ filePath: string; nombre: string } | null>(null);
+  const [existingDoc, setExistingDoc] = useState<{ id: string; nombre: string; url_archivo: string } | null>(null);
+  const docIdToDeleteRef = useRef<string | null>(null);
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -122,6 +142,18 @@ export default function CapsulasPage() {
     setVideoStatus(null);
     setShowManualId(false);
     setIsDragActive(false);
+    setMiniaturaFile(null);
+    setMiniaturaUploading(false);
+    setMiniaturaProgress(0);
+    setMiniaturaStatus("");
+    setIsDragMiniActive(false);
+    setDocumentoFile(null);
+    setDocumentoUploading(false);
+    setDocumentoProgress(0);
+    setDocumentoStatus("");
+    setIsDragDocActive(false);
+    setPendingDoc(null);
+    setExistingDoc(null);
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
@@ -133,7 +165,7 @@ export default function CapsulasPage() {
     setModal("create");
   };
 
-  const openEdit = (c: CapsulaAdmin) => {
+  const openEdit = async (c: CapsulaAdmin) => {
     resetForm();
     setForm({
       id: c.id,
@@ -145,10 +177,16 @@ export default function CapsulasPage() {
       profesor_id: c.profesor_id || "",
       bunny_video_id: c.bunny_video_id || "",
       order_index: c.order_index ?? 0,
+      descripcion: c.descripcion || "",
     });
     setModal("edit");
     if (c.bunny_video_id) {
       setShowManualId(true);
+    }
+    const docs = await getDocumentosByCapsula(c.id);
+    if (docs.length > 0) {
+      setExistingDoc({ id: docs[0].id, nombre: docs[0].nombre, url_archivo: docs[0].url_archivo });
+      docIdToDeleteRef.current = null;
     }
   };
 
@@ -304,6 +342,214 @@ export default function CapsulasPage() {
     }
   };
 
+  // ─── Miniatura Upload ──────────────────────────────
+  const handleUploadMiniatura = async (file: File) => {
+    setMiniaturaUploading(true);
+    setMiniaturaProgress(0);
+    setMiniaturaStatus("Subiendo miniatura...");
+    setError(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/admin/upload-miniatura", true);
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setMiniaturaProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              setForm((p) => ({ ...p, imagen: data.url }));
+              resolve();
+            } catch {
+              reject(new Error("Error al procesar la respuesta"));
+            }
+          } else {
+            try {
+              const errData = JSON.parse(xhr.responseText);
+              reject(new Error(errData.error || "Error al subir miniatura"));
+            } catch {
+              reject(new Error(`Error en la subida: ${xhr.statusText}`));
+            }
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Error de red durante la subida"));
+
+        const formData = new FormData();
+        formData.append("file", file);
+        xhr.send(formData);
+      });
+
+      setMiniaturaStatus("¡Miniatura subida!");
+      setMiniaturaProgress(100);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Error al subir miniatura");
+      setMiniaturaStatus("Fallo en la subida");
+    } finally {
+      setMiniaturaUploading(false);
+    }
+  };
+
+  const handleDragMini = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragMiniActive(true);
+    } else if (e.type === "dragleave") {
+      setIsDragMiniActive(false);
+    }
+  };
+
+  const handleDropMini = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragMiniActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+      if (!allowed.includes(file.type)) {
+        setError("Formato no permitido. Usa JPG, PNG, WebP o GIF");
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        setError("La imagen no debe superar 2MB");
+        return;
+      }
+      setMiniaturaFile(file);
+      handleUploadMiniatura(file);
+    }
+  };
+
+  const handleMiniaturaFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+      if (!allowed.includes(file.type)) {
+        setError("Formato no permitido. Usa JPG, PNG, WebP o GIF");
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        setError("La imagen no debe superar 2MB");
+        return;
+      }
+      setMiniaturaFile(file);
+      handleUploadMiniatura(file);
+    }
+  };
+
+  // ─── Documento (PDF) Upload ───────────────────────
+  const handleUploadDocumento = async (file: File) => {
+    setDocumentoUploading(true);
+    setDocumentoProgress(0);
+    setDocumentoStatus("Subiendo documento...");
+    setError(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/admin/upload-documento", true);
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setDocumentoProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (existingDoc) {
+                docIdToDeleteRef.current = existingDoc.id;
+              }
+              setPendingDoc({ filePath: data.filePath, nombre: data.nombre });
+              setExistingDoc(null);
+              resolve();
+            } catch {
+              reject(new Error("Error al procesar la respuesta"));
+            }
+          } else {
+            try {
+              const errData = JSON.parse(xhr.responseText);
+              reject(new Error(errData.error || "Error al subir documento"));
+            } catch {
+              reject(new Error(`Error en la subida: ${xhr.statusText}`));
+            }
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Error de red durante la subida"));
+
+        const formData = new FormData();
+        formData.append("file", file);
+        xhr.send(formData);
+      });
+
+      setDocumentoStatus("¡Documento subido!");
+      setDocumentoProgress(100);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Error al subir documento");
+      setDocumentoStatus("Fallo en la subida");
+    } finally {
+      setDocumentoUploading(false);
+    }
+  };
+
+  const handleDragDoc = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragDocActive(true);
+    } else if (e.type === "dragleave") {
+      setIsDragDocActive(false);
+    }
+  };
+
+  const handleDropDoc = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragDocActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type !== "application/pdf") {
+        setError("Solo se permiten archivos PDF");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError("El PDF no debe superar 10MB");
+        return;
+      }
+      setDocumentoFile(file);
+      handleUploadDocumento(file);
+    }
+  };
+
+  const handleDocumentoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type !== "application/pdf") {
+        setError("Solo se permiten archivos PDF");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError("El PDF no debe superar 10MB");
+        return;
+      }
+      setDocumentoFile(file);
+      handleUploadDocumento(file);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.titulo) {
       setError("El título de la cápsula es obligatorio");
@@ -316,7 +562,7 @@ export default function CapsulasPage() {
     const libraryId = process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
     const finalImagen = form.imagen || (libraryId && form.bunny_video_id ? `https://vz-${libraryId}.b-cdn.net/${form.bunny_video_id}/thumbnail.jpg` : "");
 
-    const payload = {
+    const payload: any = {
       titulo: form.titulo,
       imagen: finalImagen || undefined,
       creado: form.creado || undefined,
@@ -325,16 +571,40 @@ export default function CapsulasPage() {
       profesor_id: form.profesor_id || undefined,
       bunny_video_id: form.bunny_video_id || undefined,
       order_index: form.order_index || undefined,
+      descripcion: form.descripcion || undefined,
     };
 
-    const res = modal === "create"
-      ? await createCapsula(payload)
-      : await updateCapsula({ ...payload, id: form.id! });
+    let savedCapsulaId = form.id;
+    if (modal === "create") {
+      const res = await createCapsula(payload);
+      if (!res.success) {
+        setError(res.error || "Error al guardar");
+        setSaving(false);
+        return;
+      }
+      savedCapsulaId = res.data?.id || savedCapsulaId;
+    } else {
+      const res = await updateCapsula({ ...payload, id: form.id! });
+      if (!res.success) {
+        setError(res.error || "Error al guardar");
+        setSaving(false);
+        return;
+      }
+    }
 
-    if (!res.success) {
-      setError(res.error || "Error al guardar");
-      setSaving(false);
-      return;
+    if (pendingDoc && savedCapsulaId) {
+      if (docIdToDeleteRef.current) {
+        await deleteDocumento(docIdToDeleteRef.current);
+        docIdToDeleteRef.current = null;
+      }
+      const docRes = await createDocumento({
+        capsula_id: savedCapsulaId,
+        nombre: pendingDoc.nombre,
+        url_archivo: pendingDoc.filePath,
+      });
+      if (!docRes.success) {
+        console.error("Error al guardar documento:", docRes.error);
+      }
     }
 
     setSaving(false);
@@ -417,16 +687,16 @@ export default function CapsulasPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[800px]">
               <thead>
-                <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-                  <th className="p-3 font-semibold">Título</th>
-                  <th className="p-3 font-semibold">Coach</th>
-                  <th className="p-3 font-semibold">Duración</th>
-                  <th className="p-3 font-semibold">Módulo</th>
-                  <th className="p-3 font-semibold">Profesor</th>
-                  <th className="p-3 font-semibold">Video ID</th>
-                  <th className="p-3 font-semibold">Orden</th>
-                  <th className="p-3 font-semibold">Acciones</th>
-                </tr>
+                  <tr className="text-left text-gray-500 border-b bg-gray-50/50">
+                    <th className="p-3 font-semibold">Título</th>
+                    <th className="p-3 font-semibold">Coach</th>
+                    <th className="p-3 font-semibold">Duración</th>
+                    <th className="p-3 font-semibold">Módulo</th>
+                    <th className="p-3 font-semibold">Profesor</th>
+                    <th className="p-3 font-semibold">Video ID</th>
+                    <th className="p-3 font-semibold">Orden</th>
+                    <th className="p-3 font-semibold">Acciones</th>
+                  </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
@@ -556,7 +826,7 @@ export default function CapsulasPage() {
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${currentStep === 2 ? "bg-blue-600 text-white" : currentStep > 2 ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"}`}>
                   {currentStep > 2 ? <Check size={14} /> : "2"}
                 </div>
-                <span className={`text-xs font-bold hidden sm:inline ${currentStep === 2 ? "text-blue-600" : "text-gray-500"}`}>Video & Portada</span>
+                <span className={`text-xs font-bold hidden sm:inline ${currentStep === 2 ? "text-blue-600" : "text-gray-500"}`}>Video, Miniatura y Documento</span>
               </div>
               <div className="h-[1px] w-4 sm:w-8 bg-gray-200 shrink-0" />
               <div className="flex-1 flex items-center justify-center gap-2">
@@ -581,6 +851,17 @@ export default function CapsulasPage() {
                       onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                       placeholder="Ej: Técnicas de Regate"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Descripción</label>
+                    <textarea
+                      value={form.descripcion}
+                      onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 min-h-[80px] resize-y"
+                      placeholder="Describe el contenido de la cápsula..."
+                      rows={3}
                     />
                   </div>
 
@@ -743,7 +1024,7 @@ export default function CapsulasPage() {
 
                   {/* Campo de imagen/thumbnail */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Imagen de Portada (URL)</label>
+                    <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Imagen de Portada (URL manual)</label>
                     <div className="flex gap-3 items-center">
                       <div className="flex-1">
                         <input
@@ -770,6 +1051,194 @@ export default function CapsulasPage() {
                         <AlertCircle size={10} className="text-blue-500" />
                         No has especificado una URL de imagen. Usaremos automáticamente la portada autogenerada por Bunny Stream.
                       </p>
+                    )}
+                  </div>
+
+                  {/* ─── MINIATURA UPLOAD (S3) ─── */}
+                  <div className="border-t border-gray-100 pt-5">
+                    <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Miniatura (Subir a S3)</label>
+
+                    {miniaturaUploading ? (
+                      <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-5 text-center space-y-3">
+                        <Loader2 className="animate-spin text-blue-600 mx-auto" size={24} />
+                        <div className="text-sm font-semibold text-blue-900">{miniaturaStatus}</div>
+                        <div className="max-w-xs mx-auto bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${miniaturaProgress}%` }} />
+                        </div>
+                        <div className="text-xs text-blue-500 font-bold">{miniaturaProgress}% subido</div>
+                      </div>
+                    ) : form.imagen ? (
+                      <div className="bg-green-50/50 border border-green-200 rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-14 h-10 rounded border border-green-300 bg-white overflow-hidden shrink-0">
+                              <img src={form.imagen} alt="Miniatura" className="w-full h-full object-cover" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-bold text-green-900 flex items-center gap-1.5">
+                                <CheckCircle2 size={16} className="text-green-500" />
+                                Miniatura lista
+                              </span>
+                              <p className="text-xs text-gray-400 mt-0.5">Subida a S3 correctamente</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForm((p) => ({ ...p, imagen: "" }));
+                              setMiniaturaFile(null);
+                              setMiniaturaProgress(0);
+                              setMiniaturaStatus("");
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800 font-semibold hover:underline"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onDragEnter={handleDragMini}
+                        onDragOver={handleDragMini}
+                        onDragLeave={handleDragMini}
+                        onDrop={handleDropMini}
+                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                          isDragMiniActive
+                            ? "border-blue-500 bg-blue-50/50"
+                            : "border-gray-300 hover:border-blue-400 bg-gray-50/30"
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          id="miniatura-upload-input"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          onChange={handleMiniaturaFileChange}
+                          className="hidden"
+                        />
+                        <label htmlFor="miniatura-upload-input" className="cursor-pointer flex flex-col items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                            <Upload size={20} />
+                          </div>
+                          <p className="text-sm font-bold text-gray-700">Arrastra una imagen o haz clic para buscar</p>
+                          <p className="text-xs text-gray-400">JPG, PNG, WebP o GIF · Máx 2MB</p>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ─── DOCUMENTO (PDF) S3 → tabla documento ─── */}
+                  <div className="border-t border-gray-100 pt-5">
+                    <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Documento PDF (Material de apoyo)</label>
+
+                    {documentoUploading ? (
+                      <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-5 text-center space-y-3">
+                        <Loader2 className="animate-spin text-blue-600 mx-auto" size={24} />
+                        <div className="text-sm font-semibold text-blue-900">{documentoStatus}</div>
+                        <div className="max-w-xs mx-auto bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${documentoProgress}%` }} />
+                        </div>
+                        <div className="text-xs text-blue-500 font-bold">{documentoProgress}% subido</div>
+                      </div>
+                    ) : pendingDoc ? (
+                      <div className="bg-green-50/50 border border-green-200 rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
+                              <span className="text-xs font-black text-red-600">PDF</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-bold text-green-900 flex items-center gap-1.5">
+                                <CheckCircle2 size={16} className="text-green-500" />
+                                Documento listo (pendiente de guardar)
+                              </span>
+                              <p className="text-xs text-gray-400 mt-0.5">{pendingDoc.nombre}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <a
+                              href={`/api/download-documento?filePath=${encodeURIComponent(pendingDoc.filePath)}&nombre=${encodeURIComponent(pendingDoc.nombre)}`}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                            >
+                              Ver
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPendingDoc(null);
+                                setDocumentoFile(null);
+                                setDocumentoProgress(0);
+                                setDocumentoStatus("");
+                              }}
+                              className="text-xs text-red-600 hover:text-red-800 font-semibold hover:underline"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : existingDoc ? (
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
+                              <span className="text-xs font-black text-red-600">PDF</span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-bold text-gray-800">{existingDoc.nombre}</span>
+                              <p className="text-xs text-gray-400 mt-0.5">Documento actual</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <a
+                              href={`/api/download-documento?id=${existingDoc.id}`}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                            >
+                              Ver
+                            </a>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const delRes = await deleteDocumento(existingDoc.id);
+                                if (delRes.success) {
+                                  setExistingDoc(null);
+                                } else {
+                                  setError(delRes.error || "Error al eliminar documento");
+                                }
+                              }}
+                              className="text-xs text-red-600 hover:text-red-800 font-semibold hover:underline"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onDragEnter={handleDragDoc}
+                        onDragOver={handleDragDoc}
+                        onDragLeave={handleDragDoc}
+                        onDrop={handleDropDoc}
+                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                          isDragDocActive
+                            ? "border-blue-500 bg-blue-50/50"
+                            : "border-gray-300 hover:border-blue-400 bg-gray-50/30"
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          id="documento-upload-input"
+                          accept=".pdf,application/pdf"
+                          onChange={handleDocumentoFileChange}
+                          className="hidden"
+                        />
+                        <label htmlFor="documento-upload-input" className="cursor-pointer flex flex-col items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                            <Upload size={20} />
+                          </div>
+                          <p className="text-sm font-bold text-gray-700">Arrastra tu PDF aquí o haz clic para buscar</p>
+                          <p className="text-xs text-gray-400">Solo PDF · Máx 10MB</p>
+                        </label>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -826,6 +1295,12 @@ export default function CapsulasPage() {
                         </span>
                       </div>
                       <div className="sm:col-span-2">
+                        <span className="text-gray-400">Descripción:</span>{" "}
+                        <span className="font-semibold text-gray-900 truncate block">
+                          {form.descripcion || "Sin descripción"}
+                        </span>
+                      </div>
+                      <div className="sm:col-span-2">
                         <span className="text-gray-400">Video Link ID:</span>{" "}
                         <span className="font-mono text-blue-600 font-semibold">{form.bunny_video_id || "Ninguno"}</span>
                       </div>
@@ -835,6 +1310,17 @@ export default function CapsulasPage() {
                           {form.imagen ? form.imagen : "Thumbnail automático de Bunny Stream"}
                         </span>
                       </div>
+                      {(pendingDoc || existingDoc) && (
+                        <div className="sm:col-span-2">
+                          <span className="text-gray-400">Documento PDF:</span>{" "}
+                          <a
+                            href={existingDoc ? `/api/download-documento?id=${existingDoc.id}` : `/api/download-documento?filePath=${encodeURIComponent(pendingDoc!.filePath)}&nombre=${encodeURIComponent(pendingDoc!.nombre)}`}
+                            className="font-semibold text-red-600 hover:underline"
+                          >
+                            {pendingDoc?.nombre || existingDoc?.nombre || "Ver PDF"}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
