@@ -15,6 +15,9 @@ export type ClaseConRelaciones = ClaseRow & {
   sede_nombre: string;
   profesor_nombre: string;
   inscritos: number;
+  presentes: number;
+  ausentes: number;
+  pendientes: number;
 };
 
 export type Sede = {
@@ -143,7 +146,6 @@ export async function getAsistenciaGeneral(): Promise<any[]> {
 
 export async function getAsistenciaPorClase(claseId: string): Promise<{
   clase: any;
-  horarios: any[];
   inscripciones: any[];
 } | null> {
   const res = await fetch(`/api/admin/clases?tipo=asistencia&clase_id=${claseId}`);

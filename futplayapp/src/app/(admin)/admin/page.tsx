@@ -27,15 +27,15 @@ function AdminContent() {
   const [viewStudent, setViewStudent] = useState<Student | null>(null);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  const fetchUsers = useCallback(async (initial = false) => {
+    if (initial) setLoading(true);
     const data = await getUsers();
     setStudents(data);
-    setLoading(false);
+    if (initial) setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(true);
   }, [fetchUsers]);
 
   const handleDelete = async (student: Student) => {
@@ -44,17 +44,19 @@ function AdminContent() {
     );
     if (!confirmed) return;
 
+    setStudents((prev) => prev.filter((s) => s.id !== student.id));
+
     try {
       const res = await fetch(`/api/admin/students?id=${student.id}`, {
         method: "DELETE",
       });
       const data = await res.json();
       if (!res.ok) {
+        setStudents((prev) => [...prev, student]);
         alert(data.error || "Error al eliminar");
-        return;
       }
-      fetchUsers();
     } catch {
+      setStudents((prev) => [...prev, student]);
       alert("Error de conexión al servidor");
     }
   };
