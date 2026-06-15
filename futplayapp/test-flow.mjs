@@ -1,8 +1,20 @@
+import dotenv from "dotenv"
+import path from "path"
+import { fileURLToPath } from "url"
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: path.join(__dirname, ".env.local") })
+
 const crypto = await import("crypto")
 
-const FLOW_API_KEY = "5F29FF7C-188B-4413-AFB9-85465A15L7E6"
-const FLOW_SECRET_KEY = "baf2d88c4b41a714aa993c66a27c494c40ceab2e"
-const BASE_URL = "https://113dd18786e138.lhr.life"
+const FLOW_API_KEY = process.env.FLOW_API_KEY
+const FLOW_SECRET_KEY = process.env.FLOW_SECRET_KEY
+const BASE_URL = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL
+
+if (!FLOW_API_KEY || !FLOW_SECRET_KEY || !BASE_URL) {
+  console.error("Faltan variables de entorno: FLOW_API_KEY, FLOW_SECRET_KEY, BASE_URL")
+  process.exit(1)
+}
 
 // Already-created boleta
 const boletaId = "621b8a40-c81d-4f51-b16b-1bbfa520e84e"
@@ -42,8 +54,8 @@ if (data.url && data.token) {
 }
 
 // Update boleta with flowOrder
-const SUPABASE_URL = "https://cdhbfyqtubqnmgjdgkab.supabase.co"
-const SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkaGJmeXF0dWJxbm1namRna2FiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTY1NzMzNCwiZXhwIjoyMDkxMjMzMzM0fQ.ii6AQg7UU5vPrPXboKko5-iIRPgiTc5uT3rzTYdSQfE"
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const headers = { "apikey": SERVICE_KEY, "Authorization": `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" }
 
 await fetch(`${SUPABASE_URL}/rest/v1/boleta?id=eq.${boletaId}`, {

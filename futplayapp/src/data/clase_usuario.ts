@@ -33,19 +33,3 @@ export async function actualizarAsistencia(
 
   return !error;
 }
-
-export async function actualizarAsistenciaPorHorario(
-  horarioId: string,
-  desde: Asistencia,
-  hacia: Asistencia
-) {
-  const supabase = createClient();
-
-  const { error } = await supabase
-    .from("clase_usuario")
-    .update({ asistencia: hacia })
-    .eq("horario_id", horarioId)
-    .eq("asistencia", desde);
-
-  return !error;
-}
