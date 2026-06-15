@@ -18,10 +18,7 @@ export default function Elearning() {
                         <p className="text-blue-100 text-lg mb-8 leading-relaxed">
                             Nuestra plataforma de E-learning complementa tu entrenamiento en cancha. Accede a cápsulas de estudio, análisis de partidos y evaluaciones tácticas diseñadas por nuestros profesores certificados.
                         </p>
-                        <button className="bg-white text-[#002a58] hover:bg-gray-100 transition-colors px-8 py-4 rounded-full font-bold shadow-lg hover:-translate-y-1 transform inline-flex items-center gap-2">
-                            <span>Ver Cápsulas de Prueba</span>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                        </button>
+
                     </div>
 
                     <div className="w-full md:w-2/5 relative z-10">
