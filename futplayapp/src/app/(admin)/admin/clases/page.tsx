@@ -5,8 +5,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  CalendarCheck,
-  Eye,
   Loader2,
   Search,
   X,
@@ -14,6 +12,7 @@ import {
   ChevronLeft,
   Users,
   PersonStanding,
+  CalendarDays,
 } from "lucide-react";
 import {
   getClases,
@@ -21,7 +20,6 @@ import {
   createClase,
   updateClase,
   deleteClase,
-  getAsistenciaGeneral,
   getAsistenciaPorClase,
   registrarAsistencia,
   type ClaseConRelaciones,
@@ -29,7 +27,9 @@ import {
 } from "@/data/clases";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
 
-type ViewMode = "list" | "asistencia" | "asistencia-detalle";
+type ViewMode = "list" | "asistencia-detalle";
+
+const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 type ModalMode = "create" | "edit" | null;
 
@@ -40,7 +40,8 @@ type ClaseForm = {
   sede_id: string;
   cupo_maximo: number;
   profesor_id: string;
-  fecha_hora: string;
+  fecha: string;
+  hora: string;
 };
 
 const emptyForm: ClaseForm = {
@@ -49,7 +50,8 @@ const emptyForm: ClaseForm = {
   sede_id: "",
   cupo_maximo: 15,
   profesor_id: "",
-  fecha_hora: "",
+  fecha: "",
+  hora: "",
 };
 
 export default function ClasesPage() {
@@ -64,8 +66,10 @@ export default function ClasesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [asistenciaData, setAsistenciaData] = useState<any[]>([]);
   const [detalleClase, setDetalleClase] = useState<any>(null);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [diasFiltro, setDiasFiltro] = useState<number[]>([]);
 
   const fetchClases = useCallback(async () => {
     const [c, s, p] = await Promise.all([getClases(), getSedes(), getProfesoresDropdown()]);
@@ -77,11 +81,27 @@ export default function ClasesPage() {
 
   useEffect(() => { fetchClases(); }, [fetchClases]);
 
-  const filtered = clases.filter(
-    (c) =>
+  const filtered = clases.filter((c) => {
+    const matchSearch =
       c.titulo.toLowerCase().includes(search.toLowerCase()) ||
-      c.sede_nombre.toLowerCase().includes(search.toLowerCase())
-  );
+      c.sede_nombre.toLowerCase().includes(search.toLowerCase());
+    if (!matchSearch) return false;
+
+    if (c.fecha_hora) {
+      const fecha = new Date(c.fecha_hora);
+      if (fechaDesde && fecha < new Date(fechaDesde)) return false;
+      if (fechaHasta) {
+        const hasta = new Date(fechaHasta);
+        hasta.setHours(23, 59, 59);
+        if (fecha > hasta) return false;
+      }
+      if (diasFiltro.length > 0 && !diasFiltro.includes(fecha.getDay())) return false;
+    } else {
+      if (fechaDesde || fechaHasta || diasFiltro.length > 0) return false;
+    }
+
+    return true;
+  });
 
   const resetForm = () => { setForm(emptyForm); setError(null); };
 
@@ -91,6 +111,8 @@ export default function ClasesPage() {
   };
 
   const openEdit = (c: ClaseConRelaciones) => {
+    const dt = c.fecha_hora?.slice(0, 16) || "";
+    const [fecha, hora] = dt.split("T");
     setForm({
       id: c.id,
       titulo: c.titulo,
@@ -98,7 +120,8 @@ export default function ClasesPage() {
       sede_id: c.sede_id,
       cupo_maximo: c.cupo_maximo,
       profesor_id: c.profesor_id || "",
-      fecha_hora: c.fecha_hora?.slice(0, 16) || "",
+      fecha: fecha || "",
+      hora: hora || "",
     });
     setModal("edit");
   };
@@ -111,14 +134,20 @@ export default function ClasesPage() {
     setSaving(true);
     setError(null);
 
-    const payload = {
-      ...form,
-      fecha_hora: form.fecha_hora || undefined,
+    const fecha_hora = form.fecha && form.hora ? `${form.fecha}T${form.hora}` : undefined;
+    const fecha_hora_local: string | null = fecha_hora ?? null;
+    const base: any = {
+      titulo: form.titulo,
+      descripcion: form.descripcion,
+      sede_id: form.sede_id,
+      cupo_maximo: form.cupo_maximo,
+      profesor_id: form.profesor_id,
     };
+    if (fecha_hora) base.fecha_hora = fecha_hora;
 
     const res = modal === "create"
-      ? await createClase(payload)
-      : await updateClase({ ...payload, id: form.id! });
+      ? await createClase(base)
+      : await updateClase({ ...base, id: form.id! });
 
     if (!res.success) {
       setError(res.error || "Error al guardar");
@@ -129,22 +158,23 @@ export default function ClasesPage() {
     setSaving(false);
     setModal(null);
     resetForm();
-    fetchClases();
+    if (modal === "create") {
+      fetchClases();
+    } else {
+      setClases((prev) =>
+        prev.map((c) =>
+          c.id === form.id
+            ? { ...c, titulo: form.titulo, descripcion: form.descripcion, sede_id: form.sede_id, cupo_maximo: form.cupo_maximo, profesor_id: form.profesor_id, fecha_hora: fecha_hora_local }
+            : c
+        )
+      );
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("¿Eliminar esta clase? También se eliminarán sus inscripciones.")) return;
-    setLoading(true);
+    setClases((prev) => prev.filter((c) => c.id !== id));
     await deleteClase(id);
-    fetchClases();
-  };
-
-  const handleVerAsistencia = async () => {
-    setLoading(true);
-    const data = await getAsistenciaGeneral();
-    setAsistenciaData(data);
-    setView("asistencia");
-    setLoading(false);
   };
 
   const handleAsistenciaClase = async (claseId: string) => {
@@ -158,8 +188,12 @@ export default function ClasesPage() {
   const toggleAsistencia = async (usuarioId: string, asistencia: boolean) => {
     if (!detalleClase) return;
     await registrarAsistencia(detalleClase.clase.id, usuarioId, asistencia);
-    const data = await getAsistenciaPorClase(detalleClase.clase.id);
-    setDetalleClase(data);
+    setDetalleClase((prev: any) => ({
+      ...prev,
+      inscripciones: prev.inscripciones.map((i: any) =>
+        i.usuario_id === usuarioId ? { ...i, asistencia: asistencia ? "asistio" : "no_asistio" } : i
+      ),
+    }));
   };
 
   const formatFecha = (f: string) => {
@@ -201,22 +235,13 @@ export default function ClasesPage() {
               </button>
             )}
             {view === "list" ? (
-              <>
-                <button
-                  onClick={handleVerAsistencia}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  <CalendarCheck size={16} />
-                  Ver Asistencia
-                </button>
-                <button
-                  onClick={openCreate}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-                >
-                  <Plus size={16} />
-                  Nueva Clase
-                </button>
-              </>
+              <button
+                onClick={openCreate}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              >
+                <Plus size={16} />
+                Nueva Clase
+              </button>
             ) : null}
           </div>
         </div>
@@ -224,18 +249,67 @@ export default function ClasesPage() {
         {/* ─── VIEW: LIST ─── */}
         {view === "list" && (
           <div className="bg-white rounded-xl border border-gray-200">
-            <div className="p-4 border-b border-gray-100 flex items-center gap-4">
-              <div className="relative flex-1 max-w-xs">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar clase o sede..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                />
+            {/* ─── FILTROS ─── */}
+            <div className="p-4 border-b border-gray-100 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar clase o sede..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <label className="text-gray-500 font-medium">Desde:</label>
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <label className="text-gray-500 font-medium">Hasta:</label>
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                {(fechaDesde || fechaHasta || diasFiltro.length > 0) && (
+                  <button
+                    onClick={() => { setFechaDesde(""); setFechaHasta(""); setDiasFiltro([]); }}
+                    className="text-xs text-red-500 hover:text-red-700 font-semibold"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
               </div>
-              <span className="text-sm text-gray-500">{filtered.length} clase{filtered.length !== 1 ? "s" : ""}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <CalendarDays size={14} className="text-gray-400" />
+                {DIAS.map((nombre, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() =>
+                      setDiasFiltro((prev) =>
+                        prev.includes(idx) ? prev.filter((d) => d !== idx) : [...prev, idx]
+                      )
+                    }
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                      diasFiltro.includes(idx)
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-500 border-gray-200 hover:border-blue-300"
+                    }`}
+                  >
+                    {nombre}
+                  </button>
+                ))}
+                <span className="text-sm text-gray-400 ml-auto">{filtered.length} clase{filtered.length !== 1 ? "s" : ""}</span>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -245,8 +319,8 @@ export default function ClasesPage() {
                     <th className="p-3 font-semibold">Nombre</th>
                     <th className="p-3 font-semibold">Profesor</th>
                     <th className="p-3 font-semibold">Sede</th>
-                    <th className="p-3 font-semibold">Cupo</th>
                     <th className="p-3 font-semibold">Inscritos</th>
+                    <th className="p-3 font-semibold">Asistencia</th>
                     <th className="p-3 font-semibold">Fecha</th>
                     <th className="p-3 font-semibold">Acciones</th>
                   </tr>
@@ -255,12 +329,18 @@ export default function ClasesPage() {
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-gray-400">
-                        {search ? "No se encontraron clases" : "No hay clases creadas aún"}
+                        {search || fechaDesde || fechaHasta || diasFiltro.length > 0
+                          ? "No se encontraron clases con esos filtros"
+                          : "No hay clases creadas aún"}
                       </td>
                     </tr>
                   ) : filtered.map((c) => {
                     return (
-                      <tr key={c.id} className="border-b hover:bg-gray-50/50">
+                      <tr
+                        key={c.id}
+                        className="border-b hover:bg-blue-50/50 cursor-pointer transition-colors"
+                        onClick={() => handleAsistenciaClase(c.id)}
+                      >
                         <td className="p-3">
                           <p className="font-semibold text-gray-900">{c.titulo}</p>
                           {c.descripcion && (
@@ -278,7 +358,6 @@ export default function ClasesPage() {
                           )}
                         </td>
                         <td className="p-3 text-gray-600">{c.sede_nombre}</td>
-                        <td className="p-3 text-gray-600">{c.cupo_maximo}</td>
                         <td className="p-3">
                           <span className={`font-semibold ${c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
                             {c.inscritos}
@@ -286,23 +365,34 @@ export default function ClasesPage() {
                           <span className="text-gray-400">/{c.cupo_maximo}</span>
                         </td>
                         <td className="p-3">
+                          <div className="flex items-center gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-green-600 font-semibold">{c.presentes} ✓</span>
+                            <span className="text-red-500 font-semibold">{c.ausentes} ✗</span>
+                            {c.pendientes > 0 ? (
+                              <button
+                                onClick={() => handleAsistenciaClase(c.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold hover:bg-amber-200 hover:animate-none transition-colors border border-amber-300 animate-pulse"
+                              >
+                                {c.pendientes} Pendientes
+                              </button>
+                            ) : (
+                              <span className="text-gray-300 font-semibold">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3">
                           {c.fecha_hora ? (
-                            <span className="text-xs text-gray-600">
-                              {formatFecha(c.fecha_hora)} {formatHora(c.fecha_hora)}
-                            </span>
+                            <div className="text-xs text-gray-600">
+                              <span className="font-medium">{formatFecha(c.fecha_hora)}</span>
+                              <br />
+                              <span className="text-gray-400">{formatHora(c.fecha_hora)}</span>
+                            </div>
                           ) : (
                             <span className="text-xs text-gray-400">Sin horario</span>
                           )}
                         </td>
                         <td className="p-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleAsistenciaClase(c.id)}
-                              className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
-                              title="Ver asistencia"
-                            >
-                              <CalendarCheck size={16} />
-                            </button>
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => openEdit(c)}
                               className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
@@ -326,18 +416,6 @@ export default function ClasesPage() {
               </table>
             </div>
           </div>
-        )}
-
-        {/* ─── VIEW: ASISTENCIA GENERAL ─── */}
-        {view === "asistencia" && (
-          <AsistenciaGeneral
-            data={asistenciaData}
-            onVerClase={(claseId) => handleAsistenciaClase(claseId)}
-            onRefresh={async () => {
-              const data = await getAsistenciaGeneral();
-              setAsistenciaData(data);
-            }}
-          />
         )}
 
         {/* ─── VIEW: ASISTENCIA DETALLE ─── */}
@@ -426,14 +504,25 @@ export default function ClasesPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha y Hora</label>
-                <input
-                  type="datetime-local"
-                  value={form.fecha_hora}
-                  onChange={(e) => setForm((p) => ({ ...p, fecha_hora: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha</label>
+                  <input
+                    type="date"
+                    value={form.fecha}
+                    onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Hora</label>
+                  <input
+                    type="time"
+                    value={form.hora}
+                    onChange={(e) => setForm((p) => ({ ...p, hora: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
               </div>
 
               {error && (
@@ -461,107 +550,6 @@ export default function ClasesPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ─── ASISTENCIA GENERAL ─── */
-function AsistenciaGeneral({
-  data,
-  onVerClase,
-  onRefresh,
-}: {
-  data: any[];
-  onVerClase: (claseId: string) => void;
-  onRefresh: () => void;
-}) {
-  const [search, setSearch] = useState("");
-
-  const filtered = data.filter(
-    (item) =>
-      item.usuario_nombre?.toLowerCase().includes(search.toLowerCase()) ||
-      item.clase_titulo?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const resumen = {
-    total: data.length,
-    presentes: data.filter((d) => d.asistencia === "asistio").length,
-    ausentes: data.filter((d) => d.asistencia === "no_asistio").length,
-    pendientes: data.filter((d) => !d.asistencia || d.asistencia === "sin_confirmar" || d.asistencia === "pendiente").length,
-  };
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200">
-      <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4">
-          <h2 className="text-lg font-bold text-gray-900">Asistencia General</h2>
-          <div className="flex gap-3 text-sm">
-            <span className="text-green-600 font-semibold">{resumen.presentes} presentes</span>
-            <span className="text-red-500 font-semibold">{resumen.ausentes} ausentes</span>
-            <span className="text-gray-400 font-semibold">{resumen.pendientes} pendientes</span>
-          </div>
-        </div>
-        <div className="relative max-w-xs w-full">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar alumno o clase..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-          />
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-              <th className="p-3 font-semibold">Alumno</th>
-              <th className="p-3 font-semibold">Clase</th>
-              <th className="p-3 font-semibold">Estado</th>
-              <th className="p-3 font-semibold"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={4} className="p-8 text-center text-gray-400">Sin registros de asistencia</td></tr>
-            ) : filtered.map((item) => (
-              <tr key={item.id} className="border-b hover:bg-gray-50/50">
-                <td className="p-3 font-medium text-gray-900">{item.usuario_nombre}</td>
-                <td className="p-3 text-gray-600">{item.clase_titulo}</td>
-                <td className="p-3">
-                  {item.asistencia === "asistio" ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                      <Check size={12} /> Presente
-                    </span>
-                  ) : item.asistencia === "no_asistio" ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
-                      <X size={12} /> Ausente
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">
-                      Pendiente
-                    </span>
-                  )}
-                </td>
-                <td className="p-3">
-                  <button
-                    onClick={() => onVerClase(item.clase_id)}
-                    className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
-                  >
-                    Ver clase
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="p-3 border-t border-gray-100 text-xs text-gray-500">
-        Total: {resumen.total} registros
-      </div>
     </div>
   );
 }

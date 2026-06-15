@@ -132,7 +132,27 @@ export default function CapsulasPage() {
     setSaving(false);
     setModal(null);
     resetForm();
-    fetchData();
+    if (modal === "create") {
+      fetchData();
+    } else {
+      setCapsulas((prev) =>
+        prev.map((c) =>
+          c.id === form.id
+            ? {
+                ...c,
+                titulo: form.titulo,
+                imagen: form.imagen,
+                creado: form.creado,
+                duracion: form.duracion || null,
+                modulo_id: form.modulo_id || null,
+                profesor_id: form.profesor_id || null,
+                bunny_video_id: form.bunny_video_id || null,
+                order_index: form.order_index,
+              }
+            : c
+        )
+      );
+    }
   };
 
   const handleDelete = async (id: string, titulo: string) => {
@@ -144,7 +164,7 @@ export default function CapsulasPage() {
       setError(res.error || "Error al eliminar");
       return;
     }
-    fetchData();
+    setCapsulas((prev) => prev.filter((c) => c.id !== id));
   };
 
   if (loading && capsulas.length === 0) {
