@@ -15,6 +15,9 @@ export type ClaseConRelaciones = ClaseRow & {
   sede_nombre: string;
   profesor_nombre: string;
   inscritos: number;
+  presentes: number;
+  ausentes: number;
+  pendientes: number;
 };
 
 export type Sede = {

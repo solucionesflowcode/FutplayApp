@@ -5,8 +5,15 @@ import { getAdminMembresias } from "@/data/membresia";
 export type Plan = {
     id: string;
     nombre: string;
+    descripcion: string;
+    tipo: "clase_suelta" | "plan";
     tokens_mensuales: number;
     precio: number;
+    tokens: number;
+    dias_semana: number[];
+    duracion_semanas: number;
+    activo: boolean;
+    updated_at: string;
 };
 
 export async function getPlanes(): Promise<Plan[]> {
@@ -40,6 +47,71 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
     }
 
     return data as Plan[];
+}
+
+// ─── Admin CRUD ───
+
+export async function getPlanesAdmin(): Promise<Plan[]> {
+    const res = await fetch("/api/admin/planes");
+    if (!res.ok) {
+        console.error("Error fetching planes admin:", await res.text());
+        return [];
+    }
+    return res.json();
+}
+
+export async function createPlanAdmin(data: {
+    nombre: string;
+    descripcion: string;
+    tipo: "clase_suelta" | "plan";
+    precio: number;
+    tokens: number;
+    dias_semana?: number[];
+    duracion_semanas?: number;
+    activo?: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+    const res = await fetch("/api/admin/planes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const body = await res.json();
+        return { success: false, error: body.error };
+    }
+    return { success: true };
+}
+
+export async function updatePlanAdmin(data: {
+    id: string;
+    nombre?: string;
+    descripcion?: string;
+    tipo?: "clase_suelta" | "plan";
+    precio?: number;
+    tokens?: number;
+    dias_semana?: number[];
+    duracion_semanas?: number;
+    activo?: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+    const res = await fetch("/api/admin/planes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const body = await res.json();
+        return { success: false, error: body.error };
+    }
+    return { success: true };
+}
+
+export async function deletePlanAdmin(id: string): Promise<{ success: boolean; error?: string }> {
+    const res = await fetch(`/api/admin/planes?id=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+        const body = await res.json();
+        return { success: false, error: body.error };
+    }
+    return { success: true };
 }
 
 type UsuarioRow = {
