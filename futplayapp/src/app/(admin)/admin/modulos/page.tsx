@@ -105,7 +105,17 @@ export default function ModulosPage() {
     setSaving(false);
     setModal(null);
     resetForm();
-    fetchModulos();
+    if (modal === "create") {
+      fetchModulos();
+    } else {
+      setModulos((prev) =>
+        prev.map((m) =>
+          m.id === form.id
+            ? { ...m, nombre: form.nombre, descripcion: form.descripcion, categoria_id: form.categoria_id || m.categoria_id }
+            : m
+        )
+      );
+    }
   };
 
   const handleDelete = async (id: string, nombre: string) => {
@@ -117,7 +127,7 @@ export default function ModulosPage() {
       setError(res.error || "Error al eliminar");
       return;
     }
-    fetchModulos();
+    setModulos((prev) => prev.filter((m) => m.id !== id));
   };
 
   if (loading && modulos.length === 0) {

@@ -166,7 +166,13 @@ export default function ProfesoresPage() {
     } else {
       setEditProfesor(null);
       setSuccess("Profesor actualizado exitosamente");
-      fetchProfesores();
+      setProfesores((prev) =>
+        prev.map((p) =>
+          p.id === editProfesor.id
+            ? { ...p, nombre: editForm.nombre, email: editForm.email, telefono: editForm.telefono, foto_url: fotoUrl || p.foto_url }
+            : p
+        )
+      );
     }
     setSaving(false);
   };
@@ -181,7 +187,7 @@ export default function ProfesoresPage() {
       return;
     }
     setSuccess("Profesor eliminado exitosamente");
-    fetchProfesores();
+    setProfesores((prev) => prev.filter((p) => p.id !== id));
   };
 
   const toggleExpand = (id: string) => {
