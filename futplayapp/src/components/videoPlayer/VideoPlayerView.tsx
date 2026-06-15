@@ -281,9 +281,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
                     return (
                       <a
                         key={doc.id}
-                        href={doc.url_archivo}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={`/api/download-documento?id=${doc.id}`}
                         className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition-all group"
                       >
                         <div className="flex items-center gap-3">

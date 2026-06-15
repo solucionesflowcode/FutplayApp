@@ -70,26 +70,17 @@ async function fetchAllClases(): Promise<ClaseEvent[]> {
 async function fetchProfesorClaseIds(profesorId: string): Promise<Set<string>> {
   const supabase = createClient();
 
-  const [cuRes, claseRes] = await Promise.all([
-    supabase.from("clase_usuario").select("clase_id").eq("usuario_id", profesorId),
-    supabase.from("clase").select("id").eq("profesor_id", profesorId),
-  ]);
+  const { data, error } = await supabase
+    .from("clase")
+    .select("id")
+    .eq("profesor_id", profesorId);
 
-  const ids = new Set<string>();
-
-  if (!cuRes.error) {
-    for (const r of (cuRes.data ?? [])) ids.add(r.clase_id);
-  } else {
-    console.error("Error fetching profesor clase ids:", cuRes.error.message);
+  if (error) {
+    console.error("Error fetching profesor clase ids:", error.message);
+    return new Set();
   }
 
-  if (!claseRes.error) {
-    for (const r of (claseRes.data ?? [])) ids.add(r.id);
-  } else {
-    console.error("Error fetching profesor clase ids from clase:", claseRes.error.message);
-  }
-
-  return ids;
+  return new Set((data ?? []).map((r: { id: string }) => r.id));
 }
 
 export async function getTodasLasClases(profesorId: string): Promise<ClaseEvent[]> {
@@ -115,7 +106,7 @@ export async function getAlumnosPorClase(claseId: string): Promise<AlumnoAsisten
       usuario_id
     `)
     .eq("clase_id", claseId)
-    .in("asistencia", ["confirmado_whatsapp", "asistio", "no_asistio"]);
+    .in("asistencia", ["sin_confirmar", "pendiente", "confirmado_whatsapp", "asistio", "no_asistio"]);
 
   if (error) {
     console.error("Error fetching alumnos:", error.message);

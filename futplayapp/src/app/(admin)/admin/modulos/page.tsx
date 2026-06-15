@@ -129,11 +129,11 @@ export default function ModulosPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-6 w-full" style={{ maxWidth: "1216px" }}>
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
 
         {/* ─── HEADER ─── */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900">Gestión de Módulos</h1>
             <p className="text-gray-500 text-sm mt-1">
@@ -142,7 +142,7 @@ export default function ModulosPage() {
           </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto"
           >
             <Plus size={16} />
             Nuevo Módulo
@@ -151,8 +151,8 @@ export default function ModulosPage() {
 
         {/* ─── TABLE ─── */}
         <div className="bg-white rounded-xl border border-gray-200">
-          <div className="p-4 border-b border-gray-100 flex items-center gap-4">
-            <div className="relative flex-1 max-w-xs">
+          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="relative w-full sm:max-w-xs">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -162,11 +162,11 @@ export default function ModulosPage() {
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
               />
             </div>
-            <span className="text-sm text-gray-500">{filtered.length} módulo{filtered.length !== 1 ? "s" : ""}</span>
+            <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} módulo{filtered.length !== 1 ? "s" : ""}</span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[700px]">
               <thead>
                 <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                   <th className="p-3 font-semibold">Nombre</th>
@@ -233,8 +233,8 @@ export default function ModulosPage() {
 
       {/* ─── MODAL ─── */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">
                 {modal === "create" ? "Nuevo Módulo" : "Editar Módulo"}

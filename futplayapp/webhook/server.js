@@ -128,11 +128,11 @@ app.post('/whatsapp-webhook', async (req, res) => {
 });
 
 // ─── Forzar recordatorio ahora (testing) ───
-app.get('/test-reminder/:horarioId', async (req, res) => {
+app.get('/test-reminder/:claseId', async (req, res) => {
   try {
     const horarios = await db.getHorarios24h();
-    const h = horarios.find(x => x.id === req.params.horarioId);
-    if (!h) return res.status(404).send('Horario no está en ventana 24h');
+    const h = horarios.find(x => x.id === req.params.claseId);
+    if (!h) return res.status(404).send('Clase no está en ventana 24h');
 
     const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
     if (!inscripciones.length) return res.send('Sin alumnos sin confirmar');

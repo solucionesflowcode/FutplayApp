@@ -197,11 +197,11 @@ export default function ProfesoresPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-6 w-full" style={{ maxWidth: "1216px" }}>
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
 
         {/* ─── HEADER ─── */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900">Profesores</h1>
             <p className="text-gray-500 text-sm mt-1">
@@ -211,13 +211,13 @@ export default function ProfesoresPage() {
         </div>
 
         {/* ─── BUSCAR USUARIO POR EMAIL ─── */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
           <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <Plus size={16} />
             Agregar profesor por email
           </h2>
-          <div className="flex gap-3">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative w-full sm:max-w-md">
               <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="email"
@@ -231,7 +231,7 @@ export default function ProfesoresPage() {
             <button
               onClick={handleBuscar}
               disabled={buscando}
-              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               {buscando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
               Buscar
@@ -240,8 +240,8 @@ export default function ProfesoresPage() {
 
           {/* ─── RESULTADOS DE BÚSQUEDA ─── */}
           {resultadosBusqueda !== null && resultadosBusqueda.length > 0 && (
-            <div className="mt-4 border border-gray-100 rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="mt-4 border border-gray-100 rounded-lg overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
                 <thead>
                   <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                     <th className="p-3 font-semibold">Nombre</th>
@@ -294,8 +294,8 @@ export default function ProfesoresPage() {
 
         {/* ─── TABLA DE PROFESORES ─── */}
         <div className="bg-white rounded-xl border border-gray-200">
-          <div className="p-4 border-b border-gray-100 flex items-center gap-4">
-            <div className="relative flex-1 max-w-xs">
+          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="relative w-full sm:max-w-xs">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -305,11 +305,11 @@ export default function ProfesoresPage() {
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
               />
             </div>
-            <span className="text-sm text-gray-500">{filtered.length} profesor{filtered.length !== 1 ? "es" : ""}</span>
+            <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} profesor{filtered.length !== 1 ? "es" : ""}</span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                   <th className="p-3 font-semibold">Nombre</th>
@@ -348,35 +348,25 @@ export default function ProfesoresPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="p-3">
-                        <span className="inline-flex items-center gap-1 text-gray-600">
-                          <Mail size={13} />
-                          {p.email || <span className="text-gray-300">—</span>}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="inline-flex items-center gap-1 text-gray-600">
-                          <Phone size={13} />
-                          {p.telefono || <span className="text-gray-300">—</span>}
-                        </span>
-                      </td>
+                      <td className="p-3 text-gray-600">{p.email}</td>
+                      <td className="p-3 text-gray-600">{p.telefono || <span className="text-gray-300">—</span>}</td>
                       <td className="p-3">
                         <button
                           onClick={() => toggleExpand(p.id)}
-                          className={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors " + (p.total_clases > 0 ? "bg-green-50 text-green-700 hover:bg-green-100" : "bg-gray-50 text-gray-400")}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-xs font-semibold transition-colors"
                         >
-                          <BookOpen size={13} />
-                          {p.total_clases}
-                          {p.total_clases > 0 && (
-                            expandedId === p.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />
-                          )}
+                          <BookOpen size={12} />
+                          {p.clases.length} clase{p.clases.length !== 1 ? "s" : ""}
                         </button>
                       </td>
-                      <td className="p-3">
-                        <span className={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold " + (p.total_capsulas > 0 ? "bg-purple-50 text-purple-700" : "bg-gray-50 text-gray-400")}>
-                          <Video size={13} />
-                          {p.total_capsulas}
-                        </span>
+                      <td className="p-3 font-semibold text-gray-700">
+                        <button
+                          onClick={() => toggleExpand(p.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          <Video size={12} />
+                          {p.capsulas.length} cápsula{p.capsulas.length !== 1 ? "s" : ""}
+                        </button>
                       </td>
                       <td className="p-3">
                         <div className="flex gap-2">
@@ -397,32 +387,28 @@ export default function ProfesoresPage() {
                         </div>
                       </td>
                     </tr>
-                    {expandedId === p.id && p.clases.length > 0 && (
+                    {expandedId === p.id && (p.clases.length > 0 || p.capsulas.length > 0) && (
                       <tr className="bg-gray-50/70">
-                        <td colSpan={5} className="p-3 pl-12">
-                          <div className="text-xs font-semibold text-gray-500 mb-2">Clases que imparte:</div>
-                          <div className="flex flex-wrap gap-2">
-                            {p.clases.map((clase) => (
-                              <span
-                                key={clase.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs"
-                              >
-                                <BookOpen size={11} />
-                                {clase.titulo}
-                              </span>
-                            ))}
-                          </div>
+                        <td colSpan={6} className="p-3 pl-12">
+                          {p.clases.length > 0 && (
+                            <>
+                              <div className="text-xs font-semibold text-gray-500 mb-2">Clases que imparte:</div>
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {p.clases.map((clase) => (
+                                  <span key={clase.id} className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs">
+                                    <BookOpen size={11} /> {clase.titulo}
+                                  </span>
+                                ))}
+                              </div>
+                            </>
+                          )}
                           {p.capsulas.length > 0 && (
                             <>
-                              <div className="text-xs font-semibold text-gray-500 mt-3 mb-2">Cápsulas que dirige:</div>
+                              <div className="text-xs font-semibold text-gray-500 mb-2">Cápsulas que dirige:</div>
                               <div className="flex flex-wrap gap-2">
                                 {p.capsulas.map((capsula) => (
-                                  <span
-                                    key={capsula.id}
-                                    className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded-md text-xs"
-                                  >
-                                    <Video size={11} />
-                                    {capsula.titulo}
+                                  <span key={capsula.id} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded-md text-xs">
+                                    <Video size={11} /> {capsula.titulo}
                                   </span>
                                 ))}
                               </div>
@@ -441,8 +427,8 @@ export default function ProfesoresPage() {
 
       {/* ─── MODAL EDITAR ─── */}
       {editProfesor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">Editar Profesor</h2>
               <button onClick={() => { setEditProfesor(null); setError(null); }} className="p-1 hover:bg-gray-100 rounded-lg">
@@ -499,7 +485,7 @@ export default function ProfesoresPage() {
                   <label className="flex-1 cursor-pointer">
                     <div className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
                       <Upload size={16} className="text-gray-500" />
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-gray-600 truncate">
                         {editFile ? editFile.name : "Seleccionar archivo..."}
                       </span>
                     </div>
@@ -551,7 +537,7 @@ export default function ProfesoresPage() {
                 className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
               >
                 {(saving || fileUploading) && <Loader2 size={14} className="animate-spin" />}
-                {fileUploading ? "Subiendo imagen..." : saving ? "Guardando..." : "Guardar Cambios"}
+                {fileUploading ? "Subiendo..." : saving ? "Guardando..." : "Guardar"}
               </button>
             </div>
           </div>
