@@ -11,10 +11,11 @@ function getClient() {
 }
 
 async function buscarUsuarioPorTelefono(telefono) {
+  const raw = telefono.replace(/\D/g, '');
   const { data } = await supabase
     .from('usuario')
     .select('id, nombre, rol')
-    .or(`telefono.eq.${telefono},telefono.eq.+${telefono}`)
+    .in('telefono', [raw, '+' + raw])
     .maybeSingle();
   return data;
 }

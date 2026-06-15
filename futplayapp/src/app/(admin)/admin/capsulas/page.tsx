@@ -630,6 +630,10 @@ export default function CapsulasPage() {
       setError("Por favor ingresa un título");
       return;
     }
+    if (currentStep === 2 && !form.bunny_video_id.trim()) {
+      setError("Debes subir un video o ingresar un ID de Bunny antes de continuar");
+      return;
+    }
     setError(null);
     setCurrentStep(prev => prev + 1);
   };

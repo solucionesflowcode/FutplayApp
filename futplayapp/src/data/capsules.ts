@@ -85,7 +85,7 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
         .from("capsula")
         .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, descripcion")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
     if (capsulaError || !item) {
         console.error("Error fetching capsula by id:", capsulaError?.message);
@@ -97,7 +97,7 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
             .from("modulo")
             .select("id, categoria_id")
             .eq("id", item.modulo_id)
-            .single()
+            .maybeSingle()
         : { data: null, error: null };
 
     const { data: categoria, error: categoriasError } = modulo?.categoria_id
@@ -105,7 +105,7 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
             .from("categoria")
             .select("id, nombre")
             .eq("id", modulo.categoria_id)
-            .single()
+            .maybeSingle()
         : { data: null, error: null };
 
     return {
