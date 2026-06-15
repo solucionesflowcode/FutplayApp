@@ -41,7 +41,7 @@ export async function GET(request: Request) {
             if (statusData.status !== 2) {
                 return NextResponse.json({ estado: "rechazado" });
             }
-            if (statusData.commerceOrder && statusData.commerceOrder !== boletaId) {
+            if (statusData.commerceOrder && String(statusData.commerceOrder) !== boletaId) {
                 console.error(`[Flow Confirm] Mismatch: boletaId=${boletaId} !== commerceOrder=${statusData.commerceOrder}`);
                 return NextResponse.json({ error: "Boleta no coincide con el pago" }, { status: 403 });
             }

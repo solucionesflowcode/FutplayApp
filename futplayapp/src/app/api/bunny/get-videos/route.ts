@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { listVideos } from "@/lib/bunny";
+import { verifyAdmin } from "@/utils/supabase/admin";
 
 export async function GET(request: Request) {
+    const user = await verifyAdmin();
+    if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
     const { searchParams } = new URL(request.url);
 
     try {

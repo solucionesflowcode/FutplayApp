@@ -25,10 +25,16 @@ export default async function Page({ params }: PageProps) {
         redirect("/login");
     }
 
+    const ahora = new Date();
+    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    const inicioMesSiguiente = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 1);
+
     const { data: membresiaData } = await supabase
         .from("membresia")
         .select("*")
-        .eq("usuario_id", user.id);
+        .eq("usuario_id", user.id)
+        .gte("mes", inicioMes.toISOString().split("T")[0])
+        .lt("mes", inicioMesSiguiente.toISOString().split("T")[0]);
 
     const hasMembresia = (membresiaData?.length ?? 0) > 0;
 
