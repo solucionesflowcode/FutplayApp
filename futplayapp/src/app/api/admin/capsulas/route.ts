@@ -33,13 +33,13 @@ export async function GET(request: Request) {
 
     const result = await admin
       .from("capsula")
-      .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, order_index, profesor_id")
+      .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, order_index, profesor_id, descripcion")
       .order("order_index");
 
     if (result.error) {
       const fallback = await admin
         .from("capsula")
-        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, order_index")
+        .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, order_index, descripcion")
         .order("order_index");
       capsulas = fallback.data || [];
       capsulasError = fallback.error;
@@ -76,6 +76,7 @@ export async function GET(request: Request) {
       profesor_nombre: c.profesor_id ? profesorMap.get(c.profesor_id) || "" : "",
       bunny_video_id: c.bunny_video_id,
       order_index: c.order_index,
+      descripcion: c.descripcion || null,
     })));
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
       modulo_id: body.modulo_id || null,
       bunny_video_id: body.bunny_video_id || null,
       order_index: body.order_index ?? null,
+      descripcion: body.descripcion ?? null,
     };
     if (body.profesor_id !== undefined) insertData.profesor_id = body.profesor_id;
 
@@ -137,6 +139,7 @@ export async function PUT(request: Request) {
     if (body.bunny_video_id !== undefined) updateData.bunny_video_id = body.bunny_video_id;
     if (body.order_index !== undefined) updateData.order_index = body.order_index;
     if (body.profesor_id !== undefined) updateData.profesor_id = body.profesor_id;
+    if (body.descripcion !== undefined) updateData.descripcion = body.descripcion;
 
     const { error } = await admin.from("capsula").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

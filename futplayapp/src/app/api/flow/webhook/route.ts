@@ -47,8 +47,8 @@ export async function POST(request: Request) {
     } catch {
       const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX !== "false";
       if (!isSandbox) {
-        console.error(`[Flow Webhook] getStatus falló en producción — ignorando`);
-        return NextResponse.json({ message: "OK" });
+        console.error(`[Flow Webhook] getStatus falló en producción — devolviendo 502 para reintento`);
+        return NextResponse.json({ error: "Error al verificar pago con Flow" }, { status: 502 });
       }
       if (!boletaId) {
         console.error(`[Flow Webhook] getStatus falló en sandbox y no hay boletaId en URL`);

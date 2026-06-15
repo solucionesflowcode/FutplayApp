@@ -179,12 +179,12 @@ describe("cancelarAsistencia", () => {
     expect(db.devolverToken).toHaveBeenCalledWith("user-1");
   });
 
-  it("responde igual aunque devolverToken falle silenciosamente", async () => {
+  it("responde distinto si devolverToken falla", async () => {
     db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
     db.updateAsistencia.mockResolvedValue(true);
     db.devolverToken.mockResolvedValue(false);
     const res = await cancelarAsistencia("user-1", db);
-    expect(res).toBe("❌ Clase cancelada. Te devolvimos el token.");
+    expect(res).toBe("❌ Clase cancelada. No se pudo devolver el token.");
   });
 });
 

@@ -10,6 +10,7 @@ export type CapsulaAdmin = {
   profesor_nombre: string;
   bunny_video_id: string | null;
   order_index: number | null;
+  descripcion: string | null;
 };
 
 export type ModuloOption = {
@@ -44,7 +45,8 @@ export async function createCapsula(data: {
   profesor_id?: string;
   bunny_video_id?: string;
   order_index?: number;
-}): Promise<{ success: boolean; error?: string }> {
+  descripcion?: string;
+}): Promise<{ success: boolean; error?: string; data?: { id: string } }> {
   const res = await fetch("/api/admin/capsulas", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -54,7 +56,8 @@ export async function createCapsula(data: {
     const body = await res.json();
     return { success: false, error: body.error };
   }
-  return { success: true };
+  const responseData = await res.json();
+  return { success: true, data: { id: responseData.id } };
 }
 
 export async function updateCapsula(data: {
@@ -67,6 +70,7 @@ export async function updateCapsula(data: {
   profesor_id?: string | null;
   bunny_video_id?: string | null;
   order_index?: number;
+  descripcion?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/capsulas", {
     method: "PUT",

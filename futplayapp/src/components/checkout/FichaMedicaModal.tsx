@@ -120,7 +120,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
     };
 
     const validateStep2 = () => {
-        return enfermedades.trim() !== "" && alergias.trim() !== "" && medicamentos.trim() !== "" && observaciones.trim() !== "";
+        return true;
     };
 
     const handleSubmit = async () => {

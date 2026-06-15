@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { createVideo } from "@/lib/bunny";
+import { verifyAdmin } from "@/utils/supabase/admin";
 
 export async function POST(request: Request) {
+    const user = await verifyAdmin();
+    if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
     const { title } = await request.json();
 
     if (!title || typeof title !== "string") {
