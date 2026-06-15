@@ -16,8 +16,8 @@ async function cancelarAsistencia(usuarioId, db) {
   const horas = horasHasta(proxima.horario.fecha_hora);
   if (horas >= 3) {
     await db.updateAsistencia(proxima.id, 'cancelado');
-    await db.devolverToken(usuarioId);
-    return '❌ Clase cancelada. Te devolvimos el token.';
+    const tokenOk = await db.devolverToken(usuarioId);
+    return tokenOk ? '❌ Clase cancelada. Te devolvimos el token.' : '❌ Clase cancelada. No se pudo devolver el token.';
   }
   await db.updateAsistencia(proxima.id, 'cancelado_sin_reembolso');
   return '❌ Clase cancelada. Como faltan menos de 3h, no se devuelve el token.';
