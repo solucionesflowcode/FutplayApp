@@ -7,14 +7,17 @@ export type ClaseRow = {
   sede_id: string;
   cupo_maximo: number;
   profesor_id: string | null;
+  fecha_hora: string | null;
   created_at: string;
 };
 
 export type ClaseConRelaciones = ClaseRow & {
   sede_nombre: string;
   profesor_nombre: string;
-  fecha_hora: string | null;
   inscritos: number;
+  presentes: number;
+  ausentes: number;
+  pendientes: number;
 };
 
 export type Sede = {

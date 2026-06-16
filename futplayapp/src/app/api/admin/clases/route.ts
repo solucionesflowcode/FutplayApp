@@ -99,20 +99,30 @@ export async function GET(request: Request) {
 
     const { data: counts } = await admin
       .from("clase_usuario")
-      .select("clase_id")
+      .select("clase_id, asistencia")
       .in("clase_id", claseIds);
 
-    const inscritosPorClase = new Map<string, number>();
+    type AsistenciaStats = { inscritos: number; presentes: number; ausentes: number; pendientes: number };
+    const statsPorClase = new Map<string, AsistenciaStats>();
     (counts || []).forEach((cu) => {
-      inscritosPorClase.set(cu.clase_id, (inscritosPorClase.get(cu.clase_id) || 0) + 1);
+      if (!statsPorClase.has(cu.clase_id)) {
+        statsPorClase.set(cu.clase_id, { inscritos: 0, presentes: 0, ausentes: 0, pendientes: 0 });
+      }
+      const s = statsPorClase.get(cu.clase_id)!;
+      s.inscritos++;
+      if (cu.asistencia === "asistio") s.presentes++;
+      else if (cu.asistencia === "no_asistio") s.ausentes++;
+      else s.pendientes++;
     });
 
     return NextResponse.json((clases || []).map((c) => ({
       ...c,
       sede_nombre: sedeMap.get(c.sede_id) || "—",
       profesor_nombre: c.profesor_id ? profesorMap.get(c.profesor_id) || "" : "",
-      fecha_hora: c.fecha_hora,
-      inscritos: inscritosPorClase.get(c.id) || 0,
+      inscritos: statsPorClase.get(c.id)?.inscritos || 0,
+      presentes: statsPorClase.get(c.id)?.presentes || 0,
+      ausentes: statsPorClase.get(c.id)?.ausentes || 0,
+      pendientes: statsPorClase.get(c.id)?.pendientes || 0,
     })));
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -136,9 +146,9 @@ export async function POST(request: Request) {
       descripcion: body.descripcion || "",
       sede_id: body.sede_id,
       cupo_maximo: body.cupo_maximo || 15,
-      fecha_hora: body.fecha_hora || body.horarios?.[0] || null,
     };
     if (body.profesor_id !== undefined) insertData.profesor_id = body.profesor_id;
+    if (body.fecha_hora) insertData.fecha_hora = body.fecha_hora;
 
     const { data: clase, error } = await admin
       .from("clase")
@@ -170,14 +180,11 @@ export async function PUT(request: Request) {
     if (body.sede_id !== undefined) updateData.sede_id = body.sede_id;
     if (body.cupo_maximo !== undefined) updateData.cupo_maximo = body.cupo_maximo;
     if (body.profesor_id !== undefined) updateData.profesor_id = body.profesor_id;
+    if (body.fecha_hora !== undefined) updateData.fecha_hora = body.fecha_hora;
 
     if (Object.keys(updateData).length > 0) {
       const { error } = await admin.from("clase").update(updateData).eq("id", body.id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (body.fecha_hora !== undefined || body.horarios !== undefined) {
-      updateData.fecha_hora = body.fecha_hora ?? body.horarios?.[0] ?? null;
     }
 
     return NextResponse.json({ success: true });
