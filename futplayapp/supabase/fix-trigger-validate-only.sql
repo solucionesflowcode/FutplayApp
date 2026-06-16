@@ -4,6 +4,7 @@
 CREATE OR REPLACE FUNCTION public.manejar_inscripcion_clase()
  RETURNS trigger
  LANGUAGE plpgsql
+ SECURITY DEFINER
 AS $function$
 declare
   tokens_disponibles int;

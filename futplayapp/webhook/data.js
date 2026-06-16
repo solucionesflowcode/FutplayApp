@@ -68,23 +68,12 @@ async function updateAsistencia(claseUsuarioId, estado) {
 }
 
 async function devolverToken(usuarioId) {
-  const { data: membresia } = await supabase
-    .from('membresia')
-    .select('id, tokens_usados')
-    .eq('usuario_id', usuarioId)
-    .gt('tokens_usados', 0)
-    .order('mes', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!membresia) return false;
-
-  const { error } = await supabase
-    .from('membresia')
-    .update({ tokens_usados: membresia.tokens_usados - 1 })
-    .eq('id', membresia.id);
-
-  return !error;
+  const { data, error } = await supabase.rpc('devolver_token', { p_usuario_id: usuarioId });
+  if (error) {
+    console.error('devolver_token RPC error:', error.message);
+    return false;
+  }
+  return data === true;
 }
 
 async function getHorariosProximos() {
