@@ -1,13 +1,35 @@
 import crypto from "node:crypto";
 
 // ──────────────────────────────────────────────
+// Startup validation
+// ──────────────────────────────────────────────
+
+function validateEnv() {
+  const apiKey = process.env.FLOW_API_KEY;
+  const secretKey = process.env.FLOW_SECRET_KEY;
+  const errors: string[] = [];
+
+  if (!apiKey) errors.push("FLOW_API_KEY no está definida en .env.local");
+  if (!secretKey) errors.push("FLOW_SECRET_KEY no está definida en .env.local");
+
+  if (errors.length > 0) {
+    console.error(`[Flow] Errores de configuración:\n${errors.join("\n")}`);
+    return false;
+  }
+
+  return true;
+}
+
+validateEnv();
+
+// ──────────────────────────────────────────────
 // Config
 // ──────────────────────────────────────────────
 
 function getConfig() {
   const apiKey = process.env.FLOW_API_KEY;
   const secretKey = process.env.FLOW_SECRET_KEY;
-  const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX !== "false";
+  const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
 
   if (!apiKey || !secretKey) {
     throw new Error("Missing FLOW_API_KEY or FLOW_SECRET_KEY env vars");

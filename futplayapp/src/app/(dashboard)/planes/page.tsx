@@ -8,6 +8,7 @@ import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 import { getPlanes, type Plan } from "@/data/plans";
 import { getMiMembresia } from "@/data/pagos";
 import { useAuthUser } from "@/context";
+import { membresiaActiva } from "@/lib/fechas";
 import { userHasFichaMedica } from "@/data/fichaMedica";
 
 export default function PlanesPage() {
@@ -49,10 +50,7 @@ export default function PlanesPage() {
                     const membresia = await getMiMembresia(usuario.id);
                     if (cancelled) return;
                     if (membresia) {
-                        const vencimiento = new Date(membresia.mes + "T00:00:00");
-                        vencimiento.setMonth(vencimiento.getMonth() + 1);
-                        vencimiento.setDate(0);
-                        setTienePlanActivo(vencimiento >= new Date());
+                        setTienePlanActivo(membresiaActiva(membresia.mes));
                     }
                 }
             } catch (err) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RotateCcw, CreditCard, CalendarDays, Zap } from "lucide-react";
+import { RotateCcw, CreditCard, CalendarDays, Zap, XCircle } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 type MembresiaData = {
@@ -19,6 +19,19 @@ export default function ProximaRenovacion() {
         recurrenciaActiva: boolean;
     } | null>(null);
     const [loading, setLoading] = useState(true);
+    const [cancelando, setCancelando] = useState(false);
+
+    const cancelarSuscripcion = async () => {
+        setCancelando(true);
+        try {
+            const res = await fetch("/api/flow/cancel-recurrence", { method: "POST" });
+            if (res.ok) {
+                setData((prev) => prev ? { ...prev, recurrenciaActiva: false } : prev);
+            }
+        } finally {
+            setCancelando(false);
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -75,11 +88,12 @@ export default function ProximaRenovacion() {
 
     const { membresia, recurrenciaActiva } = data;
 
+    const fechaCompra = new Date(membresia.mes);
     const now = new Date();
-    const diasDelMes = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const diasTranscurridos = now.getDate();
-    const porcentajeMes = Math.round((diasTranscurridos / diasDelMes) * 100);
-    const diasRestantes = diasDelMes - diasTranscurridos;
+    const diasTranscurridos = Math.max(0, Math.floor((now.getTime() - fechaCompra.getTime()) / 86400000));
+    const porcentajeMes = Math.round(Math.min((diasTranscurridos / 30) * 100, 100));
+    const diasRestantes = Math.max(0, 30 - diasTranscurridos);
+    const proximaRenovacion = new Date(fechaCompra.getTime() + 30 * 86400000);
 
     const formatoPeso = (n: number) =>
         new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(n);
@@ -114,9 +128,22 @@ export default function ProximaRenovacion() {
                     </div>
                 </div>
                 {recurrenciaActiva && (
-                    <div className="flex items-center gap-1.5 mb-1 ml-auto bg-[#00A86B]/10 px-3 py-1.5 rounded-full">
-                        <RotateCcw size={14} className="text-[#00A86B]" />
-                        <span className="text-[#00A86B] text-xs font-bold">Auto</span>
+                    <div className="flex items-center gap-2 mb-1 ml-auto">
+                        <div className="flex items-center gap-1.5 bg-[#00A86B]/10 px-3 py-1.5 rounded-full">
+                            <RotateCcw size={14} className="text-[#00A86B]" />
+                            <span className="text-[#00A86B] text-xs font-bold">Auto</span>
+                        </div>
+                        <button
+                            onClick={cancelarSuscripcion}
+                            disabled={cancelando}
+                            className="flex items-center gap-1 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1.5 rounded-full transition-colors disabled:opacity-50"
+                            title="Cancelar suscripción automática"
+                        >
+                            <XCircle size={14} className="text-red-400" />
+                            <span className="text-red-400 text-xs font-bold">
+                                {cancelando ? "..." : "Cancelar"}
+                            </span>
+                        </button>
                     </div>
                 )}
             </div>
@@ -125,7 +152,7 @@ export default function ProximaRenovacion() {
                 <CalendarDays size={16} className="text-[#F39200]" />
                 <div>
                     <p className="text-white text-sm font-semibold">
-                        Renueva el {new Date(now.getFullYear(), now.getMonth() + 1, 1).toLocaleDateString("es-CL", { day: "numeric", month: "long" })}
+                        Renueva el {proximaRenovacion.toLocaleDateString("es-CL", { day: "numeric", month: "long" })}
                     </p>
                     <p className="text-white/40 text-[11px]">
                         {diasRestantes === 0 ? "Último día del mes" : `Quedan ${diasRestantes} días`}
