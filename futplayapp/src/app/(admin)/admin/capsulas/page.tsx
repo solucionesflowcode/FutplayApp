@@ -28,6 +28,7 @@ import {
   createCapsula,
   updateCapsula,
   deleteCapsula,
+  setCapsulaDestacada,
   type CapsulaAdmin,
   type ModuloOption,
 } from "@/data/capsulas-admin";
@@ -84,6 +85,7 @@ export default function CapsulasPage() {
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [videoProcessing, setVideoProcessing] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; titulo: string } | null>(null);
+  const [togglingDestacada, setTogglingDestacada] = useState<string | null>(null);
   const [encodeProgress, setEncodeProgress] = useState<number>(0);
   const [videoStatus, setVideoStatus] = useState<number | null>(null);
   const [showManualId, setShowManualId] = useState<boolean>(false);
@@ -635,6 +637,22 @@ export default function CapsulasPage() {
     }
   };
 
+  const handleToggleDestacada = async (c: CapsulaAdmin) => {
+    setTogglingDestacada(c.id);
+    setError(null);
+    const newId = c.destacada ? null : c.id;
+    const res = await setCapsulaDestacada(newId);
+    if (!res.success) {
+      setError(res.error || "Error al cambiar cápsula destacada");
+      setTogglingDestacada(null);
+      return;
+    }
+    setCapsulas((prev) =>
+      prev.map((x) => ({ ...x, destacada: x.id === newId }))
+    );
+    setTogglingDestacada(null);
+  };
+
   const handleDelete = async (id: string, _titulo: string) => {
     setDeleteTarget(null);
     setError(null);
@@ -794,6 +812,24 @@ export default function CapsulasPage() {
                     </td>
                     <td className="p-3">
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => handleToggleDestacada(c)}
+                          disabled={togglingDestacada === c.id}
+                          className={`p-1.5 rounded-lg ${
+                            c.destacada
+                              ? "text-yellow-500 hover:bg-yellow-50"
+                              : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"
+                          }`}
+                          title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
+                        >
+                          {togglingDestacada === c.id ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                          )}
+                        </button>
                         <button
                           onClick={() => openEdit(c)}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
