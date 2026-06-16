@@ -114,21 +114,13 @@ export default function ProximoEntrenamiento() {
             minute: "2-digit",
         });
 
-    const diff = fecha.getTime() - new Date().getTime();
-    const horas = Math.max(0, Math.floor(diff / (1000 * 60 * 60)));
-    const minutos = Math.max(0, Math.floor((diff / (1000 * 60)) % 60));
-
     return (
-        <div className="w-full min-w-[380px] h-[250px] bg-white px-6 pt-4 rounded-xl border-l-4 border-[#8A5100] shadow-lg">
+        <div className="w-full min-w-[380px] h-[250px] bg-white px-6 pt-4 rounded-xl border-l-4 border-[#F39200] shadow-lg">
 
             <div className="flex justify-between">
-                <h1 className="text-[#8A5100] text-[15px] font-semibold">
+                <h1 className="text-[#F39200] text-[15px] font-semibold">
                     Próximo Entrenamiento
                 </h1>
-
-                <p className="bg-[#D3E3FF] text-[#004080] px-2 py-1 rounded text-[12px]">
-                    {textoFecha}
-                </p>
             </div>
 
             <div className="flex flex-col gap-2 mt-5">
@@ -145,17 +137,10 @@ export default function ProximoEntrenamiento() {
                 </p>
             </div>
 
-            <div className="flex justify-between mt-5">
-                <div className="text-[#94A3B8] text-[9px] font-semibold">
-                    CUENTA REGRESIVA:
-                    <p className="text-[#004080] text-[20px] font-semibold">
-                        {horas}h:{minutos}m
-                    </p>
-                </div>
-
-                <button className="bg-[#8A5100] h-[40px] text-white rounded-xl px-7">
-                    Cancelar con aviso
-                </button>
+            <div className="mt-5">
+                <p className="font-bold text-[20px] text-[#00305B]">
+                    {textoFecha}
+                </p>
             </div>
         </div>
     );
