@@ -7,6 +7,7 @@ import {
     getAllClasesConInscripcion,
     type ClaseConInscripcion,
 } from "@/data/misclases-calendario";
+import { getMembresiaByUser } from "@/data/membresia";
 import ReservarClaseModal from "@/components/misclases/ReservarClaseModal";
 import {
     AlertCircle,
@@ -110,6 +111,7 @@ export default function MisClasesClient() {
         const n = new Date();
         return new Date(n.getFullYear(), n.getMonth(), 1);
     });
+    const [tokensRestantes, setTokensRestantes] = useState<number | null>(null);
     const [selectedClases, setSelectedClases] = useState<{
         claseId: string;
         titulo: string;
@@ -124,8 +126,12 @@ export default function MisClasesClient() {
             return;
         }
         setLoading(true);
-        const rows = await getAllClasesConInscripcion(usuario.id);
+        const [rows, membresia] = await Promise.all([
+            getAllClasesConInscripcion(usuario.id),
+            getMembresiaByUser(usuario.id),
+        ]);
         setSessions(flattenClases(rows));
+        setTokensRestantes(membresia?.tokens_restantes ?? null);
         setLoading(false);
     }, [usuario?.id]);
 
@@ -237,14 +243,7 @@ export default function MisClasesClient() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-                        <button
-                            type="button"
-                            className="hidden sm:flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-[#00305b] hover:bg-[#e7e8ea] rounded-xl transition-colors border border-transparent hover:border-[#c2c6d1]/60"
-                        >
-                            <Download className="w-4 h-4" />
-                            Descargar reporte
-                        </button>
-                        <div className="flex items-center gap-3 pl-1 sm:border-l sm:border-[#e1e2e4] sm:pl-6">
+                        <div className="flex items-center gap-3 pl-1 sm:pl-6">
                             <div className="text-right hidden sm:block min-w-0">
                                 <p className="text-xs font-bold text-[#00305b] truncate max-w-[140px]">
                                     {usuario?.nombre ?? firstName}
@@ -275,7 +274,7 @@ export default function MisClasesClient() {
                     <>
                         {/* Calendario — ancho completo */}
                         <div className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 md:mb-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 items-center mb-6 md:mb-8 gap-4">
                                 <div className="flex items-center gap-3 md:gap-4 flex-wrap">
                                     <h2
                                         className="font-[family-name:var(--font-futplay-headline),sans-serif] text-lg md:text-xl font-bold text-[#00305b] capitalize"
@@ -325,6 +324,18 @@ export default function MisClasesClient() {
                                         >
                                             Hoy
                                         </button>
+                                    </div>
+                                </div>
+                                <div className="flex justify-center">
+                                    <div className="bg-white px-3 py-1.5 rounded-lg border-l-4 border-[#F39200] shadow-sm flex items-center gap-2">
+                                        <div>
+                                            <p className="text-[8px] font-black uppercase tracking-wider text-slate-400 leading-tight">
+                                                Tokens restantes
+                                            </p>
+                                            <p className="text-base font-black text-[#F39200] leading-none">
+                                                {tokensRestantes ?? "—"}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-4 md:gap-5 items-center">
