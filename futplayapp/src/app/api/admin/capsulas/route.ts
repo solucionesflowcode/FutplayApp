@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { verifyAdmin } from "@/utils/supabase/admin";
+import { getCapsulaDestacadaId } from "@/lib/capsula-destacada";
 
 function getAdminClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -64,6 +65,8 @@ export async function GET(request: Request) {
     const moduloMap = new Map((modulos || []).map((m) => [m.id, m.nombre]));
     const profesorMap = new Map((profesores || []).map((p) => [p.id, p.nombre]));
 
+    const destacadaId = await getCapsulaDestacadaId();
+
     return NextResponse.json(capsulas.map((c) => ({
       id: c.id,
       titulo: c.titulo,
@@ -77,6 +80,7 @@ export async function GET(request: Request) {
       bunny_video_id: c.bunny_video_id,
       order_index: c.order_index,
       descripcion: c.descripcion || null,
+      destacada: c.id === destacadaId,
     })));
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
