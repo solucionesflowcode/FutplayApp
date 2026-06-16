@@ -17,6 +17,7 @@ import {
   deletePlanAdmin,
   type Plan,
 } from "@/data/plans";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -49,6 +50,7 @@ export default function PlanesPage() {
   const [form, setForm] = useState<PlanForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchPlanes = useCallback(async () => {
     const data = await getPlanesAdmin();
@@ -124,7 +126,7 @@ export default function PlanesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar este plan? Los alumnos con este plan quedarán sin referencia.")) return;
+    setDeleteId(null);
     setPlanes((prev) => prev.filter((p) => p.id !== id));
     await deletePlanAdmin(id);
   };
@@ -143,6 +145,7 @@ export default function PlanesPage() {
   }
 
   return (
+    <>
     <div className="p-6">
       <div className="flex flex-col gap-6 w-full" style={{ maxWidth: "1216px" }}>
 
@@ -237,7 +240,7 @@ export default function PlanesPage() {
                             <Pencil size={16} />
                           </button>
                           <button
-                            onClick={() => handleDelete(p.id)}
+                            onClick={() => setDeleteId(p.id)}
                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                             title="Eliminar"
                           >
@@ -349,5 +352,14 @@ export default function PlanesPage() {
         </div>
       )}
     </div>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        title="Eliminar plan"
+        message="¿Eliminar este plan? Los alumnos con este plan quedarán sin referencia."
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
+    </>
   );
 }

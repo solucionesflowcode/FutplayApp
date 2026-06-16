@@ -28,6 +28,7 @@ import {
   type Profesor,
   type UsuarioSearchResult,
 } from "@/data/profesores";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 export default function ProfesoresPage() {
   const [profesores, setProfesores] = useState<Profesor[]>([]);
@@ -51,6 +52,7 @@ export default function ProfesoresPage() {
   const [editPreview, setEditPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nombre: string } | null>(null);
 
   const fetchProfesores = useCallback(async () => {
     const data = await getProfesores();
@@ -177,8 +179,8 @@ export default function ProfesoresPage() {
     setSaving(false);
   };
 
-  const handleDelete = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar al profesor "${nombre}"?`)) return;
+  const handleDelete = async (id: string, _nombre: string) => {
+    setDeleteTarget(null);
     setError(null);
     setSuccess(null);
     const res = await deleteProfesor(id);
@@ -384,7 +386,7 @@ export default function ProfesoresPage() {
                             <Pencil size={16} />
                           </button>
                           <button
-                            onClick={() => handleDelete(p.id, p.nombre)}
+                            onClick={() => setDeleteTarget({ id: p.id, nombre: p.nombre })}
                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                             title="Eliminar"
                           >
@@ -549,6 +551,14 @@ export default function ProfesoresPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Eliminar profesor"
+        message={`¿Eliminar al profesor "${deleteTarget?.nombre}"?`}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.nombre)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
