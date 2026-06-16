@@ -141,4 +141,35 @@ describe("GET /api/flow/confirm", () => {
         const json = await res.json();
         expect(json.estado).toBe("pendiente");
     });
+
+    // ── Verificación de UPDATE ─────────────────────────
+
+    it("llama a getFlowPaymentStatus con token real", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+
+        await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(getFlowPaymentStatus).toHaveBeenCalledWith(FLOW_TOKEN);
+    });
+
+    it("actualiza boleta a pagado cuando Flow confirma y boleta estaba pendiente", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("pagado");
+    });
+
+    it("retorna pagado sin llamar a Flow si token es ´{token}´ y boleta ya está pagada", async () => {
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado" });
+
+        const res = await GET(makeRequest("{token}", BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        expect(getFlowPaymentStatus).not.toHaveBeenCalled();
+    });
 });

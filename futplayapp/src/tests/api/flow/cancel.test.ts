@@ -110,4 +110,14 @@ describe("POST /api/flow/cancel", () => {
         expect(json.estado).toBe("anulado");
         expect(json.message).toContain("No requiere cancelación");
     });
+
+    it("retorna 500 si la actualización falla", async () => {
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", usuario_id: USER_ID }, { message: "DB error" });
+
+        const res = await POST(makeRequest({ boletaId: BOLETA_ID }));
+
+        expect(res.status).toBe(500);
+        const json = await res.json();
+        expect(json.error).toBe("DB error");
+    });
 });

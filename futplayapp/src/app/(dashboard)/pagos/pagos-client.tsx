@@ -16,7 +16,6 @@ import {
     Clock,
     CreditCard,
     Crown,
-    Download,
     ExternalLink,
     FileText,
     Hourglass,
@@ -24,8 +23,7 @@ import {
     Loader2,
     Lock,
     Receipt,
-    RefreshCw,
-    RotateCcw,
+
     Search,
     Shield,
     ShieldCheck,
@@ -284,13 +282,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                         </div>
                     </div>
                 </div>
-                <Link
-                    href="/planes"
-                    className="inline-flex items-center gap-2 bg-[#F28C28] hover:bg-[#e07d1f] text-white px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#F28C28]/20 hover:shadow-xl hover:shadow-[#F28C28]/30 shrink-0"
-                >
-                    <Crown className="w-4 h-4" />
-                    Comprar plan
-                </Link>
+
             </div>
 
             {/* Stats cards */}
@@ -378,22 +370,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                 </p>
                             </div>
                         </div>
-                        <button
-                            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                                suscripcion.renovacion_automatica
-                                    ? "bg-[#00A86B]"
-                                    : "bg-gray-200"
-                            }`}
-                            aria-label="Renovación automática"
-                        >
-                            <span
-                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-                                    suscripcion.renovacion_automatica
-                                        ? "translate-x-6"
-                                        : "translate-x-1"
-                                }`}
-                            />
-                        </button>
                     </div>
 
                     {/* Token progress */}
@@ -506,13 +482,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                             </div>
                         </div>
 
-                        <Link
-                            href="/planes"
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/10 transition-all"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Cambiar de plan
-                        </Link>
+
                     </div>
                 </div>
             </div>
@@ -528,12 +498,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                 {historial.length} transacciones registradas
                             </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button className="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all">
-                                <Download className="w-4 h-4" />
-                                Exportar
-                            </button>
-                        </div>
+
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">

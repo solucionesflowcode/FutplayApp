@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarCheck, TrendingUp } from "lucide-react";
+import { CalendarCheck } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 type Membresia = {
@@ -67,7 +67,6 @@ export default function MiAsistencia() {
     if (loading || !membresia) return null;
 
     const clasesRestantes = membresia.tokens_totales - membresia.tokens_usados;
-    const porcentajeUso = (membresia.tokens_usados / membresia.tokens_totales) * 100;
 
     return (
         <div className="w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] rounded-2xl shadow-xl border border-white/10 p-6 relative overflow-hidden">
@@ -82,7 +81,7 @@ export default function MiAsistencia() {
                         Mi Asistencia
                     </h2>
                     <p className="text-white/40 text-[10px]">
-                        {membresia.tokens_usados} de {membresia.tokens_totales} sesiones
+                        {membresia.tokens_usados} de {membresia.tokens_totales} tokens
                     </p>
                 </div>
             </div>
@@ -90,7 +89,7 @@ export default function MiAsistencia() {
             <div className="flex items-end gap-4 mb-5">
                 <div className="flex flex-col">
                     <span className="text-white/40 text-[10px] uppercase tracking-wider font-semibold mb-1">
-                        Clases restantes
+                        Tokens restantes
                     </span>
                     <div className="flex items-baseline gap-1">
                         <span className="text-[#F39200] text-5xl font-black leading-none">
@@ -99,18 +98,12 @@ export default function MiAsistencia() {
                         <span className="text-white/30 text-sm font-medium">/ {membresia.tokens_totales}</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-1.5 mb-1 ml-auto bg-[#00A86B]/10 px-3 py-1.5 rounded-full">
-                    <TrendingUp size={14} className="text-[#00A86B]" />
-                    <span className="text-[#00A86B] text-xs font-bold">
-                        {Math.round(porcentajeUso)}%
-                    </span>
-                </div>
             </div>
 
             <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
                 <div
                     className="h-full rounded-full bg-gradient-to-r from-[#F39200] to-[#00A86B] transition-all duration-700 ease-out"
-                    style={{ width: `${Math.min(porcentajeUso, 100)}%` }}
+                    style={{ width: `${Math.min((membresia.tokens_usados / membresia.tokens_totales) * 100, 100)}%` }}
                 />
             </div>
 
