@@ -7,6 +7,7 @@ import {
     Clock,
     Loader2,
     MapPin,
+    MessageCircle,
     Ticket,
     X,
 } from "lucide-react";
@@ -34,12 +35,14 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [successId, setSuccessId] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState("");
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     useEffect(() => {
         if (!isOpen || !usuario?.id) return;
         setMembresia(null);
         setSuccessId(null);
         setErrorMsg("");
+        setShowSuccessModal(false);
         getMembresiaByUser(usuario.id).then(setMembresia);
     }, [isOpen, usuario?.id]);
 
@@ -58,6 +61,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                 return;
             }
             setSuccessId(claseId);
+            setShowSuccessModal(true);
             onAgendada(claseId);
 
             const updated = await getMembresiaByUser(usuario!.id);
@@ -75,7 +79,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
                 <div className="flex items-center justify-between p-5 border-b border-[#edeef0]">
                     <h2 className="text-lg font-bold text-[#00305b]">Reservar clase</h2>
                     <button
@@ -175,6 +179,33 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                         Cerrar
                     </button>
                 </div>
+
+                {showSuccessModal && (
+                    <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10">
+                        <div className="bg-emerald-100 p-4 rounded-full mb-4">
+                            <CheckCircle2 className="w-10 h-10 text-emerald-600" strokeWidth={2.5} />
+                        </div>
+                        <h3 className="text-xl font-black text-[#00305b] mb-2">
+                            Clase agendada con éxito
+                        </h3>
+                        <p className="text-sm text-[#42474f] max-w-xs mb-6">
+                            Recibirás un mensaje de <strong className="text-[#25D366]">WhatsApp</strong>{" "}
+                            24 horas antes de la clase para confirmar tu asistencia.
+                        </p>
+                        <div className="flex items-center gap-3 bg-[#f0fdf4] border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800 mb-6">
+                            <MessageCircle className="w-5 h-5 shrink-0 text-[#25D366]" />
+                            <span className="text-left text-xs">
+                                Agrega el número de contacto a tu agenda para recibir la notificación.
+                            </span>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="px-8 py-3 rounded-xl bg-[#15477a] text-white font-bold text-sm hover:bg-[#0f3560] transition-colors"
+                        >
+                            Entendido
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
