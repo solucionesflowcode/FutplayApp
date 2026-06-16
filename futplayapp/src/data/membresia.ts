@@ -164,8 +164,8 @@ export async function createMembresia(
 ): Promise<boolean> {
     const supabase = createClient();
 
-    const now = new Date();
-    const mes = now.toISOString().split("T")[0];
+    const ahora = new Date();
+    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`;
 
     const { error } = await supabase
         .from("membresia")

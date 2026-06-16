@@ -21,15 +21,19 @@ export default function DashboardClient() {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-            const now = new Date();
-            const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
-            const inicioMesSiguiente = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            const ahora = new Date();
+            const año = ahora.getFullYear();
+            const month = ahora.getMonth() + 1;
+            const inicioMes = `${año}-${String(month).padStart(2, '0')}-01`;
+            const inicioMesSiguiente = month === 12
+                ? `${año + 1}-01-01`
+                : `${año}-${String(month + 1).padStart(2, '0')}-01`;
             const { data } = await supabase
                 .from("membresia")
                 .select("id")
                 .eq("usuario_id", user.id)
-                .gte("mes", inicioMes.toISOString().split("T")[0])
-                .lt("mes", inicioMesSiguiente.toISOString().split("T")[0])
+                .gte("mes", inicioMes)
+                .lt("mes", inicioMesSiguiente)
                 .limit(1)
                 .maybeSingle();
             setTienePlan(!!data);
