@@ -140,6 +140,8 @@ $function$
 
 ### manejar_inscripcion_clase
 
+> **Trigger BEFORE INSERT en `clase_usuario`**: Valida membresía activa, verifica tokens disponibles y descuenta 1 token automáticamente.
+
 ```sql
 CREATE OR REPLACE FUNCTION public.manejar_inscripcion_clase()
  RETURNS trigger

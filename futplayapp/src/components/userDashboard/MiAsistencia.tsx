@@ -14,16 +14,20 @@ type Membresia = {
 async function getMembresiaByUser(userId: string): Promise<Membresia | null> {
     const supabase = createClient();
 
-    const now = new Date();
-    const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
-    const inicioMesSiguiente = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const ahora = new Date();
+    const año = ahora.getFullYear();
+    const month = ahora.getMonth() + 1;
+    const inicioMes = `${año}-${String(month).padStart(2, '0')}-01`;
+    const inicioMesSiguiente = month === 12
+        ? `${año + 1}-01-01`
+        : `${año}-${String(month + 1).padStart(2, '0')}-01`;
 
     const { data, error } = await supabase
         .from("membresia")
         .select("*")
         .eq("usuario_id", userId)
-        .gte("mes", inicioMes.toISOString().split("T")[0])
-        .lt("mes", inicioMesSiguiente.toISOString().split("T")[0])
+        .gte("mes", inicioMes)
+        .lt("mes", inicioMesSiguiente)
         .maybeSingle();
 
     if (error) {
