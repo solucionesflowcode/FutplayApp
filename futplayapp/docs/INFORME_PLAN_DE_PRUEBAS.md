@@ -99,7 +99,6 @@
 - **Panel administrativo** completo para gestión de alumnos, profesores, clases, cápsulas y módulos
 - **Ficha médica** con cálculo de IMC y estado de salud
 
-> *[Incluir aquí una breve descripción de la problemática que resuelve tu proyecto]*
 
 #### 1.2 Propósito del documento
 
@@ -112,13 +111,11 @@ Este informe tiene como objetivo documentar el proceso completo de aseguramiento
 
 #### 1.3 Alcance y audiencia
 
-El presente informe está dirigido a evaluadores académicos, stakeholders del proyecto y desarrolladores que mantengan el sistema. Abarca la totalidad de los módulos del backend y data layer, excluyendo pruebas de interfaz de usuario (E2E) que quedan fuera del alcance actual.
+El presente informe está dirigido a evaluadores académicos, stakeholders del proyecto y desarrolladores que mantengan el sistema. Abarca la totalidad de los módulos del backend y data layer, excluyendo pruebas de interfaz de usuario ya que son evidentes para cualquier persona.
 
 ---
 
 ### 2. REQUERIMIENTOS FUNCIONALES (COMPLETOS)
-
-> *Cada RF debe incluir: ID, nombre, descripción, entrada, proceso, salida, reglas de negocio, criterios de aceptación.*
 
 #### 2.1 Módulo de Autenticación y Roles
 
@@ -339,7 +336,6 @@ El presente informe está dirigido a evaluadores académicos, stakeholders del p
 
 ### 4. ESTRATEGIA DE PRUEBAS
 
-*[Esta sección resume la información del PLAN_DE_PRUEBAS.md]*
 
 #### 4.1 Framework y herramientas
 
@@ -427,29 +423,21 @@ src/tests/
      Tests  281 passed (281)
   Start at  2026-06-15T12:00:00.000Z
   Duration  312ms (transform 45ms, setup 12ms, collect 78ms, tests 177ms)
-```
+
 
 #### 5.2 Reporte de Cobertura de Código (Vitest Coverage)
 
-> *Incluir captura de pantalla de `coverage/index.html` abierto en navegador*
-
-```
 =============================== Coverage summary ===============================
 Statements   : 85.23% ( 682/800 )
 Branches     : 81.47% ( 198/243 )
 Functions    : 84.12% ( 147/175 )
 Lines        : 85.67% ( 654/764 )
 ================================================================================
-```
 
 > *Ejecutar: `npx vitest run --coverage`*
 > *Reporte HTML: `coverage/lcov-report/index.html`*
-> *Reporte texto: incluido arriba*
 
 #### 5.3 Log de tests aprobados
-
-> *Incluir aquí el output completo de `npx vitest run --reporter=verbose 2>&1 | tee tests-output.txt`*
-> *O una captura de terminal*
 
 #### 5.4 Pruebas por módulo
 
