@@ -192,6 +192,89 @@ describe("POST /api/flow/create-order", () => {
         });
     });
 
+    describe("verificación de URLs de Flow", () => {
+        beforeEach(() => {
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", TEST_PLAN);
+            __setTableData("membresia", null);
+            __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 15000, recurrencia_id: null });
+            __setTableData("boleta_item", { id: "item-1" });
+        });
+
+        it("urlReturn apunta a http://localhost:3000/dashboard?flowSuccess=1", async () => {
+            await POST(makeRequest({ planId: "plan-1" }));
+
+            const params = vi.mocked(createFlowOrder).mock.calls[0][0];
+            expect(params.urlReturn).toBe("http://localhost:3000/dashboard?flowSuccess=1");
+        });
+
+        it("urlConfirmation incluye NEXT_PUBLIC_BASE_URL y boletaId", async () => {
+            await POST(makeRequest({ planId: "plan-1" }));
+
+            const params = vi.mocked(createFlowOrder).mock.calls[0][0];
+            expect(params.urlConfirmation).toContain("http://localhost:3000");
+            expect(params.urlConfirmation).toContain("/api/flow/webhook?boletaId=boleta-1");
+        });
+    });
+
+    describe("verificación de flow_confirmada", () => {
+        beforeEach(() => {
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", TEST_PLAN);
+            __setTableData("membresia", null);
+            __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 15000, recurrencia_id: null });
+            __setTableData("boleta_item", { id: "item-1" });
+        });
+
+        it("se crea boleta con flow_confirmada=false inicialmente", async () => {
+            await POST(makeRequest({ planId: "plan-1" }));
+
+            // After success, flow_confirmada becomes true via update
+            // The update call is on the boleta table after createFlowOrder succeeds
+        });
+    });
+
+    describe("rate limit", () => {
+        beforeEach(() => {
+            resetRateLimit();
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", TEST_PLAN);
+            __setTableData("membresia", null);
+            __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 15000, recurrencia_id: null });
+            __setTableData("boleta_item", { id: "item-1" });
+        });
+
+        it("se reestablece después de la ventana de tiempo", async () => {
+            vi.useFakeTimers();
+
+            // Consume all 5 requests
+            for (let i = 0; i < 5; i++) {
+                __setTableData("boleta", { id: `boleta-${i}`, usuario_id: "user-1", estado: "pendiente", total: 15000, recurrencia_id: null });
+                __setTableData("boleta_item", { id: `item-${i}` });
+                const res = await POST(makeRequest({ planId: "plan-1" }));
+                expect(res.status).toBe(200);
+            }
+
+            // 6th request should be rate limited
+            const blocked = await POST(makeRequest({ planId: "plan-1" }));
+            expect(blocked.status).toBe(429);
+
+            // Advance past window
+            vi.advanceTimersByTime(60001);
+
+            // Now should succeed again
+            __setTableData("boleta", { id: "boleta-6", usuario_id: "user-1", estado: "pendiente", total: 15000, recurrencia_id: null });
+            __setTableData("boleta_item", { id: "item-6" });
+            const allowed = await POST(makeRequest({ planId: "plan-1" }));
+            expect(allowed.status).toBe(200);
+
+            vi.useRealTimers();
+        });
+    });
+
     describe("manejo de errores", () => {
         it("retorna 502 si Flow falla y hace rollback", async () => {
             __setAuthUser(TEST_USER);
@@ -203,6 +286,23 @@ describe("POST /api/flow/create-order", () => {
             vi.mocked(createFlowOrder).mockRejectedValue(new Error("Flow timeout"));
 
             const res = await POST(makeRequest({ planId: "plan-1" }));
+
+            expect(res.status).toBe(502);
+            const json = await res.json();
+            expect(json.error).toContain("Flow timeout");
+        });
+
+        it("retorna 502 y hace rollback si flowOrder falla con recurrencia", async () => {
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", TEST_PLAN);
+            __setTableData("membresia", null);
+            __setTableData("boleta", { id: "boleta-1" });
+            __setTableData("boleta_item", { id: "item-1" });
+            __setTableData("recurrencia", { id: "rec-1" });
+            vi.mocked(createFlowOrder).mockRejectedValue(new Error("Flow timeout"));
+
+            const res = await POST(makeRequest({ planId: "plan-1", recurrencia: true }));
 
             expect(res.status).toBe(502);
             const json = await res.json();

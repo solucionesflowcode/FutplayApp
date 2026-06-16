@@ -510,7 +510,7 @@ export default function MisClasesClient() {
                             isOpen={selectedClases !== null}
                             onClose={() => setSelectedClases(null)}
                             clases={selectedClases ?? []}
-                            onAgendada={(claseId) => {
+                            onAgendada={async (claseId) => {
                                 setSessions((prev) =>
                                     prev.map((s) =>
                                         s.claseId === claseId
@@ -518,6 +518,10 @@ export default function MisClasesClient() {
                                             : s,
                                     ),
                                 );
+                                if (usuario?.id) {
+                                    const m = await getMembresiaByUser(usuario.id);
+                                    if (m) setTokensRestantes(m.tokens_restantes);
+                                }
                                 setTimeout(() => setSelectedClases(null), 1200);
                             }}
                         />

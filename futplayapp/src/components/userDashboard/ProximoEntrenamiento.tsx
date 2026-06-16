@@ -115,32 +115,43 @@ export default function ProximoEntrenamiento() {
         });
 
     return (
-        <div className="w-full min-w-[380px] h-[250px] bg-white px-6 pt-4 rounded-xl border-l-4 border-[#F39200] shadow-lg">
+        <div className="w-full min-w-[380px] bg-white px-6 pt-4 pb-4 rounded-xl border-l-4 border-[#F39200] shadow-lg flex">
 
-            <div className="flex justify-between">
-                <h1 className="text-[#F39200] text-[15px] font-semibold">
-                    Próximo Entrenamiento
-                </h1>
+            <div className="flex-1">
+                <div className="flex justify-between">
+                    <h1 className="text-[#F39200] text-[15px] font-semibold">
+                        Próximo Entrenamiento
+                    </h1>
+                </div>
+
+                <div className="flex flex-col gap-2 mt-5">
+                    <p className="font-bold text-[20px] text-[#00305B]">
+                        {clase.titulo}
+                    </p>
+
+                    <p className="text-[12px] text-[#42474F]">
+                        {clase.descripcion}
+                    </p>
+
+                    <p className="text-[10px] text-gray-400">
+                        📍 {clase.sede}
+                    </p>
+                </div>
+
+                <div className="mt-5">
+                    <p className="font-bold text-[20px] text-[#00305B]">
+                        {textoFecha}
+                    </p>
+                </div>
             </div>
 
-            <div className="flex flex-col gap-2 mt-5">
-                <p className="font-bold text-[20px] text-[#00305B]">
-                    {clase.titulo}
-                </p>
-
-                <p className="text-[12px] text-[#42474F]">
-                    {clase.descripcion}
-                </p>
-
-                <p className="text-[10px] text-gray-400">
-                    📍 {clase.sede}
-                </p>
-            </div>
-
-            <div className="mt-5">
-                <p className="font-bold text-[20px] text-[#00305B]">
-                    {textoFecha}
-                </p>
+            <div className="flex items-center justify-center pl-4">
+                <Link
+                    href="/misclases"
+                    className="bg-[#F28C28] hover:bg-[#e07d1f] text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap"
+                >
+                    Ver más clases
+                </Link>
             </div>
         </div>
     );
