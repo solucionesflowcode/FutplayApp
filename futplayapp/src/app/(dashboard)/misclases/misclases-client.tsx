@@ -522,7 +522,7 @@ export default function MisClasesClient() {
                                     const m = await getMembresiaByUser(usuario.id);
                                     if (m) setTokensRestantes(m.tokens_restantes);
                                 }
-                                setTimeout(() => setSelectedClases(null), 1200);
+                                // ya no se cierra automáticamente — el usuario cierra con "Entendido"
                             }}
                         />
 
