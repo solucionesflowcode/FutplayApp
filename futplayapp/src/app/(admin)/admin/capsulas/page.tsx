@@ -33,6 +33,7 @@ import {
 } from "@/data/capsulas-admin";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
 import { getDocumentosByCapsula, createDocumento, deleteDocumento } from "@/data/documentos-admin";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -82,6 +83,7 @@ export default function CapsulasPage() {
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [videoProcessing, setVideoProcessing] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; titulo: string } | null>(null);
   const [encodeProgress, setEncodeProgress] = useState<number>(0);
   const [videoStatus, setVideoStatus] = useState<number | null>(null);
   const [showManualId, setShowManualId] = useState<boolean>(false);
@@ -633,8 +635,8 @@ export default function CapsulasPage() {
     }
   };
 
-  const handleDelete = async (id: string, titulo: string) => {
-    if (!confirm(`¿Eliminar la cápsula "${titulo}"?`)) return;
+  const handleDelete = async (id: string, _titulo: string) => {
+    setDeleteTarget(null);
     setError(null);
 
     const res = await deleteCapsula(id);
@@ -672,6 +674,7 @@ export default function CapsulasPage() {
   }
 
   return (
+    <>
     <div className="p-4 sm:p-6">
       <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
 
@@ -799,7 +802,7 @@ export default function CapsulasPage() {
                           <Pencil size={16} />
                         </button>
                         <button
-                          onClick={() => handleDelete(c.id, c.titulo)}
+                          onClick={() => setDeleteTarget({ id: c.id, titulo: c.titulo })}
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                           title="Eliminar"
                         >
@@ -1409,5 +1412,14 @@ export default function CapsulasPage() {
         </div>
       )}
     </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Eliminar cápsula"
+        message={`¿Eliminar la cápsula "${deleteTarget?.titulo}"?`}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.titulo)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </>
   );
 }
