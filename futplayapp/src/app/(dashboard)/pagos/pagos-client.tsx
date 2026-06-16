@@ -41,6 +41,7 @@ import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import { getPlanes, type Plan } from "@/data/plans";
 import { getMisBoletas, getMiMembresia, type PagosBoleta, type PagosMembresia } from "@/data/pagos";
 import { useAuthUser } from "@/context";
+import { calcularVencimiento, membresiaActiva } from "@/lib/fechas";
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -187,16 +188,13 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                 metodo_pago_icon: "credit-card",
             };
         }
-        const mesDate = new Date(rawMembresia.mes + "T00:00:00");
-        const vencimiento = new Date(mesDate.getFullYear(), mesDate.getMonth() + 1, 0);
-        const ahora = new Date();
-        const estadoSub = vencimiento >= ahora ? "activa" : "vencida";
+        const estadoSub = membresiaActiva(rawMembresia.mes) ? "activa" : "vencida";
         return {
             plan: rawMembresia.plan_nombre,
             planId: rawMembresia.plan_id,
             estado: estadoSub,
             fecha_inicio: rawMembresia.mes,
-            fecha_vencimiento: vencimiento.toISOString().split("T")[0],
+            fecha_vencimiento: calcularVencimiento(rawMembresia.mes).toISOString().split("T")[0],
             tokens_totales: rawMembresia.tokens_totales,
             tokens_usados: rawMembresia.tokens_usados,
             precio: rawMembresia.precio,
@@ -1065,10 +1063,7 @@ export default function PagosClient() {
                 if (cancelled) return;
                 setPlanes(planesData);
                 if (membresia) {
-                    const vencimiento = new Date(membresia.mes + "T00:00:00");
-                    vencimiento.setMonth(vencimiento.getMonth() + 1);
-                    vencimiento.setDate(0);
-                    setTienePlanActivo(vencimiento >= new Date());
+                    setTienePlanActivo(membresiaActiva(membresia.mes));
                 }
             } catch (err) {
                 console.error("Error obteniendo datos:", err);

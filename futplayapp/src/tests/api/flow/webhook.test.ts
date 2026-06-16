@@ -104,15 +104,18 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(404);
     });
 
-    it("retorna 'Ya procesado' si boleta ya está pagada sin recurrencia", async () => {
+    it("procesa boleta pendiente con datos completos", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
+        __setTableData("membresia", null);
 
         const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
 
         expect(res.status).toBe(200);
         const json = await res.json();
-        expect(json.message).toBe("Ya procesado");
+        expect(json.message).toBe("OK");
     });
 
     // ── Payment rejected / cancelled ───────────────────
@@ -171,6 +174,7 @@ describe("POST /api/flow/webhook", () => {
     // ── Fallback when getFlowPaymentStatus fails ──────
 
     it("usa datos del POST body como fallback si getFlowPaymentStatus falla", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("No services"));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
 
@@ -182,6 +186,7 @@ describe("POST /api/flow/webhook", () => {
     });
 
     it("retorna OK sin procesar si falla getFlowPaymentStatus y faltan datos POST", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("No services"));
 
         const res = await POST(makeRequest({ token: FLOW_TOKEN }));

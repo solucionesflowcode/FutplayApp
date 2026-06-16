@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
 import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser } from "@/tests/mocks/supabase";
+import { resetRateLimit } from "@/lib/rate-limit";
 
 // ── Env vars ────────────────────────────────────────
 
@@ -50,6 +51,7 @@ const TEST_PLAN = { id: "plan-1", nombre: "Básico", precio: 15000, tokens_mensu
 
 describe("POST /api/flow/create-order", () => {
     beforeEach(() => {
+        resetRateLimit();
         __resetMocks();
         vi.mocked(createFlowOrder).mockReset();
         vi.mocked(createFlowOrder).mockResolvedValue({
