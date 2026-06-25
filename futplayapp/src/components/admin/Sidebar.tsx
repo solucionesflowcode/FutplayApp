@@ -12,7 +12,7 @@ import {
   Layers,
   Video,
   PersonStanding,
-  Settings,
+  CreditCard,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -21,11 +21,12 @@ import {
 
 const menuItems = [
   { name: "Analíticas", href: "/admin/analiticas", icon: BarChart3 },
-  { name: "Alumnos", href: "/admin", icon: Users },
+  { name: "Usuarios", href: "/admin", icon: Users },
   { name: "Gestión de clases", href: "/admin/clases", icon: BookOpen },
   { name: "Gestión de módulos", href: "/admin/modulos", icon: Layers },
   { name: "Gestión de cápsulas", href: "/admin/capsulas", icon: Video },
   { name: "Profesores", href: "/admin/profesores", icon: PersonStanding },
+  { name: "Planes", href: "/admin/planes", icon: CreditCard },
 ];
 
 interface SidebarProps {
@@ -132,11 +133,6 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen }: SidebarPr
 
         {/* FOOTER */}
         <div className="border-t border-gray-800 pt-4 space-y-2">
-
-          <button className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl">
-            <Settings size={20} />
-            {(!collapsed || mobileOpen) && <span className="text-sm">Ajustes</span>}
-          </button>
 
           <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl cursor-pointer">
             <LogOut size={20} />

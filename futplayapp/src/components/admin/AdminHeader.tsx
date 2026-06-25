@@ -154,7 +154,7 @@ export default function AdminHeader({ students, search, onSearchChange, onView }
       </div>
 
       <h1 className="text-3xl font-extrabold text-black">
-        Directorio de Alumnos
+        Directorio de Usuarios
       </h1>
     </div>
   );

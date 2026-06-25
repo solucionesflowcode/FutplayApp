@@ -8,7 +8,6 @@ import {
   Loader2,
   X,
   Search,
-  CheckCircle2,
 } from "lucide-react";
 import {
   getPlanesAdmin,
@@ -23,18 +22,14 @@ type ModalMode = "create" | "edit" | null;
 type PlanForm = {
   id?: string;
   nombre: string;
-  descripcion: string;
   precio: number;
-  tokens: number;
-  activo: boolean;
+  tokens_mensuales: number;
 };
 
 const emptyForm: PlanForm = {
   nombre: "",
-  descripcion: "",
   precio: 0,
-  tokens: 1,
-  activo: true,
+  tokens_mensuales: 1,
 };
 
 function formatPrice(n: number) {
@@ -51,17 +46,16 @@ export default function PlanesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPlanes = useCallback(async () => {
-    const data = await getPlanesAdmin();
-    setPlanes(data);
+    const { planes, error } = await getPlanesAdmin();
+    setPlanes(planes);
+    if (error) setError(error);
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchPlanes(); }, [fetchPlanes]);
 
   const filtered = planes.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      p.descripcion.toLowerCase().includes(search.toLowerCase())
+    (p) => p.nombre.toLowerCase().includes(search.toLowerCase())
   );
 
   const resetForm = () => { setForm(emptyForm); setError(null); };
@@ -75,28 +69,24 @@ export default function PlanesPage() {
     setForm({
       id: p.id,
       nombre: p.nombre,
-      descripcion: p.descripcion || "",
       precio: p.precio,
-      tokens: p.tokens || p.tokens_mensuales,
-      activo: p.activo !== false,
+      tokens_mensuales: p.tokens_mensuales,
     });
     setModal("edit");
   };
 
   const handleSave = async () => {
-    if (!form.nombre || form.precio <= 0 || form.tokens <= 0) {
+    if (!form.nombre || form.precio <= 0 || form.tokens_mensuales <= 0) {
       setError("Nombre, precio y tokens son obligatorios");
       return;
     }
     setSaving(true);
     setError(null);
 
-    const payload: any = {
+    const payload = {
       nombre: form.nombre,
-      descripcion: form.descripcion,
       precio: form.precio,
-      tokens: form.tokens,
-      activo: form.activo,
+      tokens_mensuales: form.tokens_mensuales,
     };
 
     const res = modal === "create"
@@ -117,21 +107,16 @@ export default function PlanesPage() {
     } else {
       setPlanes((prev) =>
         prev.map((p) =>
-          p.id === form.id ? { ...p, nombre: form.nombre, descripcion: form.descripcion, precio: form.precio, tokens: form.tokens, activo: form.activo } : p
+          p.id === form.id ? { ...p, nombre: form.nombre, precio: form.precio, tokens_mensuales: form.tokens_mensuales } : p
         )
       );
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar este plan? Los alumnos con este plan quedarán sin referencia.")) return;
+    if (!confirm("¿Eliminar este plan?")) return;
     setPlanes((prev) => prev.filter((p) => p.id !== id));
     await deletePlanAdmin(id);
-  };
-
-  const toggleActivo = async (p: Plan) => {
-    setPlanes((prev) => prev.map((x) => (x.id === p.id ? { ...x, activo: !p.activo } : x)));
-    await updatePlanAdmin({ id: p.id, activo: !p.activo });
   };
 
   if (loading && planes.length === 0) {
@@ -146,11 +131,11 @@ export default function PlanesPage() {
     <div className="p-6">
       <div className="flex flex-col gap-6 w-full" style={{ maxWidth: "1216px" }}>
 
-        {/* ─── HEADER ─── */}
+        {/* HEADER */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900">Creación de Planes</h1>
-            <p className="text-gray-500 text-sm mt-1">Administra paquetes, suscripciones y precios</p>
+            <h1 className="text-2xl font-extrabold text-gray-900">Planes</h1>
+            <p className="text-gray-500 text-sm mt-1">Administra los planes de membresía</p>
           </div>
           <div className="flex gap-3">
             <button
@@ -163,7 +148,11 @@ export default function PlanesPage() {
           </div>
         </div>
 
-        {/* ─── LISTA ─── */}
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+        )}
+
+        {/* LISTA */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-4 border-b border-gray-100 flex items-center gap-4">
             <div className="relative flex-1 max-w-xs">
@@ -185,47 +174,25 @@ export default function PlanesPage() {
                 <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                   <th className="p-3 font-semibold">Nombre</th>
                   <th className="p-3 font-semibold">Precio</th>
-                  <th className="p-3 font-semibold">Tokens</th>
-                  <th className="p-3 font-semibold">Estado</th>
+                  <th className="p-3 font-semibold">Tokens Mensuales</th>
                   <th className="p-3 font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-gray-400">
+                    <td colSpan={4} className="p-8 text-center text-gray-400">
                       {search ? "No se encontraron planes" : "No hay planes creados aún"}
                     </td>
                   </tr>
                 ) : filtered.map((p) => {
                   return (
                     <tr key={p.id} className="border-b hover:bg-gray-50/50">
-                      <td className="p-3">
-                        <p className="font-semibold text-gray-900">{p.nombre}</p>
-                        {p.descripcion && (
-                          <p className="text-xs text-gray-400 truncate max-w-[200px]">{p.descripcion}</p>
-                        )}
-                      </td>
+                      <td className="p-3 font-semibold text-gray-900">{p.nombre}</td>
                       <td className="p-3 font-semibold text-gray-900">{formatPrice(p.precio)}</td>
                       <td className="p-3 text-gray-600">
-                        <span className="font-semibold">{p.tokens || p.tokens_mensuales}</span>
+                        <span className="font-semibold">{p.tokens_mensuales}</span>
                         <span className="text-gray-400"> sesiones</span>
-                      </td>
-                      <td className="p-3">
-                        <button
-                          onClick={() => toggleActivo(p)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${
-                            p.activo
-                              ? "bg-green-100 text-green-700 hover:bg-green-200"
-                              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                          }`}
-                        >
-                          {p.activo ? (
-                            <><CheckCircle2 size={12} className="text-green-400" /> Activo</>
-                          ) : (
-                            <><X size={12} className="text-gray-400" /> Inactivo</>
-                          )}
-                        </button>
                       </td>
                       <td className="p-3">
                         <div className="flex gap-2">
@@ -255,7 +222,7 @@ export default function PlanesPage() {
 
       </div>
 
-      {/* ─── MODAL CREATE/EDIT ─── */}
+      {/* MODAL */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl">
@@ -281,18 +248,6 @@ export default function PlanesPage() {
                 />
               </div>
 
-              {/* Descripción */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Descripción</label>
-                <textarea
-                  value={form.descripcion}
-                  onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 resize-none"
-                  rows={2}
-                  placeholder="Descripción del plan (opcional)"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 {/* Precio */}
                 <div>
@@ -312,11 +267,11 @@ export default function PlanesPage() {
 
                 {/* Tokens */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens / Sesiones</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens Mensuales</label>
                   <input
                     type="number"
-                    value={form.tokens || ""}
-                    onChange={(e) => setForm((p) => ({ ...p, tokens: parseInt(e.target.value) || 1 }))}
+                    value={form.tokens_mensuales || ""}
+                    onChange={(e) => setForm((p) => ({ ...p, tokens_mensuales: parseInt(e.target.value) || 1 }))}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                     min={1}
                   />
