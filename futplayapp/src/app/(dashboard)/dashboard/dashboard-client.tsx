@@ -95,7 +95,7 @@ export default function DashboardClient() {
                         <PlanesRender />
                     </div>
                     {planChecked && tienePlan ? (
-                        <div className="flex gap-6 w-full">
+                        <div className="flex flex-col lg:flex-row gap-6 w-full">
                             <div className="flex-1">
                                 <MetricasCorporales />
                             </div>

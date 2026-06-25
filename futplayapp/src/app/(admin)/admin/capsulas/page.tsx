@@ -184,9 +184,7 @@ export default function CapsulasPage() {
       descripcion: c.descripcion || "",
     });
     setModal("edit");
-    if (c.bunny_video_id) {
-      setShowManualId(true);
-    }
+    setShowManualId(true);
     const docs = await getDocumentosByCapsula(c.id);
     if (docs.length > 0) {
       setExistingDoc({ id: docs[0].id, nombre: docs[0].nombre, url_archivo: docs[0].url_archivo });
