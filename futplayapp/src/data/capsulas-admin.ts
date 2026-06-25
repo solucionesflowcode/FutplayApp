@@ -11,6 +11,7 @@ export type CapsulaAdmin = {
   bunny_video_id: string | null;
   order_index: number | null;
   descripcion: string | null;
+  destacada: boolean;
 };
 
 export type ModuloOption = {
@@ -76,6 +77,19 @@ export async function updateCapsula(data: {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    return { success: false, error: body.error };
+  }
+  return { success: true };
+}
+
+export async function setCapsulaDestacada(capsulaId: string | null): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch("/api/admin/capsulas/destacada", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ capsula_id: capsulaId }),
   });
   if (!res.ok) {
     const body = await res.json();

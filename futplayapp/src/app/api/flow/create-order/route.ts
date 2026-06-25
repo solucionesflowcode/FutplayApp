@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createFlowOrder } from "@/lib/flow";
+import { membresiaActiva } from "@/lib/fechas";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
@@ -20,6 +22,14 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const { allowed, remaining } = rateLimit(`create-order:${user.id}`, 5, 60000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." },
+      { status: 429 }
+    );
   }
 
   const { data: usuario } = await supabase
@@ -77,9 +87,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existingMembresia) {
-    const mesDate = new Date(existingMembresia.mes + "T00:00:00");
-    const vencimiento = new Date(mesDate.getFullYear(), mesDate.getMonth() + 1, 0);
-    if (vencimiento >= new Date()) {
+    if (membresiaActiva(existingMembresia.mes)) {
       return NextResponse.json(
         { error: "Ya tienes un plan activo. No puedes comprar otro hasta que termine el período actual." },
         { status: 409 }
@@ -111,6 +119,7 @@ export async function POST(request: Request) {
       estado: "pendiente",
       total: plan.precio,
       recurrencia_id: recurrenciaId,
+      flow_confirmada: false,
     })
     .select()
     .single();
@@ -155,7 +164,7 @@ export async function POST(request: Request) {
       amount: plan.precio,
       email: usuario.email,
       urlConfirmation: `${publicUrl}/api/flow/webhook?boletaId=${boleta.id}`,
-      urlReturn: `${publicUrl}/pagos?boletaId=${boleta.id}&flowReturn=1`,
+      urlReturn: `http://localhost:3000/dashboard?flowSuccess=1`,
       timeout: 1800,
       paymentMethod: 1, // solo tarjetas crédito + débito
       ...(conRecurrencia ? { recurrence: { period: 30 } } : {}),
@@ -163,7 +172,7 @@ export async function POST(request: Request) {
 
     await adminClient
       .from("boleta")
-      .update({ transaccion_id: String(flowOrder.flowOrder) })
+      .update({ transaccion_id: String(flowOrder.flowOrder), flow_confirmada: true })
       .eq("id", boleta.id);
 
     return NextResponse.json({

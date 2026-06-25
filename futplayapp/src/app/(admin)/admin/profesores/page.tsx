@@ -14,8 +14,8 @@ import {
   ChevronUp,
   Pencil,
   Trash2,
-  UserCheck,
-  UserPlus,
+  Check,
+  Plus,
   Camera,
   Upload,
 } from "lucide-react";
@@ -28,6 +28,7 @@ import {
   type Profesor,
   type UsuarioSearchResult,
 } from "@/data/profesores";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 export default function ProfesoresPage() {
   const [profesores, setProfesores] = useState<Profesor[]>([]);
@@ -51,6 +52,7 @@ export default function ProfesoresPage() {
   const [editPreview, setEditPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nombre: string } | null>(null);
 
   const fetchProfesores = useCallback(async () => {
     const data = await getProfesores();
@@ -166,13 +168,19 @@ export default function ProfesoresPage() {
     } else {
       setEditProfesor(null);
       setSuccess("Profesor actualizado exitosamente");
-      fetchProfesores();
+      setProfesores((prev) =>
+        prev.map((p) =>
+          p.id === editProfesor.id
+            ? { ...p, nombre: editForm.nombre, email: editForm.email, telefono: editForm.telefono, foto_url: fotoUrl || p.foto_url }
+            : p
+        )
+      );
     }
     setSaving(false);
   };
 
-  const handleDelete = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar al profesor "${nombre}"?`)) return;
+  const handleDelete = async (id: string, _nombre: string) => {
+    setDeleteTarget(null);
     setError(null);
     setSuccess(null);
     const res = await deleteProfesor(id);
@@ -181,7 +189,7 @@ export default function ProfesoresPage() {
       return;
     }
     setSuccess("Profesor eliminado exitosamente");
-    fetchProfesores();
+    setProfesores((prev) => prev.filter((p) => p.id !== id));
   };
 
   const toggleExpand = (id: string) => {
@@ -213,7 +221,7 @@ export default function ProfesoresPage() {
         {/* ─── BUSCAR USUARIO POR EMAIL ─── */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
           <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <UserPlus size={16} />
+            <Plus size={16} />
             Agregar profesor por email
           </h2>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -269,7 +277,7 @@ export default function ProfesoresPage() {
                           {convertiendoId === u.id ? (
                             <Loader2 size={12} className="animate-spin" />
                           ) : (
-                            <UserCheck size={14} />
+                            <Check size={14} />
                           )}
                           Convertir a Profesor
                         </button>
@@ -378,7 +386,7 @@ export default function ProfesoresPage() {
                             <Pencil size={16} />
                           </button>
                           <button
-                            onClick={() => handleDelete(p.id, p.nombre)}
+                            onClick={() => setDeleteTarget({ id: p.id, nombre: p.nombre })}
                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                             title="Eliminar"
                           >
@@ -543,6 +551,14 @@ export default function ProfesoresPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Eliminar profesor"
+        message={`¿Eliminar al profesor "${deleteTarget?.nombre}"?`}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.nombre)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

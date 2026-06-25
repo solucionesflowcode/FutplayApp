@@ -27,6 +27,22 @@ type MembresiaPorMes = {
   count: number;
 };
 
+type IngresoMensual = {
+  mes: string;
+  ingresos: number;
+  transacciones: number;
+};
+
+type MesData = {
+  mes: string;
+  label: string;
+  membresias: number;
+  ingresos: number;
+  transacciones: number;
+  vsAnterior: number | null;
+  acumulado: number;
+};
+
 type PlanDistribucion = {
   nombre: string;
   count: number;
@@ -40,6 +56,16 @@ const MESES = [
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ];
 
+async function getIngresosMensuales(): Promise<IngresoMensual[]> {
+  try {
+    const res = await fetch("/api/admin/analiticas/mensual");
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
 export default function AnaliticasPage() {
   const [loading, setLoading] = useState(true);
   const [resumen, setResumen] = useState<Resumen>({
@@ -50,6 +76,7 @@ export default function AnaliticasPage() {
   });
   const [membresias, setMembresias] = useState<MembresiaConPlan[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
+  const [ingresosMensuales, setIngresosMensuales] = useState<IngresoMensual[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,13 +88,15 @@ export default function AnaliticasPage() {
 
         const { data: usuarios } = await supabase.from("usuario").select("id, rol");
 
-        const [membresiasData, planesData] = await Promise.all([
+        const [membresiasData, planesData, ingresosData] = await Promise.all([
           getAdminMembresias(),
           getPlanes(),
+          getIngresosMensuales(),
         ]);
 
         setMembresias(membresiasData);
         setPlanes(planesData);
+        setIngresosMensuales(ingresosData);
 
         const jugadores = (usuarios || []).filter((u) => u.rol === "jugador");
         const totalAlumnos = jugadores.length;
@@ -110,9 +139,45 @@ export default function AnaliticasPage() {
     });
     return Array.from(map.entries())
       .map(([mes, v]) => ({ mes, total: v.total, count: v.count }))
-      .sort((a, b) => a.mes.localeCompare(b.mes))
-      .slice(-6);
+      .sort((a, b) => a.mes.localeCompare(b.mes));
   }, [membresias]);
+
+  const mesesData = useMemo<MesData[]>(() => {
+    const ingresosMap = new Map(ingresosMensuales.map((i) => [i.mes, i]));
+    const membresiasMap = new Map(membresiasPorMes.map((m) => [m.mes, m]));
+    const allMeses = new Set([...ingresosMap.keys(), ...membresiasMap.keys()]);
+    const sorted = Array.from(allMeses).sort();
+
+    let acumulado = 0;
+    return sorted.map((mes, idx) => {
+      const ing = ingresosMap.get(mes);
+      const mem = membresiasMap.get(mes);
+      const ingresos = ing?.ingresos || 0;
+      acumulado += ingresos;
+
+      const anterior = sorted[idx - 1];
+      const antIngreso = anterior ? ingresosMap.get(anterior)?.ingresos || 0 : 0;
+      const vsAnterior = antIngreso > 0
+        ? Math.round(((ingresos - antIngreso) / antIngreso) * 100)
+        : null;
+
+      const parts = mes.split("-");
+      const m = MESES[parseInt(parts[1]) - 1] || "";
+      const y = parts[0];
+
+      return {
+        mes,
+        label: `${m} ${y}`,
+        membresias: mem?.count || 0,
+        ingresos,
+        transacciones: ing?.transacciones || 0,
+        vsAnterior,
+        acumulado,
+      };
+    });
+  }, [ingresosMensuales, membresiasPorMes]);
+
+  const maxRevenue = Math.max(...mesesData.map((m) => m.ingresos), 1);
 
   const planDist = useMemo<PlanDistribucion[]>(() => {
     const map = new Map<string, number>();
@@ -144,7 +209,6 @@ export default function AnaliticasPage() {
     }));
   }, [membresias]);
 
-  const maxIngreso = Math.max(...membresiasPorMes.map((m) => m.total), 1);
   const maxPlanCount = Math.max(...planDist.map((p) => p.count), 1);
   const totalPlan = planDist.reduce((s, p) => s + p.count, 0);
 
@@ -231,16 +295,16 @@ export default function AnaliticasPage() {
                   Ingresos Mensuales
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Comparativa de ingresos por membresías mes a mes
+                  Evolución de ingresos mes a mes desde el primer registro
                 </p>
               </div>
               {(() => {
-                const last = membresiasPorMes[membresiasPorMes.length - 1];
-                const prev = membresiasPorMes[membresiasPorMes.length - 2];
-                if (!last || !prev || prev.total === 0) return null;
-                const diff = last.total - prev.total;
-                const pct = Math.round((diff / prev.total) * 100);
-                const up = diff >= 0;
+                const last = mesesData[mesesData.length - 1];
+                const prev = mesesData[mesesData.length - 2];
+                if (!last || !prev || prev.ingresos === 0) return null;
+                const up = last.ingresos >= prev.ingresos;
+                const diff = last.ingresos - prev.ingresos;
+                const pct = prev.ingresos > 0 ? Math.round((diff / prev.ingresos) * 100) : 0;
                 return (
                   <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${up ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
                     {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
@@ -249,16 +313,17 @@ export default function AnaliticasPage() {
                 );
               })()}
             </div>
-            {membresiasPorMes.length === 0 ? (
+            {mesesData.length === 0 ? (
               <p className="text-gray-400 text-sm text-center py-8">
                 No hay datos de ingresos aún
               </p>
             ) : (
-              <div className="flex flex-col gap-6">
+              <>
                 {/* Bar Chart */}
-                <div className="flex items-end gap-3 h-48">
-                  {membresiasPorMes.map((item, idx) => {
-                    const height = (item.total / maxIngreso) * 100;
+                <div className="flex items-end gap-3 h-48 mb-6">
+                  {mesesData.map((item) => {
+                    const height = (item.ingresos / maxRevenue) * 100;
+                    const isLast = item.mes === mesesData[mesesData.length - 1]?.mes;
                     const colors = [
                       "from-blue-500 to-blue-400",
                       "from-emerald-500 to-emerald-400",
@@ -267,28 +332,25 @@ export default function AnaliticasPage() {
                       "from-amber-500 to-amber-400",
                       "from-cyan-500 to-cyan-400",
                     ];
-                    const label = (() => {
-                      const parts = item.mes.split("-");
-                      const m = MESES[parseInt(parts[1]) - 1];
-                      const y = parts[0].slice(2);
-                      return `${m} '${y}`;
-                    })();
+                    const barColor = isLast
+                      ? "from-[#F28C28] to-[#F5A623]"
+                      : "from-blue-500 to-blue-400";
                     return (
                       <div key={item.mes} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                         <span className="text-xs font-bold text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {formatCLP(item.total)}
+                          {formatCLP(item.ingresos)}
                         </span>
                         <div className="relative w-full flex justify-center">
                           <div
-                            className={`w-full max-w-[48px] rounded-t-lg bg-gradient-to-t ${colors[idx % colors.length]} transition-all duration-500 hover:brightness-110 min-h-[4px] shadow-sm`}
-                            style={{ height: `${Math.max(height, 6)}%` }}
+                            className={`w-full max-w-[48px] rounded-t-lg bg-gradient-to-t ${barColor} transition-all duration-500 hover:brightness-110 min-h-[4px] shadow-sm`}
+                            style={{ height: `${Math.max(height, 4)}%` }}
                           />
                         </div>
                         <span className="text-[11px] text-gray-500 font-semibold whitespace-nowrap">
-                          {label}
-                        </span>
-                        <span className="text-[10px] text-gray-400 -mt-0.5">
-                          {item.count} membresía{item.count !== 1 ? "s" : ""}
+                          {(() => {
+                            const p = item.mes.split("-");
+                            return `${MESES[parseInt(p[1]) - 1] || ""} '${p[0].slice(2)}`;
+                          })()}
                         </span>
                       </div>
                     );
@@ -297,33 +359,81 @@ export default function AnaliticasPage() {
 
                 {/* Data Table */}
                 <div className="bg-gray-50/70 rounded-lg border border-gray-100 overflow-hidden">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
-                        <th className="p-2.5 pl-3 font-semibold">Mes</th>
-                        <th className="p-2.5 font-semibold">Membresías</th>
-                        <th className="p-2.5 font-semibold">Total</th>
-                        <th className="p-2.5 pr-3 font-semibold text-right">Promedio</th>
+                        <th className="p-3 pl-4 font-semibold">Mes</th>
+                        <th className="p-3 font-semibold">Ingresos</th>
+                        <th className="p-3 font-semibold">Ventas</th>
+                        <th className="p-3 font-semibold">Membresías</th>
+                        <th className="p-3 font-semibold">vs Mes Anterior</th>
+                        <th className="p-3 pr-4 font-semibold text-right">Acumulado</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {membresiasPorMes.map((item, idx) => {
-                        const parts = item.mes.split("-");
-                        const m = MESES[parseInt(parts[1]) - 1];
-                        const y = parts[0];
+                      {mesesData.map((item) => {
+                        const isLast = item.mes === mesesData[mesesData.length - 1]?.mes;
+                        const barWidth = (item.ingresos / maxRevenue) * 100;
                         return (
-                          <tr key={item.mes} className="border-b border-gray-100 last:border-0 hover:bg-white transition-colors">
-                            <td className="p-2.5 pl-3 font-medium text-gray-900">{m} {y}</td>
-                            <td className="p-2.5 text-gray-700">{item.count}</td>
-                            <td className="p-2.5 font-semibold text-gray-900">{formatCLP(item.total)}</td>
-                            <td className="p-2.5 pr-3 text-right text-gray-600">{formatCLP(Math.round(item.total / item.count))}</td>
+                          <tr key={item.mes} className={`border-b border-gray-100 last:border-0 hover:bg-white transition-colors ${isLast ? "bg-amber-50/40" : ""}`}>
+                            <td className="p-3 pl-4 font-medium text-gray-900 whitespace-nowrap">
+                              {isLast && (
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] mr-2 animate-pulse" />
+                              )}
+                              {item.label}
+                            </td>
+                            <td className="p-3">
+                              <span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span>
+                            </td>
+                            <td className="p-3">
+                              <span className="text-gray-700">{item.transacciones}</span>
+                            </td>
+                            <td className="p-3">
+                              <span className="text-gray-700">{item.membresias}</span>
+                            </td>
+                            <td className="p-3">
+                              {item.vsAnterior !== null ? (
+                                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold ${
+                                  item.vsAnterior >= 0
+                                    ? "bg-green-50 text-green-700"
+                                    : "bg-red-50 text-red-700"
+                                }`}>
+                                  {item.vsAnterior >= 0 ? (
+                                    <TrendingUp size={12} />
+                                  ) : (
+                                    <TrendingDown size={12} />
+                                  )}
+                                  {Math.abs(item.vsAnterior)}%
+                                </div>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                            </td>
+                            <td className="p-3 pr-4 text-right">
+                              <span className="font-semibold text-gray-900">{formatCLP(item.acumulado)}</span>
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-100/60 border-t-2 border-gray-200">
+                        <td className="p-3 pl-4 font-bold text-gray-700">Total</td>
+                        <td className="p-3 font-black text-gray-900">
+                          {formatCLP(mesesData.reduce((s, m) => s + m.ingresos, 0))}
+                        </td>
+                        <td className="p-3 font-bold text-gray-900">
+                          {mesesData.reduce((s, m) => s + m.transacciones, 0)}
+                        </td>
+                        <td className="p-3 font-bold text-gray-900">
+                          {mesesData.reduce((s, m) => s + m.membresias, 0)}
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>

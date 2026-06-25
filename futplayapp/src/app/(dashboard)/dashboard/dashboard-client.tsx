@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { CheckCircle2, X } from "lucide-react";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import ProximoEntrenamiento from "../../../components/userDashboard/ProximoEntrenamiento";
 import MiAsistencia from "../../../components/userDashboard/MiAsistencia";
@@ -13,23 +15,42 @@ import { createClient } from "@/utils/supabase/client";
 
 export default function DashboardClient() {
     const { usuario } = useAuthUser();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [tienePlan, setTienePlan] = useState(true);
     const [planChecked, setPlanChecked] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    useEffect(() => {
+        if (searchParams.get("flowSuccess") === "1") {
+            setShowSuccess(true);
+            const params = new URLSearchParams(window.location.search);
+            params.delete("flowSuccess");
+            const newUrl = params.toString()
+                ? `${window.location.pathname}?${params.toString()}`
+                : window.location.pathname;
+            window.history.replaceState({}, "", newUrl);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         const check = async () => {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-            const now = new Date();
-            const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
-            const inicioMesSiguiente = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            const ahora = new Date();
+            const año = ahora.getFullYear();
+            const month = ahora.getMonth() + 1;
+            const inicioMes = `${año}-${String(month).padStart(2, '0')}-01`;
+            const inicioMesSiguiente = month === 12
+                ? `${año + 1}-01-01`
+                : `${año}-${String(month + 1).padStart(2, '0')}-01`;
             const { data } = await supabase
                 .from("membresia")
                 .select("id")
                 .eq("usuario_id", user.id)
-                .gte("mes", inicioMes.toISOString().split("T")[0])
-                .lt("mes", inicioMesSiguiente.toISOString().split("T")[0])
+                .gte("mes", inicioMes)
+                .lt("mes", inicioMesSiguiente)
                 .limit(1)
                 .maybeSingle();
             setTienePlan(!!data);
@@ -93,6 +114,35 @@ export default function DashboardClient() {
                     </div>
                 </div>
             </div>
+
+            {showSuccess && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#001220]/60 backdrop-blur-sm" onClick={() => setShowSuccess(false)} />
+                    <div className="relative bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
+                        <button
+                            onClick={() => setShowSuccess(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <div className="w-20 h-20 rounded-full bg-[#00A86B]/10 flex items-center justify-center mx-auto">
+                            <CheckCircle2 className="w-10 h-10 text-[#00A86B]" />
+                        </div>
+                        <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
+                            ¡Pago exitoso!
+                        </h3>
+                        <p className="text-gray-500 text-sm">
+                            Tu plan ha sido activado correctamente. Ya puedes disfrutar de todos los beneficios.
+                        </p>
+                        <button
+                            onClick={() => setShowSuccess(false)}
+                            className="mt-8 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
+                        >
+                            Ir al Dashboard
+                        </button>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

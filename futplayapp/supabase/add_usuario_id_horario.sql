@@ -1,0 +1,1 @@
+ALTER TABLE horario ADD COLUMN IF NOT EXISTS usuario_id UUID REFERENCES usuario(id);
