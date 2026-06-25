@@ -26,7 +26,7 @@ const menuItems = [
   { name: "Gestión de módulos", href: "/admin/modulos", icon: Layers },
   { name: "Gestión de cápsulas", href: "/admin/capsulas", icon: Video },
   { name: "Profesores", href: "/admin/profesores", icon: PersonStanding },
-  { name: "Planes", href: "/admin/planes", icon: CreditCard },
+  { name: "Gestión de planes", href: "/admin/planes", icon: CreditCard },
 ];
 
 interface SidebarProps {
