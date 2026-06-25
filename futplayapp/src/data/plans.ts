@@ -5,15 +5,8 @@ import { getAdminMembresias } from "@/data/membresia";
 export type Plan = {
     id: string;
     nombre: string;
-    descripcion: string;
-    tipo: "clase_suelta" | "plan";
-    tokens_mensuales: number;
     precio: number;
-    tokens: number;
-    dias_semana: number[];
-    duracion_semanas: number;
-    activo: boolean;
-    updated_at: string;
+    tokens_mensuales: number;
 };
 
 export async function getPlanes(): Promise<Plan[]> {
@@ -49,26 +42,19 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
     return data as Plan[];
 }
 
-// ─── Admin CRUD ───
-
-export async function getPlanesAdmin(): Promise<Plan[]> {
+export async function getPlanesAdmin(): Promise<{ planes: Plan[]; error?: string }> {
     const res = await fetch("/api/admin/planes");
     if (!res.ok) {
-        console.error("Error fetching planes admin:", await res.text());
-        return [];
+        const body = await res.json().catch(() => ({ error: "Error de conexión" }));
+        return { planes: [], error: body.error || `Error ${res.status}` };
     }
-    return res.json();
+    return { planes: await res.json() };
 }
 
 export async function createPlanAdmin(data: {
     nombre: string;
-    descripcion: string;
-    tipo: "clase_suelta" | "plan";
     precio: number;
-    tokens: number;
-    dias_semana?: number[];
-    duracion_semanas?: number;
-    activo?: boolean;
+    tokens_mensuales: number;
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "POST",
@@ -85,13 +71,8 @@ export async function createPlanAdmin(data: {
 export async function updatePlanAdmin(data: {
     id: string;
     nombre?: string;
-    descripcion?: string;
-    tipo?: "clase_suelta" | "plan";
     precio?: number;
-    tokens?: number;
-    dias_semana?: number[];
-    duracion_semanas?: number;
-    activo?: boolean;
+    tokens_mensuales?: number;
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "PUT",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   Users,
   DollarSign,
@@ -131,6 +131,19 @@ export default function AnaliticasPage() {
     fetchData();
   }, []);
 
+  // Close month dropdown on outside click
+  const monthDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showMonthDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (monthDropdownRef.current && !monthDropdownRef.current.contains(e.target as Node)) {
+        setShowMonthDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMonthDropdown]);
+
   const membresiasPorMes = useMemo<MembresiaPorMes[]>(() => {
     const map = new Map<string, { total: number; count: number }>();
     membresias.forEach((m) => {
@@ -200,8 +213,6 @@ export default function AnaliticasPage() {
     });
   }, [ingresosMensuales, membresiasPorMes]);
 
-  const maxRevenue = Math.max(...mesesData.map((m) => m.ingresos), 1);
-
   const planDist = useMemo<PlanDistribucion[]>(() => {
     const map = new Map<string, number>();
     membresias.forEach((m) => {
@@ -232,8 +243,60 @@ export default function AnaliticasPage() {
     }));
   }, [membresias]);
 
-  const maxPlanCount = Math.max(...planDist.map((p) => p.count), 1);
-  const totalPlan = planDist.reduce((s, p) => s + p.count, 0);
+  // ── Filtered data by selected month ──
+  const filteredMembresias = useMemo(() => {
+    if (!selectedMonth) return membresias;
+    return membresias.filter((m) => m.mes?.startsWith(selectedMonth));
+  }, [membresias, selectedMonth]);
+
+  const filteredResumen = useMemo(() => {
+    const activas = filteredMembresias.filter((m) => m.tokens_restantes > 0);
+    const ingresos = filteredMembresias.reduce((sum, m) => sum + (Number(m.precio) || 0), 0);
+    return {
+      totalAlumnos: resumen.totalAlumnos,
+      ingresosMes: ingresos,
+      membresiasActivas: activas.length,
+      retencion: resumen.totalAlumnos > 0
+        ? Math.round((activas.length / resumen.totalAlumnos) * 100)
+        : 0,
+    };
+  }, [filteredMembresias, resumen.totalAlumnos]);
+
+  const filteredMesesData = useMemo(() => {
+    if (!selectedMonth) return mesesData;
+    return mesesData.filter((m) => m.mes === selectedMonth);
+  }, [mesesData, selectedMonth]);
+
+  const maxRevenue = Math.max(...filteredMesesData.map((m) => m.ingresos), 1);
+
+  const filteredPlanDist = useMemo(() => {
+    const map = new Map<string, number>();
+    filteredMembresias.forEach((m) => {
+      const name = m.plan_nombre || "Sin plan";
+      map.set(name, (map.get(name) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([nombre, count], i) => ({
+      nombre, count, color: PLAN_COLORS[i % PLAN_COLORS.length],
+    }));
+  }, [filteredMembresias]);
+
+  const filteredIngresosPorPlan = useMemo(() => {
+    const map = new Map<string, { ingresos: number; alumnos: number }>();
+    filteredMembresias.forEach((m) => {
+      const name = m.plan_nombre || "Sin plan";
+      const prev = map.get(name) || { ingresos: 0, alumnos: 0 };
+      map.set(name, {
+        ingresos: prev.ingresos + (m.precio || 0),
+        alumnos: prev.alumnos + 1,
+      });
+    });
+    return Array.from(map.entries()).map(([nombre, data], i) => ({
+      nombre, ...data, color: PLAN_COLORS[i % PLAN_COLORS.length],
+    }));
+  }, [filteredMembresias]);
+
+  const maxPlanCount = Math.max(...filteredPlanDist.map((p) => p.count), 1);
+  const totalPlan = filteredPlanDist.reduce((s, p) => s + p.count, 0);
 
   const formatCLP = (n: number) =>
     `$${n.toLocaleString("es-CL")}`;
@@ -296,39 +359,6 @@ export default function AnaliticasPage() {
               Estadísticas y métricas de rendimiento de la academia
             </p>
           </div>
-          <div className="relative">
-            <button
-              onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 min-w-[140px]"
-            >
-              {(() => {
-                if (!selectedMonth) return "Este mes";
-                const parts = selectedMonth.split("-");
-                return `${MESES[parseInt(parts[1]) - 1]} ${parts[0]}`;
-              })()}
-              <ChevronDown size={16} />
-            </button>
-            {showMonthDropdown && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[180px] py-1 max-h-60 overflow-y-auto">
-                <button
-                  onClick={() => handleSelectMonth(null)}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 font-medium"
-                >
-                  Todos los meses
-                </button>
-                <div className="border-t border-gray-100 mx-2" />
-                {mesesData.map((m) => (
-                  <button
-                    key={m.mes}
-                    onClick={() => handleSelectMonth(m.mes)}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${selectedMonth === m.mes ? "bg-orange-50 text-[#F28C28] font-bold" : "text-gray-700"}`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Section 1: Stat Cards */}
@@ -337,25 +367,25 @@ export default function AnaliticasPage() {
             <StatCard
               icon={<Users className="w-5 h-5 text-blue-600" />}
               label="Total Alumnos"
-              value={resumen.totalAlumnos.toString()}
+              value={filteredResumen.totalAlumnos.toString()}
               bgColor="bg-blue-50"
             />
             <StatCard
               icon={<DollarSign className="w-5 h-5 text-green-600" />}
               label="Ingresos del Mes"
-              value={formatCLP(resumen.ingresosMes)}
+              value={formatCLP(filteredResumen.ingresosMes)}
               bgColor="bg-green-50"
             />
             <StatCard
               icon={<CreditCard className="w-5 h-5 text-orange-600" />}
               label="Membresías Activas"
-              value={resumen.membresiasActivas.toString()}
+              value={filteredResumen.membresiasActivas.toString()}
               bgColor="bg-orange-50"
             />
             <StatCard
               icon={<TrendingUp className="w-5 h-5 text-purple-600" />}
               label="Tasa de Retención"
-              value={`${resumen.retencion}%`}
+              value={`${filteredResumen.retencion}%`}
               bgColor="bg-purple-50"
             />
           </div>
@@ -365,15 +395,53 @@ export default function AnaliticasPage() {
         <div className="flex-none self-stretch z-0">
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  Ingresos Mensuales
-                </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Evolución de ingresos mes a mes desde el primer registro
-                </p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Ingresos Mensuales
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {selectedMonth
+                      ? `Ingresos del mes de ${(() => { const p = selectedMonth.split("-"); return `${MESES[parseInt(p[1]) - 1]} ${p[0]}`; })()}`
+                      : "Evolución de ingresos mes a mes desde el primer registro"}
+                  </p>
+                </div>
+                {/* Month selector inside chart */}
+                <div className="relative" ref={monthDropdownRef}>
+                  <button
+                    onClick={() => setShowMonthDropdown(!showMonthDropdown)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 min-w-[120px]"
+                  >
+                    {(() => {
+                      if (!selectedMonth) return "Este mes";
+                      const parts = selectedMonth.split("-");
+                      return `${MESES[parseInt(parts[1]) - 1]} ${parts[0]}`;
+                    })()}
+                    <ChevronDown size={14} />
+                  </button>
+                  {showMonthDropdown && (
+                    <div className="absolute right-0 bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px] py-1 max-h-60 overflow-y-auto">
+                      <button
+                        onClick={() => handleSelectMonth(null)}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 font-medium"
+                      >
+                        Todos los meses
+                      </button>
+                      <div className="border-t border-gray-100 mx-2" />
+                      {mesesData.map((m) => (
+                        <button
+                          key={m.mes}
+                          onClick={() => handleSelectMonth(m.mes)}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${selectedMonth === m.mes ? "bg-orange-50 text-[#F28C28] font-bold" : "text-gray-700"}`}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              {(() => {
+              {!selectedMonth && (() => {
                 const last = mesesData[mesesData.length - 1];
                 const prev = mesesData[mesesData.length - 2];
                 if (!last || !prev || prev.ingresos === 0) return null;
@@ -388,7 +456,7 @@ export default function AnaliticasPage() {
                 );
               })()}
             </div>
-            {mesesData.length === 0 ? (
+            {filteredMesesData.length === 0 ? (
               <p className="text-gray-400 text-sm text-center py-8">
                 No hay datos de ingresos aún
               </p>
@@ -396,10 +464,10 @@ export default function AnaliticasPage() {
               <>
                 {/* Bar Chart */}
                 <div className="flex items-end gap-3 h-48 mb-6">
-                  {mesesData.map((item) => {
+                  {filteredMesesData.map((item) => {
                     const BAR_PX = 192;
                     const pixelHeight = Math.max((item.ingresos / maxRevenue) * BAR_PX, 4);
-                    const isLast = item.mes === mesesData[mesesData.length - 1]?.mes;
+                    const isLast = item.mes === filteredMesesData[filteredMesesData.length - 1]?.mes;
                     const colors = [
                       "from-blue-500 to-blue-400",
                       "from-emerald-500 to-emerald-400",
@@ -447,8 +515,8 @@ export default function AnaliticasPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mesesData.map((item) => {
-                        const isLast = item.mes === mesesData[mesesData.length - 1]?.mes;
+                      {filteredMesesData.map((item) => {
+                        const isLast = !selectedMonth && item.mes === filteredMesesData[filteredMesesData.length - 1]?.mes;
                         const barWidth = (item.ingresos / maxRevenue) * 100;
                         return (
                           <tr key={item.mes} onClick={() => handleSelectMonth(item.mes)} className={`border-b border-gray-100 last:border-0 hover:bg-white transition-colors cursor-pointer ${isLast ? "bg-amber-50/40" : ""}`}>
@@ -494,15 +562,15 @@ export default function AnaliticasPage() {
                     </tbody>
                     <tfoot>
                       <tr className="bg-gray-100/60 border-t-2 border-gray-200">
-                        <td className="p-3 pl-4 font-bold text-gray-700">Total</td>
+                        <td className="p-3 pl-4 font-bold text-gray-700">{selectedMonth ? "Total mes" : "Total"}</td>
                         <td className="p-3 font-black text-gray-900">
-                          {formatCLP(mesesData.reduce((s, m) => s + m.ingresos, 0))}
+                          {formatCLP(filteredMesesData.reduce((s, m) => s + m.ingresos, 0))}
                         </td>
                         <td className="p-3 font-bold text-gray-900">
-                          {mesesData.reduce((s, m) => s + m.transacciones, 0)}
+                          {filteredMesesData.reduce((s, m) => s + m.transacciones, 0)}
                         </td>
                         <td className="p-3 font-bold text-gray-900">
-                          {mesesData.reduce((s, m) => s + m.membresias, 0)}
+                          {filteredMesesData.reduce((s, m) => s + m.membresias, 0)}
                         </td>
                         <td colSpan={2} />
                       </tr>
@@ -522,13 +590,13 @@ export default function AnaliticasPage() {
               <h2 className="text-lg font-bold text-gray-900 mb-6">
                 Alumnos por Plan
               </h2>
-              {planDist.length === 0 ? (
+              {filteredPlanDist.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center py-8">
-                  No hay miembros con plan aún
+                  {selectedMonth ? "No hay miembros para este mes" : "No hay miembros con plan aún"}
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {planDist.map((p) => {
+                  {filteredPlanDist.map((p) => {
                     const width = (p.count / maxPlanCount) * 100;
                     return (
                       <div key={p.nombre}>
@@ -561,15 +629,15 @@ export default function AnaliticasPage() {
               <h2 className="text-lg font-bold text-gray-900 mb-6">
                 Ingresos por Plan
               </h2>
-              {ingresosPorPlan.length === 0 ? (
+              {filteredIngresosPorPlan.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center py-8">
-                  No hay membresías activas este mes
+                  {selectedMonth ? "No hay ingresos para este mes" : "No hay membresías activas este mes"}
                 </p>
               ) : (
                 <div className="space-y-5">
-                  {ingresosPorPlan.map((p) => {
-                    const pct = membresias.length > 0
-                      ? Math.round((p.alumnos / membresias.length) * 100)
+                  {filteredIngresosPorPlan.map((p) => {
+                    const pct = filteredMembresias.length > 0
+                      ? Math.round((p.alumnos / filteredMembresias.length) * 100)
                       : 0;
                     return (
                       <div key={p.nombre}>
@@ -597,9 +665,9 @@ export default function AnaliticasPage() {
                     );
                   })}
                   <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
-                    <span className="font-bold text-gray-700">Total ingresos recurrentes</span>
+                    <span className="font-bold text-gray-700">{selectedMonth ? "Total del mes" : "Total ingresos recurrentes"}</span>
                     <span className="font-black text-xl text-gray-900">
-                      {formatCLP(ingresosPorPlan.reduce((s, p) => s + p.ingresos, 0))}
+                      {formatCLP(filteredIngresosPorPlan.reduce((s, p) => s + p.ingresos, 0))}
                     </span>
                   </div>
                 </div>
