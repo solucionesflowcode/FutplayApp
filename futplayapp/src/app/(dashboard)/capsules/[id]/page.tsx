@@ -26,15 +26,19 @@ export default async function Page({ params }: PageProps) {
     }
 
     const ahora = new Date();
-    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-    const inicioMesSiguiente = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 1);
+    const año = ahora.getFullYear();
+    const month = ahora.getMonth() + 1;
+    const inicioMes = `${año}-${String(month).padStart(2, '0')}-01`;
+    const inicioMesSiguiente = month === 12
+        ? `${año + 1}-01-01`
+        : `${año}-${String(month + 1).padStart(2, '0')}-01`;
 
     const { data: membresiaData } = await supabase
         .from("membresia")
         .select("*")
         .eq("usuario_id", user.id)
-        .gte("mes", inicioMes.toISOString().split("T")[0])
-        .lt("mes", inicioMesSiguiente.toISOString().split("T")[0]);
+        .gte("mes", inicioMes)
+        .lt("mes", inicioMesSiguiente);
 
     const hasMembresia = (membresiaData?.length ?? 0) > 0;
 

@@ -30,14 +30,16 @@ import { getFlowPaymentStatus } from "@/lib/flow";
 
 // ── Helpers ─────────────────────────────────────────
 
-function makeRequest(body: Record<string, string>, contentType: string = "application/x-www-form-urlencoded"): Request {
+function makeRequest(body: Record<string, string>, contentType: string = "application/x-www-form-urlencoded", boletaId?: string): Request {
     let bodyStr: string;
     if (contentType.includes("application/json")) {
         bodyStr = JSON.stringify(body);
     } else {
         bodyStr = new URLSearchParams(body).toString();
     }
-    return new Request("http://localhost:3000/api/flow/webhook", {
+    const baseUrl = "http://localhost:3000/api/flow/webhook";
+    const url = boletaId ? `${baseUrl}?boletaId=${boletaId}` : baseUrl;
+    return new Request(url, {
         method: "POST",
         headers: { "Content-Type": contentType },
         body: bodyStr,
@@ -104,15 +106,18 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(404);
     });
 
-    it("retorna 'Ya procesado' si boleta ya está pagada sin recurrencia", async () => {
+    it("procesa boleta pendiente con datos completos", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
+        __setTableData("membresia", null);
 
         const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
 
         expect(res.status).toBe(200);
         const json = await res.json();
-        expect(json.message).toBe("Ya procesado");
+        expect(json.message).toBe("OK");
     });
 
     // ── Payment rejected / cancelled ───────────────────
@@ -171,6 +176,7 @@ describe("POST /api/flow/webhook", () => {
     // ── Fallback when getFlowPaymentStatus fails ──────
 
     it("usa datos del POST body como fallback si getFlowPaymentStatus falla", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("No services"));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
 
@@ -182,6 +188,7 @@ describe("POST /api/flow/webhook", () => {
     });
 
     it("retorna OK sin procesar si falla getFlowPaymentStatus y faltan datos POST", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("No services"));
 
         const res = await POST(makeRequest({ token: FLOW_TOKEN }));
@@ -189,5 +196,96 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json.message).toBe("OK");
+    });
+
+    // ── Membresía creation ────────────────────────────
+
+    it("crea membresía automáticamente cuando el pago es exitoso y plan tiene tokens", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
+        __setTableData("membresia", null);
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(200);
+    });
+
+    it("no crea membresía si tokens_mensuales es 0", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 0 });
+        __setTableData("membresia", null);
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(200);
+    });
+
+    it("no rompe el webhook si falla la creación de membresía", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
+        __setTableData("membresia", null, { message: "duplicate key value" });
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(200);
+    });
+
+    // ── Recurrence deactivation on rejection ──────────
+
+    it("desactiva recurrencia cuando el pago recurrente es rechazado (status 3)", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 3, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: "rec-1", usuario_id: "u1" });
+        __setTableData("recurrencia", { id: "rec-1", activa: true });
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "3" }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.message).toBe("OK");
+    });
+
+    it("desactiva recurrencia cuando el pago recurrente es rechazado (status 4)", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 4, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: "rec-1", usuario_id: "u1" });
+        __setTableData("recurrencia", { id: "rec-1", activa: true });
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "4" }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.message).toBe("OK");
+    });
+
+    // ── Sandbox fallback with boletaId from URL ───────
+
+    it("usa boletaId desde la URL como fallback en sandbox cuando getFlowPaymentStatus falla", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("No services"));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN }, "application/x-www-form-urlencoded", BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.message).toBe("OK");
+    });
+
+    // ── Production fallback ───────────────────────────
+
+    it("retorna 502 si getFlowPaymentStatus falla en producción", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "false");
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Timeout"));
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(502);
+        const json = await res.json();
+        expect(json.error).toBe("Error al verificar pago con Flow");
     });
 });

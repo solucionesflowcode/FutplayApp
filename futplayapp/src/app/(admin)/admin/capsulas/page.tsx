@@ -28,11 +28,13 @@ import {
   createCapsula,
   updateCapsula,
   deleteCapsula,
+  setCapsulaDestacada,
   type CapsulaAdmin,
   type ModuloOption,
 } from "@/data/capsulas-admin";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
 import { getDocumentosByCapsula, createDocumento, deleteDocumento } from "@/data/documentos-admin";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -82,6 +84,8 @@ export default function CapsulasPage() {
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [videoProcessing, setVideoProcessing] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; titulo: string } | null>(null);
+  const [togglingDestacada, setTogglingDestacada] = useState<string | null>(null);
   const [encodeProgress, setEncodeProgress] = useState<number>(0);
   const [videoStatus, setVideoStatus] = useState<number | null>(null);
   const [showManualId, setShowManualId] = useState<boolean>(false);
@@ -610,11 +614,47 @@ export default function CapsulasPage() {
     setSaving(false);
     setModal(null);
     resetForm();
-    fetchData();
+    if (modal === "create") {
+      fetchData();
+    } else {
+      setCapsulas((prev) =>
+        prev.map((c) =>
+          c.id === form.id
+            ? {
+                ...c,
+                titulo: form.titulo,
+                imagen: form.imagen,
+                creado: form.creado,
+                duracion: form.duracion || null,
+                modulo_id: form.modulo_id || null,
+                profesor_id: form.profesor_id || null,
+                bunny_video_id: form.bunny_video_id || null,
+                order_index: form.order_index,
+              }
+            : c
+        )
+      );
+    }
   };
 
-  const handleDelete = async (id: string, titulo: string) => {
-    if (!confirm(`¿Eliminar la cápsula "${titulo}"?`)) return;
+  const handleToggleDestacada = async (c: CapsulaAdmin) => {
+    setTogglingDestacada(c.id);
+    setError(null);
+    const newId = c.destacada ? null : c.id;
+    const res = await setCapsulaDestacada(newId);
+    if (!res.success) {
+      setError(res.error || "Error al cambiar cápsula destacada");
+      setTogglingDestacada(null);
+      return;
+    }
+    setCapsulas((prev) =>
+      prev.map((x) => ({ ...x, destacada: x.id === newId }))
+    );
+    setTogglingDestacada(null);
+  };
+
+  const handleDelete = async (id: string, _titulo: string) => {
+    setDeleteTarget(null);
     setError(null);
 
     const res = await deleteCapsula(id);
@@ -622,12 +662,16 @@ export default function CapsulasPage() {
       setError(res.error || "Error al eliminar");
       return;
     }
-    fetchData();
+    setCapsulas((prev) => prev.filter((c) => c.id !== id));
   };
 
   const nextStep = () => {
     if (currentStep === 1 && !form.titulo.trim()) {
       setError("Por favor ingresa un título");
+      return;
+    }
+    if (currentStep === 2 && !form.bunny_video_id.trim()) {
+      setError("Debes subir un video o ingresar un ID de Bunny antes de continuar");
       return;
     }
     setError(null);
@@ -648,6 +692,7 @@ export default function CapsulasPage() {
   }
 
   return (
+    <>
     <div className="p-4 sm:p-6">
       <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
 
@@ -768,6 +813,24 @@ export default function CapsulasPage() {
                     <td className="p-3">
                       <div className="flex gap-2">
                         <button
+                          onClick={() => handleToggleDestacada(c)}
+                          disabled={togglingDestacada === c.id}
+                          className={`p-1.5 rounded-lg ${
+                            c.destacada
+                              ? "text-yellow-500 hover:bg-yellow-50"
+                              : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"
+                          }`}
+                          title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
+                        >
+                          {togglingDestacada === c.id ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                          )}
+                        </button>
+                        <button
                           onClick={() => openEdit(c)}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
                           title="Editar"
@@ -775,7 +838,7 @@ export default function CapsulasPage() {
                           <Pencil size={16} />
                         </button>
                         <button
-                          onClick={() => handleDelete(c.id, c.titulo)}
+                          onClick={() => setDeleteTarget({ id: c.id, titulo: c.titulo })}
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                           title="Eliminar"
                         >
@@ -1385,5 +1448,14 @@ export default function CapsulasPage() {
         </div>
       )}
     </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Eliminar cápsula"
+        message={`¿Eliminar la cápsula "${deleteTarget?.titulo}"?`}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.titulo)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </>
   );
 }

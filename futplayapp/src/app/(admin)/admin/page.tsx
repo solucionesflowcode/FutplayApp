@@ -8,6 +8,7 @@ import StatCard from "@/components/admin/StatCard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import EditStudentModal from "@/components/admin/EditStudentModal";
 import ViewStudentModal from "@/components/admin/ViewStudentModal";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { AuthGuard } from "@/context";
 import { getUsers } from "@/data/plans";
 
@@ -26,23 +27,21 @@ function AdminContent() {
 
   const [viewStudent, setViewStudent] = useState<Student | null>(null);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  const fetchUsers = useCallback(async (initial = false) => {
+    if (initial) setLoading(true);
     const data = await getUsers();
     setStudents(data);
-    setLoading(false);
+    if (initial) setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(true);
   }, [fetchUsers]);
 
   const handleDelete = async (student: Student) => {
-    const confirmed = window.confirm(
-      `¿Estás seguro de eliminar a "${student.name}"?\n\nEsta acción no se puede deshacer.`
-    );
-    if (!confirmed) return;
+    setStudents((prev) => prev.filter((s) => s.id !== student.id));
 
     try {
       const res = await fetch(`/api/admin/students?id=${student.id}`, {
@@ -50,11 +49,11 @@ function AdminContent() {
       });
       const data = await res.json();
       if (!res.ok) {
+        setStudents((prev) => [...prev, student]);
         alert(data.error || "Error al eliminar");
-        return;
       }
-      fetchUsers();
     } catch {
+      setStudents((prev) => [...prev, student]);
       alert("Error de conexión al servidor");
     }
   };
@@ -102,7 +101,18 @@ function AdminContent() {
         students={filtered}
         onView={setViewStudent}
         onEdit={setEditStudent}
-        onDelete={handleDelete}
+        onDelete={(s) => setDeleteStudent(s)}
+      />
+
+      <ConfirmDialog
+        open={deleteStudent !== null}
+        title="Eliminar estudiante"
+        message={`¿Estás seguro de eliminar a "${deleteStudent?.name}"? Esta acción no se puede deshacer.`}
+        onConfirm={() => {
+          if (deleteStudent) handleDelete(deleteStudent);
+          setDeleteStudent(null);
+        }}
+        onCancel={() => setDeleteStudent(null)}
       />
 
       <EditStudentModal

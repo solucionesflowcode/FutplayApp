@@ -20,6 +20,7 @@ import {
   type Modulo,
   type Categoria,
 } from "@/data/modulos";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -45,6 +46,7 @@ export default function ModulosPage() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nombre: string } | null>(null);
 
   const fetchModulos = useCallback(async () => {
     const [m, c] = await Promise.all([getModulos(), getCategorias()]);
@@ -105,11 +107,21 @@ export default function ModulosPage() {
     setSaving(false);
     setModal(null);
     resetForm();
-    fetchModulos();
+    if (modal === "create") {
+      fetchModulos();
+    } else {
+      setModulos((prev) =>
+        prev.map((m) =>
+          m.id === form.id
+            ? { ...m, nombre: form.nombre, descripcion: form.descripcion, categoria_id: form.categoria_id || m.categoria_id }
+            : m
+        )
+      );
+    }
   };
 
-  const handleDelete = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar el módulo "${nombre}"?`)) return;
+  const handleDelete = async (id: string, _nombre: string) => {
+    setDeleteTarget(null);
     setError(null);
 
     const res = await deleteModulo(id);
@@ -117,7 +129,7 @@ export default function ModulosPage() {
       setError(res.error || "Error al eliminar");
       return;
     }
-    fetchModulos();
+    setModulos((prev) => prev.filter((m) => m.id !== id));
   };
 
   if (loading && modulos.length === 0) {
@@ -129,6 +141,7 @@ export default function ModulosPage() {
   }
 
   return (
+    <>
     <div className="p-4 sm:p-6">
       <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
 
@@ -211,7 +224,7 @@ export default function ModulosPage() {
                           <Pencil size={16} />
                         </button>
                         <button
-                          onClick={() => handleDelete(m.id, m.nombre)}
+                          onClick={() => setDeleteTarget({ id: m.id, nombre: m.nombre })}
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                           title="Eliminar"
                         >
@@ -303,5 +316,14 @@ export default function ModulosPage() {
         </div>
       )}
     </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Eliminar módulo"
+        message={`¿Eliminar el módulo "${deleteTarget?.nombre}"?`}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.nombre)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </>
   );
 }

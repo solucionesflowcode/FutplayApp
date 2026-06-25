@@ -8,6 +8,7 @@ import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 import { getPlanes, type Plan } from "@/data/plans";
 import { getMiMembresia } from "@/data/pagos";
 import { useAuthUser } from "@/context";
+import { membresiaActiva } from "@/lib/fechas";
 import { userHasFichaMedica } from "@/data/fichaMedica";
 
 export default function PlanesPage() {
@@ -49,10 +50,7 @@ export default function PlanesPage() {
                     const membresia = await getMiMembresia(usuario.id);
                     if (cancelled) return;
                     if (membresia) {
-                        const vencimiento = new Date(membresia.mes + "T00:00:00");
-                        vencimiento.setMonth(vencimiento.getMonth() + 1);
-                        vencimiento.setDate(0);
-                        setTienePlanActivo(vencimiento >= new Date());
+                        setTienePlanActivo(membresiaActiva(membresia.mes));
                     }
                 }
             } catch (err) {
@@ -184,9 +182,7 @@ export default function PlanesPage() {
                                         className={`w-full mt-10 py-4 rounded-xl font-bold text-lg transition-all duration-300
                                             ${tienePlanActivo
                                                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                                : isDestacado 
-                                                    ? 'bg-[#F28C28] hover:bg-[#e07d1f] text-white shadow-[0_0_20px_rgba(242,140,40,0.4)] hover:shadow-[0_0_30px_rgba(242,140,40,0.6)] transform hover:-translate-y-1' 
-                                                    : 'bg-gray-100 hover:bg-gray-200 text-[#004080] border border-gray-200 hover:border-gray-300'
+                                                : 'bg-[#F28C28] hover:bg-[#e07d1f] text-white shadow-[0_0_20px_rgba(242,140,40,0.4)] hover:shadow-[0_0_30px_rgba(242,140,40,0.6)] transform hover:-translate-y-1'
                                             }`}
                                     >
                                         {tienePlanActivo ? "Plan activo" : "Comprar Plan"}
