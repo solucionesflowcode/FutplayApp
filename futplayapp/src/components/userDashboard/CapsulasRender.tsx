@@ -20,7 +20,7 @@ export default function CapsulasRender({ capsulas }: Props) {
                 </button>
             </div>
 
-            <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-5 pb-6">
+            <div className="w-full grid grid-cols-1 lg:grid-cols-4 gap-6 mt-5 pb-6">
                 {capsulas.length === 0 ? (
                     <p className="text-gray-400 col-span-full text-center py-4">
                         No hay cápsulas disponibles.
