@@ -86,7 +86,7 @@ export default function SidebarProfesor() {
       </div>
 
       {/* SIDEBAR ESCRITORIO */}
-      <aside className="hidden md:flex w-64 bg-[#001529] h-screen text-white flex-col p-4 shrink-0 overflow-y-auto">
+      <aside className="hidden md:flex fixed left-0 top-0 w-64 bg-[#001529] h-dvh text-white flex-col p-4 overflow-y-auto z-40">
         <div className="mb-10 px-2">
           <h2 className="text-xl font-bold">FutPlay</h2>
           <p className="text-[10px] text-gray-500 tracking-widest uppercase">Panel Profesor</p>
