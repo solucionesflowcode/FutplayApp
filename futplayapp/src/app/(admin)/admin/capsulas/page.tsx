@@ -738,13 +738,14 @@ export default function CapsulasPage() {
                     <th className="p-3 font-semibold">Profesor</th>
                     <th className="p-3 font-semibold">Video ID</th>
                     <th className="p-3 font-semibold">Orden</th>
+                    <th className="p-3 font-semibold">Destacar</th>
                     <th className="p-3 font-semibold">Acciones</th>
                   </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-gray-400">
+                    <td colSpan={9} className="p-8 text-center text-gray-400">
                       {search ? "No se encontraron cápsulas" : "No hay cápsulas creadas aún"}
                     </td>
                   </tr>
@@ -808,26 +809,28 @@ export default function CapsulasPage() {
                         {c.order_index ?? 0}
                       </span>
                     </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => handleToggleDestacada(c)}
+                        disabled={togglingDestacada === c.id}
+                        className={`p-1.5 rounded-lg ${
+                          c.destacada
+                            ? "text-yellow-500 hover:bg-yellow-50"
+                            : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"
+                        }`}
+                        title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
+                      >
+                        {togglingDestacada === c.id ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                          </svg>
+                        )}
+                      </button>
+                    </td>
                     <td className="p-3">
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleToggleDestacada(c)}
-                          disabled={togglingDestacada === c.id}
-                          className={`p-1.5 rounded-lg ${
-                            c.destacada
-                              ? "text-yellow-500 hover:bg-yellow-50"
-                              : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"
-                          }`}
-                          title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
-                        >
-                          {togglingDestacada === c.id ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                            </svg>
-                          )}
-                        </button>
                         <button
                           onClick={() => openEdit(c)}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
