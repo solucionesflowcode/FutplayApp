@@ -11,11 +11,6 @@ interface PageProps {
 
 export default async function Page({ params }: PageProps) {
     const { id } = await params;
-    const capsula = await getCapsulaById(id);
-
-    if (!capsula) {
-        redirect("/capsules");
-    }
 
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
@@ -23,6 +18,19 @@ export default async function Page({ params }: PageProps) {
     
     if (!user) {
         redirect("/login");
+    }
+
+    const { data: usuario } = await supabase
+        .from("usuario")
+        .select("rol")
+        .eq("id", user.id)
+        .single();
+
+    const isStaff = usuario?.rol === "profesor" || usuario?.rol === "administrador";
+    const capsula = await getCapsulaById(id, isStaff ? "admin" : "alumno");
+
+    if (!capsula) {
+        redirect("/capsules");
     }
 
     const ahora = new Date();
