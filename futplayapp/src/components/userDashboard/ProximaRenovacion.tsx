@@ -99,7 +99,7 @@ export default function ProximaRenovacion() {
         new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(n);
 
     return (
-        <div className="w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] rounded-2xl shadow-xl border border-white/10 p-6 relative overflow-hidden">
+        <div className="w-full bg-gradient-to-br from-[#002447] to-[#00305B] rounded-2xl shadow-xl border border-white/10 p-6 relative">
             <div className="absolute top-0 right-0 w-40 h-40 bg-[#F39200] rounded-full mix-blend-multiply filter blur-3xl opacity-10" />
 
             <div className="flex items-center gap-3 mb-5">

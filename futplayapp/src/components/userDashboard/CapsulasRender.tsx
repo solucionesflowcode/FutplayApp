@@ -29,6 +29,7 @@ export default function CapsulasRender({ capsulas }: Props) {
                     capsulas.map((capsula) => (
                         <div key={capsula.id} className="w-full">
                             <CapsulaCard
+                                id={capsula.id}
                                 titulo={capsula.titulo}
                                 imagen={capsula.imagen}
                                 coach={capsula.coach}
