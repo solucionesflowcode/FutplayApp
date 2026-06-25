@@ -26,6 +26,7 @@ import {
   type Sede,
 } from "@/data/clases";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 type ViewMode = "list" | "asistencia-detalle";
 
@@ -65,6 +66,7 @@ export default function ClasesPage() {
   const [form, setForm] = useState<ClaseForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [detalleClase, setDetalleClase] = useState<any>(null);
   const [fechaDesde, setFechaDesde] = useState("");
@@ -172,7 +174,7 @@ export default function ClasesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar esta clase? También se eliminarán sus inscripciones.")) return;
+    setDeleteId(null);
     setClases((prev) => prev.filter((c) => c.id !== id));
     await deleteClase(id);
   };
@@ -208,13 +210,24 @@ export default function ClasesPage() {
 
   if (loading && clases.length === 0 && view === "list") {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-5 h-5 animate-spin text-[#F28C28]" />
-      </div>
-    );
-  }
+    <>
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Loader2 className="w-5 h-5 animate-spin text-[#F28C28]" />
+    </div>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        title="Eliminar clase"
+        message="¿Eliminar esta clase? También se eliminarán sus inscripciones."
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
+    </>
+  );
+}
 
   return (
+    <>
     <div className="p-6">
       <div className="flex flex-col gap-6 w-full" style={{ maxWidth: "1216px" }}>
 
@@ -401,7 +414,7 @@ export default function ClasesPage() {
                               <Pencil size={16} />
                             </button>
                             <button
-                              onClick={() => handleDelete(c.id)}
+                              onClick={() => setDeleteId(c.id)}
                               className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                               title="Eliminar"
                             >
@@ -551,6 +564,15 @@ export default function ClasesPage() {
         </div>
       )}
     </div>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        title="Eliminar clase"
+        message="¿Eliminar esta clase? También se eliminarán sus inscripciones."
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
+    </>
   );
 }
 

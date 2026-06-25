@@ -12,7 +12,7 @@ export type Capsula = {
     bunny_video_id: string | null;
 };
 
-async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
+async function fetchCapsulaData(supabase: any, tipo: 'alumno' | 'profesor' | 'admin' = 'alumno'): Promise<Capsula[]> {
     const { data: capsulas, error: capsulasError } = await supabase
         .from("capsula")
         .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, descripcion")
@@ -59,7 +59,7 @@ async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
         moduloMap.set(mod.id, cat?.nombre ?? "");
     }
 
-    return capsulas.map((item: any) => ({
+    let result = capsulas.map((item: any) => ({
         id: item.id,
         titulo: item.titulo,
         imagen: item.imagen || "",
@@ -69,15 +69,23 @@ async function fetchCapsulaData(supabase: any): Promise<Capsula[]> {
         descripcion: item.descripcion || null,
         bunny_video_id: item.bunny_video_id || null,
     }));
+
+    if (tipo === 'profesor') {
+        result = result.filter((c: Capsula) => c.categoria.toLowerCase() === 'profesor');
+    } else if (tipo === 'alumno') {
+        result = result.filter((c: Capsula) => c.categoria.toLowerCase() !== 'profesor');
+    }
+
+    return result;
 }
 
-export async function getCapsulas(): Promise<Capsula[]> {
+export async function getCapsulas(tipo: 'alumno' | 'profesor' | 'admin' = 'alumno'): Promise<Capsula[]> {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
-    return fetchCapsulaData(supabase);
+    return fetchCapsulaData(supabase, tipo);
 }
 
-export async function getCapsulaById(id: string): Promise<Capsula | null> {
+export async function getCapsulaById(id: string, tipo: 'alumno' | 'profesor' | 'admin' = 'alumno'): Promise<Capsula | null> {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
     
@@ -85,7 +93,7 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
         .from("capsula")
         .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, descripcion")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
     if (capsulaError || !item) {
         console.error("Error fetching capsula by id:", capsulaError?.message);
@@ -97,7 +105,7 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
             .from("modulo")
             .select("id, categoria_id")
             .eq("id", item.modulo_id)
-            .single()
+            .maybeSingle()
         : { data: null, error: null };
 
     const { data: categoria, error: categoriasError } = modulo?.categoria_id
@@ -105,10 +113,10 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
             .from("categoria")
             .select("id, nombre")
             .eq("id", modulo.categoria_id)
-            .single()
+            .maybeSingle()
         : { data: null, error: null };
 
-    return {
+    const result: Capsula = {
         id: item.id,
         titulo: item.titulo,
         imagen: item.imagen || "",
@@ -118,6 +126,11 @@ export async function getCapsulaById(id: string): Promise<Capsula | null> {
         descripcion: item.descripcion || null,
         bunny_video_id: item.bunny_video_id || null,
     };
+
+    if (tipo === 'alumno' && result.categoria.toLowerCase() === 'profesor') return null;
+    if (tipo === 'profesor' && result.categoria.toLowerCase() !== 'profesor') return null;
+
+    return result;
 }
 
 function formatDuration(interval: string | null): string {

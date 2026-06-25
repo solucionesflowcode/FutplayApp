@@ -44,26 +44,25 @@ export async function getProximaClase(userId: string): Promise<Array<{
             )
         `)
     .eq("usuario_id", userId)
-    .in("asistencia", ["sin_confirmar", "pendiente", "confirmado_whatsapp"])
-    .not("clase.fecha_hora", "is", null)
-    .gte("clase.fecha_hora", new Date().toISOString())
-    .order("clase.fecha_hora", { ascending: true })
-    .limit(1);
+    .gte("clase.fecha_hora", new Date().toISOString());
 
   if (error || !data?.length) return [];
 
-  const c = data[0].clase as unknown as {
-    titulo: string;
-    descripcion: string;
-    fecha_hora: string;
-    sede: { nombre: string };
-  };
-  return [{
-    titulo: c.titulo,
-    descripcion: c.descripcion,
-    fecha_hora: c.fecha_hora,
-    sede: c.sede.nombre,
-  }];
+  const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string }> = [];
+  for (const item of data) {
+    const c = item.clase as Record<string, unknown>;
+    if (!c || !c.titulo) continue;
+    rows.push({
+      titulo: c.titulo as string,
+      descripcion: c.descripcion as string,
+      fecha_hora: c.fecha_hora as string,
+      sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
+    });
+  }
+
+  rows.sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime());
+
+  return rows.slice(0, 1);
 }
 
 // ─── Admin CRUD ───

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Search, Bell, Settings, Download, X } from "lucide-react";
+import { useAuthUser } from "@/context";
 import type { Student } from "./StudentsTable";
 
 type Props = {
@@ -34,6 +35,7 @@ function exportCSV(students: Student[]) {
 }
 
 export default function AdminHeader({ students, search, onSearchChange, onView }: Props) {
+  const { usuario } = useAuthUser();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -146,8 +148,8 @@ export default function AdminHeader({ students, search, onSearchChange, onView }
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
             <div className="text-sm leading-tight">
-              <p className="text-gray-500 text-xs">Admin Principal</p>
-              <p className="font-bold text-black">Pablo Escobar</p>
+              <p className="text-gray-500 text-xs">{usuario?.email}</p>
+              <p className="font-bold text-black">{usuario?.nombre}</p>
             </div>
           </div>
         </div>

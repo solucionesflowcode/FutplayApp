@@ -11,7 +11,7 @@ export type Capsula = {
     bunny_video_id: string | null;
 };
 
-async function fetchCapsulaData(supabase: ReturnType<typeof createClient>): Promise<Capsula[]> {
+async function fetchCapsulaData(supabase: ReturnType<typeof createClient>, tipo: 'alumno' | 'profesor' | 'admin' = 'alumno'): Promise<Capsula[]> {
     const { data: capsulas, error: capsulasError } = await supabase
         .from("capsula")
         .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, descripcion")
@@ -58,7 +58,7 @@ async function fetchCapsulaData(supabase: ReturnType<typeof createClient>): Prom
         moduloMap.set(mod.id, cat?.nombre ?? "");
     }
 
-    return capsulas.map((item: any) => ({
+    let result = capsulas.map((item: any) => ({
         id: item.id,
         titulo: item.titulo,
         imagen: item.imagen || "",
@@ -68,11 +68,19 @@ async function fetchCapsulaData(supabase: ReturnType<typeof createClient>): Prom
         descripcion: item.descripcion || null,
         bunny_video_id: item.bunny_video_id || null,
     }));
+
+    if (tipo === 'profesor') {
+        result = result.filter((c: Capsula) => c.categoria.toLowerCase() === 'profesor');
+    } else if (tipo === 'alumno') {
+        result = result.filter((c: Capsula) => c.categoria.toLowerCase() !== 'profesor');
+    }
+
+    return result;
 }
 
-export async function getCapsulasClient(): Promise<Capsula[]> {
+export async function getCapsulasClient(tipo: 'alumno' | 'profesor' | 'admin' = 'alumno'): Promise<Capsula[]> {
     const supabase = createClient();
-    return fetchCapsulaData(supabase);
+    return fetchCapsulaData(supabase, tipo);
 }
 
 function formatDuration(interval: string | null): string {

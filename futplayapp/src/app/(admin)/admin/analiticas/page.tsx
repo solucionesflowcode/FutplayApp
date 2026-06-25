@@ -112,8 +112,10 @@ export default function AnaliticasPage() {
         const activas = membresiasData.filter((m) => m.tokens_restantes > 0);
         const membresiasActivas = activas.length;
 
+        const apiIngresoMes = ingresosData.find((i) => i.mes === mesActual);
         const membresiasMesActual = membresiasData.filter((m) => m.mes?.startsWith(mesActual));
-        const ingresosMes = membresiasMesActual.reduce((sum, m) => sum + (Number(m.precio) || 0), 0);
+        const ingresosMesLocal = membresiasMesActual.reduce((sum, m) => sum + (Number(m.precio) || 0), 0);
+        const ingresosMes = apiIngresoMes?.ingresos ?? ingresosMesLocal;
 
         const retencion = totalAlumnos > 0
           ? Math.round((membresiasActivas / totalAlumnos) * 100)
@@ -250,8 +252,10 @@ export default function AnaliticasPage() {
   }, [membresias, selectedMonth]);
 
   const filteredResumen = useMemo(() => {
+    if (!selectedMonth) return resumen;
+    const apiIngreso = ingresosMensuales.find((i) => i.mes === selectedMonth);
+    const ingresos = apiIngreso?.ingresos ?? 0;
     const activas = filteredMembresias.filter((m) => m.tokens_restantes > 0);
-    const ingresos = filteredMembresias.reduce((sum, m) => sum + (Number(m.precio) || 0), 0);
     return {
       totalAlumnos: resumen.totalAlumnos,
       ingresosMes: ingresos,
@@ -260,7 +264,7 @@ export default function AnaliticasPage() {
         ? Math.round((activas.length / resumen.totalAlumnos) * 100)
         : 0,
     };
-  }, [filteredMembresias, resumen.totalAlumnos]);
+  }, [filteredMembresias, resumen, selectedMonth, ingresosMensuales]);
 
   const filteredMesesData = useMemo(() => {
     if (!selectedMonth) return mesesData;
@@ -413,7 +417,7 @@ export default function AnaliticasPage() {
                     className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 min-w-[120px]"
                   >
                     {(() => {
-                      if (!selectedMonth) return "Este mes";
+                      if (!selectedMonth) return "Todos los meses";
                       const parts = selectedMonth.split("-");
                       return `${MESES[parseInt(parts[1]) - 1]} ${parts[0]}`;
                     })()}

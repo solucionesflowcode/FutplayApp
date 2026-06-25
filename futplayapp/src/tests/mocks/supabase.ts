@@ -37,10 +37,11 @@ export function __setTableData(table: string, data: any, error: any = null) {
  * `.single()` / `.maybeSingle()` are explicit terminals that return a Promise.
  */
 function makeChain(table: string) {
-    function getResponse(): Promise<MockResponse> {
+    function getResponse(): Promise<MockResponse & { count?: number }> {
         const r = state.tables[table];
-        if (!r) return Promise.reject(new Error(`No mock data for table "${table}"`));
-        return Promise.resolve(r);
+        if (!r) return Promise.resolve({ data: null, error: null, count: 0 });
+        const count = Array.isArray(r.data) ? r.data.length : (r.data !== null && r.data !== undefined ? 1 : 0);
+        return Promise.resolve({ ...r, count });
     }
 
     const terminal: any = {
@@ -65,7 +66,12 @@ function makeChain(table: string) {
         limit: vi.fn(() => terminal),
 
         // Terminal methods (return Promise directly)
-        single: vi.fn(() => getResponse()),
+        single: vi.fn(() => getResponse().then((r) => {
+            if (Array.isArray(r.data)) {
+                return { data: r.data[0] ?? null, error: r.error, count: r.count };
+            }
+            return r;
+        })),
         maybeSingle: vi.fn(() => {
             const r = state.tables[table];
             if (!r || r.data === undefined) return Promise.resolve({ data: null, error: null });
@@ -84,7 +90,21 @@ export function createMockServerClient() {
             getUser: vi.fn(() =>
                 Promise.resolve({ data: { user: state.authUser } }),
             ),
+            admin: {
+                createUser: vi.fn(() => Promise.resolve({ data: { user: { id: "new-auth-id" } }, error: null })),
+                deleteUser: vi.fn(() => Promise.resolve({ error: null })),
+                listUsers: vi.fn(() => Promise.resolve({ data: { users: [] }, error: null })),
+            },
         },
         from: vi.fn((table: string) => makeChain(table)),
+        rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        storage: {
+            getBucket: vi.fn(() => Promise.resolve({ error: null })),
+            createBucket: vi.fn(() => Promise.resolve({ error: null })),
+            from: vi.fn(() => ({
+                upload: vi.fn(() => Promise.resolve({ error: null })),
+                getPublicUrl: vi.fn(() => ({ data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/test/file.jpg" } })),
+            })),
+        },
     };
 }
