@@ -35,12 +35,15 @@ const whatsapp = new Client({
   puppeteer: {
     headless: true,
     executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run']
   }
 });
 
+let whatsappReady = false;
+
 whatsapp.on('qr', qr => { qrcode.generate(qr, { small: true }); console.log('Escanea el QR.'); });
-whatsapp.on('ready', () => console.log('WhatsApp conectado!'));
+whatsapp.on('ready', () => { console.log('WhatsApp conectado!'); whatsappReady = true; });
+whatsapp.on('disconnected', (reason) => { console.error('WhatsApp desconectado:', reason); whatsappReady = false; });
 
 whatsapp.on('message', async msg => {
   if (msg.from.endsWith('@g.us') || msg.from.endsWith('@broadcast')) return;
@@ -62,7 +65,8 @@ whatsapp.initialize().catch(err => console.error('Error al iniciar WhatsApp:', e
 
 // ─── Scheduler ───
 if (process.env.SCHEDULER_ENABLED === 'true') {
-  cron.schedule('*/15 * * * *', async () => {
+  cron.schedule('* * * * *', async () => {
+    if (!whatsappReady) { console.log('[Scheduler] WhatsApp no conectado, saltando ciclo'); return; }
     const ahora = new Date();
 
     const horarios = await db.getHorarios24h();

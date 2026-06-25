@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
+
 type Props = {
+    id: string;
     titulo: string;
     imagen: string;
     coach: string;
@@ -11,6 +14,7 @@ type Props = {
 const PLACEHOLDER = "https://images.unsplash.com/photo-1570498839593-e565b39455fc";
 
 export default function CapsulaCard({
+    id,
     titulo,
     imagen,
     coach,
@@ -19,7 +23,7 @@ export default function CapsulaCard({
 }: Props) {
     const imgSrc = imagen || PLACEHOLDER;
     return (
-        <div className="w-full cursor-pointer">
+        <Link href={`/capsules/${id}`} className="w-full cursor-pointer block">
 
 
             <div className="relative w-full h-[180px] rounded-2xl overflow-hidden group">
@@ -55,6 +59,6 @@ export default function CapsulaCard({
                     {categoria}
                 </p>
             </div>
-        </div>
+        </Link>
     );
 }

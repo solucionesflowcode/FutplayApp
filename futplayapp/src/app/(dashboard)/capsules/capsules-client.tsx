@@ -7,6 +7,7 @@ import type { Capsula } from "@/data/capsules";
 
 interface CapsulesPageProps {
     capsulas: Capsula[];
+    destacadaId: string | null;
 }
 
 const PLACEHOLDER = "https://images.unsplash.com/photo-1570498839593-e565b39455fc";
@@ -99,14 +100,15 @@ function CapsulaCard({ capsula }: { capsula: Capsula }) {
     );
 }
 
-export default function CapsulesPageClient({ capsulas }: CapsulesPageProps) {
+export default function CapsulesPageClient({ capsulas, destacadaId }: CapsulesPageProps) {
     const [search, setSearch] = useState<string>("");
     const [activeCategory, setActiveCategory] = useState<string>("Todas");
 
     const CATEGORIES = ["Todas", ...Array.from(new Set(capsulas.map((c) => c.categoria)))];
 
-    const featured = capsulas[0];
-    const rest = capsulas.slice(1);
+    const featuredIndex = destacadaId ? capsulas.findIndex((c) => c.id === destacadaId) : -1;
+    const featured = featuredIndex >= 0 ? capsulas[featuredIndex] : capsulas[0];
+    const rest = featuredIndex >= 0 ? capsulas.filter((_, i) => i !== featuredIndex) : capsulas.slice(1);
 
     const filtered = useMemo<Capsula[]>(() => {
         return rest.filter((c) => {

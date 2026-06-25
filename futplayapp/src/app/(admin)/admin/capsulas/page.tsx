@@ -28,11 +28,13 @@ import {
   createCapsula,
   updateCapsula,
   deleteCapsula,
+  setCapsulaDestacada,
   type CapsulaAdmin,
   type ModuloOption,
 } from "@/data/capsulas-admin";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
 import { getDocumentosByCapsula, createDocumento, deleteDocumento } from "@/data/documentos-admin";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -82,6 +84,8 @@ export default function CapsulasPage() {
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [videoProcessing, setVideoProcessing] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; titulo: string } | null>(null);
+  const [togglingDestacada, setTogglingDestacada] = useState<string | null>(null);
   const [encodeProgress, setEncodeProgress] = useState<number>(0);
   const [videoStatus, setVideoStatus] = useState<number | null>(null);
   const [showManualId, setShowManualId] = useState<boolean>(false);
@@ -180,9 +184,7 @@ export default function CapsulasPage() {
       descripcion: c.descripcion || "",
     });
     setModal("edit");
-    if (c.bunny_video_id) {
-      setShowManualId(true);
-    }
+    setShowManualId(true);
     const docs = await getDocumentosByCapsula(c.id);
     if (docs.length > 0) {
       setExistingDoc({ id: docs[0].id, nombre: docs[0].nombre, url_archivo: docs[0].url_archivo });
@@ -633,8 +635,24 @@ export default function CapsulasPage() {
     }
   };
 
-  const handleDelete = async (id: string, titulo: string) => {
-    if (!confirm(`¿Eliminar la cápsula "${titulo}"?`)) return;
+  const handleToggleDestacada = async (c: CapsulaAdmin) => {
+    setTogglingDestacada(c.id);
+    setError(null);
+    const newId = c.destacada ? null : c.id;
+    const res = await setCapsulaDestacada(newId);
+    if (!res.success) {
+      setError(res.error || "Error al cambiar cápsula destacada");
+      setTogglingDestacada(null);
+      return;
+    }
+    setCapsulas((prev) =>
+      prev.map((x) => ({ ...x, destacada: x.id === newId }))
+    );
+    setTogglingDestacada(null);
+  };
+
+  const handleDelete = async (id: string, _titulo: string) => {
+    setDeleteTarget(null);
     setError(null);
 
     const res = await deleteCapsula(id);
@@ -648,6 +666,10 @@ export default function CapsulasPage() {
   const nextStep = () => {
     if (currentStep === 1 && !form.titulo.trim()) {
       setError("Por favor ingresa un título");
+      return;
+    }
+    if (currentStep === 2 && !form.bunny_video_id.trim()) {
+      setError("Debes subir un video o ingresar un ID de Bunny antes de continuar");
       return;
     }
     setError(null);
@@ -668,6 +690,7 @@ export default function CapsulasPage() {
   }
 
   return (
+    <>
     <div className="p-4 sm:p-6">
       <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
 
@@ -715,13 +738,14 @@ export default function CapsulasPage() {
                     <th className="p-3 font-semibold">Profesor</th>
                     <th className="p-3 font-semibold">Video ID</th>
                     <th className="p-3 font-semibold">Orden</th>
+                    <th className="p-3 font-semibold">Destacar</th>
                     <th className="p-3 font-semibold">Acciones</th>
                   </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-gray-400">
+                    <td colSpan={9} className="p-8 text-center text-gray-400">
                       {search ? "No se encontraron cápsulas" : "No hay cápsulas creadas aún"}
                     </td>
                   </tr>
@@ -785,6 +809,26 @@ export default function CapsulasPage() {
                         {c.order_index ?? 0}
                       </span>
                     </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => handleToggleDestacada(c)}
+                        disabled={togglingDestacada === c.id}
+                        className={`p-1.5 rounded-lg ${
+                          c.destacada
+                            ? "text-yellow-500 hover:bg-yellow-50"
+                            : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"
+                        }`}
+                        title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
+                      >
+                        {togglingDestacada === c.id ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                          </svg>
+                        )}
+                      </button>
+                    </td>
                     <td className="p-3">
                       <div className="flex gap-2">
                         <button
@@ -795,7 +839,7 @@ export default function CapsulasPage() {
                           <Pencil size={16} />
                         </button>
                         <button
-                          onClick={() => handleDelete(c.id, c.titulo)}
+                          onClick={() => setDeleteTarget({ id: c.id, titulo: c.titulo })}
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
                           title="Eliminar"
                         >
@@ -1405,5 +1449,14 @@ export default function CapsulasPage() {
         </div>
       )}
     </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Eliminar cápsula"
+        message={`¿Eliminar la cápsula "${deleteTarget?.titulo}"?`}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.titulo)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </>
   );
 }
