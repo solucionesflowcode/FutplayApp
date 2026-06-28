@@ -25,7 +25,7 @@ type Props = {
     isOpen: boolean;
     onClose: () => void;
     clases: ClaseInfo[];
-    onAgendada: (claseId: string) => void;
+    onAgendada: (claseId: string, inscripcionId?: string) => void;
 };
 
 export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada }: Props) {
@@ -58,7 +58,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                 return;
             }
             setSuccessId(claseId);
-            onAgendada(claseId);
+            onAgendada(claseId, data.inscripcionId);
 
             const updated = await getMembresiaByUser(usuario!.id);
             if (updated) setMembresia(updated);
