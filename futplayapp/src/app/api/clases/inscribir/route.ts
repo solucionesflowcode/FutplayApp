@@ -45,6 +45,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "claseId es requerido" }, { status: 400 });
     }
 
+    // Check if it's a partido (no token required)
+    const { data: clase } = await supabase
+        .from("clase")
+        .select("tipo_evento")
+        .eq("id", claseId)
+        .maybeSingle();
+
+    const esPartido = clase?.tipo_evento === "partido";
+
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceKey) {
         return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
@@ -64,7 +73,21 @@ export async function POST(request: Request) {
         .maybeSingle();
 
     if (existing && (existing.asistencia === "cancelado" || existing.asistencia === "cancelado_sin_reembolso")) {
-        // Re-inscription: validate membresía manually (trigger won't fire on UPDATE)
+        if (esPartido) {
+            // Partido: no requiere membresía ni token
+            const { error: updateError } = await admin
+                .from("clase_usuario")
+                .update({ asistencia: "sin_confirmar" })
+                .eq("id", existing.id);
+
+            if (updateError) {
+                return NextResponse.json({ error: updateError.message }, { status: 400 });
+            }
+
+            return NextResponse.json({ inscripcionId: existing.id });
+        }
+
+        // Re-inscription to entrenamiento: validate membresía manually (trigger won't fire on UPDATE)
         const now = new Date();
         const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
@@ -100,7 +123,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ inscripcionId: existing.id });
     }
 
-    // First-time inscription: INSERT (trigger validates + deducts token)
+    // First-time inscription: INSERT (trigger will deduct token — compensate if partido)
     const { data, error } = await supabase
         .from("clase_usuario")
         .insert({ usuario_id: user.id, clase_id: claseId })
@@ -112,6 +135,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Ya estás inscrito en esta clase" }, { status: 409 });
         }
         return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Partido: devolver el token que el trigger descontó
+    if (esPartido) {
+        await admin.rpc("devolver_token", { p_usuario_id: user.id });
     }
 
     return NextResponse.json({ inscripcionId: data.id });

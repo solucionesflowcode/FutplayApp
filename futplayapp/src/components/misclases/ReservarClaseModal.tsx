@@ -20,6 +20,7 @@ type ClaseInfo = {
     descripcion: string | null;
     fecha_hora: string;
     sede: string;
+    tipo_evento?: "entrenamiento" | "partido";
 };
 
 type Props = {
@@ -104,7 +105,8 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                         });
                         const isSuccess = successId === clase.claseId;
                         const isLoading = loadingId === clase.claseId;
-                        const puedeAgendar = tokensRestantes > 0 && !isSuccess;
+                        const esPartido = clase.tipo_evento === "partido";
+                        const puedeAgendar = (esPartido || tokensRestantes > 0) && !isSuccess;
 
                         return (
                             <div
@@ -145,6 +147,11 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                                 Agendando...
                                             </>
+                                        ) : esPartido ? (
+                                            <>
+                                                Agendar partido
+                                                <span className="text-[10px] opacity-75 block font-normal">(sin consumo de tokens)</span>
+                                            </>
                                         ) : (
                                             <>
                                                 <Ticket className="w-4 h-4" />
@@ -156,14 +163,6 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                             </div>
                         );
                     })}
-
-                    <div className="bg-white border border-[#edeef0] rounded-xl p-4 flex items-center gap-3">
-                        <Ticket className="w-5 h-5 text-[#15477a]" />
-                        <div>
-                            <p className="text-xs text-slate-500 font-medium">Tus tokens disponibles</p>
-                            <p className="text-lg font-bold text-[#00305b]">{tokensRestantes}</p>
-                        </div>
-                    </div>
 
                     {errorMsg && (
                         <div className="flex items-center gap-2 text-[#ba1a1a] bg-[#ba1a1a]/5 rounded-xl px-4 py-3 text-sm">

@@ -38,6 +38,23 @@ export async function POST(request: Request) {
         serviceKey
     );
 
+    // Check if it's a partido (no token to return)
+    const { data: claseInfo } = await admin
+        .from("clase_usuario")
+        .select("clase_id")
+        .eq("id", inscripcionId)
+        .single();
+
+    let esPartido = false;
+    if (claseInfo?.clase_id) {
+        const { data: clase } = await admin
+            .from("clase")
+            .select("tipo_evento")
+            .eq("id", claseInfo.clase_id)
+            .maybeSingle();
+        esPartido = clase?.tipo_evento === "partido";
+    }
+
     const horas = (new Date(fechaHora).getTime() - Date.now()) / (1000 * 60 * 60);
 
     if (horas < 0) {
@@ -53,6 +70,10 @@ export async function POST(request: Request) {
         if (updateError) {
             console.error("Error cancelando clase:", updateError.message);
             return NextResponse.json({ success: false, message: "Error al cancelar la clase." });
+        }
+
+        if (esPartido) {
+            return NextResponse.json({ success: true, message: "Partido cancelado." });
         }
 
         const { data: tokenOk, error: rpcError } = await admin.rpc("devolver_token", {
@@ -80,5 +101,5 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: "Error al cancelar la clase." });
     }
 
-    return NextResponse.json({ success: true, message: "Clase cancelada. Como faltan menos de 3h, no se devuelve el token." });
+    return NextResponse.json({ success: true, message: esPartido ? "Partido cancelado." : "Clase cancelada. Como faltan menos de 3h, no se devuelve el token." });
 }

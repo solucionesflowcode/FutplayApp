@@ -1,5 +1,5 @@
--- Fix: manejar_inscripcion_clase() valida + descuenta token solo para entrenamiento
--- Si tipo_evento = 'partido', no requiere membresía ni token.
+-- Ejecutar en Supabase SQL Editor
+-- El trigger manejar_inscripcion_clase() ahora salta descuento de token si la clase es partido
 
 CREATE OR REPLACE FUNCTION public.manejar_inscripcion_clase()
  RETURNS trigger
@@ -11,20 +11,15 @@ declare
   membresia_actual record;
   evento_tipo text;
 begin
-  -- Obtener tipo_evento de la clase
   select tipo_evento into evento_tipo
   from clase
   where id = new.clase_id;
   if not found then
     raise exception 'Clase no encontrada';
   end if;
-
-  -- Si es partido, no requiere token
   if evento_tipo = 'partido' then
     return new;
   end if;
-
-  -- Validar membresía y descontar token solo para entrenamiento
   select * into membresia_actual
   from membresia
   where usuario_id = new.usuario_id

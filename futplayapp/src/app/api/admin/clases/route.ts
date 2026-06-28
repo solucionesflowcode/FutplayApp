@@ -137,18 +137,28 @@ export async function POST(request: Request) {
     const admin = getAdminClient();
     const body = await request.json();
 
-    if (!body.titulo || !body.sede_id) {
+    if (body.tipo_evento !== "partido" && (!body.titulo || !body.sede_id)) {
       return NextResponse.json({ error: "Faltan campos: titulo, sede_id" }, { status: 400 });
     }
 
     const insertData: any = {
-      titulo: body.titulo,
-      descripcion: body.descripcion || "",
-      sede_id: body.sede_id,
-      cupo_maximo: body.cupo_maximo || 15,
+      tipo_evento: body.tipo_evento || "entrenamiento",
     };
-    if (body.profesor_id !== undefined) insertData.profesor_id = body.profesor_id;
-    if (body.fecha_hora) insertData.fecha_hora = body.fecha_hora;
+    if (body.tipo_evento !== "partido") {
+      insertData.titulo = body.titulo;
+      insertData.descripcion = body.descripcion || "";
+      insertData.sede_id = body.sede_id;
+      insertData.cupo_maximo = body.cupo_maximo || 15;
+      if (body.profesor_id !== undefined) insertData.profesor_id = body.profesor_id;
+      if (body.fecha_hora) insertData.fecha_hora = body.fecha_hora;
+    } else {
+      insertData.titulo = null;
+      insertData.sede_id = body.sede_id || null;
+      insertData.cupo_maximo = null;
+      insertData.profesor_id = null;
+      insertData.descripcion = body.descripcion || "";
+      if (body.fecha_hora) insertData.fecha_hora = body.fecha_hora;
+    }
 
     const { data: clase, error } = await admin
       .from("clase")
@@ -175,12 +185,20 @@ export async function PUT(request: Request) {
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
     const updateData: any = {};
-    if (body.titulo !== undefined) updateData.titulo = body.titulo;
+    if (body.tipo_evento === "partido") {
+      updateData.titulo = null;
+      updateData.sede_id = body.sede_id || null;
+      updateData.cupo_maximo = null;
+      updateData.profesor_id = null;
+    } else {
+      if (body.titulo !== undefined) updateData.titulo = body.titulo;
+      if (body.sede_id !== undefined) updateData.sede_id = body.sede_id;
+      if (body.cupo_maximo !== undefined) updateData.cupo_maximo = body.cupo_maximo;
+      if (body.profesor_id !== undefined) updateData.profesor_id = body.profesor_id;
+    }
     if (body.descripcion !== undefined) updateData.descripcion = body.descripcion;
-    if (body.sede_id !== undefined) updateData.sede_id = body.sede_id;
-    if (body.cupo_maximo !== undefined) updateData.cupo_maximo = body.cupo_maximo;
-    if (body.profesor_id !== undefined) updateData.profesor_id = body.profesor_id;
     if (body.fecha_hora !== undefined) updateData.fecha_hora = body.fecha_hora;
+    if (body.tipo_evento !== undefined) updateData.tipo_evento = body.tipo_evento;
 
     if (Object.keys(updateData).length > 0) {
       const { error } = await admin.from("clase").update(updateData).eq("id", body.id);
