@@ -9,11 +9,13 @@ import {
   GraduationCap,
   Menu,
   X,
+  User,
 } from "lucide-react";
 
 const menuItems = [
   { name: "Clases", href: "/profesor", icon: CalendarDays },
   { name: "E-learning", href: "/profesor/elearning", icon: GraduationCap },
+  { name: "Mi Perfil", href: "/profesor/perfil", icon: User },
 ];
 
 export default function SidebarProfesor() {

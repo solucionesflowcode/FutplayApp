@@ -45,10 +45,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "claseId es requerido" }, { status: 400 });
     }
 
-    // Verificar cupo máximo
+    // Verificar cupo máximo y tipo de evento
     const { data: clase } = await supabase
         .from("clase")
-        .select("cupo_maximo")
+        .select("cupo_maximo, tipo_evento")
         .eq("id", claseId)
         .single();
 
@@ -66,14 +66,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Clase llena" }, { status: 400 });
     }
 
-    // Check if it's a partido (no token required)
-    const { data: clase } = await supabase
-        .from("clase")
-        .select("tipo_evento")
-        .eq("id", claseId)
-        .maybeSingle();
-
-    const esPartido = clase?.tipo_evento === "partido";
+    const esPartido = clase.tipo_evento === "partido";
 
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceKey) {
