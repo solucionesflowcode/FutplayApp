@@ -26,7 +26,7 @@ type Props = {
     isOpen: boolean;
     onClose: () => void;
     clases: ClaseInfo[];
-    onAgendada: (claseId: string) => void;
+    onAgendada: (claseId: string, inscripcionId?: string) => void;
 };
 
 export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada }: Props) {
