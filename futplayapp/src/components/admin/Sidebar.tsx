@@ -21,11 +21,11 @@ import {
 
 const menuItems = [
   { name: "Analíticas", href: "/admin/analiticas", icon: BarChart3 },
-  { name: "Usuarios", href: "/admin", icon: Users },
+  { name: "Gestión de usuarios", href: "/admin", icon: Users },
   { name: "Gestión de clases", href: "/admin/clases", icon: BookOpen },
   { name: "Gestión de módulos", href: "/admin/modulos", icon: Layers },
   { name: "Gestión de cápsulas", href: "/admin/capsulas", icon: Video },
-  { name: "Profesores", href: "/admin/profesores", icon: PersonStanding },
+  { name: "Gestión de profesores", href: "/admin/profesores", icon: PersonStanding },
   { name: "Gestión de planes", href: "/admin/planes", icon: CreditCard },
 ];
 

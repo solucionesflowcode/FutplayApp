@@ -135,6 +135,22 @@ export default function ClasesPage() {
       setError("Título y sede son obligatorios");
       return;
     }
+    if (form.fecha && form.hora) {
+      const ahora = new Date();
+      const fechaClase = new Date(form.fecha + "T" + form.hora);
+      if (fechaClase < ahora) {
+        setError("No se puede crear una clase en una fecha u hora pasada");
+        return;
+      }
+    } else if (form.fecha) {
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      const fechaClase = new Date(form.fecha);
+      if (fechaClase < hoy) {
+        setError("No se puede crear una clase en una fecha pasada");
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
 
@@ -573,6 +589,7 @@ export default function ClasesPage() {
                   <input
                     type="date"
                     value={form.fecha}
+                    min={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value }))}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                   />
