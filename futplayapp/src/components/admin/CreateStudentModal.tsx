@@ -220,7 +220,7 @@ export default function CreateStudentModal({
           className="w-full border border-gray-300 p-3 rounded mb-4"
         />
 
-        {/* 🔥 APODERADO */}
+        {/* APODERADO */}
         {userType === "Apoderado" && (
           <div className="space-y-4">
 

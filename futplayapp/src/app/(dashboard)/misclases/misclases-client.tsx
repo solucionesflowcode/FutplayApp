@@ -362,7 +362,7 @@ export default function MisClasesClient() {
                                     </div>
                                 </div>
                                 <div className="flex justify-center">
-                                    <div className="bg-white px-3 py-1.5 rounded-lg border-l-4 border-[#F39200] shadow-sm flex items-center gap-2">
+                                    <div className="bg-white px-3 py-1.5 border-t-2 border-t-[#F39200] shadow-sm flex items-center gap-2">
                                         <div>
                                             <p className="text-[8px] font-black uppercase tracking-wider text-slate-400 leading-tight">
                                                 Tokens restantes
@@ -393,13 +393,11 @@ export default function MisClasesClient() {
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs">🏋️</span>
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                             Entrenamiento
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs">⚽</span>
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                             Partido
                                         </span>
@@ -527,32 +525,32 @@ export default function MisClasesClient() {
                                             {daySessions.length > 0 && (
                                                 <div className="flex items-center gap-0.5 mt-1">
                                                     {hasEntrenamiento && (
-                                                        <span className="text-xs">🏋️</span>
+                                                        <span className="w-1 h-1 rounded-full bg-blue-600 inline-block" />
                                                     )}
                                                     {hasPartido && (
-                                                        <span className="text-xs">⚽</span>
+                                                        <span className="w-1 h-1 rounded-full bg-orange-500 inline-block ml-0.5" />
                                                     )}
                                                     {hasAusente && (
                                                         <XCircle
-                                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ba1a1a]"
+                                                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#ba1a1a]"
                                                             strokeWidth={2.5}
                                                         />
                                                     )}
                                                     {hasPresente && (
                                                         <CheckCircle2
-                                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500"
+                                                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500"
                                                             strokeWidth={2.5}
                                                         />
                                                     )}
                                                     {hasProxima && !hasAusente && (
                                                         <Clock
-                                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#fc9910]"
+                                                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#fc9910]"
                                                             strokeWidth={2.5}
                                                         />
                                                     )}
                                                     {hasCancelada && !hasAusente && !hasProxima && (
                                                         <Clock
-                                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#fc9910]"
+                                                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#fc9910]"
                                                             strokeWidth={2.5}
                                                         />
                                                     )}
@@ -560,7 +558,7 @@ export default function MisClasesClient() {
                                                         !hasProxima &&
                                                         !hasAusente &&
                                                         !hasPresente && (
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                                            <span className="w-1 h-1 rounded-full bg-slate-300" />
                                                         )}
                                                 </div>
                                             )}
@@ -666,45 +664,24 @@ export default function MisClasesClient() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="bg-white p-5 md:p-6 border border-[#edeef0] border-l-4 border-l-[#00305b] flex justify-between items-center shadow-sm ring-1 ring-inset ring-black/[0.03]">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                            Clases en el mes
-                                        </p>
-                                        <p className="text-2xl font-black text-[#00305b]">
-                                            {stats.total}
-                                        </p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-[#edeef0] rounded flex items-center justify-center text-[#00305b]">
-                                        <ListChecks className="w-6 h-6" />
-                                    </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                                        Clases en el mes
+                                    </span>
+                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.total}</p>
                                 </div>
-                                <div className="bg-white p-5 md:p-6 border border-[#edeef0] border-l-4 border-l-emerald-500 flex justify-between items-center shadow-sm ring-1 ring-inset ring-black/[0.03]">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                            Asistencias
-                                        </p>
-                                        <p className="text-2xl font-black text-emerald-600">
-                                            {stats.presentes}
-                                        </p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-emerald-50 rounded flex items-center justify-center">
-                                        <CheckCircle2 className="w-6 h-6 text-emerald-500" strokeWidth={2.5} />
-                                    </div>
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                                        Asistencias
+                                    </span>
+                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.presentes}</p>
                                 </div>
-                                <div className="bg-white p-5 md:p-6 border border-[#edeef0] border-l-4 border-l-[#ba1a1a] flex justify-between items-center shadow-sm ring-1 ring-inset ring-black/[0.03]">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                            Inasistencias
-                                        </p>
-                                        <p className="text-2xl font-black text-[#ba1a1a]">
-                                            {stats.ausentes}
-                                        </p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-red-50 rounded flex items-center justify-center">
-                                        <AlertCircle className="w-6 h-6 text-[#ba1a1a]" strokeWidth={2.5} />
-                                    </div>
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                                        Inasistencias
+                                    </span>
+                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.ausentes}</p>
                                 </div>
                             </div>
 

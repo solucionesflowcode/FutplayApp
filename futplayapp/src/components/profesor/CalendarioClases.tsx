@@ -167,13 +167,13 @@ export default function CalendarioClases({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs">🏋️</span>
+            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Entrenamiento
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs">⚽</span>
+            <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Partido
             </span>
@@ -268,8 +268,8 @@ export default function CalendarioClases({
               )}
               {dayClases.length > 0 && (
                 <div className="flex items-center gap-0.5 mt-0.5">
-                  {hasEntrenamiento && <span className="text-[10px]">🏋️</span>}
-                  {hasPartido && <span className="text-[10px]">⚽</span>}
+                  {hasEntrenamiento && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />}
+                  {hasPartido && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block ml-0.5" />}
                   <span className="text-[8px] font-semibold text-slate-500">
                     {dayClases.length} clase{dayClases.length > 1 ? "s" : ""}
                   </span>
@@ -317,7 +317,7 @@ export default function CalendarioClases({
                   <Calendar size={16} className={isSelected ? "text-white" : "text-slate-400"} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-semibold truncate block">
-                      {clase.tipo_evento === "partido" ? "⚽ Partido" : "🏋️ " + (clase.titulo || "Entrenamiento")}
+                      {clase.tipo_evento === "partido" ? "Partido" : (clase.titulo || "Entrenamiento")}
                     </span>
                     <span className="text-[10px] opacity-70">
                       {d.toLocaleDateString("es-CL", {

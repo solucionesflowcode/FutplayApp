@@ -368,30 +368,34 @@ export default function AnaliticasPage() {
         {/* Section 1: Stat Cards */}
         <div className="flex-none self-stretch z-0">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              icon={<Users className="w-5 h-5 text-blue-600" />}
-              label="Total Alumnos"
-              value={filteredResumen.totalAlumnos.toString()}
-              bgColor="bg-blue-50"
-            />
-            <StatCard
-              icon={<DollarSign className="w-5 h-5 text-green-600" />}
-              label="Ingresos del Mes"
-              value={formatCLP(filteredResumen.ingresosMes)}
-              bgColor="bg-green-50"
-            />
-            <StatCard
-              icon={<CreditCard className="w-5 h-5 text-orange-600" />}
-              label="Membresías Activas"
-              value={filteredResumen.membresiasActivas.toString()}
-              bgColor="bg-orange-50"
-            />
-            <StatCard
-              icon={<TrendingUp className="w-5 h-5 text-purple-600" />}
-              label="Tasa de Retención"
-              value={`${filteredResumen.retencion}%`}
-              bgColor="bg-purple-50"
-            />
+            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+              <div className="w-8 h-8 rounded-full bg-[#00305B]/10 flex items-center justify-center mb-1.5">
+                <Users className="w-4 h-4 text-[#00305B]" />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Total Alumnos</span>
+              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.totalAlumnos.toString()}</p>
+            </div>
+            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+              <div className="w-8 h-8 rounded-full bg-[#00A86B]/10 flex items-center justify-center mb-1.5">
+                <DollarSign className="w-4 h-4 text-[#00A86B]" />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Ingresos del Mes</span>
+              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{formatCLP(filteredResumen.ingresosMes)}</p>
+            </div>
+            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+              <div className="w-8 h-8 rounded-full bg-[#F28C28]/10 flex items-center justify-center mb-1.5">
+                <CreditCard className="w-4 h-4 text-[#F28C28]" />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Membresías Activas</span>
+              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.membresiasActivas.toString()}</p>
+            </div>
+            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#7C3AED] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+              <div className="w-8 h-8 rounded-full bg-[#7C3AED]/10 flex items-center justify-center mb-1.5">
+                <TrendingUp className="w-4 h-4 text-[#7C3AED]" />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Tasa de Retención</span>
+              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.retencion}%</p>
+            </div>
           </div>
         </div>
 
@@ -752,17 +756,26 @@ export default function AnaliticasPage() {
                 <>
                   {/* Summary card */}
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-blue-50 rounded p-4 text-center">
-                      <p className="text-2xl font-black text-blue-700">{formatCLP(monthDetail.totalIngresos)}</p>
-                      <p className="text-xs text-blue-600 font-medium mt-1">Ingresos</p>
+                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                      <div className="w-8 h-8 rounded-full bg-[#00305B]/10 flex items-center justify-center mb-1.5">
+                        <DollarSign className="w-4 h-4 text-[#00305B]" />
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Ingresos</span>
+                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{formatCLP(monthDetail.totalIngresos)}</p>
                     </div>
-                    <div className="bg-green-50 rounded p-4 text-center">
-                      <p className="text-2xl font-black text-green-700">{monthDetail.membresiasCount}</p>
-                      <p className="text-xs text-green-600 font-medium mt-1">Membresías</p>
+                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                      <div className="w-8 h-8 rounded-full bg-[#00A86B]/10 flex items-center justify-center mb-1.5">
+                        <CreditCard className="w-4 h-4 text-[#00A86B]" />
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Membresías</span>
+                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{monthDetail.membresiasCount}</p>
                     </div>
-                    <div className="bg-purple-50 rounded p-4 text-center">
-                      <p className="text-2xl font-black text-purple-700">{monthDetail.planes.length}</p>
-                      <p className="text-xs text-purple-600 font-medium mt-1">Planes</p>
+                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#7C3AED] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                      <div className="w-8 h-8 rounded-full bg-[#7C3AED]/10 flex items-center justify-center mb-1.5">
+                        <Users className="w-4 h-4 text-[#7C3AED]" />
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Planes</span>
+                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{monthDetail.planes.length}</p>
                     </div>
                   </div>
 
@@ -821,26 +834,3 @@ export default function AnaliticasPage() {
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-  bgColor,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  bgColor: string;
-}) {
-  return (
-    <div className="bg-white rounded border border-gray-200 p-5 flex items-center gap-4 shadow-sm ring-1 ring-inset ring-black/[0.03]">
-      <div className={`w-12 h-12 rounded ${bgColor} flex items-center justify-center shrink-0`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">{label}</p>
-        <p className="text-xl font-extrabold text-gray-900 mt-0.5">{value}</p>
-      </div>
-    </div>
-  );
-}

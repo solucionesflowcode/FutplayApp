@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthUser } from "@/context";
 import Link from "next/link";
-import { Lock, CalendarPlus, Sparkles } from "lucide-react";
+import { Lock, CalendarPlus, Sparkles, ArrowRight } from "lucide-react";
 import { userHasMembresia } from "@/data/membresia";
 import { getProximaClase } from "@/data/clases";
 
@@ -119,7 +119,6 @@ export default function ProximoEntrenamiento() {
         ? `Hoy, ${horaFormateada}`
         : `${fechaFormateada}, ${horaFormateada}`;
 
-    const emoji = clase.tipo_evento === "partido" ? "⚽" : "🏋️";
     const tituloEvento = clase.tipo_evento === "partido" ? "Próximo Partido" : "Próximo Entrenamiento";
 
     return (
@@ -134,7 +133,7 @@ export default function ProximoEntrenamiento() {
 
                 <div className="flex flex-col gap-2 mt-5">
                     <p className="font-bold text-[20px] text-[#00305B]">
-                        {emoji} {clase.titulo}
+                        {clase.titulo}
                     </p>
 
                     <p className="text-[12px] text-[#42474F]">
@@ -143,7 +142,7 @@ export default function ProximoEntrenamiento() {
 
                     {clase.sede && (
                         <p className="text-[10px] text-gray-400">
-                            📍 {clase.sede}
+                            {clase.sede}
                         </p>
                     )}
                 </div>
@@ -158,9 +157,10 @@ export default function ProximoEntrenamiento() {
             <div className="flex items-center justify-center pl-4">
                 <Link
                     href="/misclases"
-                    className="bg-[#F28C28] hover:bg-[#e07d1f] text-white px-4 py-2.5 rounded text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap"
+                    className="w-12 h-12 bg-[#F28C28] hover:bg-[#e07d1f] text-white rounded-full flex items-center justify-center transition-all shadow-md hover:shadow-lg shrink-0"
+                    title="Ver más clases"
                 >
-                    Ver más clases
+                    <ArrowRight size={20} />
                 </Link>
             </div>
         </div>
