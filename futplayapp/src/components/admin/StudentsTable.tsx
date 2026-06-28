@@ -169,7 +169,7 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
       {/* FICHA MÉDICA MODAL */}
       {fichaModal.open && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+          <div className="bg-white border-t-2 border-t-[#F28C28] shadow-xl ring-1 ring-inset ring-black/[0.03] w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Ficha Médica</h2>
               <button onClick={closeFicha} className="text-gray-400 hover:text-gray-600">
@@ -184,7 +184,7 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
             )}
 
             {fichaModal.error && (
-              <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-500">
+              <div className="p-4 bg-gray-50 rounded text-center text-gray-500">
                 {fichaModal.error}
               </div>
             )}
@@ -192,42 +192,42 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
             {fichaModal.data && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500">Edad</p>
                     <p className="font-semibold text-gray-900">{calcularEdad(fichaModal.data.fecha_nacimiento)} años</p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500">Peso</p>
                     <p className="font-semibold text-gray-900">{fichaModal.data.peso_kg} kg</p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500">Estatura</p>
                     <p className="font-semibold text-gray-900">{fichaModal.data.estatura_cm} cm</p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500">IMC</p>
                     <p className="font-semibold text-gray-900">{fichaModal.data.imc}</p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500">Grupo Sanguíneo</p>
                     <p className="font-semibold text-gray-900">{fichaModal.data.grupo_sanguineo || "—"}</p>
                   </div>
                 </div>
 
-                <div className="p-3 bg-gray-50 rounded-xl">
+                <div className="p-3 bg-gray-50 rounded">
                   <p className="text-xs text-gray-500">Enfermedades</p>
                   <p className="font-medium text-gray-900">{fichaModal.data.enfermedades || "Ninguna"}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-xl">
+                <div className="p-3 bg-gray-50 rounded">
                   <p className="text-xs text-gray-500">Alergias</p>
                   <p className="font-medium text-gray-900">{fichaModal.data.alergias || "Ninguna"}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-xl">
+                <div className="p-3 bg-gray-50 rounded">
                   <p className="text-xs text-gray-500">Medicamentos</p>
                   <p className="font-medium text-gray-900">{fichaModal.data.medicamentos || "Ninguno"}</p>
                 </div>
                 {fichaModal.data.observaciones && (
-                  <div className="p-3 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-gray-50 rounded">
                     <p className="text-xs text-gray-500">Observaciones</p>
                     <p className="font-medium text-gray-900">{fichaModal.data.observaciones}</p>
                   </div>
@@ -235,7 +235,7 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
 
                 <button
                   onClick={closeFicha}
-                  className="w-full mt-2 py-2 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800"
+                  className="w-full mt-2 py-2 rounded bg-gray-900 text-white font-medium hover:bg-gray-800"
                 >
                   Cerrar
                 </button>

@@ -26,7 +26,7 @@ export default function ViewStudentModal({ student, open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative">
+      <div className="bg-white border-t-2 border-t-[#F28C28] shadow-xl ring-1 ring-inset ring-black/[0.03] w-full max-w-md p-8 relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -85,7 +85,7 @@ export default function ViewStudentModal({ student, open, onClose }: Props) {
         <div className="flex justify-end mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 cursor-pointer"
+            className="px-4 py-2 rounded border border-gray-300 cursor-pointer"
           >
             Cerrar
           </button>

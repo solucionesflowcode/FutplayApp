@@ -156,7 +156,7 @@ export default function PlanesPage() {
           )}
 
           {/* LISTA */}
-          <div className="bg-white rounded-xl border border-gray-200">
+          <div className="bg-white border border-gray-200">
             <div className="p-4 border-b border-gray-100 flex items-center gap-4">
               <div className="relative flex-1 max-w-xs">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -228,7 +228,7 @@ export default function PlanesPage() {
         {/* MODAL */}
         {modal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl">
+            <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-lg p-6 shadow-xl">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900">
                   {modal === "create" ? "Nuevo Plan" : "Editar Plan"}

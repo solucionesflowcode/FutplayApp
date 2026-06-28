@@ -122,10 +122,10 @@ export default function PlanesPage() {
                             return (
                                 <div 
                                     key={plan.id}
-                                    className={`relative rounded-3xl p-8 flex flex-col transition-all duration-300
-                                        ${isDestacado 
-                                            ? 'bg-gradient-to-b from-[#00305B] to-[#001c37] text-white shadow-2xl scale-105 border border-[#F28C28]/30' 
-                                            : 'bg-white text-gray-800 shadow-xl hover:shadow-2xl hover:-translate-y-2 border border-gray-100'
+                                        className={`relative p-8 flex flex-col transition-all duration-300
+                                            ${isDestacado 
+                                                ? 'bg-gradient-to-b from-[#00305B] to-[#001c37] text-white shadow-2xl scale-105 border border-[#F28C28]/30 border-t-2 border-t-[#F28C28]' 
+                                                : 'bg-white text-gray-800 shadow-xl ring-1 ring-inset ring-black/[0.03] hover:shadow-2xl hover:-translate-y-2 border border-gray-100 border-t-2 border-t-[#004080]'
                                         }`}
                                 >
                                     {isDestacado && (
@@ -179,7 +179,7 @@ export default function PlanesPage() {
                                     <button 
                                         onClick={() => handleComprarPlan(plan)}
                                         disabled={tienePlanActivo}
-                                        className={`w-full mt-10 py-4 rounded-xl font-bold text-lg transition-all duration-300
+                                        className={`w-full mt-10 py-4 rounded font-bold text-lg transition-all duration-300
                                             ${tienePlanActivo
                                                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                                 : 'bg-[#F28C28] hover:bg-[#e07d1f] text-white shadow-[0_0_20px_rgba(242,140,40,0.4)] hover:shadow-[0_0_30px_rgba(242,140,40,0.6)] transform hover:-translate-y-1'
@@ -194,7 +194,7 @@ export default function PlanesPage() {
                 )}
                 
                 {!loading && planes.length === 0 && (
-                    <div className="text-center py-20 bg-white rounded-3xl shadow-md">
+                    <div className="text-center py-20 bg-white shadow-md border-t-2 border-t-[#F28C28]">
                         <p className="text-gray-500 text-xl">Actualmente no hay planes disponibles.</p>
                     </div>
                 )}
@@ -203,7 +203,7 @@ export default function PlanesPage() {
             {/* Modal aviso ficha médica requerida */}
             {showFichaModal && !openFicha && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-xl text-center">
+                    <div className="bg-white w-full max-w-md p-8 shadow-xl ring-1 ring-inset ring-black/[0.03] text-center border-t-2 border-t-[#F39200]">
                         <button onClick={() => setShowFichaModal(false)} className="float-right p-1 hover:bg-gray-100 rounded-lg">
                             <X size={20} className="text-gray-400" />
                         </button>
@@ -216,7 +216,7 @@ export default function PlanesPage() {
                         </p>
                         <button
                             onClick={() => setOpenFicha(true)}
-                            className="w-full bg-[#F39200] text-white py-3 rounded-xl font-bold hover:bg-[#d47d00] transition-all cursor-pointer"
+                            className="w-full bg-[#F39200] text-white py-3 rounded font-bold hover:bg-[#d47d00] transition-all cursor-pointer"
                         >
                             Completar ficha médica
                         </button>

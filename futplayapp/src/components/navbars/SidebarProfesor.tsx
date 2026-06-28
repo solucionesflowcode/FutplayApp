@@ -57,7 +57,7 @@ export default function SidebarProfesor() {
                   onClick={() => setOpen(false)}
                 >
                   <div className={`
-                    flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                    flex items-center gap-3 px-4 py-3 rounded transition-all duration-200
                     ${isActive
                       ? "bg-[#F28C28] text-white shadow-md font-semibold"
                       : "text-gray-400 hover:bg-white/5 hover:text-white"
@@ -75,7 +75,7 @@ export default function SidebarProfesor() {
 
             <div className="border-t border-gray-800 mt-4 pt-4 space-y-1">
               <Link href="/dashboard" onClick={() => setOpen(false)}>
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all">
+                <div className="flex items-center gap-3 px-4 py-3 rounded text-gray-400 hover:bg-white/5 hover:text-white transition-all">
                   <ArrowLeftFromLine size={20} />
                   <span className="text-sm">Vista Usuario</span>
                 </div>
@@ -101,7 +101,7 @@ export default function SidebarProfesor() {
             return (
               <Link key={item.name} href={item.href}>
                 <div className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+                  flex items-center gap-3 px-4 py-3 rounded transition-all duration-200 group
                   ${isActive
                     ? "bg-[#F28C28] text-white shadow-md font-semibold"
                     : "text-gray-400 hover:bg-white/5 hover:text-white"
@@ -120,7 +120,7 @@ export default function SidebarProfesor() {
 
         <div className="border-t border-gray-800 pt-4">
           <Link href="/dashboard">
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all group">
+            <div className="flex items-center gap-3 px-4 py-3 rounded text-gray-400 hover:bg-white/5 hover:text-white transition-all group">
               <ArrowLeftFromLine size={20} className="text-gray-500 group-hover:text-white" />
               <span className="text-sm">Vista Usuario</span>
             </div>

@@ -72,7 +72,7 @@ function TeamCard({
         className="w-full text-left focus:outline-none"
         aria-expanded={expanded}
       >
-        <div className="relative overflow-hidden rounded-[20px] bg-gray-100 aspect-[4/5]">
+        <div className="relative overflow-hidden border-t-2 border-t-[#f59e0b] bg-gray-100 aspect-[4/5]">
           <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
             <span className="text-5xl md:text-6xl font-black text-gray-300 select-none">
               {nombre.charAt(0)}
@@ -111,7 +111,7 @@ function TeamSection() {
             }`}
           >
             {expanded && (
-              <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start bg-white/5 rounded-2xl p-5 md:p-8">
+              <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start bg-white/5 border-t-2 border-t-[#f59e0b] p-5 md:p-8">
                 <div className="w-full md:w-56 shrink-0">
                   <TeamCard
                     nombre={expanded.nombre}

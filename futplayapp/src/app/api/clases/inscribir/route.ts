@@ -1,6 +1,26 @@
+import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+async function consumirToken(supabase: any, userId: string): Promise<boolean> {
+    const { data: membresia } = await supabase
+        .from("membresia")
+        .select("id, tokens_usados")
+        .eq("usuario_id", userId)
+        .order("mes", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (!membresia) return false;
+
+    const { error } = await supabase
+        .from("membresia")
+        .update({ tokens_usados: membresia.tokens_usados + 1 })
+        .eq("id", membresia.id);
+
+    return !error;
+}
 
 export async function POST(request: Request) {
     const cookieStore = await cookies();
@@ -10,7 +30,7 @@ export async function POST(request: Request) {
         {
             cookies: {
                 getAll() { return cookieStore.getAll(); },
-                setAll() {},
+                setAll() { },
             },
         }
     );
@@ -46,6 +66,85 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Clase llena" }, { status: 400 });
     }
 
+    // Check if it's a partido (no token required)
+    const { data: clase } = await supabase
+        .from("clase")
+        .select("tipo_evento")
+        .eq("id", claseId)
+        .maybeSingle();
+
+    const esPartido = clase?.tipo_evento === "partido";
+
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) {
+        return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
+    }
+
+    const admin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        serviceKey
+    );
+
+    // Check if user already has a cancelled record for this class (re-inscription)
+    const { data: existing } = await supabase
+        .from("clase_usuario")
+        .select("id, asistencia")
+        .eq("usuario_id", user.id)
+        .eq("clase_id", claseId)
+        .maybeSingle();
+
+    if (existing && (existing.asistencia === "cancelado" || existing.asistencia === "cancelado_sin_reembolso")) {
+        if (esPartido) {
+            // Partido: no requiere membresía ni token
+            const { error: updateError } = await admin
+                .from("clase_usuario")
+                .update({ asistencia: "sin_confirmar" })
+                .eq("id", existing.id);
+
+            if (updateError) {
+                return NextResponse.json({ error: updateError.message }, { status: 400 });
+            }
+
+            return NextResponse.json({ inscripcionId: existing.id });
+        }
+
+        // Re-inscription to entrenamiento: validate membresía manually (trigger won't fire on UPDATE)
+        const now = new Date();
+        const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+
+        const { data: membresia } = await supabase
+            .from("membresia")
+            .select("tokens_totales, tokens_usados")
+            .eq("usuario_id", user.id)
+            .gte("mes", startOfMonth)
+            .order("mes", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (!membresia) {
+            return NextResponse.json({ error: "No tienes membresía activa este mes" }, { status: 400 });
+        }
+
+        const tokensDisponibles = membresia.tokens_totales - membresia.tokens_usados;
+        if (tokensDisponibles <= 0) {
+            return NextResponse.json({ error: "No tienes tokens disponibles" }, { status: 400 });
+        }
+
+        const { error: updateError } = await admin
+            .from("clase_usuario")
+            .update({ asistencia: "sin_confirmar" })
+            .eq("id", existing.id);
+
+        if (updateError) {
+            return NextResponse.json({ error: updateError.message }, { status: 400 });
+        }
+
+        await consumirToken(admin, user.id);
+
+        return NextResponse.json({ inscripcionId: existing.id });
+    }
+
+    // First-time inscription: INSERT (trigger will deduct token — compensate if partido)
     const { data, error } = await supabase
         .from("clase_usuario")
         .insert({ usuario_id: user.id, clase_id: claseId })
@@ -57,6 +156,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Ya estás inscrito en esta clase" }, { status: 409 });
         }
         return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Partido: devolver el token que el trigger descontó
+    if (esPartido) {
+        await admin.rpc("devolver_token", { p_usuario_id: user.id });
     }
 
     return NextResponse.json({ inscripcionId: data.id });

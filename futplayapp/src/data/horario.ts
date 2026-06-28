@@ -1,5 +1,10 @@
 import { createClient } from "@/utils/supabase/client";
 
+function localISO(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 export type Horario = {
   id: string;
   fecha_hora: string;
@@ -13,8 +18,8 @@ export async function getHorariosEntre(desde: Date, hasta: Date) {
   const { data } = await supabase
     .from("horario")
     .select("id, fecha_hora, clase_id")
-    .gte("fecha_hora", desde.toISOString())
-    .lte("fecha_hora", hasta.toISOString());
+    .gte("fecha_hora", localISO(desde))
+    .lte("fecha_hora", localISO(hasta));
 
   return (data ?? []) as Horario[];
 }
@@ -25,7 +30,7 @@ export async function getHorariosPasados() {
   const { data } = await supabase
     .from("horario")
     .select("id, clase_id")
-    .lt("fecha_hora", new Date().toISOString());
+    .lt("fecha_hora", localISO(new Date()));
 
   return (data ?? []) as { id: string; clase_id: string }[];
 }

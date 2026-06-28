@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import StudentsTable, { Student } from "@/components/admin/StudentsTable";
-import StatCard from "@/components/admin/StatCard";
 
 import AdminHeader from "@/components/admin/AdminHeader";
 import EditStudentModal from "@/components/admin/EditStudentModal";
@@ -91,10 +90,22 @@ function AdminContent() {
       <AdminHeader search={search} onSearchChange={setSearch} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard title="Total Alumnos" value={total.toString()} color="bg-blue-500" />
-        <StatCard title="Con Plan" value={(total - inactivos).toString()} color="bg-yellow-500" />
-        <StatCard title="Activos" value={activos.toString()} color="bg-green-500" />
-        <StatCard title="Pagos Vencidos" value={vencidos.toString()} color="bg-red-500" />
+        <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Total Alumnos</span>
+          <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{total}</p>
+        </div>
+        <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Con Plan</span>
+          <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{total - inactivos}</p>
+        </div>
+        <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Activos</span>
+          <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{activos}</p>
+        </div>
+        <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Pagos Vencidos</span>
+          <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{vencidos}</p>
+        </div>
       </div>
 
       <StudentsTable

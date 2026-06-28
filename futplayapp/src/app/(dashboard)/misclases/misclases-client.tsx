@@ -9,6 +9,8 @@ import {
 } from "@/data/misclases-calendario";
 import { getMembresiaByUser } from "@/data/membresia";
 import ReservarClaseModal from "@/components/misclases/ReservarClaseModal";
+import CancelarClaseModal from "@/components/misclases/CancelarClaseModal";
+import { cancelarClase } from "@/data/clase_usuario";
 import {
     AlertCircle,
     CheckCircle2,
@@ -21,7 +23,7 @@ import {
     XCircle,
 } from "lucide-react";
 
-type VisualEstado = "proxima" | "presente" | "ausente" | "neutral";
+type VisualEstado = "proxima" | "presente" | "ausente" | "cancelada" | "neutral";
 
 type SessionItem = {
     inscripcionId: string | null;
@@ -31,6 +33,7 @@ type SessionItem = {
     descripcion: string | null;
     sede: string;
     claseId: string;
+    tipo_evento: "entrenamiento" | "partido";
 };
 
 function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
@@ -45,6 +48,7 @@ function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
             descripcion: row.descripcion,
             sede: row.sede?.nombre ?? "",
             claseId: row.id,
+            tipo_evento: row.tipo_evento,
         });
     }
     return out;
@@ -52,11 +56,13 @@ function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
 
 function normalizeAsistencia(
     a: string | boolean | null | undefined,
-): "sin_confirmar" | "pendiente" | "presente" | "ausente" {
+): "sin_confirmar" | "pendiente" | "presente" | "ausente" | "cancelada" {
     if (a === true || a === "presente" || a === "asistio" || a === "confirmado_whatsapp")
         return "presente";
-    if (a === false || a === "ausente" || a === "no_asistio" || a === "cancelado" || a === "cancelado_sin_reembolso")
+    if (a === false || a === "ausente" || a === "no_asistio")
         return "ausente";
+    if (a === "cancelado" || a === "cancelado_sin_reembolso")
+        return "cancelada";
     if (a === "pendiente") return "pendiente";
     return "sin_confirmar";
 }
@@ -66,6 +72,7 @@ function visualEstadoSesion(fechaHora: Date, asistencia: unknown): VisualEstado 
     const now = Date.now();
     if (a === "ausente") return "ausente";
     if (a === "presente") return "presente";
+    if (a === "cancelada") return "cancelada";
     if (fechaHora.getTime() > now) return "proxima";
     return "neutral";
 }
@@ -120,6 +127,10 @@ export default function MisClasesClient() {
         sede: string;
     }[] | null>(null);
 
+    const [cancelandoId, setCancelandoId] = useState<string | null>(null);
+    const [cancelMsg, setCancelMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [cancelTarget, setCancelTarget] = useState<SessionItem | null>(null);
+
     const load = useCallback(async () => {
         if (!usuario?.id) {
             setLoading(false);
@@ -138,6 +149,29 @@ export default function MisClasesClient() {
     useEffect(() => {
         void load();
     }, [load]);
+
+    const handleCancel = useCallback(async (inscripcionId: string, fechaHora: string) => {
+        setCancelandoId(inscripcionId);
+        setCancelMsg(null);
+
+        const result = await cancelarClase(inscripcionId, usuario!.id, fechaHora);
+
+        if (result.success) {
+            setSessions((prev) =>
+                prev.map((s) =>
+                    s.inscripcionId === inscripcionId
+                        ? { ...s, inscripcionId: null, asistencia: "cancelado" }
+                        : s
+                )
+            );
+            const m = await getMembresiaByUser(usuario!.id);
+            if (m) setTokensRestantes(m.tokens_restantes);
+        }
+
+        setCancelMsg({ type: result.success ? "success" : "error", text: result.message });
+        setCancelandoId(null);
+        setCancelTarget(null);
+    }, [usuario]);
 
     const sessionsByDay = useMemo(() => {
         const map = new Map<string, SessionItem[]>();
@@ -190,6 +224,7 @@ export default function MisClasesClient() {
 
     const recentRows = useMemo(() => {
         return [...sessions]
+            .filter((s) => s.inscripcionId !== null)
             .sort(
                 (a, b) =>
                     parseFechaLocal(b.fecha_hora).getTime() -
@@ -273,7 +308,7 @@ export default function MisClasesClient() {
                 ) : (
                     <>
                         {/* Calendario — ancho completo */}
-                        <div className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
+                        <div className="bg-white p-5 md:p-8 shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] mb-8 border-t-2 border-t-[#00305B]">
                             <div className="grid grid-cols-1 lg:grid-cols-3 items-center mb-6 md:mb-8 gap-4">
                                 <div className="flex items-center gap-3 md:gap-4 flex-wrap">
                                     <h2
@@ -327,7 +362,7 @@ export default function MisClasesClient() {
                                     </div>
                                 </div>
                                 <div className="flex justify-center">
-                                    <div className="bg-white px-3 py-1.5 rounded-lg border-l-4 border-[#F39200] shadow-sm flex items-center gap-2">
+                                    <div className="bg-white px-3 py-1.5 border-t-2 border-t-[#F39200] shadow-sm flex items-center gap-2">
                                         <div>
                                             <p className="text-[8px] font-black uppercase tracking-wider text-slate-400 leading-tight">
                                                 Tokens restantes
@@ -355,6 +390,16 @@ export default function MisClasesClient() {
                                         <span className="w-3 h-3 rounded-full bg-[#ba1a1a] shrink-0" />
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                             Falta
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            Entrenamiento
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            Partido
                                         </span>
                                     </div>
                                 </div>
@@ -385,27 +430,31 @@ export default function MisClasesClient() {
                                     const hasAusente = estados.includes("ausente");
                                     const hasPresente = estados.includes("presente");
                                     const hasProxima = estados.includes("proxima");
+                                    const hasCancelada = estados.includes("cancelada");
+                                    const hasPartido = daySessions.some((s) => s.tipo_evento === "partido");
+                                    const hasEntrenamiento = daySessions.some((s) => s.tipo_evento === "entrenamiento");
                                     const hasNeutral = estados.includes("neutral");
 
                                     const unenrolledProximas = daySessions.filter(
                                         (s) =>
-                                            s.inscripcionId === null &&
+                                            (s.inscripcionId === null || normalizeAsistencia(s.asistencia as string | boolean | null) === "cancelada") &&
                                             parseFechaLocal(s.fecha_hora).getTime() > Date.now(),
                                     );
 
-                                    let cellTone: "empty" | "presente" | "ausente" | "proxima" | "neutral" =
+                                    let cellTone: "empty" | "presente" | "ausente" | "proxima" | "cancelada" | "neutral" =
                                         "empty";
                                     if (daySessions.length) {
                                         if (hasAusente) cellTone = "ausente";
-                                        else if (hasPresente && !hasProxima && !hasNeutral)
+                                        else if (hasPresente && !hasProxima && !hasNeutral && !hasCancelada)
                                             cellTone = "presente";
                                         else if (hasProxima && !hasAusente) cellTone = "proxima";
+                                        else if (hasCancelada && !hasProxima && !hasPresente) cellTone = "cancelada";
                                         else if (hasNeutral || hasPresente) cellTone = "neutral";
                                     }
 
                                     const isClickable = unenrolledProximas.length > 0;
                                     const baseCell =
-                                        `min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative transition-transform ${isClickable ? "cursor-pointer hover:scale-[1.02]" : ""}`;
+                                        `min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded flex flex-col items-center justify-center relative transition-transform ${isClickable ? "cursor-pointer hover:scale-[1.02]" : ""}`;
 
                                     let cellClass = `${baseCell} `;
                                     if (!inMonth) {
@@ -421,7 +470,7 @@ export default function MisClasesClient() {
                                     } else if (cellTone === "ausente") {
                                         cellClass +=
                                             "bg-[#ba1a1a]/10 border-2 border-[#ba1a1a]/25 ";
-                                    } else if (cellTone === "proxima") {
+                                    } else if (cellTone === "proxima" || cellTone === "cancelada") {
                                         cellClass +=
                                             "bg-[#fc9910]/15 border-2 border-[#fc9910]/35 shadow-sm shadow-orange-500/10 ";
                                     } else {
@@ -447,6 +496,7 @@ export default function MisClasesClient() {
                                                                 descripcion: s.descripcion,
                                                                 fecha_hora: s.fecha_hora,
                                                                 sede: s.sede,
+                                                                tipo_evento: s.tipo_evento,
                                                             })),
                                                         )
                                                     : undefined
@@ -458,7 +508,7 @@ export default function MisClasesClient() {
                                                         ? "text-emerald-700"
                                                         : cellTone === "ausente"
                                                           ? "text-[#ba1a1a]"
-                                                          : cellTone === "proxima"
+                                                          : cellTone === "proxima" || cellTone === "cancelada"
                                                             ? "text-[#8a5100]"
                                                             : inMonth
                                                               ? "text-[#00305b]"
@@ -474,21 +524,33 @@ export default function MisClasesClient() {
                                             )}
                                             {daySessions.length > 0 && (
                                                 <div className="flex items-center gap-0.5 mt-1">
+                                                    {hasEntrenamiento && (
+                                                        <span className="w-1 h-1 rounded-full bg-blue-600 inline-block" />
+                                                    )}
+                                                    {hasPartido && (
+                                                        <span className="w-1 h-1 rounded-full bg-orange-500 inline-block ml-0.5" />
+                                                    )}
                                                     {hasAusente && (
                                                         <XCircle
-                                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ba1a1a]"
+                                                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#ba1a1a]"
                                                             strokeWidth={2.5}
                                                         />
                                                     )}
                                                     {hasPresente && (
                                                         <CheckCircle2
-                                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500"
+                                                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500"
                                                             strokeWidth={2.5}
                                                         />
                                                     )}
                                                     {hasProxima && !hasAusente && (
                                                         <Clock
-                                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#fc9910]"
+                                                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#fc9910]"
+                                                            strokeWidth={2.5}
+                                                        />
+                                                    )}
+                                                    {hasCancelada && !hasAusente && !hasProxima && (
+                                                        <Clock
+                                                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#fc9910]"
                                                             strokeWidth={2.5}
                                                         />
                                                     )}
@@ -496,7 +558,7 @@ export default function MisClasesClient() {
                                                         !hasProxima &&
                                                         !hasAusente &&
                                                         !hasPresente && (
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                                            <span className="w-1 h-1 rounded-full bg-slate-300" />
                                                         )}
                                                 </div>
                                             )}
@@ -510,11 +572,11 @@ export default function MisClasesClient() {
                             isOpen={selectedClases !== null}
                             onClose={() => setSelectedClases(null)}
                             clases={selectedClases ?? []}
-                            onAgendada={async (claseId) => {
+                            onAgendada={async (claseId, inscripcionId) => {
                                 setSessions((prev) =>
                                     prev.map((s) =>
                                         s.claseId === claseId
-                                            ? { ...s, inscripcionId: "temp" }
+                                            ? { ...s, inscripcionId: inscripcionId ?? null }
                                             : s,
                                     ),
                                 );
@@ -526,9 +588,25 @@ export default function MisClasesClient() {
                             }}
                         />
 
+                        <CancelarClaseModal
+                            isOpen={cancelTarget !== null}
+                            onClose={() => setCancelTarget(null)}
+                            onConfirm={async () => {
+                                if (!cancelTarget?.inscripcionId) return;
+                                await handleCancel(
+                                    cancelTarget.inscripcionId,
+                                    cancelTarget.fecha_hora,
+                                );
+                            }}
+                            loading={cancelandoId !== null}
+                            titulo={cancelTarget?.titulo ?? ""}
+                            fecha_hora={cancelTarget?.fecha_hora ?? ""}
+                            sede={cancelTarget?.sede ?? ""}
+                        />
+
                         {/* Resumen y métricas — debajo del calendario */}
                         <div className="space-y-6 mb-10">
-                            <div className="bg-[#15477a] p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] text-white relative overflow-hidden">
+                            <div className="bg-[#15477a] p-6 md:p-8 text-white relative overflow-hidden border-t-2 border-t-[#F39200]">
                                 <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
                                     <ListChecks className="w-40 h-40" strokeWidth={1} />
                                 </div>
@@ -586,49 +664,28 @@ export default function MisClasesClient() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#edeef0] border-l-4 border-l-[#00305b] flex justify-between items-center shadow-sm">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                            Clases en el mes
-                                        </p>
-                                        <p className="text-2xl font-black text-[#00305b]">
-                                            {stats.total}
-                                        </p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-[#edeef0] rounded-xl flex items-center justify-center text-[#00305b]">
-                                        <ListChecks className="w-6 h-6" />
-                                    </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                                        Clases en el mes
+                                    </span>
+                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.total}</p>
                                 </div>
-                                <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#edeef0] border-l-4 border-l-emerald-500 flex justify-between items-center shadow-sm">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                            Asistencias
-                                        </p>
-                                        <p className="text-2xl font-black text-emerald-600">
-                                            {stats.presentes}
-                                        </p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
-                                        <CheckCircle2 className="w-6 h-6 text-emerald-500" strokeWidth={2.5} />
-                                    </div>
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                                        Asistencias
+                                    </span>
+                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.presentes}</p>
                                 </div>
-                                <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#edeef0] border-l-4 border-l-[#ba1a1a] flex justify-between items-center shadow-sm">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                            Inasistencias
-                                        </p>
-                                        <p className="text-2xl font-black text-[#ba1a1a]">
-                                            {stats.ausentes}
-                                        </p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
-                                        <AlertCircle className="w-6 h-6 text-[#ba1a1a]" strokeWidth={2.5} />
-                                    </div>
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                                        Inasistencias
+                                    </span>
+                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.ausentes}</p>
                                 </div>
                             </div>
 
-                            <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#edeef0] flex gap-4 items-start">
+                            <div className="bg-white p-5 md:p-6 border border-[#edeef0] flex gap-4 items-start border-t-2 border-t-[#00305B]">
                                 <div className="w-10 h-10 rounded-full bg-[#fc9910] shrink-0 flex items-center justify-center text-white">
                                     <Lightbulb className="w-5 h-5" strokeWidth={2} />
                                 </div>
@@ -638,7 +695,7 @@ export default function MisClasesClient() {
                                     </h4>
                                     <p className="text-xs text-[#42474f] leading-relaxed">
                                         <strong className="text-[#fc9910]">Amarillo/naranja</strong>{" "}
-                                        indica una clase próxima (aún no ocurre o sin confirmar).
+                                        indica una clase disponible (aún no ocurre o cancelada).
                                         <strong className="text-emerald-600"> Verde</strong> es
                                         asistencia confirmada.
                                         <strong className="text-[#ba1a1a]"> Rojo</strong> marca
@@ -655,7 +712,14 @@ export default function MisClasesClient() {
                             >
                                 Detalle de sesiones
                             </h3>
-                            <div className="bg-white rounded-[1.25rem] md:rounded-[2rem] border border-[#edeef0] overflow-hidden shadow-sm">
+                            {cancelMsg && (
+                                <div
+                                    className={`mb-4 px-5 py-3 rounded text-sm font-bold ${cancelMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-[#ba1a1a] border border-red-200"}`}
+                                >
+                                    {cancelMsg.text}
+                                </div>
+                            )}
+                            <div className="bg-white border border-[#edeef0] overflow-hidden shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-2 border-t-[#00305B]">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[520px]">
                                         <thead>
@@ -664,7 +728,7 @@ export default function MisClasesClient() {
                                                     Fecha
                                                 </th>
                                                 <th className="px-4 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                    Entrenamiento
+                                                    Evento
                                                 </th>
                                                 <th className="px-4 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
                                                     Estado
@@ -672,13 +736,16 @@ export default function MisClasesClient() {
                                                 <th className="px-4 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hidden sm:table-cell">
                                                     Sede
                                                 </th>
+                                                <th className="px-4 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                    Acción
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[#f3f4f6]">
                                             {recentRows.length === 0 ? (
                                                 <tr>
                                                     <td
-                                                        colSpan={4}
+                                                        colSpan={5}
                                                         className="px-8 py-12 text-center text-slate-500 text-sm"
                                                     >
                                                         No hay clases disponibles todavía.
@@ -687,15 +754,43 @@ export default function MisClasesClient() {
                                             ) : (
                                                 recentRows.map((s) => {
                                                     const d = parseFechaLocal(s.fecha_hora);
-                                                    const v = visualEstadoSesion(d, s.asistencia);
-                                                    const label =
-                                                        v === "presente"
-                                                            ? "Presente"
-                                                            : v === "ausente"
-                                                              ? "Ausente"
-                                                              : v === "proxima"
-                                                                ? "Próxima"
-                                                                : "Sin confirmar";
+                                                    const raw = s.asistencia as string | null | undefined;
+                                                    let label: string;
+                                                    let icon: React.ReactNode;
+                                                    let color: string;
+                                                    if (!raw || raw === "sin_confirmar") {
+                                                        label = "Sin confirmar";
+                                                        icon = <Clock className="w-4 h-4 shrink-0" />;
+                                                        color = "text-[#8a5100]";
+                                                    } else if (raw === "pendiente") {
+                                                        label = "Pendiente";
+                                                        icon = <Clock className="w-4 h-4 shrink-0" />;
+                                                        color = "text-[#8a5100]";
+                                                    } else if (raw === "confirmado_whatsapp") {
+                                                        label = "Confirmado";
+                                                        icon = <CheckCircle2 className="w-4 h-4 shrink-0" />;
+                                                        color = "text-emerald-600";
+                                                    } else if (raw === "asistio") {
+                                                        label = "Presente";
+                                                        icon = <CheckCircle2 className="w-4 h-4 shrink-0" />;
+                                                        color = "text-emerald-600";
+                                                    } else if (raw === "no_asistio") {
+                                                        label = "Ausente";
+                                                        icon = <XCircle className="w-4 h-4 shrink-0" />;
+                                                        color = "text-[#ba1a1a]";
+                                                    } else if (raw === "cancelado") {
+                                                        label = "Cancelada";
+                                                        icon = <XCircle className="w-4 h-4 shrink-0" />;
+                                                        color = "text-slate-500";
+                                                    } else if (raw === "cancelado_sin_reembolso") {
+                                                        label = "Cancelada s/reemb.";
+                                                        icon = <XCircle className="w-4 h-4 shrink-0" />;
+                                                        color = "text-slate-500";
+                                                    } else {
+                                                        label = "Sin confirmar";
+                                                        icon = <Clock className="w-4 h-4 shrink-0" />;
+                                                        color = "text-[#8a5100]";
+                                                    }
                                                     return (
                                                         <tr
                                                             key={`${s.inscripcionId ?? s.claseId}-${s.fecha_hora}`}
@@ -712,38 +807,37 @@ export default function MisClasesClient() {
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4">
-                                                                <span className="inline-block bg-[#d3e3ff] text-[#16487b] px-3 py-1 rounded-full text-[10px] font-bold uppercase max-w-[200px] truncate align-middle">
-                                                                    {s.titulo}
+                                                            <span className="inline-block bg-[#d3e3ff] text-[#16487b] px-3 py-1 rounded-full text-[10px] font-bold uppercase max-w-[200px] truncate align-middle">
+                                                                    {s.tipo_evento === "partido" ? "Partido" : "Entrenamiento"}
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4">
-                                                                {v === "presente" && (
-                                                                    <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm">
-                                                                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                                                        {label}
-                                                                    </div>
-                                                                )}
-                                                                {v === "ausente" && (
-                                                                    <div className="flex items-center gap-2 text-[#ba1a1a] font-bold text-sm">
-                                                                        <XCircle className="w-4 h-4 shrink-0" />
-                                                                        {label}
-                                                                    </div>
-                                                                )}
-                                                                {v === "proxima" && (
-                                                                    <div className="flex items-center gap-2 text-[#8a5100] font-bold text-sm">
-                                                                        <Clock className="w-4 h-4 shrink-0" />
-                                                                        {label}
-                                                                    </div>
-                                                                )}
-                                                                {v === "neutral" && (
-                                                                    <div className="flex items-center gap-2 text-slate-500 font-bold text-sm">
-                                                                        <span className="w-2 h-2 rounded-full bg-slate-300" />
-                                                                        {label}
-                                                                    </div>
-                                                                )}
+                                                                <div className={`flex items-center gap-2 font-bold text-sm ${color}`}>
+                                                                    {icon}
+                                                                    {label}
+                                                                </div>
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4 text-sm text-[#42474f] hidden sm:table-cell">
                                                                 {s.sede || "—"}
+                                                            </td>
+                                                            <td className="px-4 md:px-8 py-4">
+                                                            {s.inscripcionId !== null &&
+                                                                new Date(s.fecha_hora) > new Date() &&
+                                                                (raw === "sin_confirmar" || raw === "pendiente" || raw === "confirmado_whatsapp") && (
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                setCancelTarget(s)
+                                                                            }
+                                                                            disabled={
+                                                                                cancelandoId === s.inscripcionId
+                                                                            }
+                                                                            className="text-xs font-bold text-[#ba1a1a] hover:text-red-700 underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+                                                                        >
+                                                                            {cancelandoId === s.inscripcionId
+                                                                                ? "Cancelando..."
+                                                                                : "Cancelar"}
+                                                                        </button>
+                                                                    )}
                                                             </td>
                                                         </tr>
                                                     );

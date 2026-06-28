@@ -109,7 +109,7 @@ export default function CalendarioClases({
   }, [clasesInView]);
 
   return (
-    <div className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
+    <div className="bg-white p-5 md:p-8 border-t-2 border-t-[#00305B] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 md:mb-8">
         <div className="flex items-center gap-3 md:gap-4 flex-wrap">
           <h2 className="text-lg md:text-xl font-bold text-[#00305b] capitalize">
@@ -166,6 +166,18 @@ export default function CalendarioClases({
               Otras clases
             </span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Entrenamiento
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Partido
+            </span>
+          </div>
         </div>
       </div>
 
@@ -187,6 +199,8 @@ export default function CalendarioClases({
 
           const hasMine = dayClases.some((c) => c.isMine);
           const hasOthers = dayClases.some((c) => !c.isMine);
+          const hasPartido = dayClases.some((c) => c.tipo_evento === "partido");
+          const hasEntrenamiento = dayClases.some((c) => c.tipo_evento === "entrenamiento");
 
           let cellTone: "empty" | "mine" | "other" | "mixed" = "empty";
           if (dayClases.length > 0) {
@@ -196,7 +210,7 @@ export default function CalendarioClases({
           }
 
           const baseCell =
-            "min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative transition-transform";
+            "min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded flex flex-col items-center justify-center relative transition-transform";
 
           let cellClass = `${baseCell} `;
           if (!inMonth) {
@@ -253,9 +267,13 @@ export default function CalendarioClases({
                 </span>
               )}
               {dayClases.length > 0 && (
-                <span className="text-[8px] font-semibold text-slate-500 mt-0.5">
-                  {dayClases.length} clase{dayClases.length > 1 ? "s" : ""}
-                </span>
+                <div className="flex items-center gap-0.5 mt-0.5">
+                  {hasEntrenamiento && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />}
+                  {hasPartido && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block ml-0.5" />}
+                  <span className="text-[8px] font-semibold text-slate-500">
+                    {dayClases.length} clase{dayClases.length > 1 ? "s" : ""}
+                  </span>
+                </div>
               )}
               {isSelectedDay && (
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#15477a]" />
@@ -287,7 +305,7 @@ export default function CalendarioClases({
                     onSelectClase(isSelected ? null : clase.claseId)
                   }
                   className={`
-                    w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer
+                    w-full text-left flex items-center gap-3 px-4 py-3 rounded transition-all cursor-pointer
                     ${isSelected
                       ? "bg-[#15477a] text-white shadow-md"
                       : clase.isMine
@@ -299,7 +317,7 @@ export default function CalendarioClases({
                   <Calendar size={16} className={isSelected ? "text-white" : "text-slate-400"} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-semibold truncate block">
-                      {clase.titulo}
+                      {clase.tipo_evento === "partido" ? "Partido" : (clase.titulo || "Entrenamiento")}
                     </span>
                     <span className="text-[10px] opacity-70">
                       {d.toLocaleDateString("es-CL", {

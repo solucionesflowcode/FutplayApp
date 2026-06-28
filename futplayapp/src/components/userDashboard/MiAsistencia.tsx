@@ -69,11 +69,9 @@ export default function MiAsistencia() {
     const clasesRestantes = membresia.tokens_totales - membresia.tokens_usados;
 
     return (
-        <div className="w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] rounded-2xl shadow-xl border border-white/10 p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-[#00A86B] rounded-full mix-blend-multiply filter blur-3xl opacity-10" />
-
-            <div className="flex items-center gap-3 mb-5">
-                <div className="bg-[#00A86B]/20 p-2.5 rounded-xl">
+        <div className="w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] px-6 py-7 shadow-xl border border-white/10 border-t-2 border-t-[#F39200]">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="bg-[#00A86B]/20 p-2.5 rounded">
                     <CalendarCheck className="text-[#00A86B]" size={20} />
                 </div>
                 <div>
@@ -86,32 +84,22 @@ export default function MiAsistencia() {
                 </div>
             </div>
 
-            <div className="flex items-end gap-4 mb-5">
-                <div className="flex flex-col">
-                    <span className="text-white/40 text-[10px] uppercase tracking-wider font-semibold mb-1">
-                        Tokens restantes
-                    </span>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-[#F39200] text-5xl font-black leading-none">
-                            {clasesRestantes}
-                        </span>
-                        <span className="text-white/30 text-sm font-medium">/ {membresia.tokens_totales}</span>
-                    </div>
+            <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2">
+                    <span className="text-white/50 text-[8px] font-black uppercase tracking-wider leading-tight">Restantes</span>
+                    <p className="text-[#F39200] text-lg font-black leading-tight mt-0.5">{clasesRestantes}</p>
+                </div>
+
+                <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2">
+                    <span className="text-white/50 text-[8px] font-black uppercase tracking-wider leading-tight">Usados</span>
+                    <p className="text-white text-lg font-black leading-tight mt-0.5">{membresia.tokens_usados}</p>
+                </div>
+
+                <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#60A5FA] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2">
+                    <span className="text-white/50 text-[8px] font-black uppercase tracking-wider leading-tight">Totales</span>
+                    <p className="text-white text-lg font-black leading-tight mt-0.5">{membresia.tokens_totales}</p>
                 </div>
             </div>
-
-            <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
-                <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#F39200] to-[#00A86B] transition-all duration-700 ease-out"
-                    style={{ width: `${Math.min((membresia.tokens_usados / membresia.tokens_totales) * 100, 100)}%` }}
-                />
-            </div>
-
-            <p className="text-white/50 text-xs mt-3">
-                {clasesRestantes === 0
-                    ? "Has completado todas tus clases del mes"
-                    : `Te quedan ${clasesRestantes} clases este mes, ¡aprovéchalas!`}
-            </p>
         </div>
     );
 }

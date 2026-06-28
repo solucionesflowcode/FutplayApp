@@ -111,7 +111,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
           <div className="lg:col-span-3 space-y-8">
 
             {/* Reproductor de Video */}
-            <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-gray-800 shadow-2xl group">
+            <div className="relative aspect-video border-t-2 border-t-blue-600 overflow-hidden bg-black border border-gray-800 shadow-2xl group">
               {!hasMembership ? (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-8 text-center">
                   <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mb-6 border border-gray-800 shadow-[0_0_50px_rgba(37,99,235,0.1)]">
@@ -123,7 +123,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
                   </p>
                   <Link
                     href="/planes"
-                    className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all hover:scale-105 shadow-lg shadow-blue-600/20 active:scale-95"
+                    className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded transition-all hover:scale-105 shadow-lg shadow-blue-600/20 active:scale-95"
                   >
                     Obtener Membresía
                   </Link>
@@ -159,7 +159,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
             </div>
 
             {/* Sección 'Acerca de' */}
-            <section className="bg-gray-900/50 border border-gray-800/50 rounded-2xl p-8 backdrop-blur-sm shadow-xl">
+            <section className="bg-gray-900/50 border border-gray-800/50 border-t-2 border-t-blue-600 p-8 backdrop-blur-sm shadow-xl">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold">Acerca de esta cápsula</h3>
                 <span className="px-3 py-1 bg-blue-600/10 text-blue-400 text-xs font-bold rounded-full border border-blue-400/20">
@@ -212,7 +212,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
                     <div className="flex-1 space-y-3">
                       <textarea
                         placeholder="Comparte tu opinión o haz una pregunta..."
-                        className="w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-sm focus:outline-none focus:border-blue-500 transition-colors min-h-[100px] resize-none"
+                        className="w-full bg-gray-900 border border-gray-800 rounded p-4 text-sm focus:outline-none focus:border-blue-500 transition-colors min-h-[100px] resize-none"
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                       />
@@ -269,7 +269,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
   
 
             {/* Recursos Descargables */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+            <div className="bg-gray-900 border border-gray-800 border-t-2 border-t-blue-600 p-6 shadow-xl">
               <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4">Material de apoyo</h4>
               {documentos.length === 0 ? (
                 <p className="text-xs text-gray-500 italic">Sin documentos disponibles.</p>
@@ -282,7 +282,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
                       <a
                         key={doc.id}
                         href={`/api/download-documento?id=${doc.id}`}
-                        className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition-all group"
+                        className="w-full flex items-center justify-between p-3 rounded bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition-all group"
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-lg bg-${color}-500/10 flex items-center justify-center`}>
