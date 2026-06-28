@@ -9,6 +9,8 @@ import {
 } from "@/data/misclases-calendario";
 import { getMembresiaByUser } from "@/data/membresia";
 import ReservarClaseModal from "@/components/misclases/ReservarClaseModal";
+import CancelarClaseModal from "@/components/misclases/CancelarClaseModal";
+import { cancelarClase } from "@/data/clase_usuario";
 import {
     AlertCircle,
     CheckCircle2,
@@ -21,7 +23,7 @@ import {
     XCircle,
 } from "lucide-react";
 
-type VisualEstado = "proxima" | "presente" | "ausente" | "neutral";
+type VisualEstado = "proxima" | "presente" | "ausente" | "cancelada" | "neutral";
 
 type SessionItem = {
     inscripcionId: string | null;
@@ -52,11 +54,13 @@ function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
 
 function normalizeAsistencia(
     a: string | boolean | null | undefined,
-): "sin_confirmar" | "pendiente" | "presente" | "ausente" {
+): "sin_confirmar" | "pendiente" | "presente" | "ausente" | "cancelada" {
     if (a === true || a === "presente" || a === "asistio" || a === "confirmado_whatsapp")
         return "presente";
-    if (a === false || a === "ausente" || a === "no_asistio" || a === "cancelado" || a === "cancelado_sin_reembolso")
+    if (a === false || a === "ausente" || a === "no_asistio")
         return "ausente";
+    if (a === "cancelado" || a === "cancelado_sin_reembolso")
+        return "cancelada";
     if (a === "pendiente") return "pendiente";
     return "sin_confirmar";
 }
@@ -66,6 +70,7 @@ function visualEstadoSesion(fechaHora: Date, asistencia: unknown): VisualEstado 
     const now = Date.now();
     if (a === "ausente") return "ausente";
     if (a === "presente") return "presente";
+    if (a === "cancelada") return "cancelada";
     if (fechaHora.getTime() > now) return "proxima";
     return "neutral";
 }
@@ -120,6 +125,10 @@ export default function MisClasesClient() {
         sede: string;
     }[] | null>(null);
 
+    const [cancelandoId, setCancelandoId] = useState<string | null>(null);
+    const [cancelMsg, setCancelMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [cancelTarget, setCancelTarget] = useState<SessionItem | null>(null);
+
     const load = useCallback(async () => {
         if (!usuario?.id) {
             setLoading(false);
@@ -138,6 +147,29 @@ export default function MisClasesClient() {
     useEffect(() => {
         void load();
     }, [load]);
+
+    const handleCancel = useCallback(async (inscripcionId: string, fechaHora: string) => {
+        setCancelandoId(inscripcionId);
+        setCancelMsg(null);
+
+        const result = await cancelarClase(inscripcionId, usuario!.id, fechaHora);
+
+        if (result.success) {
+            setSessions((prev) =>
+                prev.map((s) =>
+                    s.inscripcionId === inscripcionId
+                        ? { ...s, inscripcionId: null, asistencia: "cancelado" }
+                        : s
+                )
+            );
+            const m = await getMembresiaByUser(usuario!.id);
+            if (m) setTokensRestantes(m.tokens_restantes);
+        }
+
+        setCancelMsg({ type: result.success ? "success" : "error", text: result.message });
+        setCancelandoId(null);
+        setCancelTarget(null);
+    }, [usuario]);
 
     const sessionsByDay = useMemo(() => {
         const map = new Map<string, SessionItem[]>();
@@ -190,6 +222,7 @@ export default function MisClasesClient() {
 
     const recentRows = useMemo(() => {
         return [...sessions]
+            .filter((s) => s.inscripcionId !== null)
             .sort(
                 (a, b) =>
                     parseFechaLocal(b.fecha_hora).getTime() -
@@ -385,21 +418,23 @@ export default function MisClasesClient() {
                                     const hasAusente = estados.includes("ausente");
                                     const hasPresente = estados.includes("presente");
                                     const hasProxima = estados.includes("proxima");
+                                    const hasCancelada = estados.includes("cancelada");
                                     const hasNeutral = estados.includes("neutral");
 
                                     const unenrolledProximas = daySessions.filter(
                                         (s) =>
-                                            s.inscripcionId === null &&
+                                            (s.inscripcionId === null || normalizeAsistencia(s.asistencia as string | boolean | null) === "cancelada") &&
                                             parseFechaLocal(s.fecha_hora).getTime() > Date.now(),
                                     );
 
-                                    let cellTone: "empty" | "presente" | "ausente" | "proxima" | "neutral" =
+                                    let cellTone: "empty" | "presente" | "ausente" | "proxima" | "cancelada" | "neutral" =
                                         "empty";
                                     if (daySessions.length) {
                                         if (hasAusente) cellTone = "ausente";
-                                        else if (hasPresente && !hasProxima && !hasNeutral)
+                                        else if (hasPresente && !hasProxima && !hasNeutral && !hasCancelada)
                                             cellTone = "presente";
                                         else if (hasProxima && !hasAusente) cellTone = "proxima";
+                                        else if (hasCancelada && !hasProxima && !hasPresente) cellTone = "cancelada";
                                         else if (hasNeutral || hasPresente) cellTone = "neutral";
                                     }
 
@@ -421,7 +456,7 @@ export default function MisClasesClient() {
                                     } else if (cellTone === "ausente") {
                                         cellClass +=
                                             "bg-[#ba1a1a]/10 border-2 border-[#ba1a1a]/25 ";
-                                    } else if (cellTone === "proxima") {
+                                    } else if (cellTone === "proxima" || cellTone === "cancelada") {
                                         cellClass +=
                                             "bg-[#fc9910]/15 border-2 border-[#fc9910]/35 shadow-sm shadow-orange-500/10 ";
                                     } else {
@@ -458,7 +493,7 @@ export default function MisClasesClient() {
                                                         ? "text-emerald-700"
                                                         : cellTone === "ausente"
                                                           ? "text-[#ba1a1a]"
-                                                          : cellTone === "proxima"
+                                                          : cellTone === "proxima" || cellTone === "cancelada"
                                                             ? "text-[#8a5100]"
                                                             : inMonth
                                                               ? "text-[#00305b]"
@@ -492,6 +527,12 @@ export default function MisClasesClient() {
                                                             strokeWidth={2.5}
                                                         />
                                                     )}
+                                                    {hasCancelada && !hasAusente && !hasProxima && (
+                                                        <Clock
+                                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#fc9910]"
+                                                            strokeWidth={2.5}
+                                                        />
+                                                    )}
                                                     {hasNeutral &&
                                                         !hasProxima &&
                                                         !hasAusente &&
@@ -510,11 +551,11 @@ export default function MisClasesClient() {
                             isOpen={selectedClases !== null}
                             onClose={() => setSelectedClases(null)}
                             clases={selectedClases ?? []}
-                            onAgendada={async (claseId) => {
+                            onAgendada={async (claseId, inscripcionId) => {
                                 setSessions((prev) =>
                                     prev.map((s) =>
                                         s.claseId === claseId
-                                            ? { ...s, inscripcionId: "temp" }
+                                            ? { ...s, inscripcionId: inscripcionId ?? null }
                                             : s,
                                     ),
                                 );
@@ -524,6 +565,22 @@ export default function MisClasesClient() {
                                 }
                                 setTimeout(() => setSelectedClases(null), 1200);
                             }}
+                        />
+
+                        <CancelarClaseModal
+                            isOpen={cancelTarget !== null}
+                            onClose={() => setCancelTarget(null)}
+                            onConfirm={async () => {
+                                if (!cancelTarget?.inscripcionId) return;
+                                await handleCancel(
+                                    cancelTarget.inscripcionId,
+                                    cancelTarget.fecha_hora,
+                                );
+                            }}
+                            loading={cancelandoId !== null}
+                            titulo={cancelTarget?.titulo ?? ""}
+                            fecha_hora={cancelTarget?.fecha_hora ?? ""}
+                            sede={cancelTarget?.sede ?? ""}
                         />
 
                         {/* Resumen y métricas — debajo del calendario */}
@@ -638,7 +695,7 @@ export default function MisClasesClient() {
                                     </h4>
                                     <p className="text-xs text-[#42474f] leading-relaxed">
                                         <strong className="text-[#fc9910]">Amarillo/naranja</strong>{" "}
-                                        indica una clase próxima (aún no ocurre o sin confirmar).
+                                        indica una clase disponible (aún no ocurre o cancelada).
                                         <strong className="text-emerald-600"> Verde</strong> es
                                         asistencia confirmada.
                                         <strong className="text-[#ba1a1a]"> Rojo</strong> marca
@@ -655,6 +712,13 @@ export default function MisClasesClient() {
                             >
                                 Detalle de sesiones
                             </h3>
+                            {cancelMsg && (
+                                <div
+                                    className={`mb-4 px-5 py-3 rounded-xl text-sm font-bold ${cancelMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-[#ba1a1a] border border-red-200"}`}
+                                >
+                                    {cancelMsg.text}
+                                </div>
+                            )}
                             <div className="bg-white rounded-[1.25rem] md:rounded-[2rem] border border-[#edeef0] overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[520px]">
@@ -672,13 +736,16 @@ export default function MisClasesClient() {
                                                 <th className="px-4 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hidden sm:table-cell">
                                                     Sede
                                                 </th>
+                                                <th className="px-4 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                    Acción
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[#f3f4f6]">
                                             {recentRows.length === 0 ? (
                                                 <tr>
                                                     <td
-                                                        colSpan={4}
+                                                        colSpan={5}
                                                         className="px-8 py-12 text-center text-slate-500 text-sm"
                                                     >
                                                         No hay clases disponibles todavía.
@@ -687,15 +754,43 @@ export default function MisClasesClient() {
                                             ) : (
                                                 recentRows.map((s) => {
                                                     const d = parseFechaLocal(s.fecha_hora);
-                                                    const v = visualEstadoSesion(d, s.asistencia);
-                                                    const label =
-                                                        v === "presente"
-                                                            ? "Presente"
-                                                            : v === "ausente"
-                                                              ? "Ausente"
-                                                              : v === "proxima"
-                                                                ? "Próxima"
-                                                                : "Sin confirmar";
+                                                    const raw = s.asistencia as string | null | undefined;
+                                                    let label: string;
+                                                    let icon: React.ReactNode;
+                                                    let color: string;
+                                                    if (!raw || raw === "sin_confirmar") {
+                                                        label = "Sin confirmar";
+                                                        icon = <Clock className="w-4 h-4 shrink-0" />;
+                                                        color = "text-[#8a5100]";
+                                                    } else if (raw === "pendiente") {
+                                                        label = "Pendiente";
+                                                        icon = <Clock className="w-4 h-4 shrink-0" />;
+                                                        color = "text-[#8a5100]";
+                                                    } else if (raw === "confirmado_whatsapp") {
+                                                        label = "Confirmado";
+                                                        icon = <CheckCircle2 className="w-4 h-4 shrink-0" />;
+                                                        color = "text-emerald-600";
+                                                    } else if (raw === "asistio") {
+                                                        label = "Presente";
+                                                        icon = <CheckCircle2 className="w-4 h-4 shrink-0" />;
+                                                        color = "text-emerald-600";
+                                                    } else if (raw === "no_asistio") {
+                                                        label = "Ausente";
+                                                        icon = <XCircle className="w-4 h-4 shrink-0" />;
+                                                        color = "text-[#ba1a1a]";
+                                                    } else if (raw === "cancelado") {
+                                                        label = "Cancelada";
+                                                        icon = <XCircle className="w-4 h-4 shrink-0" />;
+                                                        color = "text-slate-500";
+                                                    } else if (raw === "cancelado_sin_reembolso") {
+                                                        label = "Cancelada s/reemb.";
+                                                        icon = <XCircle className="w-4 h-4 shrink-0" />;
+                                                        color = "text-slate-500";
+                                                    } else {
+                                                        label = "Sin confirmar";
+                                                        icon = <Clock className="w-4 h-4 shrink-0" />;
+                                                        color = "text-[#8a5100]";
+                                                    }
                                                     return (
                                                         <tr
                                                             key={`${s.inscripcionId ?? s.claseId}-${s.fecha_hora}`}
@@ -717,33 +812,32 @@ export default function MisClasesClient() {
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4">
-                                                                {v === "presente" && (
-                                                                    <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm">
-                                                                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                                                        {label}
-                                                                    </div>
-                                                                )}
-                                                                {v === "ausente" && (
-                                                                    <div className="flex items-center gap-2 text-[#ba1a1a] font-bold text-sm">
-                                                                        <XCircle className="w-4 h-4 shrink-0" />
-                                                                        {label}
-                                                                    </div>
-                                                                )}
-                                                                {v === "proxima" && (
-                                                                    <div className="flex items-center gap-2 text-[#8a5100] font-bold text-sm">
-                                                                        <Clock className="w-4 h-4 shrink-0" />
-                                                                        {label}
-                                                                    </div>
-                                                                )}
-                                                                {v === "neutral" && (
-                                                                    <div className="flex items-center gap-2 text-slate-500 font-bold text-sm">
-                                                                        <span className="w-2 h-2 rounded-full bg-slate-300" />
-                                                                        {label}
-                                                                    </div>
-                                                                )}
+                                                                <div className={`flex items-center gap-2 font-bold text-sm ${color}`}>
+                                                                    {icon}
+                                                                    {label}
+                                                                </div>
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4 text-sm text-[#42474f] hidden sm:table-cell">
                                                                 {s.sede || "—"}
+                                                            </td>
+                                                            <td className="px-4 md:px-8 py-4">
+                                                            {s.inscripcionId !== null &&
+                                                                new Date(s.fecha_hora) > new Date() &&
+                                                                raw !== "cancelado" && raw !== "cancelado_sin_reembolso" && (
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                setCancelTarget(s)
+                                                                            }
+                                                                            disabled={
+                                                                                cancelandoId === s.inscripcionId
+                                                                            }
+                                                                            className="text-xs font-bold text-[#ba1a1a] hover:text-red-700 underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+                                                                        >
+                                                                            {cancelandoId === s.inscripcionId
+                                                                                ? "Cancelando..."
+                                                                                : "Cancelar"}
+                                                                        </button>
+                                                                    )}
                                                             </td>
                                                         </tr>
                                                     );
