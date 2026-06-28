@@ -13,12 +13,14 @@ import PlanesRender from "../../../components/userDashboard/PlanesRender";
 import CapsulasClient from "../../../components/userDashboard/CapsulasClient";
 import { useAuthUser } from "@/context";
 import { createClient } from "@/utils/supabase/client";
+import { userHasFichaMedica } from "@/data/fichaMedica";
 
 export default function DashboardClient() {
     const { usuario } = useAuthUser();
     const searchParams = useSearchParams();
     const router = useRouter();
     const [tienePlan, setTienePlan] = useState(true);
+    const [tieneFicha, setTieneFicha] = useState(false);
     const [planChecked, setPlanChecked] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -46,15 +48,21 @@ export default function DashboardClient() {
             const inicioMesSiguiente = month === 12
                 ? `${año + 1}-01-01`
                 : `${año}-${String(month + 1).padStart(2, '0')}-01`;
-            const { data } = await supabase
-                .from("membresia")
-                .select("id")
-                .eq("usuario_id", user.id)
-                .gte("mes", inicioMes)
-                .lt("mes", inicioMesSiguiente)
-                .limit(1)
-                .maybeSingle();
-            setTienePlan(!!data);
+
+            const [tieneFichaData, membresiaResponse] = await Promise.all([
+                userHasFichaMedica(user.id),
+                supabase
+                    .from("membresia")
+                    .select("id")
+                    .eq("usuario_id", user.id)
+                    .gte("mes", inicioMes)
+                    .lt("mes", inicioMesSiguiente)
+                    .limit(1)
+                    .maybeSingle()
+            ]);
+
+            setTieneFicha(tieneFichaData);
+            setTienePlan(!!membresiaResponse.data);
             setPlanChecked(true);
         };
         check();
@@ -99,15 +107,24 @@ export default function DashboardClient() {
                         <PlanesRender />
                     </div>
                     {planChecked && tienePlan ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                            <MetricasCorporales />
-                            <MiAsistencia />
-                            <ProximaRenovacion />
-                        </div>
+                        tieneFicha ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                                <MiAsistencia />
+                                <ProximaRenovacion />
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                                <MetricasCorporales />
+                                <MiAsistencia />
+                                <ProximaRenovacion />
+                            </div>
+                        )
                     ) : (
-                        <div className="w-full">
-                            <MetricasCorporales />
-                        </div>
+                        !tieneFicha && (
+                            <div className="w-full">
+                                <MetricasCorporales />
+                            </div>
+                        )
                     )}
                     <div className="w-full h-auto">
                         <CapsulasClient />

@@ -606,82 +606,25 @@ export default function MisClasesClient() {
 
                         {/* Resumen y métricas — debajo del calendario */}
                         <div className="space-y-6 mb-10">
-                            <div className="bg-[#15477a] p-6 md:p-8 text-white relative overflow-hidden border-t-2 border-t-[#F39200]">
-                                <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
-                                    <ListChecks className="w-40 h-40" strokeWidth={1} />
-                                </div>
-                                <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-                                    <div>
-                                        <h3
-                                            className="font-[family-name:var(--font-futplay-headline),sans-serif] text-lg font-bold mb-1"
-                                        >
-                                            Resumen del mes
-                                        </h3>
-                                        <p className="text-white/70 text-sm max-w-md">
-                                            Asistencias confirmadas respecto a sesiones ya registradas
-                                            como presente o ausente.
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center justify-center py-2">
-                                        <div className="relative w-36 h-36 sm:w-40 sm:h-40 shrink-0">
-                                            <svg
-                                                className="w-full h-full -rotate-90"
-                                                viewBox="0 0 160 160"
-                                                aria-hidden
-                                            >
-                                                <circle
-                                                    cx="80"
-                                                    cy="80"
-                                                    r="70"
-                                                    fill="transparent"
-                                                    stroke="currentColor"
-                                                    strokeWidth="12"
-                                                    className="text-blue-900/40"
-                                                />
-                                                <circle
-                                                    cx="80"
-                                                    cy="80"
-                                                    r="70"
-                                                    fill="transparent"
-                                                    stroke="currentColor"
-                                                    strokeWidth="12"
-                                                    strokeDasharray={ringCirc}
-                                                    strokeDashoffset={ringOffset}
-                                                    strokeLinecap="round"
-                                                    className="text-[#fc9910] transition-all duration-700"
-                                                />
-                                            </svg>
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                                                    {stats.pct == null ? "—" : `${stats.pct}%`}
-                                                </span>
-                                                <span className="text-[10px] font-bold uppercase opacity-70">
-                                                    Asistencia
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
-                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                            <div className="grid grid-cols-3 gap-4 max-w-xl mx-auto">
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
                                         Clases en el mes
                                     </span>
-                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.total}</p>
+                                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.total}</p>
                                 </div>
-                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
-                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
                                         Asistencias
                                     </span>
-                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.presentes}</p>
+                                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.presentes}</p>
                                 </div>
-                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2 max-w-[80px] mx-auto">
-                                    <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
                                         Inasistencias
                                     </span>
-                                    <p className="text-xs font-black text-[#00305B] leading-tight mt-0.5">{stats.ausentes}</p>
+                                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.ausentes}</p>
                                 </div>
                             </div>
 
@@ -712,6 +655,8 @@ export default function MisClasesClient() {
                             >
                                 Detalle de sesiones
                             </h3>
+
+
                             {cancelMsg && (
                                 <div
                                     className={`mb-4 px-5 py-3 rounded text-sm font-bold ${cancelMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-[#ba1a1a] border border-red-200"}`}
@@ -845,6 +790,93 @@ export default function MisClasesClient() {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+
+                            {/* Leyenda de Estados de Asistencia */}
+                            <div className="bg-white border border-[#edeef0] rounded-[1rem] p-5 mt-6 shadow-[0_4px_20px_-2px_rgba(25,28,30,0.04)]">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-1.5">
+                                    <ListChecks className="w-3.5 h-3.5 text-[#00305b]" />
+                                    Leyenda de estados de asistencia
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {/* Estado: Sin confirmar / Pendiente */}
+                                    <div className="flex gap-3 items-start p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-1.5 font-bold text-xs text-[#8a5100] bg-amber-50 border border-amber-200/50 px-2.5 py-1 rounded-lg shrink-0">
+                                            <Clock className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Sin confirmar / Pendiente</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] text-slate-500 leading-relaxed">
+                                                Clase reservada en el calendario. Aún no se ha confirmado asistencia por WhatsApp o plataforma.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Estado: Confirmado */}
+                                    <div className="flex gap-3 items-start p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-600 bg-emerald-50 border border-emerald-200/50 px-2.5 py-1 rounded-lg shrink-0">
+                                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Confirmado</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] text-slate-500 leading-relaxed">
+                                                El alumno confirmó que asistirá al entrenamiento a través del bot de WhatsApp o manualmente.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Estado: Presente */}
+                                    <div className="flex gap-3 items-start p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-600 bg-emerald-50 border border-emerald-200/50 px-2.5 py-1 rounded-lg shrink-0">
+                                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Presente</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] text-slate-500 leading-relaxed">
+                                                El profesor ha registrado formalmente que el alumno estuvo presente en la sesión de entrenamiento.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Estado: Ausente */}
+                                    <div className="flex gap-3 items-start p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-1.5 font-bold text-xs text-[#ba1a1a] bg-red-50 border border-red-200/50 px-2.5 py-1 rounded-lg shrink-0">
+                                            <XCircle className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Ausente</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] text-slate-500 leading-relaxed">
+                                                El alumno no se presentó al entrenamiento y tampoco canceló la sesión a tiempo.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Estado: Cancelada */}
+                                    <div className="flex gap-3 items-start p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg shrink-0">
+                                            <XCircle className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Cancelada</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] text-slate-500 leading-relaxed">
+                                                Clase cancelada con más de 3 horas de anticipación. El cupo se liberó y se devolvió el token.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Estado: Cancelada s/reemb */}
+                                    <div className="flex gap-3 items-start p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg shrink-0">
+                                            <XCircle className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Cancelada s/reemb.</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] text-slate-500 leading-relaxed">
+                                                Clase cancelada tarde (menos de 3 horas antes del inicio). No se devuelve el token de la membresía.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>
