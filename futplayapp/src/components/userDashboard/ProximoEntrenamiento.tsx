@@ -119,50 +119,51 @@ export default function ProximoEntrenamiento() {
         ? `Hoy, ${horaFormateada}`
         : `${fechaFormateada}, ${horaFormateada}`;
 
-    const tituloEvento = clase.tipo_evento === "partido" ? "Próximo Partido" : "Próximo Entrenamiento";
+    const tituloEvento = "Mi Próximo Evento";
 
     return (
-        <div className="w-full min-w-[380px] bg-white px-6 pt-4 pb-4 border-t-2 border-t-[#F39200] shadow-lg flex">
+        <div className="w-full min-w-[380px] bg-white border-t-2 border-t-[#F39200] shadow-lg flex overflow-hidden">
 
-            <div className="flex-1">
-                <div className="flex justify-between">
-                    <h1 className="text-[#F39200] text-[15px] font-semibold">
-                        {tituloEvento}
-                    </h1>
-                </div>
+            <div className="w-3/4 p-6 flex flex-col justify-between">
+                <div>
+                    <div className="flex justify-between">
+                        <h1 className="text-[#F39200] text-[20px] font-bold">
+                            {tituloEvento}
+                        </h1>
+                    </div>
 
-                <div className="flex flex-col gap-2 mt-5">
-                    <p className="font-bold text-[20px] text-[#00305B]">
-                        {clase.titulo}
-                    </p>
-
-                    <p className="text-[12px] text-[#42474F]">
-                        {clase.descripcion}
-                    </p>
-
-                    {clase.sede && (
-                        <p className="text-[10px] text-gray-400">
-                            {clase.sede}
+                    <div className="flex flex-col gap-2 mt-5">
+                        <p className="font-extrabold text-[28px] text-[#00305B] leading-tight">
+                            {clase.titulo}
                         </p>
-                    )}
+
+                        <p className="text-[16px] text-[#42474F] font-medium">
+                            {clase.descripcion}
+                        </p>
+
+                        {clase.sede && (
+                            <p className="text-[14px] text-gray-500 font-medium">
+                                {clase.sede}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 <div className="mt-5">
-                    <p className="font-bold text-[20px] text-[#00305B]">
+                    <p className="font-extrabold text-[28px] text-[#00305B]">
                         {textoFecha}
                     </p>
                 </div>
             </div>
 
-            <div className="flex items-center justify-center pl-4">
-                <Link
-                    href="/misclases"
-                    className="w-12 h-12 bg-[#F28C28] hover:bg-[#e07d1f] text-white rounded-full flex items-center justify-center transition-all shadow-md hover:shadow-lg shrink-0"
-                    title="Ver más clases"
-                >
-                    <ArrowRight size={20} />
-                </Link>
-            </div>
+            <Link
+                href="/misclases"
+                className="w-1/4 bg-[#F28C28] hover:bg-[#e07d1f] text-white flex flex-col items-center justify-center text-center p-4 transition-all duration-200 select-none group border-l border-orange-300/20"
+            >
+                <span className="font-extrabold text-[13px] sm:text-[14px] leading-tight uppercase tracking-wider group-hover:scale-105 transition-transform duration-200">
+                    Ir a mis clases
+                </span>
+            </Link>
         </div>
     );
 }
