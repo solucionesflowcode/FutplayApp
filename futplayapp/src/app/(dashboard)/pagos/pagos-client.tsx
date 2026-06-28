@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
     AlertCircle,
     ArrowRight,
-    Ban,
     Building2,
     Calendar,
     Check,
@@ -29,7 +28,6 @@ import {
     ShieldCheck,
     Smartphone,
     Sparkles,
-    TrendingUp,
     Wallet,
     X,
     Zap,
@@ -241,6 +239,12 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
 
     const [busqueda, setBusqueda] = useState("");
     const [filtroEstado, setFiltroEstado] = useState<"todos" | PaymentRecord["estado"]>("todos");
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 5;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [busqueda, filtroEstado]);
 
     const historialFiltrado = useMemo(() => {
         return historial.filter((p) => {
@@ -251,6 +255,10 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
             return matchBusqueda && matchEstado;
         });
     }, [historial, busqueda, filtroEstado]);
+
+    const totalPages = Math.max(1, Math.ceil(historialFiltrado.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const historialPaginado = historialFiltrado.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
 
     if (loading) {
         return (
@@ -287,68 +295,48 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
 
             {/* Stats cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-5 border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-2 border-t-[#F39200]">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                            Membresía
-                        </span>
-                        <div className={`w-8 h-8 rounded-lg ${sc.bg} flex items-center justify-center`}>
-                            <Shield className={`w-4 h-4 ${sc.text}`} />
-                        </div>
-                    </div>
-                    <p className="text-lg font-black text-[#00305B] capitalize">{suscripcion.plan}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
-                        <span className={`text-xs font-bold ${sc.text}`}>{sc.label}</span>
+                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                        Membresía
+                    </span>
+                    <p className="text-sm font-black text-[#00305B] capitalize leading-tight mt-0.5">{suscripcion.plan}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                        <span className={`text-[10px] font-bold ${sc.text}`}>{sc.label}</span>
                     </div>
                 </div>
 
-                <div className="bg-white p-5 border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-2 border-t-[#00A86B]">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                            Total pagado
-                        </span>
-                        <div className="w-8 h-8 rounded-lg bg-[#00A86B]/10 flex items-center justify-center">
-                            <TrendingUp className="w-4 h-4 text-[#00A86B]" />
-                        </div>
-                    </div>
-                    <p className="text-lg font-black text-[#00305B]">{formatCLP(stats.totalPagado)}</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                        Total pagado
+                    </span>
+                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{formatCLP(stats.totalPagado)}</p>
+                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">
                         {historial.filter((p) => p.estado === "aprobado").length} transacciones
                     </p>
                 </div>
 
-                <div className="bg-white p-5 border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-2 border-t-[#F28C28]">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                            Pendientes
-                        </span>
-                        <div className="w-8 h-8 rounded-lg bg-[#F28C28]/10 flex items-center justify-center">
-                            <Clock className="w-4 h-4 text-[#F28C28]" />
-                        </div>
-                    </div>
-                    <p className="text-lg font-black text-[#00305B]">{stats.pendientes}</p>
-                    <p className="text-xs text-gray-400 mt-1">por confirmar</p>
+                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                        Pendientes
+                    </span>
+                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.pendientes}</p>
+                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">por confirmar</p>
                 </div>
 
-                <div className="bg-white p-5 border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-2 border-t-[#ba1a1a]">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                            Rechazados
-                        </span>
-                        <div className="w-8 h-8 rounded-lg bg-[#ba1a1a]/10 flex items-center justify-center">
-                            <Ban className="w-4 h-4 text-[#ba1a1a]" />
-                        </div>
-                    </div>
-                    <p className="text-lg font-black text-[#00305B]">{stats.rechazados}</p>
-                    <p className="text-xs text-gray-400 mt-1">sin éxito</p>
+                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                        Rechazados
+                    </span>
+                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.rechazados}</p>
+                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">sin éxito</p>
                 </div>
             </div>
 
-            {/* Active subscription + Next billing */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Active subscription */}
+            <div>
                 {/* Active plan card */}
-                <div className="lg:col-span-2 bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] p-6 md:p-8 border-t-2 border-t-[#F39200]">
+                <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] p-6 md:p-8 border-t-2 border-t-[#F39200]">
                     <div className="flex items-start justify-between mb-6">
                         <div className="flex items-center gap-4">
                             <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] p-3.5 shadow-lg">
@@ -418,73 +406,8 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                         </div>
                     </div>
 
-                    {/* Next billing */}
-                    {suscripcion.estado === "activa" && (
-                        <div className="mt-5 flex items-center gap-3 bg-[#F28C28]/5 border border-[#F28C28]/15 px-4 py-3">
-                            <Calendar className="w-4 h-4 text-[#F28C28] shrink-0" />
-                            <p className="text-sm text-[#00305B]">
-                                <span className="font-bold">Próximo cobro:</span>{" "}
-                                {formatDate(suscripcion.fecha_vencimiento)}{" "}
-                                <span className="text-gray-400">
-                                    ({daysUntil(suscripcion.fecha_vencimiento)} días)
-                                </span>
-                            </p>
-                        </div>
-                    )}
                 </div>
 
-                {/* Quick summary card */}
-                <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] p-6 md:p-8 text-white relative overflow-hidden border-t-2 border-t-[#F39200]">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-[#F28C28] rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/4" />
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 translate-y-1/2 -translate-x-1/4" />
-
-                    <div className="relative z-10 space-y-6">
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-wider text-white/50 mb-1">
-                                Resumen rápido
-                            </p>
-                            <h3 className="text-lg font-bold">
-                                {stats.activa ? "Todo al día" : "Sin membresía activa"}
-                            </h3>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/70">Facturas pagadas</span>
-                                <span className="text-sm font-bold">
-                                    {historial.filter((p) => p.estado === "aprobado").length}
-                                </span>
-                            </div>
-                            <div className="h-px bg-white/10" />
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/70">Membresía activa</span>
-                                <span
-                                    className={`text-sm font-bold ${stats.activa ? "text-[#00A86B]" : "text-[#ba1a1a]"}`}
-                                >
-                                    {stats.activa ? "Sí" : "No"}
-                                </span>
-                            </div>
-                            <div className="h-px bg-white/10" />
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/70">Próximo vencimiento</span>
-                                <span className="text-sm font-bold">
-                                    {suscripcion.estado === "activa"
-                                        ? formatDate(suscripcion.fecha_vencimiento)
-                                        : "—"}
-                                </span>
-                            </div>
-                            <div className="h-px bg-white/10" />
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/70">Renovación automática</span>
-                                <span className="text-sm font-bold">
-                                    {suscripcion.renovacion_automatica ? "Activada" : "Desactivada"}
-                                </span>
-                            </div>
-                        </div>
-
-
-                    </div>
-                </div>
             </div>
 
             {/* Payment history */}
@@ -541,9 +464,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                     Factura
                                 </th>
                                 <th className="px-6 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                    Descripción
-                                </th>
-                                <th className="px-6 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
                                     Fecha
                                 </th>
                                 <th className="px-6 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -561,9 +481,9 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {historialFiltrado.length === 0 ? (
+                            {historialPaginado.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-8 py-16 text-center">
+                                    <td colSpan={6} className="px-8 py-16 text-center">
                                         <Search className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                                         <p className="text-gray-500 font-medium">
                                             No se encontraron transacciones
@@ -574,7 +494,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                     </td>
                                 </tr>
                             ) : (
-                                historialFiltrado.map((pago) => {
+                                historialPaginado.map((pago) => {
                                     const badge = estadoBadge(pago.estado);
                                     return (
                                         <tr
@@ -584,11 +504,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                             <td className="px-6 md:px-8 py-4">
                                                 <span className="text-sm font-bold text-[#00305B]">
                                                     {pago.id}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 md:px-8 py-4">
-                                                <span className="text-sm text-gray-700">
-                                                    {pago.descripcion}
                                                 </span>
                                             </td>
                                             <td className="px-6 md:px-8 py-4">
@@ -640,13 +555,31 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                         Mostrando {historialFiltrado.length} de {historial.length} transacciones
                     </p>
                     <div className="flex items-center gap-2">
-                        <button className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40">
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={safePage <= 1}
+                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40"
+                        >
                             Anterior
                         </button>
-                        <button className="px-3 py-1.5 text-xs font-bold text-white bg-[#00305B] rounded-lg hover:bg-[#001c37] transition-all">
-                            1
-                        </button>
-                        <button className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    page === safePage
+                                        ? "text-white bg-[#00305B] hover:bg-[#001c37]"
+                                        : "text-gray-500 bg-white border border-gray-200 hover:bg-gray-50"
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={safePage >= totalPages}
+                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40"
+                        >
                             Siguiente
                         </button>
                     </div>

@@ -75,7 +75,7 @@ export default function SideBarUsuario({
           <NavItem icon={Book} label="Mis Clases" href="/classes" collapsed={collapsed} />
 
           <button className={`mt-6 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-bold transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap flex items-center justify-center shrink-0 shadow-sm hover:shadow ${collapsed ? "py-2 w-10 mx-auto" : "py-2.5 w-full px-4"}`}>
-            {collapsed ? "🔥" : "UPGRADE PLAN"}
+            {collapsed ? "▲" : "UPGRADE PLAN"}
           </button>
 
           <div className="mt-auto mb-4 flex flex-col gap-2">

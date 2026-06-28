@@ -78,7 +78,7 @@ export default function DashboardClient() {
                             </h1>
                             <p className="text-[#F39200] text-[17px] mt-1.5 font-extrabold tracking-widest uppercase">
                                 <span className="text-[#00305B]">Fut</span><span className="text-[#00305B]">Play</span>
-                                <span className="mx-2">⚽</span>
+                                <span className="mx-2 text-[#F39200]">·</span>
                                 <span>Atrévete a Jugar</span>
                             </p>
                         </div>

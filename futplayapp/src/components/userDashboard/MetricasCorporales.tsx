@@ -107,49 +107,32 @@ export default function MetricasCorporales() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/5 rounded p-3.5 border border-white/5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <User size={13} className="text-[#F39200]/70" />
-                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Edad</span>
-                        </div>
-                        <p className="text-white text-lg font-bold">{calcularEdad(ficha.fecha_nacimiento)} <span className="text-xs font-normal text-white/50">años</span></p>
+                    <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                        <span className="text-white/50 text-[9px] font-black uppercase tracking-wider leading-tight">Edad</span>
+                        <p className="text-white text-sm font-black leading-tight mt-0.5">{calcularEdad(ficha.fecha_nacimiento)} <span className="text-xs font-normal text-white/50">años</span></p>
                     </div>
 
-                    <div className="bg-white/5 rounded p-3.5 border border-white/5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Droplets size={13} className="text-red-400/70" />
-                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Grupo Sang.</span>
-                        </div>
-                        <p className="text-white text-lg font-bold">{ficha.grupo_sanguineo}</p>
+                    <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                        <span className="text-white/50 text-[9px] font-black uppercase tracking-wider leading-tight">Grupo Sang.</span>
+                        <p className="text-white text-sm font-black leading-tight mt-0.5">{ficha.grupo_sanguineo}</p>
                     </div>
 
-                    <div className="bg-white/5 rounded p-3.5 border border-white/5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Scale size={13} className="text-[#F39200]/70" />
-                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Peso</span>
-                        </div>
-                        <p className="text-white text-lg font-bold">{ficha.peso_kg} <span className="text-xs font-normal text-white/50">kg</span></p>
+                    <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                        <span className="text-white/50 text-[9px] font-black uppercase tracking-wider leading-tight">Peso</span>
+                        <p className="text-white text-sm font-black leading-tight mt-0.5">{ficha.peso_kg} <span className="text-xs font-normal text-white/50">kg</span></p>
                     </div>
 
-                    <div className="bg-white/5 rounded p-3.5 border border-white/5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Ruler size={13} className="text-[#F39200]/70" />
-                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Estatura</span>
-                        </div>
-                        <p className="text-white text-lg font-bold">{ficha.estatura_cm} <span className="text-xs font-normal text-white/50">cm</span></p>
+                    <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                        <span className="text-white/50 text-[9px] font-black uppercase tracking-wider leading-tight">Estatura</span>
+                        <p className="text-white text-sm font-black leading-tight mt-0.5">{ficha.estatura_cm} <span className="text-xs font-normal text-white/50">cm</span></p>
                     </div>
 
-                    <div className="bg-white/5 rounded p-3.5 border border-white/5 col-span-2">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Activity size={13} className="text-[#F39200]/70" />
-                            <span className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">IMC</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <p className="text-white text-lg font-bold">{ficha.imc}</p>
-                            <span className={`text-[11px] px-3 py-1 rounded-full font-bold ${imcStatus.color.replace("text-", "text-")} bg-white/10`}>
-                                {imcStatus.label}
-                            </span>
-                        </div>
+                    <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                        <span className="text-white/50 text-[9px] font-black uppercase tracking-wider leading-tight">IMC</span>
+                        <p className="text-white text-sm font-black leading-tight mt-0.5">{ficha.imc}</p>
+                        <span className={`text-[11px] px-3 py-1 rounded-full font-bold ${imcStatus.color} bg-white/10`}>
+                            {imcStatus.label}
+                        </span>
                     </div>
                 </div>
             </div>
