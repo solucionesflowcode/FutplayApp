@@ -72,7 +72,7 @@ export default function ControlAsistencia({ claseId, fecha_hora, isMine }: Contr
 
   if (estadoUI === "loading") {
     return (
-      <div className="bg-white p-6 rounded-[1.5rem] border border-[#edeef0] flex items-center justify-center gap-2 text-slate-500">
+      <div className="bg-white p-6 border-t-2 border-t-[#00305B] border border-[#edeef0] flex items-center justify-center gap-2 text-slate-500">
         <Loader2 className="w-5 h-5 animate-spin" />
         <span className="text-sm">Cargando alumnos…</span>
       </div>
@@ -80,7 +80,7 @@ export default function ControlAsistencia({ claseId, fecha_hora, isMine }: Contr
   }
 
   return (
-    <div className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
+    <div className="bg-white p-5 md:p-8 border-t-2 border-t-[#00305B] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-bold text-[#00305b]">
@@ -92,7 +92,7 @@ export default function ControlAsistencia({ claseId, fecha_hora, isMine }: Contr
           </p>
         </div>
         {!isMine && (
-          <div className="px-4 py-2 bg-slate-100 rounded-xl text-xs text-slate-500 font-medium">
+          <div className="px-4 py-2 bg-slate-100 rounded text-xs text-slate-500 font-medium">
             Solo lectura — no eres el profesor encargado de esta clase.
           </div>
         )}
@@ -100,7 +100,7 @@ export default function ControlAsistencia({ claseId, fecha_hora, isMine }: Contr
 
       {mensaje && (
         <div
-          className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
+          className={`mb-4 px-4 py-3 rounded text-sm font-medium ${
             mensaje.tipo === "ok"
               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
               : "bg-red-50 text-red-700 border border-red-200"
@@ -123,7 +123,7 @@ export default function ControlAsistencia({ claseId, fecha_hora, isMine }: Contr
             return (
               <div
                 key={alumno.claseUsuarioId}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
+                className={`flex items-center justify-between px-4 py-3 rounded transition-colors ${
                   esAsistio ? "bg-emerald-50" : "bg-red-50"
                 }`}
               >

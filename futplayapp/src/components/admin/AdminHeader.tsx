@@ -89,7 +89,7 @@ export default function AdminHeader({ students, search, onSearchChange, onView }
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded shadow-xl border border-gray-200 z-50">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="font-semibold text-sm text-gray-900">Notificaciones</h3>
                   <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -125,7 +125,7 @@ export default function AdminHeader({ students, search, onSearchChange, onView }
             </button>
 
             {showSettings && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded shadow-xl border border-gray-200 z-50">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="font-semibold text-sm text-gray-900">Opciones</h3>
                   <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">

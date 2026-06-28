@@ -128,7 +128,7 @@ export default function CreateStudentModal({
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
 
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8">
+      <div className="bg-white border-t-2 border-t-[#F28C28] shadow-xl ring-1 ring-inset ring-black/[0.03] w-full max-w-lg p-8">
 
         {/* HEADER */}
         <div className="mb-6">
@@ -146,7 +146,7 @@ export default function CreateStudentModal({
           placeholder="Nombre"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
+          className="w-full border border-gray-300 text-black p-3 rounded mb-4"
         />
 
         {/* APELLIDO */}
@@ -155,7 +155,7 @@ export default function CreateStudentModal({
           placeholder="Apellido"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
-          className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
+          className="w-full border border-gray-300 text-black p-3 rounded mb-4"
         />
 
         {/* EMAIL */}
@@ -164,7 +164,7 @@ export default function CreateStudentModal({
           placeholder="Correo electrónico *"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
+          className="w-full border border-gray-300 text-black p-3 rounded mb-4"
         />
 
         {/* RUT */}
@@ -173,7 +173,7 @@ export default function CreateStudentModal({
           placeholder="RUT"
           value={rut}
           onChange={(e) => setRut(e.target.value)}
-          className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
+          className="w-full border border-gray-300 text-black p-3 rounded mb-4"
         />
 
         {/* TELÉFONO */}
@@ -182,14 +182,14 @@ export default function CreateStudentModal({
           placeholder="Teléfono"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
+          className="w-full border border-gray-300 text-black p-3 rounded mb-4"
         />
 
         {/* TIPO USUARIO */}
         <select
           value={userType}
           onChange={(e) => setUserType(e.target.value)}
-          className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
+          className="w-full border border-gray-300 text-black p-3 rounded mb-4"
         >
           <option>Alumno</option>
           <option>Profesor</option>
@@ -200,7 +200,7 @@ export default function CreateStudentModal({
         <select
           value={plan}
           onChange={(e) => setPlan(e.target.value)}
-          className="w-full border border-gray-300 text-black p-3 rounded-xl mb-4"
+          className="w-full border border-gray-300 text-black p-3 rounded mb-4"
         >
           <option value="">Seleccionar plan</option>
           <option value="Plan Híbrido">Plan Híbrido</option>
@@ -217,7 +217,7 @@ export default function CreateStudentModal({
           onChange={(e) =>
             setFile(e.target.files?.[0] || null)
           }
-          className="w-full border border-gray-300 p-3 rounded-xl mb-4"
+          className="w-full border border-gray-300 p-3 rounded mb-4"
         />
 
         {/* 🔥 APODERADO */}
@@ -232,13 +232,13 @@ export default function CreateStudentModal({
               onChange={(e) =>
                 handleChildrenCount(Number(e.target.value))
               }
-              className="w-full border border-gray-300 text-black p-3 rounded-xl"
+              className="w-full border border-gray-300 text-black p-3 rounded"
             />
 
             {children.map((child, index) => (
               <div
                 key={index}
-                className="border rounded-xl p-4 bg-gray-50"
+                className="border rounded p-4 bg-gray-50"
               >
                 <p className="text-sm font-semibold mb-2">
                   Hijo {index + 1}
@@ -273,13 +273,13 @@ export default function CreateStudentModal({
         )}
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm mb-4">
+          <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm mb-4">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-600 text-sm mb-4">
+          <div className="p-3 bg-green-50 border border-green-200 rounded text-green-600 text-sm mb-4">
             {success}
           </div>
         )}
@@ -290,7 +290,7 @@ export default function CreateStudentModal({
           <button
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 rounded-xl border border-gray-300 disabled:opacity-50"
+            className="px-4 py-2 rounded border border-gray-300 disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -298,7 +298,7 @@ export default function CreateStudentModal({
           <button
             onClick={saveStudent}
             disabled={saving}
-            className="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+            className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
           >
             {saving ? "Guardando..." : "Guardar Registro"}
           </button>

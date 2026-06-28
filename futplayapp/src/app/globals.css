@@ -27,3 +27,32 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.25s ease-out;
 }
+
+/* ─── Card System ─── */
+.card {
+  @apply bg-white border border-gray-100 shadow-sm ring-1 ring-inset ring-black/[0.03];
+}
+
+.card-accent {
+  @apply bg-white border border-gray-100 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-2 border-t-[#F39200];
+}
+
+.card-dark {
+  @apply bg-[#002447] border border-white/10 shadow-lg text-white ring-1 ring-inset ring-white/[0.03];
+}
+
+.card-glass {
+  @apply bg-white/[0.03] backdrop-blur border border-white/10 ring-1 ring-inset ring-white/[0.05];
+}
+
+.card-hover {
+  @apply hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300;
+}
+
+.card-btn {
+  @apply font-bold transition-all duration-200;
+}
+
+.card-input {
+  @apply border border-gray-200 text-sm focus:outline-none focus:border-blue-400 px-3 py-2.5;
+}

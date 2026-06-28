@@ -22,10 +22,10 @@ export default function Hero() {
                 </div>
 
                 <div className="hidden md:block relative">
-                   <div className="absolute inset-0 bg-gradient-to-tr from-[#f59e0b] to-transparent rounded-3xl blur-2xl opacity-30 animate-pulse pointer-events-none"></div>
+                   <div className="absolute inset-0 bg-gradient-to-tr from-[#f59e0b] to-transparent blur-2xl opacity-30 animate-pulse pointer-events-none"></div>
                     <img
                         src="https://images.unsplash.com/photo-1518605368461-1ee06806a6b5?q=80&w=1500&auto=format&fit=crop"
-                        className="rounded-3xl relative z-10 border-4 border-white/10 shadow-2xl object-cover h-[500px] w-full"
+                        className="border-t-2 border-t-[#f59e0b] relative z-10 border-4 border-white/10 shadow-2xl object-cover h-[500px] w-full"
                         alt="Entrenamiento de fútbol en Futplay"
                     />
                 </div>

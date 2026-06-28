@@ -6,7 +6,7 @@ type StatCardProps = {
 
 export default function StatCard({ title, value, color }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4">
+    <div className="bg-white rounded p-4 shadow-sm flex items-center gap-4">
       
       {/* Línea de color */}
       <div className={`w-1 h-12 rounded ${color || "bg-blue-500"}`} />

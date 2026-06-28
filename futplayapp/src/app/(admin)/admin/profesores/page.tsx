@@ -219,7 +219,7 @@ export default function ProfesoresPage() {
         </div>
 
         {/* ─── BUSCAR USUARIO POR EMAIL ─── */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
+        <div className="bg-white border border-gray-200 p-4 sm:p-5">
           <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <Plus size={16} />
             Agregar profesor por email
@@ -301,7 +301,7 @@ export default function ProfesoresPage() {
         )}
 
         {/* ─── TABLA DE PROFESORES ─── */}
-        <div className="bg-white rounded-xl border border-gray-200">
+        <div className="bg-white border border-gray-200">
           <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="relative w-full sm:max-w-xs">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -436,7 +436,7 @@ export default function ProfesoresPage() {
       {/* ─── MODAL EDITAR ─── */}
       {editProfesor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-lg p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">Editar Profesor</h2>
               <button onClick={() => { setEditProfesor(null); setError(null); }} className="p-1 hover:bg-gray-100 rounded-lg">

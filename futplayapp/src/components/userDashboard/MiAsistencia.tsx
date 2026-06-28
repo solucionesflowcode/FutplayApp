@@ -69,11 +69,11 @@ export default function MiAsistencia() {
     const clasesRestantes = membresia.tokens_totales - membresia.tokens_usados;
 
     return (
-        <div className="w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] rounded-2xl shadow-xl border border-white/10 p-6 relative overflow-hidden">
+        <div className="w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] shadow-xl border border-white/10 p-6 relative overflow-hidden border-t-2 border-t-[#F39200]">
             <div className="absolute top-0 right-0 w-40 h-40 bg-[#00A86B] rounded-full mix-blend-multiply filter blur-3xl opacity-10" />
 
             <div className="flex items-center gap-3 mb-5">
-                <div className="bg-[#00A86B]/20 p-2.5 rounded-xl">
+                <div className="bg-[#00A86B]/20 p-2.5 rounded">
                     <CalendarCheck className="text-[#00A86B]" size={20} />
                 </div>
                 <div>

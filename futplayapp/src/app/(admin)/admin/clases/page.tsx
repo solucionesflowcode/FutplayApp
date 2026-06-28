@@ -295,7 +295,7 @@ export default function ClasesPage() {
 
         {/* ─── VIEW: LIST ─── */}
         {view === "list" && (
-          <div className="bg-white rounded-xl border border-gray-200">
+          <div className="bg-white border border-gray-200">
             {/* ─── FILTROS ─── */}
             <div className="p-4 border-b border-gray-100 space-y-3">
               <div className="flex flex-wrap items-center gap-3">
@@ -489,7 +489,7 @@ export default function ClasesPage() {
       {/* ─── MODAL CREATE/EDIT ─── */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl">
+          <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-lg p-6 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">
                 {modal === "create" ? "Nueva Clase" : "Editar Clase"}
@@ -654,7 +654,7 @@ function AsistenciaDetalle({
   const { clase, inscripciones } = data;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200">
+    <div className="bg-white border border-gray-200">
       <div className="p-4 border-b border-gray-100">
         <h2 className="text-lg font-bold text-gray-900">{clase.titulo || "Partido"}</h2>
         <p className="text-sm text-gray-500 mt-1">

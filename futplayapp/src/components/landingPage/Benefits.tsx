@@ -35,9 +35,9 @@ export default function Benefits() {
                 
                 <div className="grid md:grid-cols-3 gap-8">
                     {benefits.map((item, index) => (
-                        <div key={index} className="bg-[#002a58] p-10 rounded-2xl border border-white/5 hover:border-[#f59e0b]/50 transition-colors group relative overflow-hidden">
+                        <div key={index} className="bg-[#002a58] p-10 border-t-2 border-t-[#f59e0b] border border-white/5 hover:border-[#f59e0b]/50 transition-colors group relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-full pointer-events-none group-hover:bg-[#f59e0b]/10 transition-colors"></div>
-                            <div className="mb-6 bg-white/10 w-16 h-16 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform">
+                            <div className="mb-6 bg-white/10 w-16 h-16 flex items-center justify-center rounded group-hover:scale-110 transition-transform">
                                 {item.icon}
                             </div>
                             <h3 className="text-2xl font-bold text-white mb-4">{item.title}</h3>

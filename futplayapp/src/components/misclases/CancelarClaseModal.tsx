@@ -43,7 +43,7 @@ export default function CancelarClaseModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] w-full max-w-md overflow-hidden border-t-2 border-t-[#ba1a1a]">
                 <div className="flex items-center justify-between p-5 border-b border-[#edeef0]">
                     <h2 className="text-lg font-bold text-[#00305b]">
                         Cancelar clase
@@ -58,7 +58,7 @@ export default function CancelarClaseModal({
                 </div>
 
                 <div className="p-5 space-y-4">
-                    <div className="bg-[#f8f9fb] rounded-xl p-4 space-y-3">
+                    <div className="bg-[#f8f9fb] rounded p-4 space-y-3">
                         <div>
                             <h3 className="font-bold text-[#00305b] text-base">
                                 {titulo}
@@ -80,7 +80,7 @@ export default function CancelarClaseModal({
                     </div>
 
                     <div
-                        className={`rounded-xl p-4 text-sm flex items-start gap-3 ${
+                        className={`rounded p-4 text-sm flex items-start gap-3 ${
                             devuelveToken
                                 ? "bg-amber-50 border border-amber-200"
                                 : "bg-red-50 border border-red-200"
@@ -121,14 +121,14 @@ export default function CancelarClaseModal({
                         <button
                             onClick={onClose}
                             disabled={loading}
-                            className="flex-1 px-4 py-3 rounded-xl border border-[#e1e2e4] text-[#42474f] font-bold text-sm hover:bg-[#f3f4f6] transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-3 rounded border border-[#e1e2e4] text-[#42474f] font-bold text-sm hover:bg-[#f3f4f6] transition-colors disabled:opacity-50"
                         >
                             Volver
                         </button>
                         <button
                             onClick={onConfirm}
                             disabled={loading}
-                            className="flex-1 px-4 py-3 rounded-xl bg-[#ba1a1a] text-white font-bold text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-3 rounded bg-[#ba1a1a] text-white font-bold text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                         >
                             {loading ? (
                                 <>
