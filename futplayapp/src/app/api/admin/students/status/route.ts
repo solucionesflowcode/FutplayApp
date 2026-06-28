@@ -1,6 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { verifyAdmin } from "@/utils/supabase/admin";
+import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 
 export async function POST(request: Request) {
   const user = await verifyAdmin();
@@ -22,24 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Status inválido" }, { status: 400 });
   }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    return NextResponse.json(
-      { error: "Falta SUPABASE_SERVICE_ROLE_KEY en .env.local" },
-      { status: 500 }
-    );
-  }
-
-  const adminClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    {
-      cookies: {
-        getAll() { return []; },
-        setAll() {},
-      },
-    }
-  );
+  const adminClient = await getAdminClient();
 
   const { data: membresias } = await adminClient
     .from("membresia")
