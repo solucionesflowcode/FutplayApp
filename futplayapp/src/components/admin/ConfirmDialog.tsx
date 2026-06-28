@@ -32,7 +32,7 @@ export default function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <div className="bg-white border-t-2 border-t-[#F28C28] shadow-xl ring-1 ring-inset ring-black/[0.03] w-full max-w-sm p-6">
         <div className="text-center">
           <div
             className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
@@ -65,14 +65,14 @@ export default function ConfirmDialog({
           <button
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 border border-gray-200 rounded text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 cursor-pointer ${confirmClass}`}
+            className={`flex-1 px-4 py-2.5 rounded text-sm font-semibold text-white disabled:opacity-50 cursor-pointer ${confirmClass}`}
           >
             {loading ? "Eliminando..." : confirmLabel}
           </button>

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
     AlertCircle,
     ArrowRight,
-    Ban,
     Building2,
     Calendar,
     Check,
@@ -29,7 +28,6 @@ import {
     ShieldCheck,
     Smartphone,
     Sparkles,
-    TrendingUp,
     Wallet,
     X,
     Zap,
@@ -241,6 +239,12 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
 
     const [busqueda, setBusqueda] = useState("");
     const [filtroEstado, setFiltroEstado] = useState<"todos" | PaymentRecord["estado"]>("todos");
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 5;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [busqueda, filtroEstado]);
 
     const historialFiltrado = useMemo(() => {
         return historial.filter((p) => {
@@ -251,6 +255,10 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
             return matchBusqueda && matchEstado;
         });
     }, [historial, busqueda, filtroEstado]);
+
+    const totalPages = Math.max(1, Math.ceil(historialFiltrado.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const historialPaginado = historialFiltrado.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
 
     if (loading) {
         return (
@@ -269,7 +277,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#001c37] to-[#00305B] flex items-center justify-center shadow-lg">
+                        <div className="w-10 h-10 bg-gradient-to-br from-[#001c37] to-[#00305B] flex items-center justify-center shadow-lg">
                             <Receipt className="w-5 h-5 text-[#F28C28]" />
                         </div>
                         <div>
@@ -287,71 +295,51 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
 
             {/* Stats cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-[#edeef0] shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                            Membresía
-                        </span>
-                        <div className={`w-8 h-8 rounded-lg ${sc.bg} flex items-center justify-center`}>
-                            <Shield className={`w-4 h-4 ${sc.text}`} />
-                        </div>
-                    </div>
-                    <p className="text-lg font-black text-[#00305B] capitalize">{suscripcion.plan}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
-                        <span className={`text-xs font-bold ${sc.text}`}>{sc.label}</span>
+                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                        Membresía
+                    </span>
+                    <p className="text-sm font-black text-[#00305B] capitalize leading-tight mt-0.5">{suscripcion.plan}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                        <span className={`text-[10px] font-bold ${sc.text}`}>{sc.label}</span>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-[#edeef0] shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                            Total pagado
-                        </span>
-                        <div className="w-8 h-8 rounded-lg bg-[#00A86B]/10 flex items-center justify-center">
-                            <TrendingUp className="w-4 h-4 text-[#00A86B]" />
-                        </div>
-                    </div>
-                    <p className="text-lg font-black text-[#00305B]">{formatCLP(stats.totalPagado)}</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                        Total pagado
+                    </span>
+                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{formatCLP(stats.totalPagado)}</p>
+                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">
                         {historial.filter((p) => p.estado === "aprobado").length} transacciones
                     </p>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-[#edeef0] shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                            Pendientes
-                        </span>
-                        <div className="w-8 h-8 rounded-lg bg-[#F28C28]/10 flex items-center justify-center">
-                            <Clock className="w-4 h-4 text-[#F28C28]" />
-                        </div>
-                    </div>
-                    <p className="text-lg font-black text-[#00305B]">{stats.pendientes}</p>
-                    <p className="text-xs text-gray-400 mt-1">por confirmar</p>
+                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                        Pendientes
+                    </span>
+                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.pendientes}</p>
+                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">por confirmar</p>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-[#edeef0] shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                            Rechazados
-                        </span>
-                        <div className="w-8 h-8 rounded-lg bg-[#ba1a1a]/10 flex items-center justify-center">
-                            <Ban className="w-4 h-4 text-[#ba1a1a]" />
-                        </div>
-                    </div>
-                    <p className="text-lg font-black text-[#00305B]">{stats.rechazados}</p>
-                    <p className="text-xs text-gray-400 mt-1">sin éxito</p>
+                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                        Rechazados
+                    </span>
+                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.rechazados}</p>
+                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">sin éxito</p>
                 </div>
             </div>
 
-            {/* Active subscription + Next billing */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Active subscription */}
+            <div>
                 {/* Active plan card */}
-                <div className="lg:col-span-2 bg-white rounded-2xl md:rounded-3xl shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] p-6 md:p-8">
+                <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] p-6 md:p-8 border-t-2 border-t-[#F39200]">
                     <div className="flex items-start justify-between mb-6">
                         <div className="flex items-center gap-4">
-                            <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] p-3.5 rounded-2xl shadow-lg">
+                            <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] p-3.5 shadow-lg">
                                 <Crown className="w-7 h-7 text-[#F28C28]" />
                             </div>
                             <div>
@@ -392,7 +380,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <div className="bg-gray-50 rounded-xl p-3.5">
+                        <div className="bg-gray-50 p-3.5">
                             <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
                                 Inicio
                             </p>
@@ -400,7 +388,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                 {formatDate(suscripcion.fecha_inicio)}
                             </p>
                         </div>
-                        <div className="bg-gray-50 rounded-xl p-3.5">
+                        <div className="bg-gray-50 p-3.5">
                             <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
                                 Vencimiento
                             </p>
@@ -408,7 +396,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                 {formatDate(suscripcion.fecha_vencimiento)}
                             </p>
                         </div>
-                        <div className="bg-gray-50 rounded-xl p-3.5 col-span-2 sm:col-span-1">
+                        <div className="bg-gray-50 p-3.5 col-span-2 sm:col-span-1">
                             <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
                                 Método de pago
                             </p>
@@ -418,77 +406,12 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                         </div>
                     </div>
 
-                    {/* Next billing */}
-                    {suscripcion.estado === "activa" && (
-                        <div className="mt-5 flex items-center gap-3 bg-[#F28C28]/5 border border-[#F28C28]/15 rounded-xl px-4 py-3">
-                            <Calendar className="w-4 h-4 text-[#F28C28] shrink-0" />
-                            <p className="text-sm text-[#00305B]">
-                                <span className="font-bold">Próximo cobro:</span>{" "}
-                                {formatDate(suscripcion.fecha_vencimiento)}{" "}
-                                <span className="text-gray-400">
-                                    ({daysUntil(suscripcion.fecha_vencimiento)} días)
-                                </span>
-                            </p>
-                        </div>
-                    )}
                 </div>
 
-                {/* Quick summary card */}
-                <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] rounded-2xl md:rounded-3xl p-6 md:p-8 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-[#F28C28] rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/4" />
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 translate-y-1/2 -translate-x-1/4" />
-
-                    <div className="relative z-10 space-y-6">
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-wider text-white/50 mb-1">
-                                Resumen rápido
-                            </p>
-                            <h3 className="text-lg font-bold">
-                                {stats.activa ? "Todo al día" : "Sin membresía activa"}
-                            </h3>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/70">Facturas pagadas</span>
-                                <span className="text-sm font-bold">
-                                    {historial.filter((p) => p.estado === "aprobado").length}
-                                </span>
-                            </div>
-                            <div className="h-px bg-white/10" />
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/70">Membresía activa</span>
-                                <span
-                                    className={`text-sm font-bold ${stats.activa ? "text-[#00A86B]" : "text-[#ba1a1a]"}`}
-                                >
-                                    {stats.activa ? "Sí" : "No"}
-                                </span>
-                            </div>
-                            <div className="h-px bg-white/10" />
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/70">Próximo vencimiento</span>
-                                <span className="text-sm font-bold">
-                                    {suscripcion.estado === "activa"
-                                        ? formatDate(suscripcion.fecha_vencimiento)
-                                        : "—"}
-                                </span>
-                            </div>
-                            <div className="h-px bg-white/10" />
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/70">Renovación automática</span>
-                                <span className="text-sm font-bold">
-                                    {suscripcion.renovacion_automatica ? "Activada" : "Desactivada"}
-                                </span>
-                            </div>
-                        </div>
-
-
-                    </div>
-                </div>
             </div>
 
             {/* Payment history */}
-            <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] overflow-hidden">
+            <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] overflow-hidden border-t-2 border-t-[#00305B]">
                 {/* Filters */}
                 <div className="p-6 md:p-8 border-b border-gray-100">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
@@ -509,7 +432,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                 value={busqueda}
                                 onChange={(e) => setBusqueda(e.target.value)}
                                 placeholder="Buscar por descripción o factura..."
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
+                                className="w-full pl-10 pr-4 py-2.5 rounded border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
                             />
                         </div>
                         <div className="flex gap-2">
@@ -518,7 +441,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                     <button
                                         key={f}
                                         onClick={() => setFiltroEstado(f)}
-                                        className={`px-3.5 py-2 rounded-xl text-xs font-bold tracking-wide transition-all capitalize ${
+                                        className={`px-3.5 py-2 rounded text-xs font-bold tracking-wide transition-all capitalize ${
                                             filtroEstado === f
                                                 ? "bg-[#00305B] text-white shadow-md"
                                                 : "bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200"
@@ -541,9 +464,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                     Factura
                                 </th>
                                 <th className="px-6 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                    Descripción
-                                </th>
-                                <th className="px-6 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
                                     Fecha
                                 </th>
                                 <th className="px-6 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -561,9 +481,9 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {historialFiltrado.length === 0 ? (
+                            {historialPaginado.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-8 py-16 text-center">
+                                    <td colSpan={6} className="px-8 py-16 text-center">
                                         <Search className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                                         <p className="text-gray-500 font-medium">
                                             No se encontraron transacciones
@@ -574,7 +494,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                     </td>
                                 </tr>
                             ) : (
-                                historialFiltrado.map((pago) => {
+                                historialPaginado.map((pago) => {
                                     const badge = estadoBadge(pago.estado);
                                     return (
                                         <tr
@@ -584,11 +504,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                             <td className="px-6 md:px-8 py-4">
                                                 <span className="text-sm font-bold text-[#00305B]">
                                                     {pago.id}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 md:px-8 py-4">
-                                                <span className="text-sm text-gray-700">
-                                                    {pago.descripcion}
                                                 </span>
                                             </td>
                                             <td className="px-6 md:px-8 py-4">
@@ -640,13 +555,31 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                         Mostrando {historialFiltrado.length} de {historial.length} transacciones
                     </p>
                     <div className="flex items-center gap-2">
-                        <button className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40">
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={safePage <= 1}
+                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40"
+                        >
                             Anterior
                         </button>
-                        <button className="px-3 py-1.5 text-xs font-bold text-white bg-[#00305B] rounded-lg hover:bg-[#001c37] transition-all">
-                            1
-                        </button>
-                        <button className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    page === safePage
+                                        ? "text-white bg-[#00305B] hover:bg-[#001c37]"
+                                        : "text-gray-500 bg-white border border-gray-200 hover:bg-gray-50"
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={safePage >= totalPages}
+                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40"
+                        >
                             Siguiente
                         </button>
                     </div>
@@ -722,9 +655,9 @@ function CheckoutView({
 
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
                     <div className="lg:col-span-3 space-y-6">
-                        <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] p-6 md:p-8">
+                        <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] p-6 md:p-8 border-t-2 border-t-[#F39200]">
                             <div className="flex items-start gap-4 md:gap-6">
-                                <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] p-4 rounded-2xl shrink-0 shadow-lg">
+                                <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] p-4 shrink-0 shadow-lg">
                                     {renderPlanIcon(plan.nombre)}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -752,7 +685,7 @@ function CheckoutView({
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] p-6 md:p-8">
+                        <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] p-6 md:p-8 border-t-2 border-t-[#00A86B]">
                             <h3 className="text-sm font-black uppercase tracking-wider text-gray-400 mb-5">
                                 Beneficios incluidos
                             </h3>
@@ -778,15 +711,15 @@ function CheckoutView({
                         </div>
 
                         <div className="flex flex-wrap gap-3 items-center text-xs text-gray-400">
-                            <div className="flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-[#edeef0]">
+                            <div className="flex items-center gap-1.5 bg-white px-3 py-2 border border-[#edeef0]">
                                 <Lock className="w-3.5 h-3.5 text-[#00A86B]" />
                                 Pago seguro SSL
                             </div>
-                            <div className="flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-[#edeef0]">
+                            <div className="flex items-center gap-1.5 bg-white px-3 py-2 border border-[#edeef0]">
                                 <ShieldCheck className="w-3.5 h-3.5 text-[#00305B]" />
                                 Datos protegidos
                             </div>
-                            <div className="flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-[#edeef0]">
+                            <div className="flex items-center gap-1.5 bg-white px-3 py-2 border border-[#edeef0]">
                                 <Building2 className="w-3.5 h-3.5 text-gray-400" />
                                 Flow / Webpay
                             </div>
@@ -794,7 +727,7 @@ function CheckoutView({
                     </div>
 
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] p-6 md:p-8">
+                        <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] p-6 md:p-8 border-t-2 border-t-[#00305B]">
                             <h3 className="text-sm font-black uppercase tracking-wider text-gray-400 mb-5">
                                 Resumen de compra
                             </h3>
@@ -835,7 +768,7 @@ function CheckoutView({
                         </div>
 
                         {/* Toggle pago automático */}
-                        <div className="bg-white rounded-xl border border-[#edeef0] p-4 flex items-start gap-3">
+                        <div className="bg-white border border-[#edeef0] p-4 flex items-start gap-3 border-t-2 border-t-[#00305B]">
                             <button
                                 onClick={() => setPagoAutomatico(!pagoAutomatico)}
                                 className={`relative shrink-0 mt-0.5 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -883,7 +816,7 @@ function CheckoutView({
                             <button
                                 onClick={handlePagar}
                                 disabled={!aceptaTerminos}
-                                className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+                                className={`w-full py-4 rounded font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 ${
                                     aceptaTerminos
                                         ? "bg-gradient-to-r from-[#F28C28] to-[#e07d1f] text-white shadow-lg shadow-[#F28C28]/30 hover:shadow-xl hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 active:translate-y-0"
                                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -901,7 +834,7 @@ function CheckoutView({
             {checkoutState === "processing" && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-[#001220]/60 backdrop-blur-sm" />
-                    <div className="relative bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
+                    <div className="relative bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300 border-t-2 border-t-[#F28C28]">
                         <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-[#F28C28] mx-auto" />
                         <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
                             Procesando pago
@@ -931,7 +864,7 @@ function CheckoutView({
             {checkoutState === "success" && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-[#001220]/60 backdrop-blur-sm" />
-                    <div className="relative bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
+                    <div className="relative bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300 border-t-2 border-t-[#00A86B]">
                         <div className="w-20 h-20 rounded-full bg-[#00A86B]/10 flex items-center justify-center mx-auto">
                             <CheckCircle2 className="w-10 h-10 text-[#00A86B]" />
                         </div>
@@ -946,7 +879,7 @@ function CheckoutView({
                         </p>
                         <button
                             onClick={() => router.push("/dashboard")}
-                            className="mt-8 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
+                            className="mt-8 w-full py-3.5 rounded bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
                         >
                             Ir al Dashboard
                         </button>
@@ -958,7 +891,7 @@ function CheckoutView({
             {checkoutState === "error" && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-[#001220]/60 backdrop-blur-sm" />
-                    <div className="relative bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
+                    <div className="relative bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300 border-t-2 border-t-[#ba1a1a]">
                         <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
                             <AlertCircle className="w-10 h-10 text-[#ba1a1a]" />
                         </div>
@@ -971,7 +904,7 @@ function CheckoutView({
                         <div className="flex flex-col gap-3 mt-8">
                             <button
                                 onClick={resetCheckout}
-                                className="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold transition-all"
+                                className="w-full py-3.5 rounded bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold transition-all"
                             >
                                 Intentar nuevamente
                             </button>
@@ -1159,7 +1092,7 @@ export default function PagosClient() {
                 <TopNavBarUser />
                 <div className="flex-1 flex items-center justify-center p-4">
                     {confirmingPayment ? (
-                        <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
+                        <div className="bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center border-t-2 border-t-[#F28C28]">
                             <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-[#F28C28] mx-auto" />
                             <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
                                 Confirmando pago
@@ -1169,7 +1102,7 @@ export default function PagosClient() {
                             </p>
                         </div>
                     ) : confirmPending ? (
-                        <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
+                        <div className="bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center border-t-2 border-t-[#F28C28]">
                             <div className="w-20 h-20 rounded-full bg-[#F28C28]/10 flex items-center justify-center mx-auto">
                                 <Hourglass className="w-10 h-10 text-[#F28C28]" />
                             </div>
@@ -1193,13 +1126,13 @@ export default function PagosClient() {
                                         }
                                         handleFlowReturn();
                                     }}
-                                    className="w-full py-3.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-all"
+                                    className="w-full py-3.5 rounded bg-red-500 hover:bg-red-600 text-white font-bold transition-all"
                                 >
                                     Cancelar compra
                                 </button>
                                 <button
                                     onClick={() => window.location.reload()}
-                                    className="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold transition-all"
+                                    className="w-full py-3.5 rounded bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold transition-all"
                                 >
                                     Reintentar
                                 </button>
@@ -1212,7 +1145,7 @@ export default function PagosClient() {
                             </div>
                         </div>
                     ) : confirmError ? (
-                        <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
+                        <div className="bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center border-t-2 border-t-[#ba1a1a]">
                             <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
                                 <AlertCircle className="w-10 h-10 text-[#ba1a1a]" />
                             </div>
@@ -1225,7 +1158,7 @@ export default function PagosClient() {
                             <div className="flex flex-col gap-3 mt-8">
                                 <button
                                     onClick={() => window.location.reload()}
-                                    className="w-full py-3.5 rounded-xl bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold transition-all"
+                                    className="w-full py-3.5 rounded bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold transition-all"
                                 >
                                     Reintentar
                                 </button>
@@ -1238,7 +1171,7 @@ export default function PagosClient() {
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center">
+                        <div className="bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center border-t-2 border-t-[#00A86B]">
                             <div className="w-20 h-20 rounded-full bg-[#00A86B]/10 flex items-center justify-center mx-auto">
                                 <CheckCircle2 className="w-10 h-10 text-[#00A86B]" />
                             </div>
@@ -1251,7 +1184,7 @@ export default function PagosClient() {
                             </p>
                             <button
                                 onClick={handleFlowReturn}
-                                className="mt-8 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
+                                className="mt-8 w-full py-3.5 rounded bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
                             >
                                 Ir al Dashboard
                             </button>
@@ -1301,7 +1234,7 @@ export default function PagosClient() {
             <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
                 <TopNavBarUser />
                 <div className="flex-1 flex items-center justify-center px-6">
-                    <div className="bg-white rounded-3xl shadow-xl p-12 max-w-md text-center">
+                    <div className="bg-white shadow-xl ring-1 ring-inset ring-black/[0.03] p-12 max-w-md text-center border-t-2 border-t-[#ba1a1a]">
                         <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
                         <h2 className="text-2xl font-black text-[#00305B] mb-2">
                             Plan no encontrado
@@ -1311,7 +1244,7 @@ export default function PagosClient() {
                         </p>
                         <button
                             onClick={handleBackToDashboard}
-                            className="inline-flex items-center gap-2 bg-[#F28C28] hover:bg-[#e07d1f] text-white px-8 py-3 rounded-xl font-bold transition-all"
+                            className="inline-flex items-center gap-2 bg-[#F28C28] hover:bg-[#e07d1f] text-white px-8 py-3 rounded font-bold transition-all"
                         >
                             Volver al dashboard
                         </button>
@@ -1326,7 +1259,7 @@ export default function PagosClient() {
             <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
                 <TopNavBarUser />
                 <div className="flex-1 flex items-center justify-center px-6">
-                    <div className="bg-white rounded-3xl shadow-xl p-12 max-w-md text-center">
+                    <div className="bg-white shadow-xl ring-1 ring-inset ring-black/[0.03] p-12 max-w-md text-center border-t-2 border-t-[#F28C28]">
                         <div className="w-16 h-16 rounded-full bg-[#F28C28]/10 flex items-center justify-center mx-auto mb-4">
                             <Crown className="w-8 h-8 text-[#F28C28]" />
                         </div>
@@ -1341,7 +1274,7 @@ export default function PagosClient() {
                         </p>
                         <button
                             onClick={handleBackToDashboard}
-                            className="inline-flex items-center gap-2 bg-[#F28C28] hover:bg-[#e07d1f] text-white px-8 py-3 rounded-xl font-bold transition-all"
+                            className="inline-flex items-center gap-2 bg-[#F28C28] hover:bg-[#e07d1f] text-white px-8 py-3 rounded font-bold transition-all"
                         >
                             Ir al Dashboard
                         </button>

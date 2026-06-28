@@ -25,7 +25,7 @@ export default function ConfiguracionPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-1">
-                        <div className="bg-gradient-to-br from-[#002447] to-[#00305B] rounded-2xl shadow-xl border border-white/10 p-6 flex flex-col items-center text-center">
+                        <div className="bg-gradient-to-br from-[#002447] to-[#00305B] border-t-2 border-t-[#F39200] shadow-xl border border-white/10 p-6 flex flex-col items-center text-center">
                             <div className="w-20 h-20 rounded-full bg-[#F39200]/20 border-2 border-[#F39200]/30 flex items-center justify-center mb-4">
                                 <User size={36} className="text-[#F39200]" />
                             </div>
@@ -38,9 +38,9 @@ export default function ConfiguracionPage() {
                     </div>
 
                     <div className="lg:col-span-2 space-y-4">
-                        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6">
+                        <div className="bg-white border-t-2 border-t-[#00305B] shadow-xl border border-slate-100 p-6">
                             <div className="flex items-center gap-3 mb-6">
-                                <div className="bg-[#00305B]/10 p-2.5 rounded-xl">
+                                <div className="bg-[#00305B]/10 p-2.5">
                                     <User size={18} className="text-[#00305B]" />
                                 </div>
                                 <h3 className="text-[#00305B] text-sm font-extrabold tracking-wide uppercase">

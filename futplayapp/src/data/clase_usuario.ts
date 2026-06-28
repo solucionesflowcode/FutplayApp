@@ -33,3 +33,21 @@ export async function actualizarAsistencia(
 
   return !error;
 }
+
+export async function cancelarClase(
+  inscripcionId: string,
+  usuarioId: string,
+  fechaHora: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch("/api/clases/cancelar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inscripcionId, fechaHora }),
+    });
+
+    return await res.json();
+  } catch {
+    return { success: false, message: "Error de conexión" };
+  }
+}

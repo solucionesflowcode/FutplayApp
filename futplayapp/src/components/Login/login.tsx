@@ -28,8 +28,8 @@ export default function Login() {
         <ArrowLeft className="w-5 h-5" />
         <span className="text-sm">Volver al inicio</span>
       </Link>
-      <div className="flex justify-center w-[850px] h-[500px] md:h-[500px] md:w-[650px] bg-transparent md:bg-white border-0 md:border-2 md:border-gray-200 rounded-none md:rounded-[20px] shadow-none md:shadow-[0px_7px_18px_-4px_rgba(0,_0,_0,_0.35)]">
-        <div className="hidden md:block relative flex items-center justify-center bg-[#FFAD91] md:w-[50%] m-[8px] rounded-[12px]">
+      <div className="flex justify-center w-[850px] h-[500px] md:h-[500px] md:w-[650px] bg-transparent md:bg-white border-0 md:border-2 md:border-gray-200 border-t-2 border-t-[#00305B] shadow-none md:shadow-[0px_7px_18px_-4px_rgba(0,_0,_0,_0.35)]">
+        <div className="hidden md:block relative flex items-center justify-center bg-[#FFAD91] md:w-[50%] m-[8px] border-t-2 border-t-[#F39200]">
 
 
           <img src="/login-image-player.svg" alt="" className="hidden md:block" />
@@ -54,7 +54,7 @@ export default function Login() {
               <button
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className=" w-full flex items-center justify-center gap-3 bg-[#EAEAEA] hover:bg-gray-50 transition-all px-6 py-[10px] rounded-xl border-1 border-[#B4B4B4] font-bold text-[#505050] text-[12px] disabled:opacity-50 cursor-pointer shadow-md"
+                className=" w-full flex items-center justify-center gap-3 bg-[#EAEAEA] hover:bg-gray-50 transition-all px-6 py-[10px] rounded border-1 border-[#B4B4B4] font-bold text-[#505050] text-[12px] disabled:opacity-50 cursor-pointer shadow-md"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -90,7 +90,7 @@ export default function Login() {
 
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
           {error}
         </div>
       )}

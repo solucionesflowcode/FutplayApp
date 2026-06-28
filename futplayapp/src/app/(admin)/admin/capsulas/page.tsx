@@ -712,7 +712,7 @@ export default function CapsulasPage() {
         </div>
 
         {/* ─── TABLE ─── */}
-        <div className="bg-white rounded-xl border border-gray-200">
+        <div className="bg-white border border-gray-200">
           <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="relative w-full sm:max-w-xs">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -862,7 +862,7 @@ export default function CapsulasPage() {
       {/* ─── MODAL WIZARD ─── */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-2xl p-4 sm:p-6 shadow-xl max-h-[95vh] flex flex-col">
+          <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-2xl p-4 sm:p-6 shadow-xl max-h-[95vh] flex flex-col">
             
             {/* Modal Header */}
             <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-3">
@@ -878,7 +878,7 @@ export default function CapsulasPage() {
             </div>
 
             {/* Stepper Progress Indicator */}
-            <div className="flex justify-between items-center mb-6 bg-gray-50 p-2 sm:p-3 rounded-xl border border-gray-100">
+            <div className="flex justify-between items-center mb-6 bg-gray-50 p-2 sm:p-3 rounded border border-gray-100">
               <div className="flex-1 flex items-center justify-center gap-2">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${currentStep === 1 ? "bg-blue-600 text-white animate-pulse" : currentStep > 1 ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"}`}>
                   {currentStep > 1 ? <Check size={14} /> : "1"}
@@ -999,7 +999,7 @@ export default function CapsulasPage() {
                     <div>
                       {/* Caso 1: Subiendo archivo */}
                       {uploading && (
-                        <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-6 text-center space-y-3">
+                        <div className="bg-blue-50/50 border border-blue-200 rounded p-6 text-center space-y-3">
                           <Loader2 className="animate-spin text-blue-600 mx-auto" size={24} />
                           <div className="text-sm font-semibold text-blue-900">{uploadStatus}</div>
                           <div className="max-w-md mx-auto bg-gray-200 rounded-full h-2.5 overflow-hidden">
@@ -1011,7 +1011,7 @@ export default function CapsulasPage() {
 
                       {/* Caso 2: Procesamiento/Polling */}
                       {!uploading && form.bunny_video_id && (
-                        <div className="bg-green-50/50 border border-green-200 rounded-xl p-5 space-y-3">
+                        <div className="bg-green-50/50 border border-green-200 rounded p-5 space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-bold text-green-900 flex items-center gap-1.5">
                               {videoProcessing ? (
@@ -1059,7 +1059,7 @@ export default function CapsulasPage() {
                           onDragOver={handleDrag}
                           onDragLeave={handleDrag}
                           onDrop={handleDrop}
-                          className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                          className={`border-2 border-dashed rounded p-8 text-center transition-all ${
                             isDragActive 
                               ? "border-blue-500 bg-blue-50/50" 
                               : "border-gray-300 hover:border-blue-400 bg-gray-50/30"
@@ -1123,7 +1123,7 @@ export default function CapsulasPage() {
                     <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Miniatura (Subir a S3)</label>
 
                     {miniaturaUploading ? (
-                      <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-5 text-center space-y-3">
+                      <div className="bg-blue-50/50 border border-blue-200 rounded p-5 text-center space-y-3">
                         <Loader2 className="animate-spin text-blue-600 mx-auto" size={24} />
                         <div className="text-sm font-semibold text-blue-900">{miniaturaStatus}</div>
                         <div className="max-w-xs mx-auto bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -1132,7 +1132,7 @@ export default function CapsulasPage() {
                         <div className="text-xs text-blue-500 font-bold">{miniaturaProgress}% subido</div>
                       </div>
                     ) : form.imagen ? (
-                      <div className="bg-green-50/50 border border-green-200 rounded-xl p-4">
+                      <div className="bg-green-50/50 border border-green-200 rounded p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-14 h-10 rounded border border-green-300 bg-white overflow-hidden shrink-0">
@@ -1166,7 +1166,7 @@ export default function CapsulasPage() {
                         onDragOver={handleDragMini}
                         onDragLeave={handleDragMini}
                         onDrop={handleDropMini}
-                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                        className={`border-2 border-dashed rounded p-6 text-center transition-all ${
                           isDragMiniActive
                             ? "border-blue-500 bg-blue-50/50"
                             : "border-gray-300 hover:border-blue-400 bg-gray-50/30"
@@ -1195,7 +1195,7 @@ export default function CapsulasPage() {
                     <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Documento PDF (Material de apoyo)</label>
 
                     {documentoUploading ? (
-                      <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-5 text-center space-y-3">
+                      <div className="bg-blue-50/50 border border-blue-200 rounded p-5 text-center space-y-3">
                         <Loader2 className="animate-spin text-blue-600 mx-auto" size={24} />
                         <div className="text-sm font-semibold text-blue-900">{documentoStatus}</div>
                         <div className="max-w-xs mx-auto bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -1204,7 +1204,7 @@ export default function CapsulasPage() {
                         <div className="text-xs text-blue-500 font-bold">{documentoProgress}% subido</div>
                       </div>
                     ) : pendingDoc ? (
-                      <div className="bg-green-50/50 border border-green-200 rounded-xl p-4">
+                      <div className="bg-green-50/50 border border-green-200 rounded p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
@@ -1241,7 +1241,7 @@ export default function CapsulasPage() {
                         </div>
                       </div>
                     ) : existingDoc ? (
-                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                      <div className="bg-gray-50 border border-gray-200 rounded p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
@@ -1282,7 +1282,7 @@ export default function CapsulasPage() {
                         onDragOver={handleDragDoc}
                         onDragLeave={handleDragDoc}
                         onDrop={handleDropDoc}
-                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                        className={`border-2 border-dashed rounded p-6 text-center transition-all ${
                           isDragDocActive
                             ? "border-blue-500 bg-blue-50/50"
                             : "border-gray-300 hover:border-blue-400 bg-gray-50/30"
@@ -1335,7 +1335,7 @@ export default function CapsulasPage() {
                   </div>
 
                   {/* Resumen de la Cápsula */}
-                  <div className="bg-gray-50 border border-gray-150 rounded-xl p-4 space-y-3">
+                  <div className="bg-gray-50 border border-gray-150 rounded p-4 space-y-3">
                     <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 pb-1.5">Resumen de Cápsula</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
                       <div>
