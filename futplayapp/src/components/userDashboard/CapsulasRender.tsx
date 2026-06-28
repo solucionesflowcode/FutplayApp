@@ -14,7 +14,7 @@ export default function CapsulasRender({ capsulas }: Props) {
 
             <div className="flex justify-between w-full items-center">
                 <h1 className="text-[#00305B] text-[25px] font-semibold">
-                    Últimas Cápsulas EdTech
+                    Nuestras cápsulas
                 </h1>
                 <Link href="/capsules" className="text-[#00305B] text-[15px] font-semibold underline underline-offset-4">
                     Ver toda la biblioteca

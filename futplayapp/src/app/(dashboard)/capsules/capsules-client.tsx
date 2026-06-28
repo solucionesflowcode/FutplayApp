@@ -65,7 +65,7 @@ function FeaturedHero({ capsula }: { capsula: Capsula }) {
 function CapsulaCard({ capsula }: { capsula: Capsula }) {
     return (
         <Link href={`/capsules/${capsula.id}`} className="block h-full">
-            <div className="relative aspect-square rounded-full overflow-hidden shadow-sm hover:translate-y-[-3px] transition-all duration-300 cursor-pointer group ring-1 ring-inset ring-black/[0.03]">
+            <div className="relative aspect-square rounded-2xl overflow-hidden shadow-sm hover:translate-y-[-3px] transition-all duration-300 cursor-pointer group ring-1 ring-inset ring-black/[0.03]">
                 <img
                     src={capsula.imagen || PLACEHOLDER}
                     alt={capsula.titulo}
