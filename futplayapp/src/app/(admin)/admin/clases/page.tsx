@@ -41,6 +41,7 @@ type ClaseForm = {
   sede_id: string;
   cupo_maximo: number;
   profesor_id: string;
+  tipo_evento: "entrenamiento" | "partido";
   fecha: string;
   hora: string;
 };
@@ -51,6 +52,7 @@ const emptyForm: ClaseForm = {
   sede_id: "",
   cupo_maximo: 15,
   profesor_id: "",
+  tipo_evento: "entrenamiento",
   fecha: "",
   hora: "",
 };
@@ -84,8 +86,7 @@ export default function ClasesPage() {
   useEffect(() => { fetchClases(); }, [fetchClases]);
 
   const filtered = clases.filter((c) => {
-    const matchSearch =
-      c.titulo.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch = (c.titulo || "").toLowerCase().includes(search.toLowerCase()) ||
       c.sede_nombre.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
 
@@ -117,11 +118,12 @@ export default function ClasesPage() {
     const [fecha, hora] = dt.split("T");
     setForm({
       id: c.id,
-      titulo: c.titulo,
+      titulo: c.titulo || "",
       descripcion: c.descripcion,
-      sede_id: c.sede_id,
-      cupo_maximo: c.cupo_maximo,
+      sede_id: c.sede_id || "",
+      cupo_maximo: c.cupo_maximo ?? 15,
       profesor_id: c.profesor_id || "",
+      tipo_evento: c.tipo_evento,
       fecha: fecha || "",
       hora: hora || "",
     });
@@ -129,7 +131,7 @@ export default function ClasesPage() {
   };
 
   const handleSave = async () => {
-    if (!form.titulo || !form.sede_id) {
+    if (form.tipo_evento !== "partido" && (!form.titulo || !form.sede_id)) {
       setError("Título y sede son obligatorios");
       return;
     }
@@ -139,12 +141,17 @@ export default function ClasesPage() {
     const fecha_hora = form.fecha && form.hora ? `${form.fecha}T${form.hora}` : undefined;
     const fecha_hora_local: string | null = fecha_hora ?? null;
     const base: any = {
-      titulo: form.titulo,
+      tipo_evento: form.tipo_evento,
       descripcion: form.descripcion,
-      sede_id: form.sede_id,
-      cupo_maximo: form.cupo_maximo,
-      profesor_id: form.profesor_id,
     };
+    if (form.tipo_evento !== "partido") {
+      base.titulo = form.titulo;
+      base.sede_id = form.sede_id;
+      base.cupo_maximo = form.cupo_maximo;
+      base.profesor_id = form.profesor_id;
+    } else if (form.sede_id) {
+      base.sede_id = form.sede_id;
+    }
     if (fecha_hora) base.fecha_hora = fecha_hora;
 
     const res = modal === "create"
@@ -166,7 +173,18 @@ export default function ClasesPage() {
       setClases((prev) =>
         prev.map((c) =>
           c.id === form.id
-            ? { ...c, titulo: form.titulo, descripcion: form.descripcion, sede_id: form.sede_id, cupo_maximo: form.cupo_maximo, profesor_id: form.profesor_id, fecha_hora: fecha_hora_local }
+            ? {
+                ...c,
+                titulo: form.tipo_evento !== "partido" ? form.titulo : null,
+                descripcion: form.descripcion,
+                sede_id: form.tipo_evento !== "partido" ? form.sede_id : form.sede_id || null,
+                sede_nombre: form.sede_id ? (sedes.find(s => s.id === form.sede_id)?.nombre || "") : "",
+                cupo_maximo: form.tipo_evento !== "partido" ? form.cupo_maximo : null,
+                profesor_id: form.tipo_evento !== "partido" ? (form.profesor_id || null) : null,
+                profesor_nombre: form.tipo_evento !== "partido" ? (profesores.find(p => p.id === form.profesor_id)?.nombre || "") : "",
+                tipo_evento: form.tipo_evento,
+                fecha_hora: fecha_hora_local,
+              }
             : c
         )
       );
@@ -355,9 +373,14 @@ export default function ClasesPage() {
                         onClick={() => handleAsistenciaClase(c.id)}
                       >
                         <td className="p-3">
-                          <p className="font-semibold text-gray-900">{c.titulo}</p>
+                          <p className="font-semibold text-gray-900">{c.titulo || "Partido"}</p>
                           {c.descripcion && (
                             <p className="text-xs text-gray-400 truncate max-w-[200px]">{c.descripcion}</p>
+                          )}
+                          {c.tipo_evento && (
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                              {c.tipo_evento === "partido" ? "Partido" : "Entrenamiento"}
+                            </span>
                           )}
                         </td>
                         <td className="p-3">
@@ -370,12 +393,18 @@ export default function ClasesPage() {
                             <span className="text-gray-300">—</span>
                           )}
                         </td>
-                        <td className="p-3 text-gray-600">{c.sede_nombre}</td>
+                        <td className="p-3 text-gray-600">{c.sede_nombre || "—"}</td>
                         <td className="p-3">
-                          <span className={`font-semibold ${c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
-                            {c.inscritos}
-                          </span>
-                          <span className="text-gray-400">/{c.cupo_maximo}</span>
+                          {c.cupo_maximo != null ? (
+                            <>
+                              <span className={`font-semibold ${c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
+                                {c.inscritos}
+                              </span>
+                              <span className="text-gray-400">/{c.cupo_maximo}</span>
+                            </>
+                          ) : (
+                            <span className="text-gray-400">{c.inscritos} inscritos</span>
+                          )}
                         </td>
                         <td className="p-3">
                           <div className="flex items-center gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
@@ -455,15 +484,76 @@ export default function ClasesPage() {
             </div>
 
             <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo</label>
+                  <select
+                    value={form.tipo_evento}
+                    onChange={(e) => setForm((p) => ({ ...p, tipo_evento: e.target.value as "entrenamiento" | "partido" }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  >
+                    <option value="entrenamiento">Entrenamiento</option>
+                    <option value="partido">Partido</option>
+                  </select>
+                </div>
+              </div>
+
+              {form.tipo_evento === "entrenamiento" && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Título *</label>
+                    <input
+                      type="text"
+                      value={form.titulo}
+                      onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                      placeholder="Ej: Entrenamiento Técnico"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Cupo Máximo</label>
+                      <input
+                        type="number"
+                        value={form.cupo_maximo}
+                        onChange={(e) => setForm((p) => ({ ...p, cupo_maximo: parseInt(e.target.value) || 1 }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                        min={1}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Profesor</label>
+                    <select
+                      value={form.profesor_id}
+                      onChange={(e) => setForm((p) => ({ ...p, profesor_id: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                    >
+                      <option value="">Sin profesor asignado</option>
+                      {profesores.map((pr) => (
+                        <option key={pr.id} value={pr.id}>{pr.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Título *</label>
-                <input
-                  type="text"
-                  value={form.titulo}
-                  onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
+                <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  Sede {form.tipo_evento === "entrenamiento" ? "*" : ""}
+                </label>
+                <select
+                  value={form.sede_id}
+                  onChange={(e) => setForm((p) => ({ ...p, sede_id: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  placeholder="Ej: Entrenamiento Técnico"
-                />
+                >
+                  <option value="">{form.tipo_evento === "partido" ? "Sin sede (opcional)" : "Seleccionar sede"}</option>
+                  {sedes.map((s) => (
+                    <option key={s.id} value={s.id}>{s.nombre}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -473,48 +563,8 @@ export default function ClasesPage() {
                   onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 resize-none"
                   rows={2}
-                  placeholder="Descripción opcional"
+                  placeholder={form.tipo_evento === "partido" ? "Ej: Partido amistoso vs..." : "Descripción opcional"}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Sede *</label>
-                  <select
-                    value={form.sede_id}
-                    onChange={(e) => setForm((p) => ({ ...p, sede_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  >
-                    <option value="">Seleccionar sede</option>
-                    {sedes.map((s) => (
-                      <option key={s.id} value={s.id}>{s.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Cupo Máximo</label>
-                  <input
-                    type="number"
-                    value={form.cupo_maximo}
-                    onChange={(e) => setForm((p) => ({ ...p, cupo_maximo: parseInt(e.target.value) || 1 }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    min={1}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Profesor</label>
-                <select
-                  value={form.profesor_id}
-                  onChange={(e) => setForm((p) => ({ ...p, profesor_id: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                >
-                  <option value="">Sin profesor asignado</option>
-                  {profesores.map((pr) => (
-                    <option key={pr.id} value={pr.id}>{pr.nombre}</option>
-                  ))}
-                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -589,9 +639,13 @@ function AsistenciaDetalle({
   return (
     <div className="bg-white rounded-xl border border-gray-200">
       <div className="p-4 border-b border-gray-100">
-        <h2 className="text-lg font-bold text-gray-900">{clase.titulo}</h2>
+        <h2 className="text-lg font-bold text-gray-900">{clase.titulo || "Partido"}</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Cupo: {inscripciones.length}/{clase.cupo_maximo}
+          {clase.cupo_maximo != null ? (
+            <>Cupo: {inscripciones.length}/{clase.cupo_maximo}</>
+          ) : (
+            <>{inscripciones.length} inscritos</>
+          )}
           {clase.fecha_hora ? (
             <> · {new Date(clase.fecha_hora).toLocaleDateString("es-CL", {
               day: "2-digit", month: "short", year: "numeric",

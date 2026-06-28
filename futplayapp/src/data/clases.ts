@@ -2,12 +2,13 @@ import { createClient } from "@/utils/supabase/client";
 
 export type ClaseRow = {
   id: string;
-  titulo: string;
+  titulo: string | null;
   descripcion: string;
-  sede_id: string;
-  cupo_maximo: number;
+  sede_id: string | null;
+  cupo_maximo: number | null;
   profesor_id: string | null;
   fecha_hora: string | null;
+  tipo_evento: "entrenamiento" | "partido";
   created_at: string;
 };
 
@@ -51,9 +52,9 @@ export async function getProximaClase(userId: string): Promise<Array<{
   const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string }> = [];
   for (const item of data) {
     const c = item.clase as Record<string, unknown>;
-    if (!c || !c.titulo) continue;
+    if (!c) continue;
     rows.push({
-      titulo: c.titulo as string,
+      titulo: (c.titulo as string) || "Partido",
       descripcion: c.descripcion as string,
       fecha_hora: c.fecha_hora as string,
       sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
@@ -86,12 +87,13 @@ export async function getSedes(): Promise<Sede[]> {
 }
 
 export async function createClase(data: {
-  titulo: string;
+  titulo?: string;
   descripcion: string;
-  sede_id: string;
-  cupo_maximo: number;
+  sede_id?: string;
+  cupo_maximo?: number;
   profesor_id?: string;
   fecha_hora?: string;
+  tipo_evento?: "entrenamiento" | "partido";
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/clases", {
     method: "POST",
@@ -113,6 +115,7 @@ export async function updateClase(data: {
   cupo_maximo?: number;
   profesor_id?: string | null;
   fecha_hora?: string | null;
+  tipo_evento?: "entrenamiento" | "partido";
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/clases", {
     method: "PUT",

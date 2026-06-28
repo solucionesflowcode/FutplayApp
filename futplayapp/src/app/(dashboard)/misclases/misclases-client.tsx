@@ -33,6 +33,7 @@ type SessionItem = {
     descripcion: string | null;
     sede: string;
     claseId: string;
+    tipo_evento: "entrenamiento" | "partido";
 };
 
 function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
@@ -47,6 +48,7 @@ function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
             descripcion: row.descripcion,
             sede: row.sede?.nombre ?? "",
             claseId: row.id,
+            tipo_evento: row.tipo_evento,
         });
     }
     return out;
@@ -390,6 +392,18 @@ export default function MisClasesClient() {
                                             Falta
                                         </span>
                                     </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs">🏋️</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            Entrenamiento
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs">⚽</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            Partido
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -419,6 +433,8 @@ export default function MisClasesClient() {
                                     const hasPresente = estados.includes("presente");
                                     const hasProxima = estados.includes("proxima");
                                     const hasCancelada = estados.includes("cancelada");
+                                    const hasPartido = daySessions.some((s) => s.tipo_evento === "partido");
+                                    const hasEntrenamiento = daySessions.some((s) => s.tipo_evento === "entrenamiento");
                                     const hasNeutral = estados.includes("neutral");
 
                                     const unenrolledProximas = daySessions.filter(
@@ -482,6 +498,7 @@ export default function MisClasesClient() {
                                                                 descripcion: s.descripcion,
                                                                 fecha_hora: s.fecha_hora,
                                                                 sede: s.sede,
+                                                                tipo_evento: s.tipo_evento,
                                                             })),
                                                         )
                                                     : undefined
@@ -509,6 +526,12 @@ export default function MisClasesClient() {
                                             )}
                                             {daySessions.length > 0 && (
                                                 <div className="flex items-center gap-0.5 mt-1">
+                                                    {hasEntrenamiento && (
+                                                        <span className="text-xs">🏋️</span>
+                                                    )}
+                                                    {hasPartido && (
+                                                        <span className="text-xs">⚽</span>
+                                                    )}
                                                     {hasAusente && (
                                                         <XCircle
                                                             className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ba1a1a]"
@@ -728,7 +751,7 @@ export default function MisClasesClient() {
                                                     Fecha
                                                 </th>
                                                 <th className="px-4 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                    Entrenamiento
+                                                    Evento
                                                 </th>
                                                 <th className="px-4 md:px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
                                                     Estado
@@ -807,8 +830,8 @@ export default function MisClasesClient() {
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4">
-                                                                <span className="inline-block bg-[#d3e3ff] text-[#16487b] px-3 py-1 rounded-full text-[10px] font-bold uppercase max-w-[200px] truncate align-middle">
-                                                                    {s.titulo}
+                                                            <span className="inline-block bg-[#d3e3ff] text-[#16487b] px-3 py-1 rounded-full text-[10px] font-bold uppercase max-w-[200px] truncate align-middle">
+                                                                    {s.tipo_evento === "partido" ? "Partido" : "Entrenamiento"}
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4">
@@ -823,7 +846,7 @@ export default function MisClasesClient() {
                                                             <td className="px-4 md:px-8 py-4">
                                                             {s.inscripcionId !== null &&
                                                                 new Date(s.fecha_hora) > new Date() &&
-                                                                raw !== "cancelado" && raw !== "cancelado_sin_reembolso" && (
+                                                                (raw === "sin_confirmar" || raw === "pendiente" || raw === "confirmado_whatsapp") && (
                                                                         <button
                                                                             onClick={() =>
                                                                                 setCancelTarget(s)

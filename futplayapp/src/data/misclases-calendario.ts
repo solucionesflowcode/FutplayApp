@@ -8,6 +8,7 @@ export type ClaseConInscripcion = {
     sede: { nombre: string } | null;
     inscripcionId: string | null;
     asistencia: string | boolean | null;
+    tipo_evento: "entrenamiento" | "partido";
 };
 
 export async function getAllClasesConInscripcion(
@@ -17,7 +18,7 @@ export async function getAllClasesConInscripcion(
 
     const { data: clases, error: errorClases } = await supabase
         .from("clase")
-        .select("id, titulo, descripcion, fecha_hora, sede:sede_id (nombre)")
+        .select("id, titulo, descripcion, fecha_hora, tipo_evento, sede:sede_id (nombre)")
         .order("fecha_hora", { ascending: false });
 
     if (errorClases) {
@@ -45,6 +46,7 @@ export async function getAllClasesConInscripcion(
             sede: (clase.sede as { nombre: string } | null) ?? null,
             inscripcionId: ins?.id ?? null,
             asistencia: ins?.asistencia ?? null,
+            tipo_evento: clase.tipo_evento,
         };
     });
 }
