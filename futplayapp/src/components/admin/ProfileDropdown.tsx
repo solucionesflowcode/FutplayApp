@@ -133,7 +133,7 @@ export default function ProfileDropdown() {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[220px] py-2">
+          <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded shadow-lg ring-1 ring-inset ring-black/[0.03] z-50 min-w-[220px] py-2">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
@@ -172,7 +172,7 @@ export default function ProfileDropdown() {
       {/* Edit Modal */}
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
+          <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-md p-6 shadow-xl">
             {/* Photo */}
             <div className="flex flex-col items-center mb-6">
               <div className="relative group">

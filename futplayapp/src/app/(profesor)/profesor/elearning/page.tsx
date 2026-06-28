@@ -50,7 +50,7 @@ export default function ElearningPage() {
               <Link
                 key={capsula.id}
                 href={`/capsules/${capsula.id}`}
-                className="bg-white rounded-[1.5rem] border border-[#edeef0] overflow-hidden hover:shadow-lg transition-shadow block"
+                className="bg-white border-t-2 border-t-[#fc9910] border border-[#edeef0] overflow-hidden hover:shadow-lg transition-shadow block"
               >
                 {capsula.imagen && (
                   <div className="aspect-video bg-gray-100 overflow-hidden">

@@ -109,7 +109,7 @@ export default function CalendarioClases({
   }, [clasesInView]);
 
   return (
-    <div className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
+    <div className="bg-white p-5 md:p-8 border-t-2 border-t-[#00305B] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 md:mb-8">
         <div className="flex items-center gap-3 md:gap-4 flex-wrap">
           <h2 className="text-lg md:text-xl font-bold text-[#00305b] capitalize">
@@ -210,7 +210,7 @@ export default function CalendarioClases({
           }
 
           const baseCell =
-            "min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative transition-transform";
+            "min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded flex flex-col items-center justify-center relative transition-transform";
 
           let cellClass = `${baseCell} `;
           if (!inMonth) {
@@ -305,7 +305,7 @@ export default function CalendarioClases({
                     onSelectClase(isSelected ? null : clase.claseId)
                   }
                   className={`
-                    w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer
+                    w-full text-left flex items-center gap-3 px-4 py-3 rounded transition-all cursor-pointer
                     ${isSelected
                       ? "bg-[#15477a] text-white shadow-md"
                       : clase.isMine

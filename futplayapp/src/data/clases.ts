@@ -26,11 +26,18 @@ export type Sede = {
   nombre: string;
 };
 
+function localISONow(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 export async function getProximaClase(userId: string): Promise<Array<{
   titulo: string;
   descripcion: string;
   fecha_hora: string;
   sede: string;
+  tipo_evento: "entrenamiento" | "partido";
 }>> {
   const supabase = createClient();
 
@@ -41,23 +48,28 @@ export async function getProximaClase(userId: string): Promise<Array<{
                 titulo,
                 descripcion,
                 fecha_hora,
-                sede!inner (nombre)
+                tipo_evento,
+                sede (nombre)
             )
         `)
     .eq("usuario_id", userId)
-    .gte("clase.fecha_hora", new Date().toISOString());
+    .gte("clase.fecha_hora", localISONow());
 
   if (error || !data?.length) return [];
 
-  const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string }> = [];
+  const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string; tipo_evento: "entrenamiento" | "partido" }> = [];
   for (const item of data) {
-    const c = item.clase as Record<string, unknown>;
+    const raw = item.clase as unknown;
+    const c = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
     if (!c) continue;
+    const rawSede = c.sede;
+    const sedeObj = Array.isArray(rawSede) ? (rawSede as Record<string, unknown>[])[0] : rawSede as Record<string, string> | null;
     rows.push({
       titulo: (c.titulo as string) || "Partido",
       descripcion: c.descripcion as string,
       fecha_hora: c.fecha_hora as string,
-      sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
+      sede: (sedeObj?.nombre as string) ?? "",
+      tipo_evento: (c.tipo_evento as "entrenamiento" | "partido") || "partido",
     });
   }
 

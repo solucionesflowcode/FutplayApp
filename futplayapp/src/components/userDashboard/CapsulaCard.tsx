@@ -26,7 +26,7 @@ export default function CapsulaCard({
         <Link href={`/capsules/${id}`} className="w-full cursor-pointer block">
 
 
-            <div className="relative w-full h-[180px] rounded-2xl overflow-hidden group">
+            <div className="relative w-full h-[180px] overflow-hidden group">
 
                 <img
                     src={imgSrc}

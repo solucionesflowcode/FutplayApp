@@ -342,7 +342,7 @@ export default function AnaliticasPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-600 text-sm">
+        <div className="bg-red-50 border border-red-200 rounded p-6 text-red-600 text-sm">
           {error}
         </div>
       </div>
@@ -397,7 +397,7 @@ export default function AnaliticasPage() {
 
         {/* Section 2: Ingresos Mensuales */}
         <div className="flex-none self-stretch z-0">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div>
@@ -590,7 +590,7 @@ export default function AnaliticasPage() {
         <div className="flex-none self-stretch z-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Por Plan */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-6">
                 Alumnos por Plan
               </h2>
@@ -629,7 +629,7 @@ export default function AnaliticasPage() {
             </div>
 
             {/* Ingresos por Plan */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-6">
                 Ingresos por Plan
               </h2>
@@ -682,7 +682,7 @@ export default function AnaliticasPage() {
 
         {/* Section 4: Planes Disponibles */}
         <div className="flex-none self-stretch z-0">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white border border-gray-200 p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">
               Planes Disponibles
             </h2>
@@ -722,7 +722,7 @@ export default function AnaliticasPage() {
       {monthDetail && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 pb-8">
           <div className="fixed inset-0 bg-black/40" onClick={() => { setMonthDetail(null); setSelectedMonth(null); }} />
-          <div className="relative bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto z-10">
+          <div className="relative bg-white border-t-2 border-t-[#F28C28] border border-gray-200 shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto z-10">
             <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">
@@ -752,15 +752,15 @@ export default function AnaliticasPage() {
                 <>
                   {/* Summary card */}
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-blue-50 rounded-xl p-4 text-center">
+                    <div className="bg-blue-50 rounded p-4 text-center">
                       <p className="text-2xl font-black text-blue-700">{formatCLP(monthDetail.totalIngresos)}</p>
                       <p className="text-xs text-blue-600 font-medium mt-1">Ingresos</p>
                     </div>
-                    <div className="bg-green-50 rounded-xl p-4 text-center">
+                    <div className="bg-green-50 rounded p-4 text-center">
                       <p className="text-2xl font-black text-green-700">{monthDetail.membresiasCount}</p>
                       <p className="text-xs text-green-600 font-medium mt-1">Membresías</p>
                     </div>
-                    <div className="bg-purple-50 rounded-xl p-4 text-center">
+                    <div className="bg-purple-50 rounded p-4 text-center">
                       <p className="text-2xl font-black text-purple-700">{monthDetail.planes.length}</p>
                       <p className="text-xs text-purple-600 font-medium mt-1">Planes</p>
                     </div>
@@ -833,8 +833,8 @@ function StatCard({
   bgColor: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 shadow-sm">
-      <div className={`w-12 h-12 rounded-xl ${bgColor} flex items-center justify-center shrink-0`}>
+    <div className="bg-white rounded border border-gray-200 p-5 flex items-center gap-4 shadow-sm ring-1 ring-inset ring-black/[0.03]">
+      <div className={`w-12 h-12 rounded ${bgColor} flex items-center justify-center shrink-0`}>
         {icon}
       </div>
       <div>

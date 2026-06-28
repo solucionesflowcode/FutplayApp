@@ -78,7 +78,7 @@ export default function ProfesorClient() {
               if (!clase) return null;
               return (
                 <div>
-                  <div className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-6">
+                  <div className="bg-white p-5 md:p-8 border-t-2 border-t-[#fc9910] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-6">
                     <div className="flex items-center gap-3">
                       <div className={`w-3 h-3 rounded-full shrink-0 ${clase.isMine ? "bg-emerald-500" : "bg-blue-500"}`} />
                       <div>

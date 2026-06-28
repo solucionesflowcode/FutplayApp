@@ -15,7 +15,7 @@ const PLACEHOLDER = "https://images.unsplash.com/photo-1570498839593-e565b39455f
 function FeaturedHero({ capsula }: { capsula: Capsula }) {
     return (
         <Link href={`/capsules/${capsula.id}`} className="block">
-            <div className="relative w-full h-[400px] rounded-2xl overflow-hidden shadow-2xl cursor-pointer group mb-10">
+            <div className="relative w-full h-[400px] border-t-2 border-t-[#F39200] overflow-hidden shadow-2xl cursor-pointer group mb-10">
                 <img
                     src={capsula.imagen || PLACEHOLDER}
                     alt={capsula.titulo}
@@ -65,7 +65,7 @@ function FeaturedHero({ capsula }: { capsula: Capsula }) {
 function CapsulaCard({ capsula }: { capsula: Capsula }) {
     return (
         <Link href={`/capsules/${capsula.id}`} className="block h-full">
-            <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group h-full">
+            <div className="bg-white border-t-2 border-t-[#00305B] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group h-full">
                 <div className="relative w-full h-44 overflow-hidden">
                     <img
                         src={capsula.imagen || PLACEHOLDER}

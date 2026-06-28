@@ -10,7 +10,7 @@ type Props = {
 
 export default function CapsulasRender({ capsulas }: Props) {
     return (
-        <div className="w-full h-full bg-white px-6 pt-4 rounded-xl">
+        <div className="w-full h-full bg-white px-6 pt-4 border-t-2 border-t-[#F39200]">
 
             <div className="flex justify-between w-full items-center">
                 <h1 className="text-[#00305B] text-[25px] font-semibold">

@@ -3,10 +3,10 @@ export default function About() {
         <section className="py-24 bg-white" id="about">
             <div className="max-w-7xl mx-auto px-8 grid md:grid-cols-2 gap-12 md:gap-16 items-center">
                 <div className="relative order-2 md:order-1 mt-8 md:mt-0">
-                    <div className="absolute -inset-4 bg-gray-100 rounded-3xl transform -rotate-3 z-0"></div>
+                    <div className="absolute -inset-4 bg-gray-100 transform -rotate-3 z-0"></div>
                     <img
                         src="https://images.unsplash.com/photo-1511886929837-354d827aae26?q=80&w=1500&auto=format&fit=crop"
-                        className="rounded-2xl relative z-10 shadow-xl overflow-hidden object-cover w-full h-[450px]"
+                        className="border-t-2 border-t-[#f59e0b] relative z-10 shadow-xl overflow-hidden object-cover w-full h-[450px]"
                         alt="Entrenador de fútbol instruyendo tacticas"
                     />
                 </div>

@@ -308,7 +308,7 @@ export default function MisClasesClient() {
                 ) : (
                     <>
                         {/* Calendario — ancho completo */}
-                        <div className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] border border-[#edeef0] mb-8">
+                        <div className="bg-white p-5 md:p-8 shadow-[0_12px_40px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] mb-8 border-t-2 border-t-[#00305B]">
                             <div className="grid grid-cols-1 lg:grid-cols-3 items-center mb-6 md:mb-8 gap-4">
                                 <div className="flex items-center gap-3 md:gap-4 flex-wrap">
                                     <h2
@@ -456,7 +456,7 @@ export default function MisClasesClient() {
 
                                     const isClickable = unenrolledProximas.length > 0;
                                     const baseCell =
-                                        `min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center relative transition-transform ${isClickable ? "cursor-pointer hover:scale-[1.02]" : ""}`;
+                                        `min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-24 rounded flex flex-col items-center justify-center relative transition-transform ${isClickable ? "cursor-pointer hover:scale-[1.02]" : ""}`;
 
                                     let cellClass = `${baseCell} `;
                                     if (!inMonth) {
@@ -608,7 +608,7 @@ export default function MisClasesClient() {
 
                         {/* Resumen y métricas — debajo del calendario */}
                         <div className="space-y-6 mb-10">
-                            <div className="bg-[#15477a] p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] text-white relative overflow-hidden">
+                            <div className="bg-[#15477a] p-6 md:p-8 text-white relative overflow-hidden border-t-2 border-t-[#F39200]">
                                 <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
                                     <ListChecks className="w-40 h-40" strokeWidth={1} />
                                 </div>
@@ -667,7 +667,7 @@ export default function MisClasesClient() {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#edeef0] border-l-4 border-l-[#00305b] flex justify-between items-center shadow-sm">
+                                <div className="bg-white p-5 md:p-6 border border-[#edeef0] border-l-4 border-l-[#00305b] flex justify-between items-center shadow-sm ring-1 ring-inset ring-black/[0.03]">
                                     <div>
                                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
                                             Clases en el mes
@@ -676,11 +676,11 @@ export default function MisClasesClient() {
                                             {stats.total}
                                         </p>
                                     </div>
-                                    <div className="w-12 h-12 bg-[#edeef0] rounded-xl flex items-center justify-center text-[#00305b]">
+                                    <div className="w-12 h-12 bg-[#edeef0] rounded flex items-center justify-center text-[#00305b]">
                                         <ListChecks className="w-6 h-6" />
                                     </div>
                                 </div>
-                                <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#edeef0] border-l-4 border-l-emerald-500 flex justify-between items-center shadow-sm">
+                                <div className="bg-white p-5 md:p-6 border border-[#edeef0] border-l-4 border-l-emerald-500 flex justify-between items-center shadow-sm ring-1 ring-inset ring-black/[0.03]">
                                     <div>
                                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
                                             Asistencias
@@ -689,11 +689,11 @@ export default function MisClasesClient() {
                                             {stats.presentes}
                                         </p>
                                     </div>
-                                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-emerald-50 rounded flex items-center justify-center">
                                         <CheckCircle2 className="w-6 h-6 text-emerald-500" strokeWidth={2.5} />
                                     </div>
                                 </div>
-                                <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#edeef0] border-l-4 border-l-[#ba1a1a] flex justify-between items-center shadow-sm">
+                                <div className="bg-white p-5 md:p-6 border border-[#edeef0] border-l-4 border-l-[#ba1a1a] flex justify-between items-center shadow-sm ring-1 ring-inset ring-black/[0.03]">
                                     <div>
                                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
                                             Inasistencias
@@ -702,13 +702,13 @@ export default function MisClasesClient() {
                                             {stats.ausentes}
                                         </p>
                                     </div>
-                                    <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-red-50 rounded flex items-center justify-center">
                                         <AlertCircle className="w-6 h-6 text-[#ba1a1a]" strokeWidth={2.5} />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="bg-white p-5 md:p-6 rounded-2xl border border-[#edeef0] flex gap-4 items-start">
+                            <div className="bg-white p-5 md:p-6 border border-[#edeef0] flex gap-4 items-start border-t-2 border-t-[#00305B]">
                                 <div className="w-10 h-10 rounded-full bg-[#fc9910] shrink-0 flex items-center justify-center text-white">
                                     <Lightbulb className="w-5 h-5" strokeWidth={2} />
                                 </div>
@@ -737,12 +737,12 @@ export default function MisClasesClient() {
                             </h3>
                             {cancelMsg && (
                                 <div
-                                    className={`mb-4 px-5 py-3 rounded-xl text-sm font-bold ${cancelMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-[#ba1a1a] border border-red-200"}`}
+                                    className={`mb-4 px-5 py-3 rounded text-sm font-bold ${cancelMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-[#ba1a1a] border border-red-200"}`}
                                 >
                                     {cancelMsg.text}
                                 </div>
                             )}
-                            <div className="bg-white rounded-[1.25rem] md:rounded-[2rem] border border-[#edeef0] overflow-hidden shadow-sm">
+                            <div className="bg-white border border-[#edeef0] overflow-hidden shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-2 border-t-[#00305B]">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[520px]">
                                         <thead>

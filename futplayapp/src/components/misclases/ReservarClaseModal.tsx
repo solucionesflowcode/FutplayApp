@@ -80,7 +80,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
+            <div className="bg-white shadow-2xl ring-1 ring-inset ring-black/[0.03] w-full max-w-md overflow-hidden relative border-t-2 border-t-[#00305b]">
                 <div className="flex items-center justify-between p-5 border-b border-[#edeef0]">
                     <h2 className="text-lg font-bold text-[#00305b]">Reservar clase</h2>
                     <button
@@ -111,7 +111,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                         return (
                             <div
                                 key={clase.claseId}
-                                className="bg-[#f8f9fb] rounded-xl p-4 space-y-3"
+                                className="bg-[#f8f9fb] rounded p-4 space-y-3"
                             >
                                 <div>
                                     <h3 className="font-bold text-[#00305b] text-base">{clase.titulo}</h3>
@@ -132,7 +132,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                                 </div>
 
                                 {isSuccess ? (
-                                    <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 rounded-xl px-4 py-3 text-sm font-medium">
+                                    <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 rounded px-4 py-3 text-sm font-medium">
                                         <CheckCircle2 className="w-4 h-4 shrink-0" />
                                         ¡Agendada!
                                     </div>
@@ -140,7 +140,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                                     <button
                                         onClick={() => handleAgendar(clase.claseId)}
                                         disabled={!puedeAgendar || isLoading}
-                                        className="w-full px-4 py-3 rounded-xl bg-[#fc9910] text-white font-bold text-sm hover:bg-[#e08900] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                                        className="w-full px-4 py-3 rounded bg-[#fc9910] text-white font-bold text-sm hover:bg-[#e08900] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                                     >
                                         {isLoading ? (
                                             <>
@@ -165,7 +165,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                     })}
 
                     {errorMsg && (
-                        <div className="flex items-center gap-2 text-[#ba1a1a] bg-[#ba1a1a]/5 rounded-xl px-4 py-3 text-sm">
+                        <div className="flex items-center gap-2 text-[#ba1a1a] bg-[#ba1a1a]/5 rounded px-4 py-3 text-sm">
                             <AlertCircle className="w-4 h-4 shrink-0" />
                             <span>{errorMsg}</span>
                         </div>
@@ -173,7 +173,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
 
                     <button
                         onClick={onClose}
-                        className="w-full px-4 py-3 rounded-xl border border-[#e1e2e4] text-[#42474f] font-bold text-sm hover:bg-[#f3f4f6] transition-colors"
+                        className="w-full px-4 py-3 rounded border border-[#e1e2e4] text-[#42474f] font-bold text-sm hover:bg-[#f3f4f6] transition-colors"
                     >
                         Cerrar
                     </button>
@@ -191,7 +191,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                             Recibirás un mensaje de <strong className="text-[#25D366]">WhatsApp</strong>{" "}
                             24 horas antes de la clase para confirmar tu asistencia.
                         </p>
-                        <div className="flex items-center gap-3 bg-[#f0fdf4] border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800 mb-6">
+                        <div className="flex items-center gap-3 bg-[#f0fdf4] border border-emerald-200 rounded px-4 py-3 text-sm text-emerald-800 mb-6">
                             <MessageCircle className="w-5 h-5 shrink-0 text-[#25D366]" />
                             <span className="text-left text-xs">
                                 Agrega el número de contacto a tu agenda para recibir la notificación.
@@ -199,7 +199,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                         </div>
                         <button
                             onClick={onClose}
-                            className="px-8 py-3 rounded-xl bg-[#15477a] text-white font-bold text-sm hover:bg-[#0f3560] transition-colors"
+                            className="px-8 py-3 rounded bg-[#15477a] text-white font-bold text-sm hover:bg-[#0f3560] transition-colors"
                         >
                             Entendido
                         </button>

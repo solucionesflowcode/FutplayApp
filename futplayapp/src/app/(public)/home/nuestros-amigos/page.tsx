@@ -30,7 +30,7 @@ export default function FriendsPage() {
             {friends.map((friend) => (
               <div
                 key={friend.name}
-                className="border border-gray-200 rounded-2xl p-8 hover:shadow-lg transition-shadow"
+                className="border border-gray-200 border-t-2 border-t-[#f59e0b] p-8 hover:shadow-lg transition-shadow"
               >
                 <div className="w-20 h-20 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center text-gray-400 text-2xl font-bold">
                   ?

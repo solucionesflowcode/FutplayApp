@@ -7,7 +7,7 @@ export default function Elearning() {
             <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-[#002a58] opacity-10 blur-3xl pointer-events-none" />
             
             <div className="max-w-7xl mx-auto px-8 relative z-10">
-                <div className="bg-[#002a58] rounded-3xl p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-12 shadow-2xl relative overflow-hidden">
+                <div className="bg-[#002a58] border-t-2 border-t-[#f59e0b] p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-12 shadow-2xl relative overflow-hidden">
                     <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-[#003b7a] to-transparent z-0 hidden md:block pointer-events-none" />
                     
                     <div className="flex-1 relative z-10 text-white">
@@ -22,7 +22,7 @@ export default function Elearning() {
                     </div>
 
                     <div className="w-full md:w-2/5 relative z-10">
-                        <div className="bg-white rounded-2xl p-6 shadow-xl transform md:rotate-2 hover:rotate-0 transition-transform duration-300 border-4 border-white">
+                        <div className="bg-white rounded p-6 shadow-xl transform md:rotate-2 hover:rotate-0 transition-transform duration-300 border-4 border-white">
                             <div className="w-full h-48 bg-gray-200 rounded-lg mb-4 relative overflow-hidden group cursor-pointer">
                                 <img src="https://images.unsplash.com/photo-1517466787929-bc90951d0974?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Video de táctica" />
                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">

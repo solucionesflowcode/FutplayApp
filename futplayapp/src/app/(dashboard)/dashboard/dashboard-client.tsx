@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, X } from "lucide-react";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import ProximoEntrenamiento from "../../../components/userDashboard/ProximoEntrenamiento";
+import AvisoReagendar from "../../../components/userDashboard/AvisoReagendar";
 import MiAsistencia from "../../../components/userDashboard/MiAsistencia";
 import ProximaRenovacion from "../../../components/userDashboard/ProximaRenovacion";
 import MetricasCorporales from "../../../components/userDashboard/MetricasCorporales";
@@ -89,20 +90,19 @@ export default function DashboardClient() {
                         <ProximoEntrenamiento />
                     </div>
                     <div className="w-full">
+                        <AvisoReagendar />
+                    </div>
+                    <div className="w-full">
                         <Recordatorio />
                     </div>
                     <div className="w-full">
                         <PlanesRender />
                     </div>
                     {planChecked && tienePlan ? (
-                        <div className="flex flex-col lg:flex-row gap-6 w-full">
-                            <div className="flex-1">
-                                <MetricasCorporales />
-                            </div>
-                            <div className="flex-1 flex flex-col gap-6">
-                                <MiAsistencia />
-                                <ProximaRenovacion />
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                            <MetricasCorporales />
+                            <MiAsistencia />
+                            <ProximaRenovacion />
                         </div>
                     ) : (
                         <div className="w-full">
@@ -118,7 +118,7 @@ export default function DashboardClient() {
             {showSuccess && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-[#001220]/60 backdrop-blur-sm" onClick={() => setShowSuccess(false)} />
-                    <div className="relative bg-white rounded-3xl shadow-2xl p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
+                    <div className="relative bg-white border-t-2 border-t-[#00A86B] shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
                         <button
                             onClick={() => setShowSuccess(false)}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -136,7 +136,7 @@ export default function DashboardClient() {
                         </p>
                         <button
                             onClick={() => setShowSuccess(false)}
-                            className="mt-8 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
+                            className="mt-8 w-full py-3.5 rounded bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
                         >
                             Ir al Dashboard
                         </button>

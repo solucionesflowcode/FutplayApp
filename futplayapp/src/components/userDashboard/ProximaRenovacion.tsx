@@ -99,16 +99,16 @@ export default function ProximaRenovacion() {
         new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(n);
 
     return (
-        <div className="w-full bg-gradient-to-br from-[#002447] to-[#00305B] rounded-2xl shadow-xl border border-white/10 p-6 relative">
+        <div className="w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] shadow-xl border border-white/10 p-6 relative border-t-2 border-t-[#F39200]">
             <div className="absolute top-0 right-0 w-40 h-40 bg-[#F39200] rounded-full mix-blend-multiply filter blur-3xl opacity-10" />
 
             <div className="flex items-center gap-3 mb-5">
-                <div className="bg-[#F39200]/20 p-2.5 rounded-xl">
+                <div className="bg-[#F39200]/20 p-2.5 rounded">
                     <CreditCard className="text-[#F39200]" size={20} />
                 </div>
                 <div>
                     <h2 className="text-white text-sm font-extrabold tracking-wide">
-                        Próxima Renovación
+                        Fecha de Vencimiento
                     </h2>
                     <p className="text-white/40 text-[10px]">
                         {membresia.plan_nombre}
@@ -148,7 +148,7 @@ export default function ProximaRenovacion() {
                 )}
             </div>
 
-            <div className="flex items-center gap-3 mb-4 bg-white/5 rounded-xl px-4 py-3 border border-white/5">
+            <div className="flex items-center gap-3 mb-4 bg-white/5 rounded px-4 py-3 border border-white/5">
                 <CalendarDays size={16} className="text-[#F39200]" />
                 <div>
                     <p className="text-white text-sm font-semibold">
@@ -171,7 +171,7 @@ export default function ProximaRenovacion() {
             </p>
 
             {!recurrenciaActiva && (
-                <div className="mt-4 bg-[#F39200]/10 border border-[#F39200]/20 rounded-xl px-4 py-3 flex items-center gap-3">
+                <div className="mt-4 bg-[#F39200]/10 border border-[#F39200]/20 rounded px-4 py-3 flex items-center gap-3">
                     <Zap size={16} className="text-[#F39200] shrink-0" />
                     <p className="text-[#F39200] text-xs font-semibold">
                         Activa el pago automático para no preocuparte cada mes

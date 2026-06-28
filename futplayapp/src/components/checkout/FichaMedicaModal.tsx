@@ -165,7 +165,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-[#001220]/80 backdrop-blur-md" onClick={handleClose} />
-            <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl bg-white animate-in fade-in zoom-in-95 duration-300">
+            <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col border-t-2 border-t-[#00305B] overflow-hidden shadow-2xl bg-white ring-1 ring-inset ring-black/[0.03] animate-in fade-in zoom-in-95 duration-300">
 
                 {/* Header con gradiente */}
                 <div className="relative bg-gradient-to-br from-[#001220] via-[#00305B] to-[#001c37] px-8 py-6 shrink-0">
@@ -174,7 +174,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
 
                     <div className="relative z-10 flex items-start justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="bg-[#F28C28]/20 border border-[#F28C28]/30 rounded-2xl p-3">
+                            <div className="bg-[#F28C28]/20 border border-[#F28C28]/30 p-3">
                                 <HeartPulse size={24} className="text-[#F28C28]" />
                             </div>
                             <div>
@@ -194,7 +194,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                         </div>
                         <button
                             onClick={handleClose}
-                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white/60 hover:text-white"
+                            className="p-2 rounded bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white/60 hover:text-white"
                         >
                             <X size={18} />
                         </button>
@@ -202,7 +202,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
 
                     {/* Stepper */}
                     <div className="relative z-10 flex items-center gap-3 mt-6">
-                        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 ${step === 1 ? "bg-[#F28C28] text-white shadow-lg shadow-[#F28C28]/30" : step > 1 ? "bg-[#00A86B]/20 text-[#00A86B] border border-[#00A86B]/30" : "bg-white/5 text-white/30 border border-white/10"}`}>
+                        <div className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-bold tracking-wide transition-all duration-300 ${step === 1 ? "bg-[#F28C28] text-white shadow-lg shadow-[#F28C28]/30" : step > 1 ? "bg-[#00A86B]/20 text-[#00A86B] border border-[#00A86B]/30" : "bg-white/5 text-white/30 border border-white/10"}`}>
                             <User size={13} />
                             PERSONAL
                         </div>
@@ -212,7 +212,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                 style={{ width: step >= 2 ? "100%" : "0%" }}
                             />
                         </div>
-                        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 ${step === 2 ? "bg-[#F28C28] text-white shadow-lg shadow-[#F28C28]/30" : "bg-white/5 text-white/30 border border-white/10"}`}>
+                        <div className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-bold tracking-wide transition-all duration-300 ${step === 2 ? "bg-[#F28C28] text-white shadow-lg shadow-[#F28C28]/30" : "bg-white/5 text-white/30 border border-white/10"}`}>
                             <Activity size={13} />
                             MÉDICA
                         </div>
@@ -222,7 +222,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-8 py-6">
                     {error && (
-                        <div className="mb-5 bg-red-500/10 border border-red-500/20 text-red-500 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
+                        <div className="mb-5 bg-red-500/10 border border-red-500/20 text-red-500 text-sm px-4 py-3 flex items-center gap-2">
                             <AlertCircle size={16} />
                             {error}
                         </div>
@@ -248,7 +248,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                                     onChange={(e) => handleRutChange(e.target.value)}
                                                     placeholder="12345678-9"
                                                     maxLength={12}
-                                                    className="w-full px-4 py-3 rounded-xl border-2 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all font-mono tracking-wider"
+                                                    className="w-full px-4 py-3 rounded border-2 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all font-mono tracking-wider"
                                                     style={{
                                                         borderColor: rutError ? "#ef4444" : rut.length >= 3 && !rutError ? "#22c55e" : "#e2e8f0",
                                                         backgroundColor: rutError ? "#fef2f2" : rut.length >= 3 && !rutError ? "#f0fdf4" : undefined,
@@ -272,7 +272,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                                     value={telefono}
                                                     onChange={(e) => handleTelefonoChange(e.target.value)}
                                                     placeholder="+56912345678"
-                                                    className="w-full px-4 py-3 rounded-xl border-2 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all font-mono tracking-wider"
+                                                    className="w-full px-4 py-3 rounded border-2 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all font-mono tracking-wider"
                                                     style={{
                                                         borderColor: telefonoError ? "#ef4444" : telefono.length === 12 ? "#22c55e" : "#e2e8f0",
                                                         backgroundColor: telefonoError ? "#fef2f2" : telefono.length === 12 ? "#f0fdf4" : undefined,
@@ -315,7 +315,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                 {/* IMC Badge */}
                                 <div className={`mt-4 overflow-hidden transition-all duration-500 ${imc !== null ? "max-h-20 opacity-100" : "max-h-0 opacity-0"}`}>
                                     {imc !== null && imcStatus && (
-                                        <div className="bg-gradient-to-r from-[#001220] to-[#00305B] rounded-xl px-5 py-3 flex items-center gap-4">
+                                        <div className="bg-gradient-to-r from-[#001220] to-[#00305B] px-5 py-3 flex items-center gap-4">
                                             <div className="text-2xl font-black text-white">{imc}</div>
                                             <div className={`text-sm font-bold ${imcStatus.color.replace("text-", "text-")}`}>
                                                 <span className="text-white/40 text-xs font-normal mr-1">IMC ·</span>
@@ -338,7 +338,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                 <select
                                     value={grupoSanguineo}
                                     onChange={(e) => setGrupoSanguineo(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
+                                    className="w-full px-4 py-3 rounded border-2 border-slate-100 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
                                 >
                                     <option value="">Seleccionar tipo</option>
                                     <option value="A+">A+</option>
@@ -378,7 +378,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                     onChange={(e) => setObservaciones(e.target.value)}
                                     placeholder="Cualquier información adicional relevante para tu entrenamiento..."
                                     rows={4}
-                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all resize-none"
+                                    className="w-full px-4 py-3 rounded border-2 border-slate-100 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all resize-none"
                                 />
                             </div>
                         </div>
@@ -389,7 +389,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                 <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
                     <button
                         onClick={() => step > 1 ? setStep(step - 1) : handleClose()}
-                        className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-[#00305B] bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-all"
+                        className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-[#00305B] bg-white border border-slate-200 rounded hover:border-slate-300 transition-all"
                     >
                         {step > 1 ? "← Atrás" : "Cancelar"}
                     </button>
@@ -397,7 +397,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                         <button
                             onClick={() => validateStep1() && setStep(2)}
                             disabled={!validateStep1()}
-                            className={`px-8 py-3 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 ${validateStep1()
+                            className={`px-8 py-3 rounded text-sm font-bold tracking-wide transition-all duration-300 ${validateStep1()
                                 ? "bg-gradient-to-r from-[#F28C28] to-[#e07d1f] text-white shadow-lg shadow-[#F28C28]/30 hover:shadow-xl hover:shadow-[#F28C28]/40 hover:-translate-y-0.5 active:translate-y-0"
                                 : "bg-slate-200 text-slate-400 cursor-not-allowed"
                                 }`}
@@ -408,7 +408,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                         <button
                             onClick={handleSubmit}
                             disabled={!validateStep2() || saving}
-                            className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 ${validateStep2() && !saving
+                            className={`flex items-center gap-2 px-8 py-3 rounded text-sm font-bold tracking-wide transition-all duration-300 ${validateStep2() && !saving
                                 ? "bg-gradient-to-r from-[#00A86B] to-[#009960] text-white shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 hover:-translate-y-0.5 active:translate-y-0"
                                 : "bg-slate-200 text-slate-400 cursor-not-allowed"
                                 }`}
@@ -461,7 +461,7 @@ function InputField({
                     min={type === "number" ? 1 : undefined}
                     max={type === "number" && label === "Edad" ? 120 : undefined}
                     step={type === "number" && label.includes("Peso") ? "0.1" : undefined}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
+                    className="w-full px-4 py-3 rounded border-2 border-slate-100 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
                 />
                 {icon && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
