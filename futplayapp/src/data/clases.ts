@@ -50,13 +50,20 @@ export async function getProximaClase(userId: string): Promise<Array<{
 
   const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string }> = [];
   for (const item of data) {
-    const c = item.clase as Record<string, unknown>;
+    // Supabase types might infer joined relations as arrays, so we safely extract the object
+    const claseObj = Array.isArray(item.clase) ? item.clase[0] : item.clase;
+    const c = claseObj as any;
+    
     if (!c || !c.titulo) continue;
+
+    // Sede might also be inferred as an array
+    const sedeObj = Array.isArray(c.sede) ? c.sede[0] : c.sede;
+
     rows.push({
       titulo: c.titulo as string,
       descripcion: c.descripcion as string,
       fecha_hora: c.fecha_hora as string,
-      sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
+      sede: sedeObj?.nombre ?? "",
     });
   }
 

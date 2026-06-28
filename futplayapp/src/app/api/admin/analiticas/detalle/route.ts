@@ -1,6 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/utils/supabase/admin";
+import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 
 export async function GET(request: NextRequest) {
   const user = await verifyAdmin();
@@ -13,16 +12,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Parámetro 'mes' requerido (YYYY-MM)" }, { status: 400 });
   }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
-  }
-
-  const adminClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    { cookies: { getAll() { return []; }, setAll() {} } }
-  );
+  const adminClient = await getAdminClient();
 
   const { data: membresias, error } = await adminClient
     .from("membresia")

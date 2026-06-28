@@ -85,8 +85,8 @@ export default function ClasesPage() {
 
   const filtered = clases.filter((c) => {
     const matchSearch =
-      c.titulo.toLowerCase().includes(search.toLowerCase()) ||
-      c.sede_nombre.toLowerCase().includes(search.toLowerCase());
+      (c.titulo || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.sede_nombre || "").toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
 
     if (c.fecha_hora) {
