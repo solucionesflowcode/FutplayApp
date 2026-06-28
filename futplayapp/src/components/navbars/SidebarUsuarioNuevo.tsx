@@ -13,12 +13,14 @@ import {
   X,
   Crown,
   GraduationCap,
-  Shield
+  Shield,
+  User
 } from "lucide-react";
 import { useAuthUser } from "@/context";
 
 const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Mi Perfil", href: "/perfil", icon: User },
   { name: "Planes", href: "/planes", icon: Crown },
   { name: "Capsulas", href: "/capsules", icon: Users },
   { name: "Pagos", href: "/pagos", icon: MapPin },
@@ -54,16 +56,31 @@ export default function Sidebar() {
   }, [collapsed, isMounted]);
 
   const pathname = usePathname();
-  const { usuario } = useAuthUser();
+  const { usuario, user } = useAuthUser();
+
+  const displayName = usuario?.nombre || user?.email?.split("@")[0] || "Usuario";
+  const initials = displayName
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <>
       {/* NAVEGACIÓN MÓVIL (TOP NAVBAR) */}
       <div className="md:hidden flex flex-col w-full bg-[#001529] text-white z-50">
         <div className="flex items-center justify-between p-4 border-b border-white/5">
-          <div className="flex flex-col">
-            <h2 className="text-xl font-bold">FutPlay</h2>
-            <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
+          <div className="flex items-center gap-3">
+            <Link href="/perfil" className="shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#F28C28] flex items-center justify-center text-white text-xs font-bold hover:opacity-80 transition-opacity">
+                {initials}
+              </div>
+            </Link>
+            <div className="flex flex-col">
+              <h2 className="text-lg font-bold leading-tight">FutPlay</h2>
+              <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
+            </div>
           </div>
           <button
             onClick={() => setOpen(!open)}
