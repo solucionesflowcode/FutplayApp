@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     if (current) {
       const { error } = await adminClient
         .from("membresia")
-        .update({ tokens_usados: current.tokens_totales })
+        .update({ tokens_usados: current.tokens_totales, estado: false })
         .eq("id", current.id);
 
       if (error) {
