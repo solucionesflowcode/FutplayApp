@@ -268,3 +268,20 @@ export function getEmbedUrl(videoId: string): string {
     if (!libraryId) throw new Error("Missing BUNNY_LIBRARY_ID");
     return `https://player.mediadelivery.net/embed/${libraryId}/${videoId}`;
 }
+
+/**
+ * Genera la URL pública de la miniatura (thumbnail) del video en Bunny Stream.
+ *
+ * Requiere la variable de entorno BUNNY_CDN_HOSTNAME (ej: "vz-12345.b-cdn.net").
+ * Si no está configurada, retorna null.
+ *
+ * @param videoId - GUID del video.
+ * @returns URL completa de la miniatura o null si falta la configuración.
+ */
+export function getThumbnailUrl(videoId: string): string {
+    const cdnHostname = process.env.BUNNY_CDN_HOSTNAME;
+    if (!cdnHostname) {
+        throw new Error("Missing BUNNY_CDN_HOSTNAME env var — configúralo en el dashboard de Bunny > Stream > tu library > Pull Zone");
+    }
+    return `https://${cdnHostname}/${videoId}/thumbnail.jpg`;
+}
