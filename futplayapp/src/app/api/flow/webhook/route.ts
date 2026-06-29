@@ -144,7 +144,12 @@ export async function POST(request: Request) {
                     .maybeSingle();
 
                   if (!existingForBoleta) {
+<<<<<<< Updated upstream
                     const mes = new Date().toISOString();
+=======
+                    const ahora = new Date();
+                    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`;
+>>>>>>> Stashed changes
                     const { error: membresiaError } = await adminClient
                       .from("membresia")
                       .insert({
@@ -163,7 +168,11 @@ export async function POST(request: Request) {
                       console.log(`[Flow Webhook] Membresía recurrente creada para usuario ${recurrencia.usuario_id}`);
                     }
                   } else {
+<<<<<<< Updated upstream
                     console.log(`[Flow Webhook] Membresía ya existe para boleta ${newBoleta.id}, saltando creación recurrente`);
+=======
+                    console.log(`[Flow Webhook] Membresía ya existe para boleta recurrente ${newBoleta.id}`);
+>>>>>>> Stashed changes
                   }
                 }
               } catch (err) {
