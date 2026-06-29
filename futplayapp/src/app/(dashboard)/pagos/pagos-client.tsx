@@ -30,10 +30,7 @@ import {
     Sparkles,
     Wallet,
     X,
-<<<<<<< HEAD
-=======
     XCircle,
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
     Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -137,20 +134,7 @@ function metodoIcon(metodo: PaymentRecord["metodo"]) {
     }
 }
 
-<<<<<<< HEAD
-function suscripcionColor(estado: ActiveSubscription["estado"]) {
-    switch (estado) {
-        case "activa":
-            return { bg: "bg-[#00A86B]/10", text: "text-[#00A86B]", dot: "bg-[#00A86B]", label: "Activa" };
-        case "vencida":
-            return { bg: "bg-[#ba1a1a]/10", text: "text-[#ba1a1a]", dot: "bg-[#ba1a1a]", label: "Vencida" };
-        case "inactiva":
-            return { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400", label: "Sin plan" };
-    }
-}
 
-=======
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 // ─── Dashboard Component ──────────────────────────────────────────────
 
 function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => void; userId: string }) {
@@ -175,8 +159,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
         return () => { cancelled = true; };
     }, [userId]);
 
-<<<<<<< HEAD
-=======
     const suscripcionColor = (estado: ActiveSubscription["estado"]) => {
         switch (estado) {
             case "activa":
@@ -188,7 +170,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
         }
     };
 
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
     const suscripcion: ActiveSubscription = useMemo(() => {
         if (!rawMembresia) {
             return {
@@ -295,19 +276,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
     return (
         <div className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-8">
             {/* Header */}
-<<<<<<< HEAD
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-[#001c37] to-[#00305B] flex items-center justify-center shadow-lg">
-                            <Receipt className="w-5 h-5 text-[#F28C28]" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-black text-[#00305B] tracking-tight">
-                            Pagos y suscripción
-                            </h1>
-                            <p className="text-gray-500 text-sm mt-0.5">
-=======
             <div className="border-b border-gray-100/80 pb-5">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -319,36 +287,11 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                 Pagos y suscripción
                             </h1>
                             <p className="text-slate-500 text-sm mt-0.5 font-medium">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                                 Administra tu plan, revisa tus pagos e historial de facturación.
                             </p>
                         </div>
                     </div>
                 </div>
-<<<<<<< HEAD
-
-            </div>
-
-            {/* Stats cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Membresía
-                    </span>
-                    <p className="text-sm font-black text-[#00305B] capitalize leading-tight mt-0.5">{suscripcion.plan}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
-                        <span className={`text-[10px] font-bold ${sc.text}`}>{sc.label}</span>
-                    </div>
-                </div>
-
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Total pagado
-                    </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{formatCLP(stats.totalPagado)}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">
-=======
                 <div className="w-16 h-1 bg-[#F28C28] mt-4 rounded-full" />
             </div>
 
@@ -411,27 +354,10 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                     
                     {/* Small secondary text below */}
                     <p className="text-[10px] text-slate-500 font-medium mt-1">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                         {historial.filter((p) => p.estado === "aprobado").length} transacciones
                     </p>
                 </div>
 
-<<<<<<< HEAD
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Pendientes
-                    </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.pendientes}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">por confirmar</p>
-                </div>
-
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Rechazados
-                    </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.rechazados}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">sin éxito</p>
-=======
                 {/* Pendientes Card */}
                 <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-6 rounded-full aspect-square w-full max-w-[240px] md:max-w-none mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
                     {/* Rounded capsule accent at top */}
@@ -501,20 +427,12 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                     <p className="text-xs text-slate-500 mt-0.5 font-medium">
                         Usamos cifrado y protocolos seguros para proteger tus datos y transacciones.
                     </p>
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                 </div>
             </div>
 
             {/* Active subscription */}
             <div>
                 {/* Active plan card */}
-<<<<<<< HEAD
-                <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] p-6 md:p-8 border-t-2 border-t-[#F39200]">
-                    <div className="flex items-start justify-between mb-6">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] p-3.5 shadow-lg">
-                                <Crown className="w-7 h-7 text-[#F28C28]" />
-=======
                 <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-100 p-6 md:p-8 relative overflow-hidden transition-all duration-300 hover:shadow-[0_6px_24px_rgba(0,0,0,0.04)]">
                     {/* Decorative accent top line */}
                     <div className="absolute top-0 left-0 right-0 h-1 bg-[#F39200]" />
@@ -523,7 +441,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                         <div className="flex items-center gap-4">
                             <div className="bg-[#00305B] rounded-xl p-3.5 shadow-md flex items-center justify-center">
                                 <Crown className="w-6 h-6 text-[#F28C28]" />
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
@@ -536,11 +453,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                         {sc.label}
                                     </span>
                                 </div>
-<<<<<<< HEAD
-                                <p className="text-gray-500 text-sm mt-0.5">
-=======
                                 <p className="text-slate-500 text-sm mt-0.5 font-medium">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                                     {formatCLP(suscripcion.precio)} / mes
                                 </p>
                             </div>
@@ -550,68 +463,41 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                     {/* Token progress */}
                     <div className="space-y-2 mb-6">
                         <div className="flex items-center justify-between text-sm">
-<<<<<<< HEAD
-                            <span className="text-gray-500 font-medium">Tokens del mes</span>
-=======
                             <span className="text-slate-500 font-medium">Tokens del mes</span>
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                             <span className="font-bold text-[#00305B]">
                                 {suscripcion.tokens_usados}/{suscripcion.tokens_totales} usados
                             </span>
                         </div>
-<<<<<<< HEAD
-                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-=======
                         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                             <div
                                 className="h-full rounded-full bg-gradient-to-r from-[#F28C28] to-[#e07d1f] transition-all duration-700"
                                 style={{ width: `${pctTokens}%` }}
                             />
                         </div>
-<<<<<<< HEAD
-                        <p className="text-[11px] text-gray-400">
-=======
                         <p className="text-[11px] text-slate-400 font-medium">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                             {suscripcion.tokens_totales - suscripcion.tokens_usados} tokens disponibles
                         </p>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-<<<<<<< HEAD
-                        <div className="bg-gray-50 p-3.5">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
-=======
                         <div className="bg-slate-50/50 border border-slate-100 p-4 rounded-xl">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                                 Inicio
                             </p>
                             <p className="text-sm font-bold text-[#00305B]">
                                 {formatDate(suscripcion.fecha_inicio)}
                             </p>
                         </div>
-<<<<<<< HEAD
-                        <div className="bg-gray-50 p-3.5">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
-=======
                         <div className="bg-slate-50/50 border border-slate-100 p-4 rounded-xl">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                                 Vencimiento
                             </p>
                             <p className="text-sm font-bold text-[#00305B]">
                                 {formatDate(suscripcion.fecha_vencimiento)}
                             </p>
                         </div>
-<<<<<<< HEAD
-                        <div className="bg-gray-50 p-3.5 col-span-2 sm:col-span-1">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
-=======
                         <div className="bg-slate-50/50 border border-slate-100 p-4 rounded-xl col-span-2 sm:col-span-1">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                                 Método de pago
                             </p>
                             <p className="text-sm font-bold text-[#00305B]">
@@ -625,19 +511,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
             </div>
 
             {/* Payment history */}
-<<<<<<< HEAD
-            <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] overflow-hidden border-t-2 border-t-[#00305B]">
-                {/* Filters */}
-                <div className="p-6 md:p-8 border-b border-gray-100">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
-                        <div>
-                            <h3 className="text-lg font-black text-[#00305B]">Historial de pagos</h3>
-                            <p className="text-sm text-gray-500 mt-0.5">
-                                {historial.length} transacciones registradas
-                            </p>
-                        </div>
-
-=======
             <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden relative transition-all duration-300 hover:shadow-[0_6px_24px_rgba(0,0,0,0.04)]">
                 {/* Decorative accent top line */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-[#00305B]" />
@@ -651,48 +524,29 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                 {historial.length} transacciones registradas
                             </p>
                         </div>
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
                         <div className="relative flex-1">
-<<<<<<< HEAD
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-=======
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                             <input
                                 type="text"
                                 value={busqueda}
                                 onChange={(e) => setBusqueda(e.target.value)}
                                 placeholder="Buscar por descripción o factura..."
-<<<<<<< HEAD
-                                className="w-full pl-10 pr-4 py-2.5 rounded border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
-                            />
-                        </div>
-                        <div className="flex gap-2">
-=======
                                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all font-medium"
                             />
                         </div>
                         <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                             {(["todos", "aprobado", "pendiente", "rechazado", "anulado"] as const).map(
                                 (f) => (
                                     <button
                                         key={f}
                                         onClick={() => setFiltroEstado(f)}
-<<<<<<< HEAD
-                                        className={`px-3.5 py-2 rounded text-xs font-bold tracking-wide transition-all capitalize ${
-                                            filtroEstado === f
-                                                ? "bg-[#00305B] text-white shadow-md"
-                                                : "bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200"
-=======
                                         className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all capitalize whitespace-nowrap ${
                                             filtroEstado === f
                                                 ? "bg-[#00305B] text-white shadow-sm"
                                                 : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                                         }`}
                                     >
                                         {f === "todos" ? "Todos" : f}
@@ -798,17 +652,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                 </div>
 
                 {/* Footer */}
-<<<<<<< HEAD
-                <div className="px-6 md:px-8 py-4 border-t border-gray-100 bg-gray-50/30 flex items-center justify-between">
-                    <p className="text-xs text-gray-400">
-                        Mostrando {historialFiltrado.length} de {historial.length} transacciones
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            disabled={safePage <= 1}
-                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40"
-=======
                 <div className="px-6 md:px-8 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <p className="text-xs text-slate-400 font-medium">
                         Mostrando {historialFiltrado.length} de {historial.length} transacciones
@@ -818,7 +661,6 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={safePage <= 1}
                             className="px-3.5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all disabled:opacity-40 shadow-sm"
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                         >
                             Anterior
                         </button>
@@ -826,17 +668,10 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                             <button
                                 key={page}
                                 onClick={() => setCurrentPage(page)}
-<<<<<<< HEAD
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                    page === safePage
-                                        ? "text-white bg-[#00305B] hover:bg-[#001c37]"
-                                        : "text-gray-500 bg-white border border-gray-200 hover:bg-gray-50"
-=======
                                 className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-xl transition-all ${
                                     page === safePage
                                         ? "text-white bg-[#00305B] shadow-sm"
                                         : "text-slate-600 bg-white border border-slate-200 hover:bg-slate-50"
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                                 }`}
                             >
                                 {page}
@@ -845,11 +680,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                         <button
                             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                             disabled={safePage >= totalPages}
-<<<<<<< HEAD
-                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40"
-=======
                             className="px-3.5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all disabled:opacity-40 shadow-sm"
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                         >
                             Siguiente
                         </button>
@@ -1369,11 +1200,7 @@ export default function PagosClient() {
                                 Confirmando pago
                             </h3>
                             <p className="text-gray-500 text-sm">
-<<<<<<< HEAD
-                                Estamos verificando el pago con Flow. Un momento por favor...
-=======
                                 Estamos verificar el pago con Flow. Un momento por favor...
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
                             </p>
                         </div>
                     ) : confirmPending ? (

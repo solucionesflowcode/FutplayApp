@@ -36,12 +36,7 @@ export async function userHasMembresia(userId: string): Promise<boolean> {
     const { data, error } = await supabase
         .from("membresia")
         .select("id")
-<<<<<<< HEAD
-        .eq("usuario_id", userId)
-        .eq("estado", true);
-=======
         .eq("usuario_id", userId);
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 
     if (error) {
         console.error("Error fetching membresia:", error.message);
@@ -91,10 +86,7 @@ export async function getMembresiaByUser(userId: string): Promise<MembresiaConPl
         .from("membresia")
         .select("*")
         .eq("usuario_id", userId)
-<<<<<<< HEAD
-        .eq("estado", true)
-=======
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
+
         .order("mes", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -116,10 +108,7 @@ export async function getAllMembresiasConPlan(): Promise<MembresiaConPlan[]> {
     const { data: membresias, error } = await supabase
         .from("membresia")
         .select("*")
-<<<<<<< HEAD
-        .eq("estado", true)
-=======
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
+
         .order("usuario_id");
 
     if (error) {
@@ -191,10 +180,7 @@ export async function createMembresia(
             mes,
             tokens_totales: tokensMensuales,
             tokens_usados: 0,
-<<<<<<< HEAD
-            estado: true,
-=======
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
+
         });
 
     if (error) {
@@ -212,10 +198,7 @@ export async function devolverToken(userId: string): Promise<boolean> {
         .from("membresia")
         .select("id, tokens_usados")
         .eq("usuario_id", userId)
-<<<<<<< HEAD
-        .eq("estado", true)
-=======
->>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
+
         .order("mes", { ascending: false })
         .limit(1)
         .maybeSingle();
