@@ -7,8 +7,6 @@ import {
     Clock,
     Loader2,
     MapPin,
-    MessageCircle,
-    MessageSquare,
     Ticket,
     X,
 } from "lucide-react";
@@ -193,7 +191,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                             24 horas antes de la clase para confirmar tu asistencia.
                         </p>
                         <div className="flex items-center gap-3 bg-[#f0fdf4] border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800 mb-6">
-                            <MessageCircle className="w-5 h-5 shrink-0 text-[#25D366]" />
+                            <svg className="w-5 h-5 shrink-0 text-[#25D366]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21z"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
                             <span className="text-left text-xs">
                                 Agrega el número de contacto a tu agenda para recibir la notificación.
                             </span>

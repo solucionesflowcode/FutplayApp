@@ -56,6 +56,10 @@ export default function ProximoEntrenamiento() {
 
     if (loading) return null;
 
+    if (clase) {
+        return renderClase(clase);
+    }
+
     if (!hasPlan) {
         return (
             <div className="w-full min-w-[380px] h-[250px] bg-gradient-to-br from-[#FFF8F0] to-[#FFE4CC] px-8 pt-6 border-t-2 border-t-[#F39200] shadow-lg flex flex-col items-center justify-center text-center gap-3">
@@ -78,15 +82,14 @@ export default function ProximoEntrenamiento() {
         );
     }
 
-    if (!clase) {
-        return (
-            <div className="w-full min-w-[380px] h-[250px] bg-gradient-to-br from-[#FFF8F0] to-[#FFE4CC] px-8 pt-6 border-t-2 border-t-[#F39200] shadow-lg flex flex-col items-center justify-center text-center gap-3">
-                <div className="bg-[#F39200]/10 p-3 rounded">
-                    <CalendarPlus className="text-[#F39200]" size={28} />
-                </div>
-                <p className="text-[#00305B] text-lg font-extrabold leading-tight">
-                    Aún no tienes <br />clases agendadas
-                </p>
+    return (
+        <div className="w-full min-w-[380px] h-[250px] bg-gradient-to-br from-[#FFF8F0] to-[#FFE4CC] px-8 pt-6 border-t-2 border-t-[#F39200] shadow-lg flex flex-col items-center justify-center text-center gap-3">
+            <div className="bg-[#F39200]/10 p-3 rounded">
+                <CalendarPlus className="text-[#F39200]" size={28} />
+            </div>
+            <p className="text-[#00305B] text-lg font-extrabold leading-tight">
+                Aún no tienes <br />clases agendadas
+            </p>
                 <p className="text-gray-500 text-xs max-w-[250px]">
                     Revisa los horarios disponibles y reserva tu próximo entrenamiento.
                 </p>
@@ -97,9 +100,10 @@ export default function ProximoEntrenamiento() {
                     </button>
                 </Link>
             </div>
-        );
-    }
+    );
+}
 
+function renderClase(clase: Clase) {
     const fecha = new Date(clase.fecha_hora);
 
     const hoy = new Date();
@@ -119,8 +123,6 @@ export default function ProximoEntrenamiento() {
         ? `Hoy, ${horaFormateada}`
         : `${fechaFormateada}, ${horaFormateada}`;
 
-    const tituloEvento = "Mi Próximo Evento";
-
     return (
         <div className="w-full min-w-[380px] bg-white border-t-2 border-t-[#F39200] shadow-lg flex overflow-hidden">
 
@@ -128,7 +130,7 @@ export default function ProximoEntrenamiento() {
                 <div>
                     <div className="flex justify-between">
                         <h1 className="text-[#F39200] text-[20px] font-bold">
-                            {tituloEvento}
+                            Mi Próximo Evento
                         </h1>
                     </div>
 

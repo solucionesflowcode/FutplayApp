@@ -38,12 +38,21 @@ export async function POST(request: Request) {
         serviceKey
     );
 
-    // Check if it's a partido (no token to return)
+    // Fetch inscription and check current state
     const { data: claseInfo } = await admin
         .from("clase_usuario")
-        .select("clase_id")
+        .select("clase_id, asistencia")
         .eq("id", inscripcionId)
-        .single();
+        .maybeSingle();
+
+    if (!claseInfo) {
+        return NextResponse.json({ error: "Inscripción no encontrada" }, { status: 404 });
+    }
+
+    const estadosTerminales = new Set(["cancelado", "cancelado_sin_reembolso", "presente", "ausente", "asistio", "no_asistio"]);
+    if (estadosTerminales.has(claseInfo.asistencia)) {
+        return NextResponse.json({ success: false, message: "Esta inscripción ya no puede cancelarse." });
+    }
 
     let esPartido = false;
     if (claseInfo?.clase_id) {
