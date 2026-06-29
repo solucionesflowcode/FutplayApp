@@ -172,4 +172,16 @@ describe("GET /api/flow/confirm", () => {
         expect(res.status).toBe(200);
         expect(getFlowPaymentStatus).not.toHaveBeenCalled();
     });
+
+    it("CONFIRM-023: atomic guard previene doble escritura si boleta ya fue pagada por concurrencia", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        // Simula que otro request ya pagó la boleta: .eq("estado", "pendiente") falla
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado" });
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("pagado");
+    });
 });

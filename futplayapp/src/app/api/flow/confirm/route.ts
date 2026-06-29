@@ -46,7 +46,22 @@ export async function GET(request: Request) {
                 return NextResponse.json({ error: "Boleta no coincide con el pago" }, { status: 403 });
             }
             if (boleta.estado !== "pagado") {
-                await adminClient.from("boleta").update({ estado: "pagado" }).eq("id", boletaId);
+                const { data: updated } = await adminClient
+                    .from("boleta")
+                    .update({ estado: "pagado" })
+                    .eq("id", boletaId)
+                    .eq("estado", "pendiente")
+                    .select("id")
+                    .maybeSingle();
+
+                if (!updated) {
+                    const { data: current } = await adminClient
+                        .from("boleta")
+                        .select("estado")
+                        .eq("id", boletaId)
+                        .single();
+                    return NextResponse.json({ estado: current?.estado || "pagado" });
+                }
             }
             return NextResponse.json({ estado: "pagado" });
         } catch {

@@ -43,13 +43,20 @@ export async function POST() {
     return NextResponse.json({ message: "No tienes una suscripción activa" });
   }
 
-  const { error } = await adminClient
+  const { data: updated, error } = await adminClient
     .from("recurrencia")
     .update({ activa: false })
-    .eq("id", recurrencia.id);
+    .eq("id", recurrencia.id)
+    .eq("activa", true)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!updated) {
+    return NextResponse.json({ message: "La suscripción ya fue cancelada" });
   }
 
   return NextResponse.json({ message: "Suscripción cancelada" });

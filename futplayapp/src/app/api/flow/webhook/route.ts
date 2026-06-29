@@ -109,6 +109,19 @@ export async function POST(request: Request) {
                 total: plan.precio,
               });
 
+              // ── TOCTOU guard: re-verificar que la recurrencia sigue activa antes de cobrar ──
+              const { data: recurrenciaRecheck } = await adminClient
+                .from("recurrencia")
+                .select("activa")
+                .eq("id", boleta.recurrencia_id)
+                .single();
+
+              if (!recurrenciaRecheck?.activa) {
+                console.log(`[Flow Webhook] Recurrencia ${boleta.recurrencia_id} desactivada durante procesamiento, anulando boleta ${newBoleta.id}`);
+                await adminClient.from("boleta").update({ estado: "anulado" }).eq("id", newBoleta.id);
+                return NextResponse.json({ message: "OK" });
+              }
+
               const { error: recurrenteUpdateError } = await adminClient
                 .from("boleta")
                 .update({ estado: "pagado" })
@@ -121,25 +134,36 @@ export async function POST(request: Request) {
 
               console.log(`[Flow Webhook] Cobro recurrente: nueva boleta ${newBoleta.id} creada y pagada`);
 
-              // ── Crear membresía (30 días desde compra) ──
+              // ── Crear membresía (idempotente por boleta_id) ──
               try {
                 if (plan.tokens_mensuales) {
-                  const mes = new Date().toISOString();
-                  const { error: membresiaError } = await adminClient
+                  const { data: existingForBoleta } = await adminClient
                     .from("membresia")
-                    .insert({
-                      usuario_id: recurrencia.usuario_id,
-                      plan_id: recurrencia.plan_id,
-                      mes,
-                      tokens_totales: plan.tokens_mensuales,
-                      tokens_usados: 0,
-                      estado: true,
-                    });
+                    .select("id")
+                    .eq("boleta_id", newBoleta.id)
+                    .maybeSingle();
 
-                  if (membresiaError) {
-                    console.error(`[Flow Webhook] Error al crear membresía recurrente: ${membresiaError.message}`);
+                  if (!existingForBoleta) {
+                    const mes = new Date().toISOString();
+                    const { error: membresiaError } = await adminClient
+                      .from("membresia")
+                      .insert({
+                        usuario_id: recurrencia.usuario_id,
+                        plan_id: recurrencia.plan_id,
+                        boleta_id: newBoleta.id,
+                        mes,
+                        tokens_totales: plan.tokens_mensuales,
+                        tokens_usados: 0,
+                        estado: true,
+                      });
+
+                    if (membresiaError) {
+                      console.error(`[Flow Webhook] Error al crear membresía recurrente: ${membresiaError.message}`);
+                    } else {
+                      console.log(`[Flow Webhook] Membresía recurrente creada para usuario ${recurrencia.usuario_id}`);
+                    }
                   } else {
-                    console.log(`[Flow Webhook] Membresía recurrente creada para usuario ${recurrencia.usuario_id}`);
+                    console.log(`[Flow Webhook] Membresía ya existe para boleta ${newBoleta.id}, saltando creación recurrente`);
                   }
                 }
               } catch (err) {
@@ -188,22 +212,33 @@ export async function POST(request: Request) {
             .maybeSingle();
 
           if (plan?.tokens_mensuales) {
-            const mes = new Date().toISOString();
-            const { error: membresiaError } = await adminClient
+            const { data: existingForBoleta } = await adminClient
               .from("membresia")
-              .insert({
-                usuario_id: boleta.usuario_id,
-                plan_id: boletaItem.plan_id,
-                mes,
-                tokens_totales: plan.tokens_mensuales,
-                tokens_usados: 0,
-                estado: true,
-              });
+              .select("id")
+              .eq("boleta_id", boleta.id)
+              .maybeSingle();
 
-            if (membresiaError) {
-              console.error(`[Flow Webhook] Error al crear membresía: ${membresiaError.message}`);
+            if (!existingForBoleta) {
+              const mes = new Date().toISOString();
+              const { error: membresiaError } = await adminClient
+                .from("membresia")
+                .insert({
+                  usuario_id: boleta.usuario_id,
+                  plan_id: boletaItem.plan_id,
+                  boleta_id: boleta.id,
+                  mes,
+                  tokens_totales: plan.tokens_mensuales,
+                  tokens_usados: 0,
+                  estado: true,
+                });
+
+              if (membresiaError) {
+                console.error(`[Flow Webhook] Error al crear membresía: ${membresiaError.message}`);
+              } else {
+                console.log(`[Flow Webhook] Membresía creada para usuario ${boleta.usuario_id} (plan ${boletaItem.plan_id})`);
+              }
             } else {
-              console.log(`[Flow Webhook] Membresía creada para usuario ${boleta.usuario_id} (plan ${boletaItem.plan_id})`);
+              console.log(`[Flow Webhook] Membresía ya existe para boleta ${boleta.id}, saltando creación`);
             }
           }
         }
@@ -225,7 +260,8 @@ export async function POST(request: Request) {
       const { error: updateError } = await adminClient
         .from("boleta")
         .update({ estado: "rechazado" })
-        .eq("id", boleta.id);
+        .eq("id", boleta.id)
+        .eq("estado", "pendiente");
 
       if (updateError) {
         console.error(`[Flow Webhook] Error al rechazar boleta:`, updateError);
@@ -235,7 +271,8 @@ export async function POST(request: Request) {
         await adminClient
           .from("recurrencia")
           .update({ activa: false })
-          .eq("id", boleta.recurrencia_id);
+          .eq("id", boleta.recurrencia_id)
+          .eq("activa", true);
         console.error(
           `[Flow Webhook] ALERTA: Cobro recurrente falló para usuario ${boleta.usuario_id}, recurrencia ${boleta.recurrencia_id} desactivada (status ${statusData.status})`
         );
