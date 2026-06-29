@@ -27,14 +27,35 @@ async function procesarMensajeWhatsApp(telefono, texto, db) {
   const textoUpper = texto.toUpperCase().trim();
   const usuario = await db.buscarUsuarioPorTelefono(telefono);
   if (!usuario) return null;
-  if (textoUpper !== '1' && textoUpper !== '2') return null;
 
-  // Once a user has responded, no more messages for any class
+  // ── Si no es 1 ni 2, recordar opciones si tiene clase pendiente ──
+  if (textoUpper !== '1' && textoUpper !== '2') {
+    const pendiente = await db.getProximaClaseUsuario(usuario.id);
+    if (pendiente) {
+      return `Para confirmar tu clase responde *1*, para cancelar responde *2*.`;
+    }
+    return null;
+  }
+
+  // ── Normal flow: find a pending class ──
   const proxima = await db.getProximaClaseUsuario(usuario.id);
-  if (!proxima) return null;
+  if (proxima) {
+    if (textoUpper === '1') return await confirmarAsistencia(usuario.id, db);
+    return await cancelarAsistencia(usuario.id, db);
+  }
 
-  if (textoUpper === '1') return await confirmarAsistencia(usuario.id, db);
-  return await cancelarAsistencia(usuario.id, db);
+  // ── Edge case: no pending class — check if it was already actioned from the web ──
+  const actioned = await db.getProximaClaseUsuarioActioned(usuario.id);
+  if (actioned) {
+    if (['cancelado', 'cancelado_sin_reembolso'].includes(actioned.asistencia)) {
+      return `Ya cancelaste "${actioned.clase.titulo}" desde la página web. No es necesario que respondas el mensaje.`;
+    }
+    if (['confirmado', 'confirmado_whatsapp', 'no_asistio'].includes(actioned.asistencia)) {
+      return `Ya confirmaste "${actioned.clase.titulo}" desde la página web. Nos vemos allí!`;
+    }
+  }
+
+  return null;
 }
 
 module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, horasHasta };

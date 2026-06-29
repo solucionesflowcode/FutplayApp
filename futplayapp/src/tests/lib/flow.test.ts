@@ -197,6 +197,57 @@ describe("getFlowPaymentStatus", () => {
     });
 });
 
+describe("toUrlEncoded (encoding de caracteres especiales)", () => {
+    // Re-import toUrlEncoded via the module internals
+    // Verificamos el comportamiento a través de createFlowOrder
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it("FLOW-ENCODE-001: codifica caracteres especiales & = # en valores", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            new Response(JSON.stringify({ url: "", token: "", flowOrder: 1 }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            }),
+        );
+
+        await createFlowOrder({
+            commerceOrder: "ord-001",
+            subject: "Plan & Precio = $20,000 #promo",
+            amount: 20000,
+            email: "user@test.cl",
+            urlConfirmation: "https://example.com/webhook",
+            urlReturn: "http://localhost:3000/pagos?token={token}",
+        });
+
+        const body = fetchSpy.mock.calls[0][1]?.body as string;
+        expect(body).toContain("subject=Plan+%26+Precio+%3D+%2420%2C000+%23promo");
+    });
+
+    it("FLOW-ENCODE-002: preserva brackets [] en keys", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            new Response(JSON.stringify({ url: "", token: "", flowOrder: 1 }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            }),
+        );
+
+        await createFlowOrder({
+            commerceOrder: "ord-001",
+            subject: "Test",
+            amount: 10000,
+            email: "a@b.cl",
+            urlConfirmation: "https://example.com/webhook",
+            urlReturn: "http://localhost:3000/pagos?token={token}",
+        });
+
+        const body = fetchSpy.mock.calls[0][1]?.body as string;
+        expect(body).not.toContain("%5B");
+        expect(body).not.toContain("%5D");
+    });
+});
+
 describe("generateSignature (internal - verificado a través de fetch)", () => {
     afterEach(() => {
         vi.restoreAllMocks();

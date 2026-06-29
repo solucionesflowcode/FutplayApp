@@ -6,7 +6,7 @@ vi.mock("@/utils/supabase/client", () => ({
 }));
 
 import { createClient } from "@/utils/supabase/client";
-import { userHasMembresia, getMembresiaByUser, createMembresia, devolverToken } from "@/data/membresia";
+import { userHasMembresia, getMembresiaByUser, createMembresia, devolverToken, getAllMembresiasConPlan, getAdminMembresias } from "@/data/membresia";
 
 const USER_ID = "user-test-001";
 
@@ -186,5 +186,100 @@ describe("createMembresia — duplicados", () => {
         const result = await createMembresia(USER_ID, "p1", 30);
 
         expect(result).toBe(true);
+    });
+});
+
+describe("getAllMembresiasConPlan", () => {
+    const PLAN_A = { id: "pa", nombre: "Plan A", tokens_mensuales: 10, precio: 15000 };
+
+    it("DATA-MEMB-TODAS-001: agrupa por usuario y elige la membresía con más tokens restantes", async () => {
+        __setTableData("membresia", [
+            { id: "m1", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 2, mes: "2026-06-01" },
+            { id: "m2", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 0, mes: "2026-06-01" },
+            { id: "m3", usuario_id: "u2", plan_id: "pa", tokens_totales: 10, tokens_usados: 5, mes: "2026-06-01" },
+        ]);
+        __setTableData("plan", [PLAN_A]);
+
+        const result = await getAllMembresiasConPlan();
+
+        expect(result).toHaveLength(2);
+        const u1 = result.find((m) => m.usuario_id === "u1");
+        const u2 = result.find((m) => m.usuario_id === "u2");
+        expect(u1).not.toBeUndefined();
+        expect(u2).not.toBeUndefined();
+        expect(u1!.membresia_id).toBe("m2");
+        expect(u1!.tokens_restantes).toBe(10);
+        expect(u2!.membresia_id).toBe("m3");
+        expect(u2!.tokens_restantes).toBe(5);
+    });
+
+    it("DATA-MEMB-TODAS-002: retorna array vacío si no hay membresías", async () => {
+        __setTableData("membresia", []);
+
+        const result = await getAllMembresiasConPlan();
+
+        expect(result).toEqual([]);
+    });
+
+    it("DATA-MEMB-TODAS-003: retorna array vacío si hay error", async () => {
+        __setTableData("membresia", null, { message: "DB error" });
+
+        const result = await getAllMembresiasConPlan();
+
+        expect(result).toEqual([]);
+    });
+
+    it("DATA-MEMB-TODAS-004: usa 'Sin plan' si el plan no existe", async () => {
+        __setTableData("membresia", [
+            { id: "m1", usuario_id: "u1", plan_id: "unknown", tokens_totales: 10, tokens_usados: 0, mes: "2026-06-01" },
+        ]);
+        __setTableData("plan", []);
+
+        const result = await getAllMembresiasConPlan();
+
+        expect(result).toHaveLength(1);
+        expect(result[0].plan_nombre).toBe("Sin plan");
+        expect(result[0].precio).toBe(0);
+        expect(result[0].tokens_mensuales).toBe(0);
+    });
+});
+
+describe("getAdminMembresias", () => {
+    function mockFetch(response: object, status = 200) {
+        return vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            new Response(JSON.stringify(response), {
+                status,
+                headers: { "Content-Type": "application/json" },
+            }),
+        );
+    }
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it("DATA-MEMB-ADMIN-001: retorna lista de membresías desde fetch", async () => {
+        mockFetch([{ membresia_id: "m1", usuario_id: "u1", plan_nombre: "Pro" }]);
+
+        const result = await getAdminMembresias();
+
+        expect(result).toHaveLength(1);
+        expect(result[0].plan_nombre).toBe("Pro");
+    });
+
+    it("DATA-MEMB-ADMIN-002: retorna array vacío si fetch falla", async () => {
+        mockFetch({ error: "No autorizado" }, 403);
+
+        const result = await getAdminMembresias();
+
+        expect(result).toEqual([]);
+    });
+
+    it("DATA-MEMB-ADMIN-003: retorna array vacío si fetch lanza error", async () => {
+        vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
+
+        const result = await getAdminMembresias();
+
+        expect(result).toEqual([]);
     });
 });

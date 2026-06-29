@@ -76,6 +76,25 @@ describe("getMisBoletas", () => {
     });
 });
 
+describe("getMisBoletas — null edges", () => {
+    it("PAGOS-BOLETA-NULL-001: plan_nombre es null si item no tiene plan", async () => {
+        __setTableData("boleta", [{
+            id: "b1", usuario_id: USER_ID, estado: "pagado", total: 15000,
+            created_at: "2026-06-01T12:00:00Z", transaccion_id: null,
+            boleta_item: [{
+                id: "i1", boleta_id: "b1", plan_id: null,
+                cantidad: 1, precio: 15000, total: 15000, plan: null,
+            }],
+        }]);
+
+        const result = await getMisBoletas(USER_ID);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].items[0].plan_nombre).toBeNull();
+        expect(result[0].items[0].plan_id).toBeNull();
+    });
+});
+
 describe("getMiMembresia", () => {
     const RAW_MEMBRESIA = {
         id: "memb-1",
@@ -120,5 +139,21 @@ describe("getMiMembresia", () => {
         const result = await getMiMembresia(USER_ID);
 
         expect(result).toBeNull();
+    });
+
+    it("PAGOS-MEMB-NULL-001: plan_nombre es 'Sin plan' y precio 0 si plan es null", async () => {
+        __setTableData("membresia", {
+            id: "memb-1", usuario_id: USER_ID, plan_id: "p1",
+            tokens_totales: 25, tokens_usados: 5,
+            mes: "2026-06-01", created_at: "2026-06-01T12:00:00Z",
+            plan: null,
+        });
+
+        const result = await getMiMembresia(USER_ID);
+
+        expect(result).not.toBeNull();
+        expect(result!.plan_nombre).toBe("Sin plan");
+        expect(result!.precio).toBe(0);
+        expect(result!.tokens_mensuales).toBe(0);
     });
 });

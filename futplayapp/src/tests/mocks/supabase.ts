@@ -36,7 +36,7 @@ export function __setTableData(table: string, data: any, error: any = null) {
  * Awaiting the terminal resolves with the table's configured MockResponse.
  * `.single()` / `.maybeSingle()` are explicit terminals that return a Promise.
  */
-function makeChain(table: string) {
+export function makeChain(table: string) {
     function getResponse(): Promise<MockResponse & { count?: number }> {
         const r = state.tables[table];
         if (!r) return Promise.resolve({ data: null, error: null, count: 0 });

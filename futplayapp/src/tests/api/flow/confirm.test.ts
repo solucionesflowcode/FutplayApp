@@ -173,6 +173,50 @@ describe("GET /api/flow/confirm", () => {
         expect(getFlowPaymentStatus).not.toHaveBeenCalled();
     });
 
+    it("CONFIRM-024: retorna estado rechazado si boleta está rechazada en Supabase (sin token real)", async () => {
+        __setTableData("boleta", { id: BOLETA_ID, estado: "rechazado" });
+
+        const res = await GET(makeRequest("{token}", BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("rechazado");
+        expect(json.message).toBeUndefined();
+    });
+
+    it("CONFIRM-025: retorna estado anulado si boleta está anulada en Supabase (sin token real)", async () => {
+        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
+
+        const res = await GET(makeRequest("{token}", BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("anulado");
+        expect(json.message).toBeUndefined();
+    });
+
+    it("CONFIRM-026: retorna estado rechazado en fallback tras error de Flow API si boleta está rechazada", async () => {
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Network error"));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "rechazado" });
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("rechazado");
+    });
+
+    it("CONFIRM-027: retorna estado anulado en fallback tras error de Flow API si boleta está anulada", async () => {
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Network error"));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("anulado");
+    });
+
     it("CONFIRM-023: atomic guard previene doble escritura si boleta ya fue pagada por concurrencia", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
         // Simula que otro request ya pagó la boleta: .eq("estado", "pendiente") falla
