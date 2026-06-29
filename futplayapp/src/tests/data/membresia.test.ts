@@ -126,7 +126,7 @@ describe("createMembresia", () => {
 
 describe("devolverToken", () => {
     it("retorna true si la membresía actual tiene tokens usados", async () => {
-        __setTableData("membresia", { id: "m1", tokens_usados: 5, estado: true });
+        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, tokens_usados: 5, estado: true });
         __setTableData("membresia_update", { id: "m1", tokens_usados: 4 });
 
         const result = await devolverToken(USER_ID);

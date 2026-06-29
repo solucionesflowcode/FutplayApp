@@ -134,36 +134,25 @@ export async function POST(request: Request) {
 
               console.log(`[Flow Webhook] Cobro recurrente: nueva boleta ${newBoleta.id} creada y pagada`);
 
-              // ── Crear membresía (idempotente por boleta_id) ──
+              // ── Crear membresía ──
               try {
                 if (plan.tokens_mensuales) {
-                  const { data: existingForBoleta } = await adminClient
+                  const mes = new Date().toISOString();
+                  const { error: membresiaError } = await adminClient
                     .from("membresia")
-                    .select("id")
-                    .eq("boleta_id", newBoleta.id)
-                    .maybeSingle();
+                    .insert({
+                      usuario_id: recurrencia.usuario_id,
+                      plan_id: recurrencia.plan_id,
+                      mes,
+                      tokens_totales: plan.tokens_mensuales,
+                      tokens_usados: 0,
+                      estado: true,
+                    });
 
-                  if (!existingForBoleta) {
-                    const mes = new Date().toISOString();
-                    const { error: membresiaError } = await adminClient
-                      .from("membresia")
-                      .insert({
-                        usuario_id: recurrencia.usuario_id,
-                        plan_id: recurrencia.plan_id,
-                        boleta_id: newBoleta.id,
-                        mes,
-                        tokens_totales: plan.tokens_mensuales,
-                        tokens_usados: 0,
-                        estado: true,
-                      });
-
-                    if (membresiaError) {
-                      console.error(`[Flow Webhook] Error al crear membresía recurrente: ${membresiaError.message}`);
-                    } else {
-                      console.log(`[Flow Webhook] Membresía recurrente creada para usuario ${recurrencia.usuario_id}`);
-                    }
+                  if (membresiaError) {
+                    console.error(`[Flow Webhook] Error al crear membresía recurrente: ${membresiaError.message}`);
                   } else {
-                    console.log(`[Flow Webhook] Membresía ya existe para boleta ${newBoleta.id}, saltando creación recurrente`);
+                    console.log(`[Flow Webhook] Membresía recurrente creada para usuario ${recurrencia.usuario_id}`);
                   }
                 }
               } catch (err) {
@@ -219,7 +208,8 @@ export async function POST(request: Request) {
               .maybeSingle();
 
             if (!existingForBoleta) {
-              const mes = new Date().toISOString();
+              const ahora = new Date();
+              const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`;
               const { error: membresiaError } = await adminClient
                 .from("membresia")
                 .insert({

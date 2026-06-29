@@ -20,6 +20,7 @@ describe("getProximaClase", () => {
         const futureFecha = new Date(Date.now() + 86400000).toISOString();
         __setTableData("clase_usuario", [
             {
+                usuario_id: "user-test-001",
                 clase: {
                     titulo: "Entrenamiento Mañana",
                     descripcion: "Entrenamiento matutino",
@@ -43,6 +44,7 @@ describe("getProximaClase", () => {
         const futureFecha = new Date(Date.now() + 172800000).toISOString();
         __setTableData("clase_usuario", [
             {
+                usuario_id: "user-test-001",
                 clase: {
                     titulo: "Partido del finde",
                     descripcion: "Partido amistoso",
@@ -85,6 +87,7 @@ describe("getProximaClase", () => {
 
         __setTableData("clase_usuario", [
             {
+                usuario_id: "user-test-001",
                 clase: {
                     titulo: "Clase Lejana",
                     descripcion: "En una semana",
@@ -94,6 +97,7 @@ describe("getProximaClase", () => {
                 },
             },
             {
+                usuario_id: "user-test-001",
                 clase: {
                     titulo: "Clase Cercana",
                     descripcion: "Mañana",
@@ -114,6 +118,7 @@ describe("getProximaClase", () => {
         const futureFecha = new Date(Date.now() + 86400000).toISOString();
         __setTableData("clase_usuario", [
             {
+                usuario_id: "user-test-001",
                 clase: {
                     titulo: "Clase sin sede",
                     descripcion: "Sin sede asignada",
@@ -134,6 +139,7 @@ describe("getProximaClase", () => {
         const futureFecha = new Date(Date.now() + 86400000).toISOString();
         __setTableData("clase_usuario", [
             {
+                usuario_id: "user-test-001",
                 clase: {
                     titulo: null,
                     descripcion: "Sin título",
@@ -153,6 +159,7 @@ describe("getProximaClase", () => {
         const futureFecha = new Date(Date.now() + 86400000).toISOString();
         __setTableData("clase_usuario", [
             {
+                usuario_id: "user-test-001",
                 clase: {
                     titulo: null,
                     descripcion: "Partido del sábado",

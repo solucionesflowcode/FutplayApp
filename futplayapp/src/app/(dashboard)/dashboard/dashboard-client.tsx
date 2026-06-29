@@ -27,6 +27,16 @@ export default function DashboardClient() {
     useEffect(() => {
         if (searchParams.get("flowSuccess") === "1") {
             setShowSuccess(true);
+            const token = searchParams.get("token");
+            const boletaId = typeof window !== "undefined" ? sessionStorage.getItem("flowBoletaId") : null;
+            if (boletaId) {
+                const url = new URL("/api/flow/confirm", window.location.origin);
+                url.searchParams.set("boletaId", boletaId);
+                if (token && token !== "{token}") {
+                    url.searchParams.set("token", token);
+                }
+                fetch(url.toString()).catch(console.error);
+            }
             const params = new URLSearchParams(window.location.search);
             params.delete("flowSuccess");
             const newUrl = params.toString()

@@ -66,7 +66,9 @@ describe("getPlanesLimit", () => {
 
         const result = await getPlanesLimit(2);
 
-        expect(result).toHaveLength(3);
+        expect(result).toHaveLength(2);
+        expect(result[0].id).toBe("p1");
+        expect(result[1].id).toBe("p2");
     });
 
     it("retorna array vacío si hay error", async () => {
