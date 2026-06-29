@@ -87,7 +87,7 @@ function AdminContent() {
   return (
 
     <div className="p-6">
-      <AdminHeader students={students} search={search} onSearchChange={setSearch} onView={setViewStudent} />
+      <AdminHeader search={search} onSearchChange={setSearch} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">

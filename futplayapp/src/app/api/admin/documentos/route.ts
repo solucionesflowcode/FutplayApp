@@ -1,16 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { verifyAdmin } from "@/utils/supabase/admin";
-
-function getAdminClient() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY");
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    { cookies: { getAll() { return []; }, setAll() {} } }
-  );
-}
+import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 
 export async function GET(request: Request) {
   const user = await verifyAdmin();
@@ -24,7 +13,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const { data, error } = await admin
       .from("documento")
       .select("*")
@@ -43,7 +32,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const body = await request.json();
     const { capsula_id, nombre, url_archivo } = body;
 
@@ -76,7 +65,7 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const { error } = await admin.from("documento").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });

@@ -33,3 +33,29 @@ export async function verifyAdmin(): Promise<User | null> {
     .single();
   return usuario?.rol === "administrador" ? user : null;
 }
+
+/** Crea un cliente Supabase con la service role key para operaciones admin.
+ *  Usa cookies reales del request para permitir refresh de sesión. */
+export async function getAdminClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY en .env.local");
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceKey,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // setAll puede fallar en ciertos contextos
+          }
+        },
+      },
+    }
+  );
+}

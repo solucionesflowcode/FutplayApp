@@ -1,20 +1,7 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { verifyAdmin } from "@/utils/supabase/admin";
+import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 
 export const dynamic = "force-dynamic";
-
-function getAdminClient() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY en .env.local");
-  }
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    { cookies: { getAll() { return []; }, setAll() {} } }
-  );
-}
 
 export async function PUT(request: Request) {
   const user = await verifyAdmin();
@@ -26,7 +13,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
     }
 
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const { error } = await admin
       .from("usuario")
       .update({ nombre: body.nombre })
