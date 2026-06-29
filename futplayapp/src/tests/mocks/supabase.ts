@@ -27,66 +27,208 @@ export function __setTableData(table: string, data: any, error: any = null) {
     state.tables[table] = { data, error };
 }
 
+// ── Query engine helpers ────────────────────────────────────
+
+type Filter = { method: string; args: any[] };
+
+function getNestedValue(obj: any, path: string): any {
+    if (!path.includes(".")) return obj[path];
+    return path.split(".").reduce((current, key) => {
+        if (current == null || typeof current !== "object") return undefined;
+        return current[key];
+    }, obj);
+}
+
+function cmp(a: any, b: any): number {
+    if (a == null && b == null) return 0;
+    if (a == null) return -1;
+    if (b == null) return 1;
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    if (a instanceof Date && b instanceof Date) return a.getTime() - b.getTime();
+    return String(a).localeCompare(String(b));
+}
+
+function applyFilters(data: any[], filters: Filter[]): any[] {
+    let result = [...data];
+    for (const f of filters) {
+        switch (f.method) {
+            case "eq": {
+                const [col, val] = f.args;
+                result = result.filter((item) => getNestedValue(item, col) === val);
+                break;
+            }
+            case "neq": {
+                const [col, val] = f.args;
+                result = result.filter((item) => getNestedValue(item, col) !== val);
+                break;
+            }
+            case "in": {
+                const [col, vals] = f.args;
+                const arr = Array.isArray(vals) ? vals : [];
+                result = result.filter((item) => arr.includes(getNestedValue(item, col)));
+                break;
+            }
+            case "gt": {
+                const [col, val] = f.args;
+                result = result.filter((item) => cmp(getNestedValue(item, col), val) > 0);
+                break;
+            }
+            case "gte": {
+                const [col, val] = f.args;
+                result = result.filter((item) => cmp(getNestedValue(item, col), val) >= 0);
+                break;
+            }
+            case "lt": {
+                const [col, val] = f.args;
+                result = result.filter((item) => cmp(getNestedValue(item, col), val) < 0);
+                break;
+            }
+            case "lte": {
+                const [col, val] = f.args;
+                result = result.filter((item) => cmp(getNestedValue(item, col), val) <= 0);
+                break;
+            }
+            case "not": {
+                const [col, op, val] = f.args;
+                if (op === "in") {
+                    const vals = val
+                        .replace(/^\(/, "")
+                        .replace(/\)$/, "")
+                        .split(",")
+                        .map((s: string) => s.replace(/'/g, "").trim());
+                    result = result.filter((item) => !vals.includes(String(getNestedValue(item, col))));
+                }
+                break;
+            }
+            case "or": {
+                const [orStr] = f.args;
+                const conditions = orStr.split(",").map((c: string) => {
+                    const parts = c.split(".");
+                    return { col: parts[0], op: parts[1], val: parts.slice(2).join(".") };
+                });
+                result = result.filter((item) =>
+                    conditions.some((cond: any) => {
+                        const v = getNestedValue(item, cond.col);
+                        if (cond.op === "eq") return v === cond.val;
+                        return false;
+                    })
+                );
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+function applyOrder(data: any[], column: string, ascending: boolean): any[] {
+    return [...data].sort((a, b) => {
+        const va = getNestedValue(a, column);
+        const vb = getNestedValue(b, column);
+        const c = cmp(va, vb);
+        return ascending ? c : -c;
+    });
+}
+
 // ── Chain builder ───────────────────────────────────────────
 
-/**
- * Creates a thenable terminal for a given table.
- *
- * Each method returns the terminal itself (for chaining).
- * Awaiting the terminal resolves with the table's configured MockResponse.
- * `.single()` / `.maybeSingle()` are explicit terminals that return a Promise.
- */
 export function makeChain(table: string) {
-    function getResponse(): Promise<MockResponse & { count?: number }> {
+    const filters: Filter[] = [];
+    let orderBy: { column: string; ascending: boolean } | undefined;
+    let limitCount: number | undefined;
+    let countExact = false;
+    let headOnly = false;
+
+    function execute(opts?: { single?: boolean; maybeSingle?: boolean }): Promise<any> {
         const r = state.tables[table];
         if (!r) return Promise.resolve({ data: null, error: null, count: 0 });
-        const count = Array.isArray(r.data) ? r.data.length : (r.data !== null && r.data !== undefined ? 1 : 0);
-        return Promise.resolve({ ...r, count });
+
+        let data = r.data;
+        let error = r.error;
+
+        if (Array.isArray(data)) {
+            if (filters.length > 0) {
+                data = applyFilters(data, filters);
+            }
+            if (orderBy) {
+                data = applyOrder(data, orderBy.column, orderBy.ascending);
+            }
+            if (limitCount != null && data.length > limitCount) {
+                data = data.slice(0, limitCount);
+            }
+        } else if (!Array.isArray(data) && data != null && filters.length > 0) {
+            const asArray = [data];
+            const filtered = applyFilters(asArray, filters);
+            data = filtered.length > 0 ? filtered[0] : null;
+            if (!data) {
+                error = { message: "No rows match filter", code: "PGRST116" };
+            }
+        }
+
+        const count = countExact
+            ? (Array.isArray(data) ? data.length : (data != null ? 1 : 0))
+            : undefined;
+
+        if (headOnly) {
+            return Promise.resolve({ data: null, error, count });
+        }
+
+        if (opts?.single) {
+            if (Array.isArray(data)) {
+                if (data.length === 0) {
+                    return Promise.resolve({ data: null, error: { message: "No rows found", code: "PGRST116" }, count });
+                }
+                return Promise.resolve({ data: data[0], error, count });
+            }
+            return Promise.resolve({ data, error, count });
+        }
+
+        if (opts?.maybeSingle) {
+            if (Array.isArray(data)) {
+                return Promise.resolve({ data: data[0] ?? null, error });
+            }
+            return Promise.resolve({ data: data ?? null, error });
+        }
+
+        return Promise.resolve({ data, error, count });
     }
 
     const terminal: any = {
-        // Thenable: makes `await chain` resolve with MockResponse
-        then(resolve: (v: MockResponse) => void, reject?: (e: Error) => void) {
-            return getResponse().then(resolve, reject);
+        // Thenable: makes `await chain` resolve
+        then(resolve: (v: any) => void, reject?: (e: Error) => void) {
+            return execute().then(resolve, reject);
         },
 
-        // Chainable methods (return terminal for continued chaining)
-        select: vi.fn(() => terminal),
+        // Chainable methods
+        select: vi.fn((_columns?: string, opts?: { count?: string; head?: boolean }) => {
+            if (opts?.count === "exact") countExact = true;
+            if (opts?.head) headOnly = true;
+            return terminal;
+        }),
         insert: vi.fn(() => terminal),
         update: vi.fn(() => terminal),
         delete: vi.fn(() => terminal),
-        eq: vi.fn(() => terminal),
-        neq: vi.fn(() => terminal),
+        eq: vi.fn((col: string, val: any) => { filters.push({ method: "eq", args: [col, val] }); return terminal; }),
+        neq: vi.fn((col: string, val: any) => { filters.push({ method: "neq", args: [col, val] }); return terminal; }),
+        in: vi.fn((col: string, vals: any[]) => { filters.push({ method: "in", args: [col, vals] }); return terminal; }),
+        gt: vi.fn((col: string, val: any) => { filters.push({ method: "gt", args: [col, val] }); return terminal; }),
+        gte: vi.fn((col: string, val: any) => { filters.push({ method: "gte", args: [col, val] }); return terminal; }),
+        lt: vi.fn((col: string, val: any) => { filters.push({ method: "lt", args: [col, val] }); return terminal; }),
+        lte: vi.fn((col: string, val: any) => { filters.push({ method: "lte", args: [col, val] }); return terminal; }),
+        not: vi.fn((col: string, op: string, val: string) => { filters.push({ method: "not", args: [col, op, val] }); return terminal; }),
         or: vi.fn(() => terminal),
-        gt: vi.fn(() => terminal),
-        gte: vi.fn(() => terminal),
-        lt: vi.fn(() => terminal),
-        lte: vi.fn(() => terminal),
-        not: vi.fn(() => terminal),
-        in: vi.fn(() => terminal),
-        order: vi.fn(() => terminal),
-        limit: vi.fn(() => terminal),
-
-        // Terminal methods (return Promise directly)
-        single: vi.fn(() => getResponse().then((r) => {
-            if (Array.isArray(r.data)) {
-                return { data: r.data[0] ?? null, error: r.error, count: r.count };
-            }
-            return r;
-        })),
-        maybeSingle: vi.fn(() => {
-            const r = state.tables[table];
-            if (!r || r.data === undefined) return Promise.resolve({ data: null, error: null });
-            if (Array.isArray(r.data)) {
-                return Promise.resolve({ data: r.data[0] ?? null, error: r.error });
-            }
-            return Promise.resolve(r);
+        order: vi.fn((col: string, opts?: { ascending?: boolean }) => {
+            orderBy = { column: col, ascending: opts?.ascending ?? true };
+            return terminal;
         }),
+        limit: vi.fn((n: number) => { limitCount = n; return terminal; }),
+
+        // Terminal methods
+        single: vi.fn(() => execute({ single: true })),
+        maybeSingle: vi.fn(() => execute({ maybeSingle: true })),
     };
 
     return terminal;
 }
-
 
 // ── Factory ─────────────────────────────────────────────────
 
