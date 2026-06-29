@@ -62,7 +62,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
             }
             setSuccessId(claseId);
             setShowSuccessModal(true);
-            onAgendada(claseId);
+            onAgendada(claseId, data.inscripcionId);
 
             const updated = await getMembresiaByUser(usuario!.id);
             if (updated) setMembresia(updated);
