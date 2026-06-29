@@ -16,8 +16,8 @@ beforeEach(() => {
 });
 
 describe("userHasMembresia", () => {
-    it("retorna true si hay membresías", async () => {
-        __setTableData("membresia", [{ id: "m1", usuario_id: USER_ID }]);
+    it("retorna true si hay membresías activas", async () => {
+        __setTableData("membresia", [{ id: "m1", usuario_id: USER_ID, estado: true }]);
 
         const result = await userHasMembresia(USER_ID);
 
@@ -50,7 +50,7 @@ describe("getMembresiaByUser", () => {
         tokens_totales: 30,
         tokens_usados: 10,
         mes: "2026-06-01",
-
+        estado: true,
     };
 
     it("retorna membresía con plan", async () => {
@@ -120,12 +120,13 @@ describe("createMembresia", () => {
         expect(insertedData?.tokens_usados).toBe(0);
         expect(insertedData?.plan_id).toBe("p1");
         expect(insertedData?.usuario_id).toBe(USER_ID);
+        expect(insertedData?.estado).toBe(true);
     });
 });
 
 describe("devolverToken", () => {
     it("retorna true si la membresía actual tiene tokens usados", async () => {
-        __setTableData("membresia", { id: "m1", tokens_usados: 5 });
+        __setTableData("membresia", { id: "m1", tokens_usados: 5, estado: true });
         __setTableData("membresia_update", { id: "m1", tokens_usados: 4 });
 
         const result = await devolverToken(USER_ID);
@@ -144,8 +145,8 @@ describe("devolverToken", () => {
 
     it("MB-009: retorna false si la membresía actual tiene tokens_usados=0 aunque haya una vieja con >0", async () => {
         __setTableData("membresia", [
-            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, mes: "2026-06-01" },
-            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, mes: "2026-05-01" },
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, mes: "2026-06-01", estado: true },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, mes: "2026-05-01", estado: true },
         ]);
 
         const result = await devolverToken(USER_ID);
@@ -157,8 +158,8 @@ describe("devolverToken", () => {
 describe("getMembresiaByUser — múltiples membresías", () => {
     it("MB-007: elige la membresía más reciente cuando hay varias", async () => {
         __setTableData("membresia", [
-            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, mes: "2026-06-01" },
-            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 20, mes: "2026-05-01" },
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, mes: "2026-06-01", estado: true },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 20, mes: "2026-05-01", estado: true },
         ]);
         __setTableData("plan", { id: "p1", nombre: "Premium", tokens_mensuales: 30, precio: 40000 });
 
@@ -171,8 +172,8 @@ describe("getMembresiaByUser — múltiples membresías", () => {
 
     it("MB-008: usa membresía nueva aunque la vieja tenga más tokens restantes", async () => {
         __setTableData("membresia", [
-            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, mes: "2026-06-01" },
-            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 10, mes: "2026-05-01" },
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, mes: "2026-06-01", estado: true },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 10, mes: "2026-05-01", estado: true },
         ]);
         __setTableData("plan", { id: "p1", nombre: "Premium", tokens_mensuales: 30, precio: 40000 });
 
@@ -186,7 +187,7 @@ describe("getMembresiaByUser — múltiples membresías", () => {
 
 describe("createMembresia — duplicados", () => {
     it("MB-010: crea membresía aunque exista una del mes pasado (no hay constraint único)", async () => {
-        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, plan_id: "p1", mes: "2026-05-01" });
+        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, plan_id: "p1", mes: "2026-05-01", estado: true });
 
         const result = await createMembresia(USER_ID, "p1", 30);
 
@@ -199,9 +200,9 @@ describe("getAllMembresiasConPlan", () => {
 
     it("DATA-MEMB-TODAS-001: agrupa por usuario y elige la membresía con más tokens restantes", async () => {
         __setTableData("membresia", [
-            { id: "m1", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 2, mes: "2026-06-01" },
-            { id: "m2", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 0, mes: "2026-06-01" },
-            { id: "m3", usuario_id: "u2", plan_id: "pa", tokens_totales: 10, tokens_usados: 5, mes: "2026-06-01" },
+            { id: "m1", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 2, mes: "2026-06-01", estado: true },
+            { id: "m2", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 0, mes: "2026-06-01", estado: true },
+            { id: "m3", usuario_id: "u2", plan_id: "pa", tokens_totales: 10, tokens_usados: 5, mes: "2026-06-01", estado: true },
         ]);
         __setTableData("plan", [PLAN_A]);
 

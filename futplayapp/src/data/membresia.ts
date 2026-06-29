@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { membresiaActiva } from "@/lib/fechas";
 
 type PlanRow = {
     id: string;
@@ -15,6 +16,7 @@ type MembresiaRow = {
     tokens_totales: number;
     tokens_usados: number;
     mes: string;
+    estado: boolean;
 };
 
 export type MembresiaConPlan = {
@@ -36,7 +38,8 @@ export async function userHasMembresia(userId: string): Promise<boolean> {
     const { data, error } = await supabase
         .from("membresia")
         .select("id")
-        .eq("usuario_id", userId);
+        .eq("usuario_id", userId)
+        .eq("estado", true);
 
     if (error) {
         console.error("Error fetching membresia:", error.message);
@@ -98,8 +101,18 @@ export async function getMembresiaByUser(userId: string): Promise<MembresiaConPl
 
     if (!data) return null;
 
-    const plan = await getPlanById(data.plan_id);
-    return buildMembresiaConPlan(data as MembresiaRow, plan);
+    const membresia = data as MembresiaRow;
+
+    if (membresia.estado && !membresiaActiva(membresia.mes)) {
+        await supabase
+            .from("membresia")
+            .update({ estado: false })
+            .eq("id", membresia.id);
+        membresia.estado = false;
+    }
+
+    const plan = await getPlanById(membresia.plan_id);
+    return buildMembresiaConPlan(membresia, plan);
 }
 
 export async function getAllMembresiasConPlan(): Promise<MembresiaConPlan[]> {
@@ -180,7 +193,7 @@ export async function createMembresia(
             mes,
             tokens_totales: tokensMensuales,
             tokens_usados: 0,
-
+            estado: true,
         });
 
     if (error) {

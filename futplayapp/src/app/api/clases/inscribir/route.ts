@@ -109,6 +109,7 @@ export async function POST(request: Request) {
             .from("membresia")
             .select("tokens_totales, tokens_usados")
             .eq("usuario_id", user.id)
+            .eq("estado", true)
             .gte("mes", startOfMonth)
             .order("mes", { ascending: false })
             .limit(1)
