@@ -16,7 +16,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  User
 } from "lucide-react";
 
 const menuItems = [
@@ -27,6 +28,7 @@ const menuItems = [
   { name: "Gestión de cápsulas", href: "/admin/capsulas", icon: Video },
   { name: "Gestión de profesores", href: "/admin/profesores", icon: PersonStanding },
   { name: "Gestión de planes", href: "/admin/planes", icon: CreditCard },
+  { name: "Mi Perfil", href: "/admin/perfil", icon: User },
 ];
 
 interface SidebarProps {
