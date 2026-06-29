@@ -15,7 +15,7 @@ export default function DashboardLayout({
             <div className="flex flex-col md:flex-row h-screen">
                 <SidebarUsuarioNuevo />
                 <main className="flex-1 overflow-y-auto">
-                    <div className="hidden md:flex items-center justify-end px-6 py-3 sticky top-0 bg-[#F8F9FB] z-30">
+                    <div className="hidden md:block fixed top-4 right-6 z-30">
                         <UserDropdown />
                     </div>
                     {children}
