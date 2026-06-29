@@ -36,6 +36,7 @@ describe("getProximaClase", () => {
         expect(result.length).toBe(1);
         expect(result[0].titulo).toBe("Entrenamiento Mañana");
         expect(result[0].sede).toBe("Sede Centro");
+        expect(result[0].tipo_evento).toBe("entrenamiento");
     });
 
     it("DATA-CLASES-GPC-002: retorna la próxima clase tipo partido (con título)", async () => {
@@ -57,6 +58,7 @@ describe("getProximaClase", () => {
         expect(Array.isArray(result)).toBe(true);
         expect(result.length).toBe(1);
         expect(result[0].titulo).toBe("Partido del finde");
+        expect(result[0].tipo_evento).toBe("partido");
     });
 
     it("DATA-CLASES-GPC-003: retorna array vacío si no hay clases futuras", async () => {

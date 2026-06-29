@@ -21,6 +21,7 @@ vi.mock("@supabase/ssr", () => ({
 
 vi.mock("@/utils/supabase/admin", () => ({
     verifyAdmin: vi.fn(() => Promise.resolve({ id: "admin-1", email: "admin@test.cl" })),
+    getAdminClient: vi.fn(() => Promise.resolve(createMockServerClient())),
 }));
 
 import { POST } from "@/app/api/admin/students/route";

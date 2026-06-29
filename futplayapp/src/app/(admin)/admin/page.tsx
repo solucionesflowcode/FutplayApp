@@ -11,6 +11,19 @@ import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { AuthGuard } from "@/context";
 import { getUsers } from "@/data/plans";
 
+function exportCSV(students: Student[]) {
+  const headers = ["Nombre", "RUT", "Teléfono", "Plan", "Estado", "Role"];
+  const rows = students.map((s) => [s.name, s.rut || "", s.phone || "", s.plan, s.status, s.role]);
+  const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(","))].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;", });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "usuarios.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminPage() {
   return (
     <AuthGuard allowedRoles={["administrador"]}>
@@ -87,7 +100,14 @@ function AdminContent() {
   return (
 
     <div className="p-6">
-      <AdminHeader search={search} onSearchChange={setSearch} />
+      <AdminHeader
+        search={search}
+        onSearchChange={setSearch}
+        vencidos={filtered.filter((s) => s.status === "Vencido")}
+        students={students}
+        onView={setViewStudent}
+        exportCSV={exportCSV}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">

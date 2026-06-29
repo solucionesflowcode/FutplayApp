@@ -44,28 +44,33 @@ export async function getProximaClase(userId: string): Promise<Array<{
   const { data, error } = await supabase
     .from("clase_usuario")
     .select(`
-            clase!inner (
-                titulo,
-                descripcion,
-                fecha_hora,
-                tipo_evento,
-                sede (nombre)
-            )
-        `)
+      clase!inner (
+        titulo,
+        descripcion,
+        fecha_hora,
+        tipo_evento,
+        sede (nombre)
+      ),
+      asistencia
+    `)
     .eq("usuario_id", userId)
     .gte("clase.fecha_hora", localISONow());
 
   if (error || !data?.length) return [];
 
+  const excluded = new Set(["cancelado", "cancelado_sin_reembolso", "presente", "ausente"]);
   const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string; tipo_evento: "entrenamiento" | "partido" }> = [];
   for (const item of data) {
-    const c = item.clase as Record<string, unknown>;
-    if (!c || !c.titulo) continue;
+    if (excluded.has((item as any).asistencia)) continue;
+    const raw = item.clase;
+    const c = (Array.isArray(raw) ? (raw as Record<string, unknown>[])[0] : raw) as Record<string, unknown>;
+    if (!c || (!c.titulo && c.tipo_evento !== "partido")) continue;
     rows.push({
       titulo: (c.titulo as string) || "Partido",
       descripcion: c.descripcion as string,
       fecha_hora: c.fecha_hora as string,
       sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
+      tipo_evento: c.tipo_evento as "entrenamiento" | "partido",
     });
   }
 

@@ -1,13 +1,25 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { useRef, useState } from "react";
+import { Search, Bell, X, Settings, Download } from "lucide-react";
+import { useAuthUser } from "@/context";
+import type { Student } from "./StudentsTable";
 
 type Props = {
   search?: string;
   onSearchChange?: (value: string) => void;
+  vencidos: Student[];
+  students: Student[];
+  onView?: (student: Student) => void;
+  exportCSV?: (students: Student[]) => void;
 };
 
-export default function AdminHeader({ search, onSearchChange }: Props) {
+export default function AdminHeader({ search, onSearchChange, vencidos = [], students = [], onView, exportCSV }: Props) {
+  const { usuario } = useAuthUser();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
   return (
     <div className="flex flex-col gap-4 mb-6">
       <div className="flex justify-between items-center gap-4">
@@ -85,7 +97,7 @@ export default function AdminHeader({ search, onSearchChange }: Props) {
                 </div>
                 <div className="py-1">
                   <button
-                    onClick={() => { exportCSV(students); setShowSettings(false); }}
+                    onClick={() => { exportCSV?.(students); setShowSettings(false); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
                   >
                     <Download size={16} className="text-gray-500" />
