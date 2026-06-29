@@ -137,7 +137,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ inscripcionId: existing.id });
     }
 
-    // First-time inscription: INSERT (trigger will deduct token — compensate if partido)
+    // First-time inscription: INSERT (trigger validates only — deduct token in app)
     const { data, error } = await supabase
         .from("clase_usuario")
         .insert({ usuario_id: user.id, clase_id: claseId })
@@ -151,9 +151,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Partido: devolver el token que el trigger descontó
-    if (esPartido) {
-        await admin.rpc("devolver_token", { p_usuario_id: user.id });
+    // Entrenamiento: descontar token (trigger ya no descuenta, solo valida)
+    if (!esPartido) {
+        await consumirToken(admin, user.id);
     }
 
     return NextResponse.json({ inscripcionId: data.id });
