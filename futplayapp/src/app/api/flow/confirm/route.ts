@@ -73,5 +73,9 @@ export async function GET(request: Request) {
         return NextResponse.json({ estado: "pagado" });
     }
 
+    if (boleta.estado === "rechazado" || boleta.estado === "anulado") {
+        return NextResponse.json({ estado: boleta.estado });
+    }
+
     return NextResponse.json({ estado: "pendiente", message: "El pago está pendiente de confirmación." });
 }

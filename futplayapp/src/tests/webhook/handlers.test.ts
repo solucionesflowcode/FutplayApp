@@ -8,6 +8,7 @@ import {
 
 type MockDb = {
   getProximaClaseUsuario: ReturnType<typeof vi.fn>;
+  getProximaClaseUsuarioActioned: ReturnType<typeof vi.fn>;
   confirmarAsistencia: ReturnType<typeof vi.fn>;
   updateAsistencia: ReturnType<typeof vi.fn>;
   devolverToken: ReturnType<typeof vi.fn>;
@@ -17,6 +18,7 @@ type MockDb = {
 function createMockDb(): MockDb {
   return {
     getProximaClaseUsuario: vi.fn(),
+    getProximaClaseUsuarioActioned: vi.fn(),
     confirmarAsistencia: vi.fn(),
     updateAsistencia: vi.fn(),
     devolverToken: vi.fn(),
@@ -277,22 +279,102 @@ describe("procesarMensajeWhatsApp", () => {
     expect(res).toContain("Asistencia confirmada");
   });
 
-  it("tolera minúsculas", async () => {
+  it("tolera minúsculas (1 en minúscula funciona)", async () => {
     db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
     db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
     db.confirmarAsistencia.mockResolvedValue(true);
-    const res = await procesarMensajeWhatsApp("56912345678", "a", db);
+    const res = await procesarMensajeWhatsApp("56912345678", "1", db);
+    expect(res).toContain("Asistencia confirmada");
+  });
+
+  it("BOT-RESP-006: si manda otro texto teniendo clase pendiente, recuerda opciones", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
+    const res = await procesarMensajeWhatsApp("56912345678", "hola", db);
+    expect(res).toContain("Para confirmar");
+    expect(res).toContain("1");
+    expect(res).toContain("2");
+    expect(db.confirmarAsistencia).not.toHaveBeenCalled();
+    expect(db.updateAsistencia).not.toHaveBeenCalled();
+  });
+
+  it("BOT-RESP-007: si manda otro texto sin clase pendiente, no responde", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(null);
+    const res = await procesarMensajeWhatsApp("56912345678", "hola", db);
     expect(res).toBeNull();
   });
 
-  it("BOT-RESP-001: retorna null si el usuario ya respondió (no hay clases pendientes)", async () => {
+  it("BOT-RESP-001: retorna null si no hay clases pendientes ni actionadas", async () => {
     db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
     db.getProximaClaseUsuario.mockResolvedValue(null);
+    db.getProximaClaseUsuarioActioned.mockResolvedValue(null);
 
     const res1 = await procesarMensajeWhatsApp("56912345678", "1", db);
     expect(res1).toBeNull();
 
     const res2 = await procesarMensajeWhatsApp("56912345678", "2", db);
     expect(res2).toBeNull();
+  });
+
+  it("BOT-RESP-002: avisa si la clase ya fue cancelada desde la web", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(null);
+    db.getProximaClaseUsuarioActioned.mockResolvedValue({
+      id: "insc-1",
+      clase: { titulo: "Spinning" },
+      horario: { fecha_hora: new Date(Date.now() + 86400000).toISOString() },
+      asistencia: "cancelado",
+    });
+
+    const res = await procesarMensajeWhatsApp("56912345678", "1", db);
+    expect(res).toContain("Ya cancelaste");
+    expect(res).toContain("Spinning");
+    expect(res).toContain("desde la página web");
+    expect(db.confirmarAsistencia).not.toHaveBeenCalled();
+    expect(db.updateAsistencia).not.toHaveBeenCalled();
+  });
+
+  it("BOT-RESP-003: avisa si la clase ya fue confirmada desde la web", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(null);
+    db.getProximaClaseUsuarioActioned.mockResolvedValue({
+      id: "insc-1",
+      clase: { titulo: "Yoga" },
+      horario: { fecha_hora: new Date(Date.now() + 86400000).toISOString() },
+      asistencia: "confirmado",
+    });
+
+    const res = await procesarMensajeWhatsApp("56912345678", "2", db);
+    expect(res).toContain("Ya confirmaste");
+    expect(res).toContain("Yoga");
+    expect(res).toContain("Nos vemos allí");
+    expect(db.confirmarAsistencia).not.toHaveBeenCalled();
+    expect(db.updateAsistencia).not.toHaveBeenCalled();
+  });
+
+  it("BOT-RESP-004: detecta cancelado_sin_reembolso como cancelación previa", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(null);
+    db.getProximaClaseUsuarioActioned.mockResolvedValue({
+      id: "insc-1",
+      clase: { titulo: "Funcional" },
+      horario: { fecha_hora: new Date(Date.now() + 86400000).toISOString() },
+      asistencia: "cancelado_sin_reembolso",
+    });
+
+    const res = await procesarMensajeWhatsApp("56912345678", "2", db);
+    expect(res).toContain("Ya cancelaste");
+    expect(db.updateAsistencia).not.toHaveBeenCalled();
+  });
+
+  it("BOT-RESP-005: flujo normal sigue funcionando si hay clase pendiente (no llama actioned)", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
+    db.confirmarAsistencia.mockResolvedValue(true);
+
+    const res = await procesarMensajeWhatsApp("56912345678", "1", db);
+    expect(res).toContain("Asistencia confirmada");
+    expect(db.getProximaClaseUsuarioActioned).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,11 @@ function getClient() {
   return supabase;
 }
 
+// Exclusivo para tests — inyecta un cliente mock sin tocar Supabase
+function _setTestClient(client) {
+  supabase = client;
+}
+
 async function buscarUsuarioPorTelefono(telefono) {
   const raw = telefono.replace(/\D/g, '');
   const { data } = await supabase
@@ -189,11 +194,44 @@ async function getHorarioCompleto(claseId) {
   return data ? { id: data.id, fecha_hora: data.fecha_hora, clase_id: data.id } : null;
 }
 
+async function getProximaClaseUsuarioActioned(usuarioId) {
+  const { data: inscripciones } = await supabase
+    .from('clase_usuario')
+    .select('id, clase_id, asistencia')
+    .eq('usuario_id', usuarioId);
+
+  if (!inscripciones?.length) return null;
+
+  const claseIds = inscripciones.map(i => i.clase_id);
+
+  const { data: clase } = await supabase
+    .from('clase')
+    .select('id, titulo, fecha_hora')
+    .in('id', claseIds)
+    .gte('fecha_hora', new Date().toISOString())
+    .order('fecha_hora', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!clase) return null;
+
+  const claseUsuario = inscripciones.find(i => i.clase_id === clase.id);
+
+  return {
+    id: claseUsuario.id,
+    clase: { titulo: clase.titulo ?? 'Clase' },
+    horario: { fecha_hora: clase.fecha_hora },
+    asistencia: claseUsuario.asistencia,
+  };
+}
+
 module.exports = {
   init,
   getClient,
+  _setTestClient,
   buscarUsuarioPorTelefono,
   getProximaClaseUsuario,
+  getProximaClaseUsuarioActioned,
   confirmarAsistencia,
   updateAsistencia,
   devolverToken,
