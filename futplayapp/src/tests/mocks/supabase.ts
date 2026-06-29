@@ -36,7 +36,7 @@ export function __setTableData(table: string, data: any, error: any = null) {
  * Awaiting the terminal resolves with the table's configured MockResponse.
  * `.single()` / `.maybeSingle()` are explicit terminals that return a Promise.
  */
-function makeChain(table: string) {
+export function makeChain(table: string) {
     function getResponse(): Promise<MockResponse & { count?: number }> {
         const r = state.tables[table];
         if (!r) return Promise.resolve({ data: null, error: null, count: 0 });
@@ -87,6 +87,40 @@ function makeChain(table: string) {
     return terminal;
 }
 
+<<<<<<< HEAD
+/**
+ * Creates a chain that returns a fixed data object instead of reading from state.
+ * Useful for sequence/race-condition tests where different calls need different data.
+ */
+export function makeSeqChain(table: string, data: any, error: any = null): any {
+    const response = { data, error };
+    const terminal: any = {
+        then(resolve: (v: any) => void) {
+            return Promise.resolve(response).then(resolve);
+        },
+        select: vi.fn(() => terminal),
+        insert: vi.fn(() => terminal),
+        update: vi.fn(() => terminal),
+        delete: vi.fn(() => terminal),
+        eq: vi.fn(() => terminal),
+        neq: vi.fn(() => terminal),
+        or: vi.fn(() => terminal),
+        gt: vi.fn(() => terminal),
+        gte: vi.fn(() => terminal),
+        lt: vi.fn(() => terminal),
+        lte: vi.fn(() => terminal),
+        not: vi.fn(() => terminal),
+        in: vi.fn(() => terminal),
+        order: vi.fn(() => terminal),
+        limit: vi.fn(() => terminal),
+        single: vi.fn(() => Promise.resolve(response)),
+        maybeSingle: vi.fn(() => Promise.resolve(response)),
+    };
+    return terminal;
+}
+
+=======
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 // ── Factory ─────────────────────────────────────────────────
 
 export function createMockServerClient() {

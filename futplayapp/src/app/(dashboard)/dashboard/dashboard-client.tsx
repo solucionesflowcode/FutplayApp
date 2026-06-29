@@ -106,7 +106,7 @@ export default function DashboardClient() {
                     <div className="w-full">
                         <PlanesRender />
                     </div>
-                    {planChecked && tienePlan ? (
+                    {planChecked && (
                         tieneFicha ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                                 <MiAsistencia />
@@ -117,12 +117,6 @@ export default function DashboardClient() {
                                 <MetricasCorporales />
                                 <MiAsistencia />
                                 <ProximaRenovacion />
-                            </div>
-                        )
-                    ) : (
-                        !tieneFicha && (
-                            <div className="w-full">
-                                <MetricasCorporales />
                             </div>
                         )
                     )}
