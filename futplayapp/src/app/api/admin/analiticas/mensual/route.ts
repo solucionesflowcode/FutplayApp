@@ -1,6 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { verifyAdmin } from "@/utils/supabase/admin";
+import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 
 type MesEntry = { ingresos: number; membresias: number; transacciones: number };
 
@@ -8,16 +7,7 @@ export async function GET() {
   const user = await verifyAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
-  }
-
-  const adminClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    { cookies: { getAll() { return []; }, setAll() {} } }
-  );
+  const adminClient = await getAdminClient();
 
   // Fetch both sources in parallel
   const [membresiasRes, boletasRes] = await Promise.all([

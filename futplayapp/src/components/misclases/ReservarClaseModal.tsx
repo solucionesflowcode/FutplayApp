@@ -7,7 +7,7 @@ import {
     Clock,
     Loader2,
     MapPin,
-    MessageCircle,
+    MessageSquare,
     Ticket,
     X,
 } from "lucide-react";
@@ -191,7 +191,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                             Recibirás un mensaje de <strong className="text-[#25D366]">WhatsApp</strong>{" "}
                             24 horas antes de la clase para confirmar tu asistencia.
                         </p>
-                        <div className="flex items-center gap-3 bg-[#f0fdf4] border border-emerald-200 rounded px-4 py-3 text-sm text-emerald-800 mb-6">
+                        <div className="flex items-center gap-3 bg-[#f0fdf4] border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800 mb-6">
                             <MessageCircle className="w-5 h-5 shrink-0 text-[#25D366]" />
                             <span className="text-left text-xs">
                                 Agrega el número de contacto a tu agenda para recibir la notificación.

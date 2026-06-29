@@ -1,62 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Search, Bell, Settings, Download, X } from "lucide-react";
-import { useAuthUser } from "@/context";
-import type { Student } from "./StudentsTable";
+import { Search } from "lucide-react";
 
 type Props = {
-  students: Student[];
   search?: string;
   onSearchChange?: (value: string) => void;
-  onView?: (student: Student) => void;
 };
 
-function exportCSV(students: Student[]) {
-  const headers = ["Nombre", "Usuario", "RUT", "Teléfono", "Plan", "Tokens", "Estado"];
-  const rows = students.map((s) => [
-    s.name,
-    s.role,
-    s.rut || "",
-    s.phone || "",
-    s.plan,
-    String(s.tokens),
-    s.status,
-  ]);
-
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `alumnos_${new Date().toISOString().split("T")[0]}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-export default function AdminHeader({ students, search, onSearchChange, onView }: Props) {
-  const { usuario } = useAuthUser();
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
-  const notifRef = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setShowNotifications(false);
-      }
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setShowSettings(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const vencidos = students.filter((s) => s.status === "Vencido");
-
+export default function AdminHeader({ search, onSearchChange }: Props) {
   return (
     <div className="flex flex-col gap-4 mb-6">
       <div className="flex justify-between items-center gap-4">
@@ -89,7 +40,7 @@ export default function AdminHeader({ students, search, onSearchChange, onView }
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded shadow-xl border border-gray-200 z-50">
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="font-semibold text-sm text-gray-900">Notificaciones</h3>
                   <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -125,7 +76,7 @@ export default function AdminHeader({ students, search, onSearchChange, onView }
             </button>
 
             {showSettings && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded shadow-xl border border-gray-200 z-50">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="font-semibold text-sm text-gray-900">Opciones</h3>
                   <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">

@@ -59,17 +59,13 @@ export async function getProximaClase(userId: string): Promise<Array<{
 
   const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string; tipo_evento: "entrenamiento" | "partido" }> = [];
   for (const item of data) {
-    const raw = item.clase as unknown;
-    const c = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown>;
-    if (!c) continue;
-    const rawSede = c.sede;
-    const sedeObj = Array.isArray(rawSede) ? (rawSede as Record<string, unknown>[])[0] : rawSede as Record<string, string> | null;
+    const c = item.clase as Record<string, unknown>;
+    if (!c || !c.titulo) continue;
     rows.push({
       titulo: (c.titulo as string) || "Partido",
       descripcion: c.descripcion as string,
       fecha_hora: c.fecha_hora as string,
-      sede: (sedeObj?.nombre as string) ?? "",
-      tipo_evento: (c.tipo_evento as "entrenamiento" | "partido") || "partido",
+      sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
     });
   }
 

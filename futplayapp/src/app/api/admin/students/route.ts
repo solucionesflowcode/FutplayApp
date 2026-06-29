@@ -1,16 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { verifyAdmin } from "@/utils/supabase/admin";
-
-function getAdminClient() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY");
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    { cookies: { getAll() { return []; }, setAll() {} } }
-  );
-}
+import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 
 
 export async function POST(request: Request) {
@@ -34,7 +23,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const adminClient = getAdminClient();
+  const adminClient = await getAdminClient();
 
   const tempPassword = crypto.randomUUID().slice(0, 10) + "Aa1!";
 
@@ -122,7 +111,7 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const body = await request.json();
 
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
@@ -151,15 +140,24 @@ export async function DELETE(request: Request) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
+    // 1) Eliminar registros en tablas hijas
+    await admin.from("membresia").delete().eq("usuario_id", id);
+    await admin.from("boleta").delete().eq("usuario_id", id);
+    await admin.from("clase_usuario").delete().eq("usuario_id", id);
+    await admin.from("ficha_medica").delete().eq("usuario_id", id);
+    await admin.from("horario").delete().eq("usuario_id", id);
+
+    // 2) Eliminar de usuario
     const { error: usuarioError } = await admin.from("usuario").delete().eq("id", id);
     if (usuarioError) return NextResponse.json({ error: usuarioError.message }, { status: 500 });
 
+    // 3) Eliminar de auth.users
     await admin.auth.admin.deleteUser(id);
 
     return NextResponse.json({ success: true });

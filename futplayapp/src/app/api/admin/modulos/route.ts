@@ -1,16 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { verifyAdmin } from "@/utils/supabase/admin";
-
-function getAdminClient() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY");
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    { cookies: { getAll() { return []; }, setAll() {} } }
-  );
-}
+import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 
 
 export async function GET(request: Request) {
@@ -21,7 +10,7 @@ export async function GET(request: Request) {
   const tipo = searchParams.get("tipo") || "modulos";
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
 
     if (tipo === "categorias") {
       const { data } = await admin.from("categoria").select("*").order("nombre");
@@ -69,7 +58,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const body = await request.json();
 
     if (!body.nombre) {
@@ -98,7 +87,7 @@ export async function PUT(request: Request) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const body = await request.json();
 
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
@@ -122,7 +111,7 @@ export async function DELETE(request: Request) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   try {
-    const admin = getAdminClient();
+    const admin = await getAdminClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
