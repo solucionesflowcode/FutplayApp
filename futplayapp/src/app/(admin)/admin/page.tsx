@@ -11,19 +11,6 @@ import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { AuthGuard } from "@/context";
 import { getUsers } from "@/data/plans";
 
-function exportCSV(students: Student[]) {
-  const headers = ["Nombre", "RUT", "Teléfono", "Plan", "Estado", "Role"];
-  const rows = students.map((s) => [s.name, s.rut || "", s.phone || "", s.plan, s.status, s.role]);
-  const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(","))].join("\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;", });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "usuarios.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function AdminPage() {
   return (
     <AuthGuard allowedRoles={["administrador"]}>
@@ -82,6 +69,9 @@ function AdminContent() {
   );
 
   const total = filtered.length;
+  const jugadores = filtered.filter((s) => s.role === "Alumno").length;
+  const profesores = filtered.filter((s) => s.role === "Profesor").length;
+  const admins = filtered.filter((s) => s.role === "Admin").length;
   const activos = filtered.filter((s) => s.status === "Activo").length;
   const vencidos = filtered.filter((s) => s.status === "Vencido").length;
   const inactivos = filtered.filter((s) => s.status === "Inactivo").length;
@@ -103,28 +93,36 @@ function AdminContent() {
       <AdminHeader
         search={search}
         onSearchChange={setSearch}
-        vencidos={filtered.filter((s) => s.status === "Vencido")}
-        students={students}
-        onView={setViewStudent}
-        exportCSV={exportCSV}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Total Alumnos</span>
-          <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{total}</p>
+      <div className="grid grid-cols-4 md:grid-cols-7 gap-3 mb-6 max-w-2xl">
+        <div className="w-full aspect-square bg-white border border-gray-200 shadow-sm border-t-2 border-t-[#00305B] rounded-full flex flex-col items-center justify-center text-center p-1 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer">
+          <p className="text-sm md:text-base font-black text-gray-800 leading-none">{total}</p>
+          <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-wider mt-0.5 leading-tight">Total</p>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Con Plan</span>
-          <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{total - inactivos}</p>
+        <div className="w-full aspect-square bg-white border border-gray-200 shadow-sm border-t-2 border-t-[#6366F1] rounded-full flex flex-col items-center justify-center text-center p-1 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer">
+          <p className="text-sm md:text-base font-black text-gray-800 leading-none">{jugadores}</p>
+          <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-wider mt-0.5 leading-tight">Alumnos</p>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Activos</span>
-          <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{activos}</p>
+        <div className="w-full aspect-square bg-white border border-gray-200 shadow-sm border-t-2 border-t-[#8B5CF6] rounded-full flex flex-col items-center justify-center text-center p-1 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer">
+          <p className="text-sm md:text-base font-black text-gray-800 leading-none">{profesores}</p>
+          <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-wider mt-0.5 leading-tight">Profesores</p>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Pagos Vencidos</span>
-          <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{vencidos}</p>
+        <div className="w-full aspect-square bg-white border border-gray-200 shadow-sm border-t-2 border-t-[#F39200] rounded-full flex flex-col items-center justify-center text-center p-1 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer">
+          <p className="text-sm md:text-base font-black text-gray-800 leading-none">{admins}</p>
+          <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-wider mt-0.5 leading-tight">Administrador</p>
+        </div>
+        <div className="w-full aspect-square bg-white border border-gray-200 shadow-sm border-t-2 border-t-[#F28C28] rounded-full flex flex-col items-center justify-center text-center p-1 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer">
+          <p className="text-sm md:text-base font-black text-gray-800 leading-none">{total - inactivos}</p>
+          <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-wider mt-0.5 leading-tight">Con Plan</p>
+        </div>
+        <div className="w-full aspect-square bg-white border border-gray-200 shadow-sm border-t-2 border-t-[#00A86B] rounded-full flex flex-col items-center justify-center text-center p-1 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer">
+          <p className="text-sm md:text-base font-black text-gray-800 leading-none">{activos}</p>
+          <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-wider mt-0.5 leading-tight">Activos</p>
+        </div>
+        <div className="w-full aspect-square bg-white border border-gray-200 shadow-sm border-t-2 border-t-[#ba1a1a] rounded-full flex flex-col items-center justify-center text-center p-1 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer">
+          <p className="text-sm md:text-base font-black text-gray-800 leading-none">{vencidos}</p>
+          <p className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-wider mt-0.5 leading-tight">Vencidos</p>
         </div>
       </div>
 
