@@ -87,6 +87,7 @@ export function makeChain(table: string) {
     return terminal;
 }
 
+<<<<<<< HEAD
 /**
  * Creates a chain that returns a fixed data object instead of reading from state.
  * Useful for sequence/race-condition tests where different calls need different data.
@@ -118,6 +119,8 @@ export function makeSeqChain(table: string, data: any, error: any = null): any {
     return terminal;
 }
 
+=======
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 // ── Factory ─────────────────────────────────────────────────
 
 export function createMockServerClient() {

@@ -46,11 +46,14 @@ webhook/whatsapp-session/
 webhook/.wwebjs_cache/
 webhook/.recordatorios.json
 
+<<<<<<< HEAD
 # whatsapp-web.js cache at project root
 /.wwebjs_cache/
 
 # utility scripts with hardcoded secrets
 /scripts/*.secret.*
 
+=======
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 # editor
 .vscode/

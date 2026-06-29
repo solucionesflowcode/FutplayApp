@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿import { NextResponse } from "next/server";
+=======
+import { NextResponse } from "next/server";
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 
 
@@ -18,7 +22,11 @@ export async function POST(request: Request) {
 
   if (!["jugador", "profesor"].includes(rol)) {
     return NextResponse.json(
+<<<<<<< HEAD
       { error: "Rol invÃ¡lido. Debe ser jugador o profesor" },
+=======
+      { error: "Rol inválido. Debe ser jugador o profesor" },
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
       { status: 400 }
     );
   }
@@ -151,8 +159,12 @@ export async function DELETE(request: Request) {
     await admin.from("boleta").delete().eq("usuario_id", id);
     await admin.from("clase_usuario").delete().eq("usuario_id", id);
     await admin.from("ficha_medica").delete().eq("usuario_id", id);
+<<<<<<< HEAD
     // horario table was deleted -- class scheduling is on clase table now
     // await admin.from("horario").delete().eq("usuario_id", id);
+=======
+    await admin.from("horario").delete().eq("usuario_id", id);
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 
     // 2) Eliminar de usuario
     const { error: usuarioError } = await admin.from("usuario").delete().eq("id", id);

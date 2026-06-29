@@ -1,5 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
+<<<<<<< HEAD
 import { cookies } from "next/headers";
+=======
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 import { NextResponse } from "next/server";
 
 function getAdminClient() {
@@ -14,6 +17,7 @@ function getAdminClient() {
 
 export async function GET(request: Request) {
   try {
+<<<<<<< HEAD
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,6 +35,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
+=======
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const filePath = searchParams.get("filePath");

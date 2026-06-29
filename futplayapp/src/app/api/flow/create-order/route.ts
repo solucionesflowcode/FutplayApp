@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿import { createServerClient } from "@supabase/ssr";
+=======
+import { createServerClient } from "@supabase/ssr";
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createFlowOrder } from "@/lib/flow";
@@ -82,7 +86,10 @@ export async function POST(request: Request) {
     .from("membresia")
     .select("id, mes")
     .eq("usuario_id", usuario.id)
+<<<<<<< HEAD
     .eq("estado", true)
+=======
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
     .order("mes", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -90,7 +97,11 @@ export async function POST(request: Request) {
   if (existingMembresia) {
     if (membresiaActiva(existingMembresia.mes)) {
       return NextResponse.json(
+<<<<<<< HEAD
         { error: "Ya tienes un plan activo. No puedes comprar otro hasta que termine el perÃ­odo actual." },
+=======
+        { error: "Ya tienes un plan activo. No puedes comprar otro hasta que termine el período actual." },
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
         { status: 409 }
       );
     }
@@ -165,9 +176,15 @@ export async function POST(request: Request) {
       amount: plan.precio,
       email: usuario.email,
       urlConfirmation: `${publicUrl}/api/flow/webhook?boletaId=${boleta.id}`,
+<<<<<<< HEAD
       urlReturn: `${publicUrl}/dashboard?flowSuccess=1`,
       timeout: 1800,
       paymentMethod: 1, // solo tarjetas crÃ©dito + dÃ©bito
+=======
+      urlReturn: `http://localhost:3000/dashboard?flowSuccess=1`,
+      timeout: 1800,
+      paymentMethod: 1, // solo tarjetas crédito + débito
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
       ...(conRecurrencia ? { recurrence: { period: 30 } } : {}),
     });
 

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
+<<<<<<< HEAD
 import { createMockServerClient, makeChain, makeSeqChain, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
+=======
+import { createMockServerClient, makeChain, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
 import { mockPaymentStatus } from "@/tests/helpers/flow";
 
 // ── Env vars ────────────────────────────────────────
@@ -264,6 +268,7 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(200);
     });
 
+<<<<<<< HEAD
     it("WEB-022: no rompe el webhook si el usuario ya tiene membresía activa (distinta boleta)", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
@@ -277,6 +282,8 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(200);
     });
 
+=======
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
     // ── Recurrence deactivation on rejection ──────────
 
     it("desactiva recurrencia cuando el pago recurrente es rechazado (status 3)", async () => {
@@ -365,19 +372,35 @@ describe("POST /api/flow/webhook", () => {
     it("WEBHOOK-RACE-002: TOCTOU guard anula nueva boleta si recurrencia se desactiva durante el procesamiento", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: "rec-1", usuario_id: "u1" });
+<<<<<<< HEAD
+=======
+        __setTableData("recurrencia", { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: true });
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
         __setTableData("plan", { id: "plan-1", precio: 15000, tokens_mensuales: 10 });
         __setTableData("boleta_item", { id: "item-nuevo" });
         __setTableData("membresia", null);
 
         // Simular que la recurrencia se desactiva ENTRE la creación de la nueva boleta y el TOCTOU recheck
+<<<<<<< HEAD
         // Usamos makeSeqChain para que cada llamada devuelva datos específicos sin depender del state global
 
         const raceClient = createMockServerClient();
+=======
+        // El primer from("recurrencia") (para verificar activa) retorna true
+        // El segundo from("recurrencia") (TOCTOU recheck) debe retornar activa=false
+        // Como makeChain lee del mismo state, necesitamos cambiar el state entre llamadas.
+        // Usamos mockImplementationOnce para controlar qué devuelve each from().
+
+        const raceClient = createMockServerClient();
+
+        // Track how many times from("recurrencia") is called
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
         let recurrenciaCalls = 0;
 
         raceClient.from = vi.fn((table: string) => {
             if (table === "recurrencia") {
                 recurrenciaCalls++;
+<<<<<<< HEAD
                 // First call (initial check): activa=true, Second call (TOCTOU recheck): activa=false
                 const data = recurrenciaCalls >= 2
                     ? { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: false }
@@ -410,6 +433,14 @@ describe("POST /api/flow/webhook", () => {
         raceClient.from = vi.fn((table: string) => {
             if (table === "recurrencia") {
                 return makeSeqChain(table, { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: true });
+=======
+                const chain = makeChain(table);
+                if (recurrenciaCalls >= 2) {
+                    // TOCTOU recheck: recurrencia ya no está activa
+                    chain.single = vi.fn(() => Promise.resolve({ data: { id: "rec-1", activa: false }, error: null }));
+                }
+                return chain;
+>>>>>>> 61a82e698708ca4c7464ca76fac04ddfda4078aa
             }
             return makeChain(table);
         }) as any;
