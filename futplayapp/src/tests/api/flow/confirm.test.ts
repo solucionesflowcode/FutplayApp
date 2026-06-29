@@ -8,6 +8,7 @@ const BOLETA_ID = "boleta-123";
 
 beforeAll(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
+
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
 });
 
@@ -16,6 +17,7 @@ afterAll(() => {
 });
 
 // ── Module mocks ────────────────────────────────────
+
 
 vi.mock("@supabase/ssr", () => ({
     createServerClient: vi.fn(() => createMockServerClient()),
@@ -39,6 +41,7 @@ function makeRequest(token?: string, boletaId?: string): Request {
     return new Request(`http://localhost:3000/api/flow/confirm?${params}`, { method: "GET" });
 }
 
+
 const FLOW_TOKEN = "flow-token-abc";
 
 // ── Tests ───────────────────────────────────────────
@@ -46,6 +49,7 @@ const FLOW_TOKEN = "flow-token-abc";
 describe("GET /api/flow/confirm", () => {
     beforeEach(() => {
         __resetMocks();
+
         vi.mocked(getFlowPaymentStatus).mockReset();
     });
 
@@ -171,6 +175,50 @@ describe("GET /api/flow/confirm", () => {
 
         expect(res.status).toBe(200);
         expect(getFlowPaymentStatus).not.toHaveBeenCalled();
+    });
+
+    it("CONFIRM-024: retorna estado rechazado si boleta está rechazada en Supabase (sin token real)", async () => {
+        __setTableData("boleta", { id: BOLETA_ID, estado: "rechazado" });
+
+        const res = await GET(makeRequest("{token}", BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("rechazado");
+        expect(json.message).toBeUndefined();
+    });
+
+    it("CONFIRM-025: retorna estado anulado si boleta está anulada en Supabase (sin token real)", async () => {
+        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
+
+        const res = await GET(makeRequest("{token}", BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("anulado");
+        expect(json.message).toBeUndefined();
+    });
+
+    it("CONFIRM-026: retorna estado rechazado en fallback tras error de Flow API si boleta está rechazada", async () => {
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Network error"));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "rechazado" });
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("rechazado");
+    });
+
+    it("CONFIRM-027: retorna estado anulado en fallback tras error de Flow API si boleta está anulada", async () => {
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Network error"));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("anulado");
     });
 
     it("CONFIRM-023: atomic guard previene doble escritura si boleta ya fue pagada por concurrencia", async () => {

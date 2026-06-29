@@ -30,6 +30,7 @@ import {
     Sparkles,
     Wallet,
     X,
+    XCircle,
     Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -133,16 +134,6 @@ function metodoIcon(metodo: PaymentRecord["metodo"]) {
     }
 }
 
-function suscripcionColor(estado: ActiveSubscription["estado"]) {
-    switch (estado) {
-        case "activa":
-            return { bg: "bg-[#00A86B]/10", text: "text-[#00A86B]", dot: "bg-[#00A86B]", label: "Activa" };
-        case "vencida":
-            return { bg: "bg-[#ba1a1a]/10", text: "text-[#ba1a1a]", dot: "bg-[#ba1a1a]", label: "Vencida" };
-        case "inactiva":
-            return { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400", label: "Sin plan" };
-    }
-}
 
 // ─── Dashboard Component ──────────────────────────────────────────────
 
@@ -167,6 +158,17 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
         fetchData();
         return () => { cancelled = true; };
     }, [userId]);
+
+    const suscripcionColor = (estado: ActiveSubscription["estado"]) => {
+        switch (estado) {
+            case "activa":
+                return { bg: "bg-[#00A86B]/10", text: "text-[#00A86B]", dot: "bg-[#00A86B]", label: "Activa" };
+            case "vencida":
+                return { bg: "bg-[#ba1a1a]/10", text: "text-[#ba1a1a]", dot: "bg-[#ba1a1a]", label: "Vencida" };
+            case "inactiva":
+                return { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400", label: "Sin plan" };
+        }
+    };
 
     const suscripcion: ActiveSubscription = useMemo(() => {
         if (!rawMembresia) {
@@ -274,73 +276,171 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
     return (
         <div className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-8">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-[#001c37] to-[#00305B] flex items-center justify-center shadow-lg">
-                            <Receipt className="w-5 h-5 text-[#F28C28]" />
+            <div className="border-b border-gray-100/80 pb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-[#00305B] rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(0,48,91,0.08)]">
+                            <Receipt className="w-6 h-6 text-[#F28C28]" />
                         </div>
                         <div>
                             <h1 className="text-2xl md:text-3xl font-black text-[#00305B] tracking-tight">
-                            Pagos y suscripción
+                                Pagos y suscripción
                             </h1>
-                            <p className="text-gray-500 text-sm mt-0.5">
+                            <p className="text-slate-500 text-sm mt-0.5 font-medium">
                                 Administra tu plan, revisa tus pagos e historial de facturación.
                             </p>
                         </div>
                     </div>
                 </div>
-
+                <div className="w-16 h-1 bg-[#F28C28] mt-4 rounded-full" />
             </div>
 
             {/* Stats cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                {/* Membresía Card */}
+                <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-6 rounded-full aspect-square w-full max-w-[240px] md:max-w-none mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                    {/* Rounded capsule accent at top */}
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-gradient-to-r from-amber-500 to-[#F28C28]" />
+                    
+                    {/* Centered icon within soft gray background */}
+                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2.5 transition-colors group-hover:bg-slate-100">
+                        <Crown className="w-5 h-5 text-[#F28C28]" />
+                    </div>
+                    
+                    {/* Small horizontal separator */}
+                    <div className="w-8 h-[2px] bg-slate-100 mb-2 rounded-full" />
+                    
+                    {/* Small uppercase label */}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-tight">
                         Membresía
                     </span>
-                    <p className="text-sm font-black text-[#00305B] capitalize leading-tight mt-0.5">{suscripcion.plan}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    
+                    {/* Large main value */}
+                    <p className="text-base md:text-lg font-black text-[#00305B] capitalize leading-none my-1 truncate max-w-full px-2">
+                        {suscripcion.plan}
+                    </p>
+                    
+                    {/* Small secondary text below */}
+                    <div className="flex items-center gap-1.5 justify-center mt-1">
                         <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
-                        <span className={`text-[10px] font-bold ${sc.text}`}>{sc.label}</span>
+                        <span className={`text-[10px] font-bold ${sc.text}`}>
+                            {sc.label === "Sin plan" ? "Sin plan activo" : sc.label}
+                        </span>
                     </div>
                 </div>
 
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Total pagado
+                {/* Total Pagado Card */}
+                <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-6 rounded-full aspect-square w-full max-w-[240px] md:max-w-none mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                    {/* Rounded capsule accent at top */}
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" />
+                    
+                    {/* Centered icon within soft gray background */}
+                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2.5 transition-colors group-hover:bg-slate-100">
+                        <CreditCard className="w-5 h-5 text-[#00A86B]" />
+                    </div>
+                    
+                    {/* Small horizontal separator */}
+                    <div className="w-8 h-[2px] bg-slate-100 mb-2 rounded-full" />
+                    
+                    {/* Small uppercase label */}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-tight">
+                        Total Pagado
                     </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{formatCLP(stats.totalPagado)}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">
+                    
+                    {/* Large main value */}
+                    <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-2">
+                        {formatCLP(stats.totalPagado)}
+                    </p>
+                    
+                    {/* Small secondary text below */}
+                    <p className="text-[10px] text-slate-500 font-medium mt-1">
                         {historial.filter((p) => p.estado === "aprobado").length} transacciones
                     </p>
                 </div>
 
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                {/* Pendientes Card */}
+                <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-6 rounded-full aspect-square w-full max-w-[240px] md:max-w-none mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                    {/* Rounded capsule accent at top */}
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400" />
+                    
+                    {/* Centered icon within soft gray background */}
+                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2.5 transition-colors group-hover:bg-slate-100">
+                        <Clock className="w-5 h-5 text-[#E2A050]" />
+                    </div>
+                    
+                    {/* Small horizontal separator */}
+                    <div className="w-8 h-[2px] bg-slate-100 mb-2 rounded-full" />
+                    
+                    {/* Small uppercase label */}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-tight">
                         Pendientes
                     </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.pendientes}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">por confirmar</p>
+                    
+                    {/* Large main value */}
+                    <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-2">
+                        {stats.pendientes}
+                    </p>
+                    
+                    {/* Small secondary text below */}
+                    <p className="text-[10px] text-slate-500 font-medium mt-1">
+                        por confirmar
+                    </p>
                 </div>
 
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
+                {/* Rechazados Card */}
+                <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-6 rounded-full aspect-square w-full max-w-[240px] md:max-w-none mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                    {/* Rounded capsule accent at top */}
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-gradient-to-r from-rose-500 to-red-500" />
+                    
+                    {/* Centered icon within soft gray background */}
+                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2.5 transition-colors group-hover:bg-slate-100">
+                        <XCircle className="w-5 h-5 text-[#ba1a1a]" />
+                    </div>
+                    
+                    {/* Small horizontal separator */}
+                    <div className="w-8 h-[2px] bg-slate-100 mb-2 rounded-full" />
+                    
+                    {/* Small uppercase label */}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-tight">
                         Rechazados
                     </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.rechazados}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">sin éxito</p>
+                    
+                    {/* Large main value */}
+                    <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-2">
+                        {stats.rechazados}
+                    </p>
+                    
+                    {/* Small secondary text below */}
+                    <p className="text-[10px] text-slate-500 font-medium mt-1">
+                        sin éxito
+                    </p>
+                </div>
+            </div>
+
+            {/* Trust banner */}
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 md:p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center gap-4 transition-all duration-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+                <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-700 shrink-0">
+                    <Shield className="w-5 h-5 text-[#00305B]" />
+                </div>
+                <div>
+                    <h4 className="text-sm font-bold text-[#00305B]">Tu información está segura</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                        Usamos cifrado y protocolos seguros para proteger tus datos y transacciones.
+                    </p>
                 </div>
             </div>
 
             {/* Active subscription */}
             <div>
                 {/* Active plan card */}
-                <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] p-6 md:p-8 border-t-2 border-t-[#F39200]">
+                <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-100 p-6 md:p-8 relative overflow-hidden transition-all duration-300 hover:shadow-[0_6px_24px_rgba(0,0,0,0.04)]">
+                    {/* Decorative accent top line */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-[#F39200]" />
+                    
                     <div className="flex items-start justify-between mb-6">
                         <div className="flex items-center gap-4">
-                            <div className="bg-gradient-to-br from-[#001c37] to-[#00305B] p-3.5 shadow-lg">
-                                <Crown className="w-7 h-7 text-[#F28C28]" />
+                            <div className="bg-[#00305B] rounded-xl p-3.5 shadow-md flex items-center justify-center">
+                                <Crown className="w-6 h-6 text-[#F28C28]" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
@@ -353,7 +453,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                         {sc.label}
                                     </span>
                                 </div>
-                                <p className="text-gray-500 text-sm mt-0.5">
+                                <p className="text-slate-500 text-sm mt-0.5 font-medium">
                                     {formatCLP(suscripcion.precio)} / mes
                                 </p>
                             </div>
@@ -363,41 +463,41 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                     {/* Token progress */}
                     <div className="space-y-2 mb-6">
                         <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-500 font-medium">Tokens del mes</span>
+                            <span className="text-slate-500 font-medium">Tokens del mes</span>
                             <span className="font-bold text-[#00305B]">
                                 {suscripcion.tokens_usados}/{suscripcion.tokens_totales} usados
                             </span>
                         </div>
-                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div
                                 className="h-full rounded-full bg-gradient-to-r from-[#F28C28] to-[#e07d1f] transition-all duration-700"
                                 style={{ width: `${pctTokens}%` }}
                             />
                         </div>
-                        <p className="text-[11px] text-gray-400">
+                        <p className="text-[11px] text-slate-400 font-medium">
                             {suscripcion.tokens_totales - suscripcion.tokens_usados} tokens disponibles
                         </p>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <div className="bg-gray-50 p-3.5">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                        <div className="bg-slate-50/50 border border-slate-100 p-4 rounded-xl">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                                 Inicio
                             </p>
                             <p className="text-sm font-bold text-[#00305B]">
                                 {formatDate(suscripcion.fecha_inicio)}
                             </p>
                         </div>
-                        <div className="bg-gray-50 p-3.5">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                        <div className="bg-slate-50/50 border border-slate-100 p-4 rounded-xl">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                                 Vencimiento
                             </p>
                             <p className="text-sm font-bold text-[#00305B]">
                                 {formatDate(suscripcion.fecha_vencimiento)}
                             </p>
                         </div>
-                        <div className="bg-gray-50 p-3.5 col-span-2 sm:col-span-1">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                        <div className="bg-slate-50/50 border border-slate-100 p-4 rounded-xl col-span-2 sm:col-span-1">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                                 Método de pago
                             </p>
                             <p className="text-sm font-bold text-[#00305B]">
@@ -411,40 +511,42 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
             </div>
 
             {/* Payment history */}
-            <div className="bg-white shadow-[0_8px_32px_-4px_rgba(25,28,30,0.06)] ring-1 ring-inset ring-black/[0.03] border border-[#edeef0] overflow-hidden border-t-2 border-t-[#00305B]">
+            <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden relative transition-all duration-300 hover:shadow-[0_6px_24px_rgba(0,0,0,0.04)]">
+                {/* Decorative accent top line */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-[#00305B]" />
+                
                 {/* Filters */}
-                <div className="p-6 md:p-8 border-b border-gray-100">
+                <div className="p-6 md:p-8 border-b border-slate-100 pt-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
                         <div>
                             <h3 className="text-lg font-black text-[#00305B]">Historial de pagos</h3>
-                            <p className="text-sm text-gray-500 mt-0.5">
+                            <p className="text-sm text-slate-500 mt-0.5 font-medium">
                                 {historial.length} transacciones registradas
                             </p>
                         </div>
-
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
                                 type="text"
                                 value={busqueda}
                                 onChange={(e) => setBusqueda(e.target.value)}
                                 placeholder="Buscar por descripción o factura..."
-                                className="w-full pl-10 pr-4 py-2.5 rounded border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all font-medium"
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
                             {(["todos", "aprobado", "pendiente", "rechazado", "anulado"] as const).map(
                                 (f) => (
                                     <button
                                         key={f}
                                         onClick={() => setFiltroEstado(f)}
-                                        className={`px-3.5 py-2 rounded text-xs font-bold tracking-wide transition-all capitalize ${
+                                        className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all capitalize whitespace-nowrap ${
                                             filtroEstado === f
-                                                ? "bg-[#00305B] text-white shadow-md"
-                                                : "bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200"
+                                                ? "bg-[#00305B] text-white shadow-sm"
+                                                : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"
                                         }`}
                                     >
                                         {f === "todos" ? "Todos" : f}
@@ -550,15 +652,15 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 md:px-8 py-4 border-t border-gray-100 bg-gray-50/30 flex items-center justify-between">
-                    <p className="text-xs text-gray-400">
+                <div className="px-6 md:px-8 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <p className="text-xs text-slate-400 font-medium">
                         Mostrando {historialFiltrado.length} de {historial.length} transacciones
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         <button
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={safePage <= 1}
-                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40"
+                            className="px-3.5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all disabled:opacity-40 shadow-sm"
                         >
                             Anterior
                         </button>
@@ -566,10 +668,10 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                             <button
                                 key={page}
                                 onClick={() => setCurrentPage(page)}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-xl transition-all ${
                                     page === safePage
-                                        ? "text-white bg-[#00305B] hover:bg-[#001c37]"
-                                        : "text-gray-500 bg-white border border-gray-200 hover:bg-gray-50"
+                                        ? "text-white bg-[#00305B] shadow-sm"
+                                        : "text-slate-600 bg-white border border-slate-200 hover:bg-slate-50"
                                 }`}
                             >
                                 {page}
@@ -578,7 +680,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                         <button
                             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                             disabled={safePage >= totalPages}
-                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-40"
+                            className="px-3.5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all disabled:opacity-40 shadow-sm"
                         >
                             Siguiente
                         </button>
@@ -1098,7 +1200,7 @@ export default function PagosClient() {
                                 Confirmando pago
                             </h3>
                             <p className="text-gray-500 text-sm">
-                                Estamos verificando el pago con Flow. Un momento por favor...
+                                Estamos verificar el pago con Flow. Un momento por favor...
                             </p>
                         </div>
                     ) : confirmPending ? (

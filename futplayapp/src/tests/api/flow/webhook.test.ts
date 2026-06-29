@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
-import { createMockServerClient, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
+import { createMockServerClient, makeChain, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
 import { mockPaymentStatus } from "@/tests/helpers/flow";
 
 // ── Env vars ────────────────────────────────────────
@@ -27,6 +27,7 @@ vi.mock("@/lib/flow", () => ({
 
 import { POST } from "@/app/api/flow/webhook/route";
 import { getFlowPaymentStatus } from "@/lib/flow";
+import { createServerClient } from "@supabase/ssr";
 
 // ── Helpers ─────────────────────────────────────────
 
@@ -263,6 +264,7 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(200);
     });
 
+
     // ── Recurrence deactivation on rejection ──────────
 
     it("desactiva recurrencia cuando el pago recurrente es rechazado (status 3)", async () => {
@@ -314,5 +316,77 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(502);
         const json = await res.json();
         expect(json.error).toBe("Error al verificar pago con Flow");
+    });
+
+    // ── Race condition tests ──────────────────────────
+
+    it("WEBHOOK-RACE-001: segundo webhook status=2 retorna 'Ya procesado' si boleta ya fue pagada", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
+        __setTableData("membresia", null);
+
+        // First webhook — normal processing
+        const res1 = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+        expect(res1.status).toBe(200);
+
+        // Boleta ahora está pagada en Supabase
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: null, usuario_id: "u1" });
+
+        // Segundo webhook: el update atómico .eq("estado","pendiente") no encuentra filas
+        const raceClient = createMockServerClient();
+        raceClient.from = vi.fn((table: string) => {
+            const chain = makeChain(table);
+            if (table === "boleta") {
+                chain.maybeSingle = vi.fn(() => Promise.resolve({ data: null, error: null }));
+            }
+            return chain;
+        }) as any;
+        vi.mocked(createServerClient).mockReturnValueOnce(raceClient);
+
+        const res2 = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+        const json2 = await res2.json();
+        expect(json2.message).toBe("Ya procesado");
+    });
+
+    it("WEBHOOK-RACE-002: TOCTOU guard anula nueva boleta si recurrencia se desactiva durante el procesamiento", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: "rec-1", usuario_id: "u1" });
+        __setTableData("recurrencia", { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: true });
+        __setTableData("plan", { id: "plan-1", precio: 15000, tokens_mensuales: 10 });
+        __setTableData("boleta_item", { id: "item-nuevo" });
+        __setTableData("membresia", null);
+
+        // Simular que la recurrencia se desactiva ENTRE la creación de la nueva boleta y el TOCTOU recheck
+        // El primer from("recurrencia") (para verificar activa) retorna true
+        // El segundo from("recurrencia") (TOCTOU recheck) debe retornar activa=false
+        // Como makeChain lee del mismo state, necesitamos cambiar el state entre llamadas.
+        // Usamos mockImplementationOnce para controlar qué devuelve each from().
+
+        const raceClient = createMockServerClient();
+
+        // Track how many times from("recurrencia") is called
+        let recurrenciaCalls = 0;
+
+        raceClient.from = vi.fn((table: string) => {
+            if (table === "recurrencia") {
+                recurrenciaCalls++;
+                const chain = makeChain(table);
+                if (recurrenciaCalls >= 2) {
+                    // TOCTOU recheck: recurrencia ya no está activa
+                    chain.single = vi.fn(() => Promise.resolve({ data: { id: "rec-1", activa: false }, error: null }));
+                }
+                return chain;
+            }
+            return makeChain(table);
+        }) as any;
+
+        vi.mocked(createServerClient).mockReturnValueOnce(raceClient);
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.message).toBe("OK");
     });
 });

@@ -86,6 +86,7 @@ export async function getMembresiaByUser(userId: string): Promise<MembresiaConPl
         .from("membresia")
         .select("*")
         .eq("usuario_id", userId)
+
         .order("mes", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -107,6 +108,7 @@ export async function getAllMembresiasConPlan(): Promise<MembresiaConPlan[]> {
     const { data: membresias, error } = await supabase
         .from("membresia")
         .select("*")
+
         .order("usuario_id");
 
     if (error) {
@@ -178,6 +180,7 @@ export async function createMembresia(
             mes,
             tokens_totales: tokensMensuales,
             tokens_usados: 0,
+
         });
 
     if (error) {
@@ -195,6 +198,7 @@ export async function devolverToken(userId: string): Promise<boolean> {
         .from("membresia")
         .select("id, tokens_usados")
         .eq("usuario_id", userId)
+
         .order("mes", { ascending: false })
         .limit(1)
         .maybeSingle();

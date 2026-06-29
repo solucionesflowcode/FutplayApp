@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+
 import { NextResponse } from "next/server";
 
 function getAdminClient() {
@@ -13,6 +14,7 @@ function getAdminClient() {
 
 export async function GET(request: Request) {
   try {
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const filePath = searchParams.get("filePath");

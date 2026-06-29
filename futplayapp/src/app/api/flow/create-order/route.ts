@@ -82,6 +82,7 @@ export async function POST(request: Request) {
     .from("membresia")
     .select("id, mes")
     .eq("usuario_id", usuario.id)
+
     .order("mes", { ascending: false })
     .limit(1)
     .maybeSingle();

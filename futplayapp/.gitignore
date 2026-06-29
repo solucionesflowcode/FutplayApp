@@ -46,5 +46,6 @@ webhook/whatsapp-session/
 webhook/.wwebjs_cache/
 webhook/.recordatorios.json
 
+
 # editor
 .vscode/

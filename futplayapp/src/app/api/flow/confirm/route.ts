@@ -1,8 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
+
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
 
 export async function GET(request: Request) {
+
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token");
     const boletaId = searchParams.get("boletaId");
@@ -32,6 +34,7 @@ export async function GET(request: Request) {
     if (!boleta) {
         return NextResponse.json({ error: "Boleta no encontrada" }, { status: 404 });
     }
+
 
     // If we have a real token (not the literal "{token}" that Flow failed to replace),
     // verify the payment directly with Flow API
@@ -71,6 +74,10 @@ export async function GET(request: Request) {
 
     if (boleta.estado === "pagado") {
         return NextResponse.json({ estado: "pagado" });
+    }
+
+    if (boleta.estado === "rechazado" || boleta.estado === "anulado") {
+        return NextResponse.json({ estado: boleta.estado });
     }
 
     return NextResponse.json({ estado: "pendiente", message: "El pago está pendiente de confirmación." });
