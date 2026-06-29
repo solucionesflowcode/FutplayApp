@@ -160,7 +160,7 @@ export default function MisClasesClient() {
             setSessions((prev) =>
                 prev.map((s) =>
                     s.inscripcionId === inscripcionId
-                        ? { ...s, inscripcionId: null, asistencia: "cancelado" }
+                        ? { ...s, asistencia: "cancelado" }
                         : s
                 )
             );
@@ -572,19 +572,14 @@ export default function MisClasesClient() {
                             isOpen={selectedClases !== null}
                             onClose={() => setSelectedClases(null)}
                             clases={selectedClases ?? []}
-                            onAgendada={async (claseId, inscripcionId) => {
-                                setSessions((prev) =>
-                                    prev.map((s) =>
-                                        s.claseId === claseId
-                                            ? { ...s, inscripcionId: inscripcionId ?? null }
-                                            : s,
-                                    ),
-                                );
-                                if (usuario?.id) {
-                                    const m = await getMembresiaByUser(usuario.id);
-                                    if (m) setTokensRestantes(m.tokens_restantes);
-                                }
-                                // ya no se cierra automáticamente — el usuario cierra con "Entendido"
+                            onAgendada={async (_claseId, _inscripcionId) => {
+                                if (!usuario?.id) return;
+                                const [rows, membresia] = await Promise.all([
+                                    getAllClasesConInscripcion(usuario.id),
+                                    getMembresiaByUser(usuario.id),
+                                ]);
+                                setSessions(flattenClases(rows));
+                                setTokensRestantes(membresia?.tokens_restantes ?? null);
                             }}
                         />
 
