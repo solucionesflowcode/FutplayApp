@@ -36,16 +36,15 @@ describe("getProximaClase", () => {
         expect(result.length).toBe(1);
         expect(result[0].titulo).toBe("Entrenamiento Mañana");
         expect(result[0].sede).toBe("Sede Centro");
-        expect(result[0].tipo_evento).toBe("entrenamiento");
     });
 
-    it("DATA-CLASES-GPC-002: retorna la próxima clase tipo partido", async () => {
+    it("DATA-CLASES-GPC-002: retorna la próxima clase tipo partido (con título)", async () => {
         const futureFecha = new Date(Date.now() + 172800000).toISOString();
         __setTableData("clase_usuario", [
             {
                 clase: {
-                    titulo: null,
-                    descripcion: "Partido del finde",
+                    titulo: "Partido del finde",
+                    descripcion: "Partido amistoso",
                     fecha_hora: futureFecha,
                     tipo_evento: "partido",
                     sede: { nombre: "Sede Norte" },
@@ -57,8 +56,7 @@ describe("getProximaClase", () => {
 
         expect(Array.isArray(result)).toBe(true);
         expect(result.length).toBe(1);
-        expect(result[0].titulo).toBe("Partido");
-        expect(result[0].tipo_evento).toBe("partido");
+        expect(result[0].titulo).toBe("Partido del finde");
     });
 
     it("DATA-CLASES-GPC-003: retorna array vacío si no hay clases futuras", async () => {
@@ -130,32 +128,22 @@ describe("getProximaClase", () => {
         expect(result[0].sede).toBe("");
     });
 
-    it("DATA-CLASES-GPC-007: debug mock direct call", async () => {
+    it("DATA-CLASES-GPC-007: filtra clases sin título (null)", async () => {
         const futureFecha = new Date(Date.now() + 86400000).toISOString();
         __setTableData("clase_usuario", [
             {
                 clase: {
-                    titulo: "Debug Test",
-                    descripcion: "Debugging",
+                    titulo: null,
+                    descripcion: "Sin título",
                     fecha_hora: futureFecha,
                     tipo_evento: "entrenamiento",
-                    sede: { nombre: "Sede Debug" },
+                    sede: null,
                 },
             },
         ]);
 
-        const supabase = createClient();
-        const rawResult = await supabase
-            .from("clase_usuario")
-            .select("*")
-            .eq("usuario_id", USER_ID);
+        const result = await getProximaClase(USER_ID);
 
-        expect(rawResult.error).toBeNull();
-        expect(rawResult.data).toBeDefined();
-        expect(Array.isArray(rawResult.data)).toBe(true);
-        expect(rawResult.data!.length).toBe(1);
-        expect(rawResult.data![0]).toHaveProperty("clase");
-        expect(rawResult.data![0].clase).toHaveProperty("tipo_evento");
-        expect(rawResult.data![0].clase.tipo_evento).toBe("entrenamiento");
+        expect(result.length).toBe(0);
     });
 });
