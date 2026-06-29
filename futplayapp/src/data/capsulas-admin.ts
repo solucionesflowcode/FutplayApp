@@ -17,7 +17,22 @@ export type CapsulaAdmin = {
 export type ModuloOption = {
   id: string;
   nombre: string;
+  categoria_id: string | null;
 };
+
+export type CategoriaOption = {
+  id: string;
+  nombre: string;
+};
+
+export async function getCategoriasOptions(): Promise<CategoriaOption[]> {
+  const res = await fetch("/api/admin/capsulas?tipo=categorias");
+  if (!res.ok) {
+    console.error("Error fetching categorias:", await res.text());
+    return [];
+  }
+  return res.json();
+}
 
 export async function getCapsulasAdmin(): Promise<CapsulaAdmin[]> {
   const res = await fetch("/api/admin/capsulas");

@@ -13,8 +13,13 @@ export async function GET(request: Request) {
   try {
     const admin = await getAdminClient();
 
+    if (tipo === "categorias") {
+      const { data: cats } = await admin.from("categoria").select("id, nombre").order("nombre");
+      return NextResponse.json(cats || []);
+    }
+
     if (tipo === "modulos") {
-      const { data } = await admin.from("modulo").select("id, nombre").order("nombre");
+      const { data } = await admin.from("modulo").select("id, nombre, categoria_id").order("nombre");
       return NextResponse.json(data || []);
     }
 
