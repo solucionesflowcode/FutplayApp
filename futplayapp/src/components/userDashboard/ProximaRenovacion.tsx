@@ -69,37 +69,151 @@ export default function ProximaRenovacion() {
     const formatoPeso = (n: number) =>
         new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(n);
 
+    // Percentages for rings
+    const pctDiasRestantes = Math.min(100, Math.max(0, (diasRestantes / 30) * 100));
+    
+    // SVG Dash offset calculations (Circumference = 282.7)
+    const offsetPrecio = 0; // 100% full circle
+    const offsetDiasRestantes = 282.7 - (pctDiasRestantes * 282.7) / 100;
+    const offsetVence = 282.7 - (porcentajeMes * 282.7) / 100;
+
     return (
-        <div className="w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] px-6 py-7 shadow-xl border border-white/10 border-t-2 border-t-[#F39200]">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="bg-[#F39200]/20 p-2.5 rounded">
-                    <CreditCard className="text-[#F39200]" size={20} />
-                </div>
-                <div>
-                    <h2 className="text-white text-sm font-extrabold tracking-wide">
-                        Fecha de Vencimiento
-                    </h2>
-                    <p className="text-white/40 text-[10px]">
-                        {membresia.plan_nombre}
-                    </p>
+        <div className="relative overflow-hidden w-full h-full bg-gradient-to-br from-[#002447] to-[#00305B] border border-white/10 rounded-2xl p-6 transition-all duration-300 hover:border-white/25 shadow-md flex flex-col justify-between">
+            {/* Speed Lines / Sporty Accent Background */}
+            <div className="absolute top-0 right-0 w-36 h-full opacity-[0.04] pointer-events-none">
+                <svg className="w-full h-full text-white" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <polygon points="45,0 60,0 25,100 10,100" fill="currentColor" />
+                    <polygon points="70,0 82,0 47,100 35,100" fill="currentColor" />
+                    <polygon points="90,0 98,0 63,100 55,100" fill="currentColor" />
+                </svg>
+            </div>
+            
+            <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-[#F39200]/5 rounded-full blur-xl pointer-events-none" />
+
+            <div className="flex items-center justify-between mb-6 relative z-10">
+                <div className="flex items-center gap-3">
+                    <div className="bg-[#F39200]/10 p-2.5 rounded-xl border border-[#F39200]/25 flex items-center justify-center">
+                        <CreditCard className="text-[#F39200]" size={20} />
+                    </div>
+                    <div>
+                        <h2 className="text-white text-sm font-extrabold tracking-wide uppercase">
+                            Fecha de Vencimiento
+                        </h2>
+                        <p className="text-white/40 text-[10px] font-semibold mt-0.5">
+                            {membresia.plan_nombre}
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2">
-<span className="text-white/50 text-[8px] font-black uppercase tracking-wider leading-tight">{membresia.plan_nombre}</span>
-                        <p className="text-white text-sm font-black leading-tight mt-0.5">{formatoPeso(membresia.precio)}</p>
-                </div>
-
-                <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2">
-                    <span className="text-white/50 text-[8px] font-black uppercase tracking-wider leading-tight">Días rest.</span>
-                    <p className="text-white text-lg font-black leading-tight mt-0.5">{diasRestantes}</p>
-                </div>
-
-                    <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#60A5FA] aspect-square rounded-full flex flex-col items-center justify-center text-center p-2">
-                        <span className="text-white/50 text-[8px] font-black uppercase tracking-wider leading-tight">Vence</span>
-                        <p className="text-white text-sm font-black leading-tight mt-0.5">{proximaRenovacion.toLocaleDateString("es-CL", { day: "numeric", month: "short" })}</p>
+            <div className="grid grid-cols-3 gap-3 relative z-10 mt-auto">
+                {/* Plan Price Circle */}
+                <div className="flex flex-col items-center">
+                    <div className="relative aspect-square w-full max-w-[85px] sm:max-w-[95px] flex items-center justify-center bg-[#00172e]/80 rounded-full border border-[#F39200]/20 shadow-inner">
+                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            <circle
+                                cx="50"
+                                cy="50"
+                                r="45"
+                                fill="none"
+                                stroke="rgba(255, 255, 255, 0.04)"
+                                strokeWidth="4"
+                            />
+                            <circle
+                                cx="50"
+                                cy="50"
+                                r="45"
+                                fill="none"
+                                stroke="#F39200"
+                                strokeWidth="4"
+                                strokeDasharray="282.7"
+                                strokeDashoffset={offsetPrecio}
+                                strokeLinecap="round"
+                                className="transition-all duration-700 ease-out"
+                            />
+                        </svg>
+                        <div className="flex flex-col items-center justify-center text-center p-1.5 z-10">
+                            <span className="text-white/40 text-[8px] sm:text-[9px] font-black uppercase tracking-wider leading-none mb-1 truncate max-w-[55px] sm:max-w-[70px]" title={membresia.plan_nombre}>
+                                {membresia.plan_nombre}
+                            </span>
+                            <p className="text-white text-[10px] sm:text-xs font-black leading-none mt-0.5">
+                                {formatoPeso(membresia.precio)}
+                            </p>
+                        </div>
                     </div>
+                </div>
+
+                {/* Días Restantes Circle */}
+                <div className="flex flex-col items-center">
+                    <div className="relative aspect-square w-full max-w-[85px] sm:max-w-[95px] flex items-center justify-center bg-[#00172e]/80 rounded-full border border-[#00A86B]/20 shadow-inner">
+                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            <circle
+                                cx="50"
+                                cy="50"
+                                r="45"
+                                fill="none"
+                                stroke="rgba(255, 255, 255, 0.04)"
+                                strokeWidth="4"
+                            />
+                            <circle
+                                cx="50"
+                                cy="50"
+                                r="45"
+                                fill="none"
+                                stroke="#00A86B"
+                                strokeWidth="4"
+                                strokeDasharray="282.7"
+                                strokeDashoffset={offsetDiasRestantes}
+                                strokeLinecap="round"
+                                className="transition-all duration-700 ease-out"
+                            />
+                        </svg>
+                        <div className="flex flex-col items-center justify-center text-center p-1.5 z-10">
+                            <span className="text-white/40 text-[8px] sm:text-[9px] font-black uppercase tracking-wider leading-none mb-1 truncate max-w-[55px] sm:max-w-[70px]" title="Días rest.">
+                                Días rest.
+                            </span>
+                            <p className="text-white text-base sm:text-lg font-black leading-none mt-0.5">
+                                {diasRestantes}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Vence Circle */}
+                <div className="flex flex-col items-center">
+                    <div className="relative aspect-square w-full max-w-[85px] sm:max-w-[95px] flex items-center justify-center bg-[#00172e]/80 rounded-full border border-[#60A5FA]/20 shadow-inner">
+                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            <circle
+                                cx="50"
+                                cy="50"
+                                r="45"
+                                fill="none"
+                                stroke="rgba(255, 255, 255, 0.04)"
+                                strokeWidth="4"
+                            />
+                            <circle
+                                cx="50"
+                                cy="50"
+                                r="45"
+                                fill="none"
+                                stroke="#60A5FA"
+                                strokeWidth="4"
+                                strokeDasharray="282.7"
+                                strokeDashoffset={offsetVence}
+                                strokeLinecap="round"
+                                className="transition-all duration-700 ease-out"
+                            />
+                        </svg>
+                        <div className="flex flex-col items-center justify-center text-center p-1.5 z-10">
+                            <span className="text-white/40 text-[8px] sm:text-[9px] font-black uppercase tracking-wider leading-none mb-1 truncate max-w-[55px] sm:max-w-[70px]" title="Vence">
+                                Vence
+                            </span>
+                            <p className="text-white text-[10px] sm:text-xs font-black leading-none mt-0.5 uppercase">
+                                {proximaRenovacion.toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
