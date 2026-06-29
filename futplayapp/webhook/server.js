@@ -9,16 +9,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 const db = require('./data');
 const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp } = require('./handlers');
 
-const RECORDATORIOS_FILE = path.join(__dirname, '.recordatorios.json');
-const recordatoriosEnviados = new Set();
-try {
-  const data = fs.readFileSync(RECORDATORIOS_FILE, 'utf8');
-  JSON.parse(data).forEach(id => recordatoriosEnviados.add(id));
-} catch { }
 
-function guardarRecordatorios() {
-  fs.writeFileSync(RECORDATORIOS_FILE, JSON.stringify([...recordatoriosEnviados]));
-}
 
 const app = express();
 app.use(express.json());
@@ -76,7 +67,9 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
       const clase = await db.getClase(h.clase_id);
 
       for (const insc of inscripciones) {
-        if (recordatoriosEnviados.has(insc.id)) continue;
+        const marked = await db.setPendiente(insc.id);
+        if (!marked) continue;
+
         const usuario = await db.getUsuario(insc.usuario_id);
         if (!usuario?.telefono) continue;
 
@@ -87,13 +80,10 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
 
         try {
           await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
-          await db.setPendiente(insc.id);
-          recordatoriosEnviados.add(insc.id);
-          guardarRecordatorios();
+          await new Promise(r => setTimeout(r, 1000));
         } catch (err) {
           console.error(`Error al enviar a ${usuario.nombre}:`, err.message);
         }
-        await new Promise(r => setTimeout(r, 1000));
       }
     }
 

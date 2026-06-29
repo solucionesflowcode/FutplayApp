@@ -26,10 +26,15 @@ async function cancelarAsistencia(usuarioId, db) {
 async function procesarMensajeWhatsApp(telefono, texto, db) {
   const textoUpper = texto.toUpperCase().trim();
   const usuario = await db.buscarUsuarioPorTelefono(telefono);
-  if (!usuario) return 'No estás registrado en la academia. Contactate con la administración.';
+  if (!usuario) return null;
+  if (textoUpper !== '1' && textoUpper !== '2') return null;
+
+  // Once a user has responded, no more messages for any class
+  const proxima = await db.getProximaClaseUsuario(usuario.id);
+  if (!proxima) return null;
+
   if (textoUpper === '1') return await confirmarAsistencia(usuario.id, db);
-  if (textoUpper === '2') return await cancelarAsistencia(usuario.id, db);
-  return null;
+  return await cancelarAsistencia(usuario.id, db);
 }
 
 module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, horasHasta };
