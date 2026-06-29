@@ -77,6 +77,9 @@ function makeChain(table: string) {
         maybeSingle: vi.fn(() => {
             const r = state.tables[table];
             if (!r || r.data === undefined) return Promise.resolve({ data: null, error: null });
+            if (Array.isArray(r.data)) {
+                return Promise.resolve({ data: r.data[0] ?? null, error: r.error });
+            }
             return Promise.resolve(r);
         }),
     };

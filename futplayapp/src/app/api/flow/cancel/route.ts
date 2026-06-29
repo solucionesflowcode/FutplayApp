@@ -56,13 +56,20 @@ export async function POST(request: Request) {
         return NextResponse.json({ estado: boleta.estado, message: "No requiere cancelación" });
     }
 
-    const { error: updateError } = await adminClient
+    const { data: updated, error: updateError } = await adminClient
         .from("boleta")
         .update({ estado: "anulado" })
-        .eq("id", boleta.id);
+        .eq("id", boleta.id)
+        .eq("estado", "pendiente")
+        .select("id")
+        .maybeSingle();
 
     if (updateError) {
         return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    if (!updated) {
+        return NextResponse.json({ estado: "anulado" });
     }
 
     return NextResponse.json({ estado: "anulado" });

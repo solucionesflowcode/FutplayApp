@@ -288,4 +288,58 @@ describe("POST /api/clases/cancelar", () => {
         expect(json.success).toBe(true);
         expect(json.message).toContain("cancelada");
     });
+
+    it("API-CLASES-CAN-015: rechaza cancelar si ya está cancelado_sin_reembolso", async () => {
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "cancelado_sin_reembolso" });
+        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+
+        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+
+        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(false);
+        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
+    });
+
+    it("API-CLASES-CAN-016: rechaza cancelar si ya asistio", async () => {
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "asistio" });
+        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+
+        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+
+        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(false);
+        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
+    });
+
+    it("API-CLASES-CAN-017: rechaza cancelar si ya no_asistio", async () => {
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "no_asistio" });
+        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+
+        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+
+        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(false);
+        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
+    });
 });

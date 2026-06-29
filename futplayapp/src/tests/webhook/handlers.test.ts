@@ -117,6 +117,13 @@ describe("confirmarAsistencia", () => {
     const res = await confirmarAsistencia("user-1", db);
     expect(res).toBe("Error al confirmar. Intentalo de nuevo.");
   });
+
+  it("rechaza si falta 0.999 horas (menos de 1h, borde inferior)", async () => {
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(0.999));
+    const res = await confirmarAsistencia("user-1", db);
+    expect(res).toBe("Ya no alcanzas a confirmar, la clase empieza en menos de 1 hora.");
+    expect(db.confirmarAsistencia).not.toHaveBeenCalled();
+  });
 });
 
 // ─── cancelarAsistencia ────────────────────────────────────────────────
@@ -186,6 +193,32 @@ describe("cancelarAsistencia", () => {
     const res = await cancelarAsistencia("user-1", db);
     expect(res).toBe("❌ Clase cancelada. No se pudo devolver el token.");
   });
+
+  it("cancela sin reembolso si faltan exactamente 2.999 horas (< 3h, borde inferior)", async () => {
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(2.999));
+    db.updateAsistencia.mockResolvedValue(true);
+    const res = await cancelarAsistencia("user-1", db);
+    expect(res).toContain("no se devuelve el token");
+    expect(db.updateAsistencia).toHaveBeenCalledWith("insc-1", "cancelado_sin_reembolso");
+    expect(db.devolverToken).not.toHaveBeenCalled();
+  });
+
+  it("intenta devolverToken aunque updateAsistencia falle (>= 3h)", async () => {
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
+    db.updateAsistencia.mockResolvedValue(false);
+    db.devolverToken.mockResolvedValue(true);
+    const res = await cancelarAsistencia("user-1", db);
+    expect(res).toContain("Te devolvimos el token");
+    expect(db.devolverToken).toHaveBeenCalledWith("user-1");
+  });
+
+  it("avisa si update y devolverToken fallan ambos", async () => {
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
+    db.updateAsistencia.mockResolvedValue(false);
+    db.devolverToken.mockResolvedValue(false);
+    const res = await cancelarAsistencia("user-1", db);
+    expect(res).toBe("❌ Clase cancelada. No se pudo devolver el token.");
+  });
 });
 
 // ─── procesarMensajeWhatsApp ────────────────────────────────────────────
@@ -197,12 +230,13 @@ describe("procesarMensajeWhatsApp", () => {
     db = createMockDb();
   });
 
-  it("retorna mensaje si el usuario no está registrado", async () => {
+  it("retorna null (silencio total) si el usuario no está registrado y no procesa nada más", async () => {
     db.buscarUsuarioPorTelefono.mockResolvedValue(null);
     const res = await procesarMensajeWhatsApp("56912345678", "1", db);
-    expect(res).toBe(
-      "No estás registrado en la academia. Contactate con la administración."
-    );
+    expect(res).toBeNull();
+    expect(db.getProximaClaseUsuario).not.toHaveBeenCalled();
+    expect(db.confirmarAsistencia).not.toHaveBeenCalled();
+    expect(db.updateAsistencia).not.toHaveBeenCalled();
   });
 
   it("confirma asistencia con '1'", async () => {
@@ -233,5 +267,32 @@ describe("procesarMensajeWhatsApp", () => {
     db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
     await procesarMensajeWhatsApp("56987654321", "1", db);
     expect(db.buscarUsuarioPorTelefono).toHaveBeenCalledWith("56987654321");
+  });
+
+  it("tolera espacios alrededor del texto", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
+    db.confirmarAsistencia.mockResolvedValue(true);
+    const res = await procesarMensajeWhatsApp("56912345678", "  1  ", db);
+    expect(res).toContain("Asistencia confirmada");
+  });
+
+  it("tolera minúsculas", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
+    db.confirmarAsistencia.mockResolvedValue(true);
+    const res = await procesarMensajeWhatsApp("56912345678", "a", db);
+    expect(res).toBeNull();
+  });
+
+  it("BOT-RESP-001: retorna null si el usuario ya respondió (no hay clases pendientes)", async () => {
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    db.getProximaClaseUsuario.mockResolvedValue(null);
+
+    const res1 = await procesarMensajeWhatsApp("56912345678", "1", db);
+    expect(res1).toBeNull();
+
+    const res2 = await procesarMensajeWhatsApp("56912345678", "2", db);
+    expect(res2).toBeNull();
   });
 });
