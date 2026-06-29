@@ -144,7 +144,8 @@ export async function POST(request: Request) {
                     .maybeSingle();
 
                   if (!existingForBoleta) {
-                    const mes = new Date().toISOString();
+                    const ahora = new Date();
+                    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-01`;
                     const { error: membresiaError } = await adminClient
                       .from("membresia")
                       .insert({
@@ -219,7 +220,8 @@ export async function POST(request: Request) {
               .maybeSingle();
 
             if (!existingForBoleta) {
-              const mes = new Date().toISOString();
+              const ahora = new Date();
+              const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-01`;
               const { error: membresiaError } = await adminClient
                 .from("membresia")
                 .insert({

@@ -113,10 +113,10 @@ describe("POST /api/flow/create-order", () => {
             __setAuthUser(TEST_USER);
             __setTableData("usuario", TEST_USER);
             __setTableData("plan", TEST_PLAN);
-            // Membresía con mes actual → vencimiento >= today
+            // Membresía con estado=true y mes actual → vencimiento >= today
             const now = new Date();
             const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-            __setTableData("membresia", { id: "m1", mes: mesActual });
+            __setTableData("membresia", { id: "m1", mes: mesActual, estado: true });
 
             const res = await POST(makeRequest({ planId: "plan-1" }));
 
@@ -134,7 +134,7 @@ describe("POST /api/flow/create-order", () => {
             ]);
             const now = new Date();
             const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-            __setTableData("membresia", { id: "m1", usuario_id: "user-1", plan_id: "plan-1", mes: mesActual });
+            __setTableData("membresia", { id: "m1", usuario_id: "user-1", plan_id: "plan-1", mes: mesActual, estado: true });
 
             const res = await POST(makeRequest({ planId: "plan-2" }));
 
@@ -143,12 +143,27 @@ describe("POST /api/flow/create-order", () => {
             expect(json.error).toContain("plan activo");
         });
 
-        it("permite comprar si la membresía anterior está vencida", async () => {
+        it("permite comprar si la membresía anterior está inactiva aunque el mes sea vigente", async () => {
             __setAuthUser(TEST_USER);
             __setTableData("usuario", TEST_USER);
             __setTableData("plan", TEST_PLAN);
-            // Membresía del mes pasado → vencida
-            __setTableData("membresia", { id: "m1", mes: "2020-01-01" });
+            // La ruta filtra por .eq("estado", true), así que membresía con estado=false no se encuentra
+            // Simulamos el mismo resultado que daría Supabase con ese filtro
+            __setTableData("membresia", null);
+            __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 15000, recurrencia_id: null });
+            __setTableData("boleta_item", { id: "item-1" });
+
+            const res = await POST(makeRequest({ planId: "plan-1" }));
+
+            expect(res.status).toBe(200);
+        });
+
+        it("permite comprar si la membresía activa está vencida", async () => {
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", TEST_PLAN);
+            // Membresía activa pero del mes pasado → vencida
+            __setTableData("membresia", { id: "m1", mes: "2020-01-01", estado: true });
             __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 15000, recurrencia_id: null });
             __setTableData("boleta_item", { id: "item-1" });
 
@@ -220,7 +235,7 @@ describe("POST /api/flow/create-order", () => {
             __setTableData("boleta_item", { id: "item-1" });
         });
 
-        it("urlReturn apunta a http://localhost:3000/dashboard?flowSuccess=1", async () => {
+        it("urlReturn apunta a NEXT_PUBLIC_BASE_URL/dashboard?flowSuccess=1 (absoluta)", async () => {
             await POST(makeRequest({ planId: "plan-1" }));
 
             const params = vi.mocked(createFlowOrder).mock.calls[0][0];

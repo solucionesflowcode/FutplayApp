@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
-import { createMockServerClient, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
+import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser } from "@/tests/mocks/supabase";
 import { mockPaymentStatus } from "@/tests/helpers/flow";
 
 // ── Env vars ────────────────────────────────────────
@@ -8,6 +8,7 @@ const BOLETA_ID = "boleta-123";
 
 beforeAll(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
 });
 
@@ -16,6 +17,13 @@ afterAll(() => {
 });
 
 // ── Module mocks ────────────────────────────────────
+
+vi.mock("next/headers", () => ({
+    cookies: vi.fn(() => Promise.resolve({
+        getAll: () => [],
+        set: vi.fn(),
+    })),
+}));
 
 vi.mock("@supabase/ssr", () => ({
     createServerClient: vi.fn(() => createMockServerClient()),
@@ -39,6 +47,7 @@ function makeRequest(token?: string, boletaId?: string): Request {
     return new Request(`http://localhost:3000/api/flow/confirm?${params}`, { method: "GET" });
 }
 
+const USER_ID = "user-123";
 const FLOW_TOKEN = "flow-token-abc";
 
 // ── Tests ───────────────────────────────────────────
@@ -46,6 +55,7 @@ const FLOW_TOKEN = "flow-token-abc";
 describe("GET /api/flow/confirm", () => {
     beforeEach(() => {
         __resetMocks();
+        __setAuthUser({ id: USER_ID });
         vi.mocked(getFlowPaymentStatus).mockReset();
     });
 
@@ -69,7 +79,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("retorna estado pagado si Flow aprueba y boleta estaba pendiente", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -80,7 +90,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("retorna estado rechazado si Flow no aprueba (status !== 2)", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 1, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -91,7 +101,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("retorna 403 si commerceOrder no coincide con boletaId", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: "otra-boleta" }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -102,7 +112,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("retorna pendiente si getFlowPaymentStatus lanza error (sandbox fallback)", async () => {
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Sandbox error"));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -113,7 +123,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("retorna pagado si la boleta ya estaba pagada en Supabase", async () => {
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Token inválido"));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pagado" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -123,7 +133,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("retorna pagado cuando token es literal {token} pero boleta ya está pagada", async () => {
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pagado" });
 
         const res = await GET(makeRequest("{token}", BOLETA_ID));
 
@@ -133,7 +143,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("devuelve pendiente cuando token es literal {token} y boleta no está pagada", async () => {
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest("{token}", BOLETA_ID));
 
@@ -146,7 +156,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("llama a getFlowPaymentStatus con token real", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pendiente" });
 
         await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -155,7 +165,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("actualiza boleta a pagado cuando Flow confirma y boleta estaba pendiente", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -165,7 +175,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("retorna pagado sin llamar a Flow si token es ´{token}´ y boleta ya está pagada", async () => {
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pagado" });
 
         const res = await GET(makeRequest("{token}", BOLETA_ID));
 
@@ -174,7 +184,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("CONFIRM-024: retorna estado rechazado si boleta está rechazada en Supabase (sin token real)", async () => {
-        __setTableData("boleta", { id: BOLETA_ID, estado: "rechazado" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "rechazado" });
 
         const res = await GET(makeRequest("{token}", BOLETA_ID));
 
@@ -185,7 +195,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("CONFIRM-025: retorna estado anulado si boleta está anulada en Supabase (sin token real)", async () => {
-        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "anulado" });
 
         const res = await GET(makeRequest("{token}", BOLETA_ID));
 
@@ -197,7 +207,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("CONFIRM-026: retorna estado rechazado en fallback tras error de Flow API si boleta está rechazada", async () => {
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Network error"));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "rechazado" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "rechazado" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -208,7 +218,7 @@ describe("GET /api/flow/confirm", () => {
 
     it("CONFIRM-027: retorna estado anulado en fallback tras error de Flow API si boleta está anulada", async () => {
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Network error"));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "anulado" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 
@@ -220,7 +230,7 @@ describe("GET /api/flow/confirm", () => {
     it("CONFIRM-023: atomic guard previene doble escritura si boleta ya fue pagada por concurrencia", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
         // Simula que otro request ya pagó la boleta: .eq("estado", "pendiente") falla
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado" });
+        __setTableData("boleta", { id: BOLETA_ID, usuario_id: USER_ID, estado: "pagado" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
 

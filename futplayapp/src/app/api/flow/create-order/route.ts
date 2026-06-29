@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+﻿import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createFlowOrder } from "@/lib/flow";
@@ -82,6 +82,7 @@ export async function POST(request: Request) {
     .from("membresia")
     .select("id, mes")
     .eq("usuario_id", usuario.id)
+    .eq("estado", true)
     .order("mes", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
   if (existingMembresia) {
     if (membresiaActiva(existingMembresia.mes)) {
       return NextResponse.json(
-        { error: "Ya tienes un plan activo. No puedes comprar otro hasta que termine el período actual." },
+        { error: "Ya tienes un plan activo. No puedes comprar otro hasta que termine el perÃ­odo actual." },
         { status: 409 }
       );
     }
@@ -164,9 +165,9 @@ export async function POST(request: Request) {
       amount: plan.precio,
       email: usuario.email,
       urlConfirmation: `${publicUrl}/api/flow/webhook?boletaId=${boleta.id}`,
-      urlReturn: `http://localhost:3000/dashboard?flowSuccess=1`,
+      urlReturn: `${publicUrl}/dashboard?flowSuccess=1`,
       timeout: 1800,
-      paymentMethod: 1, // solo tarjetas crédito + débito
+      paymentMethod: 1, // solo tarjetas crÃ©dito + dÃ©bito
       ...(conRecurrencia ? { recurrence: { period: 30 } } : {}),
     });
 

@@ -87,6 +87,37 @@ export function makeChain(table: string) {
     return terminal;
 }
 
+/**
+ * Creates a chain that returns a fixed data object instead of reading from state.
+ * Useful for sequence/race-condition tests where different calls need different data.
+ */
+export function makeSeqChain(table: string, data: any, error: any = null): any {
+    const response = { data, error };
+    const terminal: any = {
+        then(resolve: (v: any) => void) {
+            return Promise.resolve(response).then(resolve);
+        },
+        select: vi.fn(() => terminal),
+        insert: vi.fn(() => terminal),
+        update: vi.fn(() => terminal),
+        delete: vi.fn(() => terminal),
+        eq: vi.fn(() => terminal),
+        neq: vi.fn(() => terminal),
+        or: vi.fn(() => terminal),
+        gt: vi.fn(() => terminal),
+        gte: vi.fn(() => terminal),
+        lt: vi.fn(() => terminal),
+        lte: vi.fn(() => terminal),
+        not: vi.fn(() => terminal),
+        in: vi.fn(() => terminal),
+        order: vi.fn(() => terminal),
+        limit: vi.fn(() => terminal),
+        single: vi.fn(() => Promise.resolve(response)),
+        maybeSingle: vi.fn(() => Promise.resolve(response)),
+    };
+    return terminal;
+}
+
 // ── Factory ─────────────────────────────────────────────────
 
 export function createMockServerClient() {

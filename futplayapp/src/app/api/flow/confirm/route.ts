@@ -1,8 +1,26 @@
 import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
 
 export async function GET(request: Request) {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() { return cookieStore.getAll() },
+                setAll() {},
+            },
+        }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token");
     const boletaId = searchParams.get("boletaId");
@@ -22,15 +40,18 @@ export async function GET(request: Request) {
         { cookies: { getAll() { return []; }, setAll() {} } }
     );
 
-    // First check if the boleta exists
     const { data: boleta } = await adminClient
         .from("boleta")
-        .select("id, estado")
+        .select("id, estado, usuario_id")
         .eq("id", boletaId)
         .single();
 
     if (!boleta) {
         return NextResponse.json({ error: "Boleta no encontrada" }, { status: 404 });
+    }
+
+    if (boleta.usuario_id !== user.id) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     // If we have a real token (not the literal "{token}" that Flow failed to replace),

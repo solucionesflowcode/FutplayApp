@@ -147,12 +147,13 @@ describeIf("Flow Sandbox E2E - API Routes", () => {
     // ── Tests ───────────────────────────────────────────────────
 
     it("4. POST /api/flow/create-order con Flow sandbox real", async () => {
+        const boletaId = `boleta-e2e-${Date.now()}`;
         __setAuthUser(TEST_USER);
         __setTableData("usuario", TEST_USER);
         __setTableData("plan", TEST_PLAN);
         __setTableData("membresia", null);
-        __setTableData("boleta", { id: "boleta-e2e-1", usuario_id: "user-e2e", estado: "pendiente", total: 1000, recurrencia_id: null });
-        __setTableData("boleta_item", { id: "item-e2e-1" });
+        __setTableData("boleta", { id: boletaId, usuario_id: "user-e2e", estado: "pendiente", total: 1000, recurrencia_id: null });
+        __setTableData("boleta_item", { id: `item-e2e-${Date.now()}` });
 
         const res = await CreateOrderPOST(makeCreateOrderRequest({ planId: "plan-e2e" }));
 
@@ -161,7 +162,7 @@ describeIf("Flow Sandbox E2E - API Routes", () => {
         expect(json.url).toContain("sandbox.flow.cl");
         expect(json.url).toContain("token=");
         expect(typeof json.flowOrder).toBe("number");
-        expect(json.boletaId).toBe("boleta-e2e-1");
+        expect(json.boletaId).toBe(boletaId);
     }, 30000);
 
     it("5. POST /api/flow/webhook con token real de sandbox (status=1)", async () => {
