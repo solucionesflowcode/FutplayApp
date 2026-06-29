@@ -55,7 +55,8 @@ async function confirmarAsistencia(claseUsuarioId) {
   const { error } = await supabase
     .from('clase_usuario')
     .update({ asistencia: 'confirmado_whatsapp' })
-    .eq('id', claseUsuarioId);
+    .eq('id', claseUsuarioId)
+    .in('asistencia', ['sin_confirmar', 'pendiente']);
   return !error;
 }
 
@@ -63,7 +64,8 @@ async function updateAsistencia(claseUsuarioId, estado) {
   const { error } = await supabase
     .from('clase_usuario')
     .update({ asistencia: estado })
-    .eq('id', claseUsuarioId);
+    .eq('id', claseUsuarioId)
+    .in('asistencia', ['sin_confirmar', 'pendiente']);
   return !error;
 }
 
@@ -133,7 +135,14 @@ async function getInscripcionesSinConfirmar(claseId) {
 }
 
 async function setPendiente(claseUsuarioId) {
-  await supabase.from('clase_usuario').update({ asistencia: 'pendiente' }).eq('id', claseUsuarioId);
+  const { data } = await supabase
+    .from('clase_usuario')
+    .update({ asistencia: 'pendiente' })
+    .eq('id', claseUsuarioId)
+    .eq('asistencia', 'sin_confirmar')
+    .select('id')
+    .maybeSingle();
+  return data !== null;
 }
 
 async function actualizarPorClaseYEstado(claseId, desde, hacia) {

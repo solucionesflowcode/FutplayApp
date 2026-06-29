@@ -59,4 +59,5 @@ describe("POST /api/flow/cancel-recurrence", () => {
         const json = await res.json();
         expect(json.message).toBe("Suscripción cancelada");
     });
+
 });

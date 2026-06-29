@@ -236,6 +236,33 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(200);
     });
 
+    // ── Idempotencia por boleta_id ────────────────────
+
+    it("WEB-020: salta creación si ya existe membresía para esta boleta (pago normal)", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
+        __setTableData("membresia", { id: "mem-1", boleta_id: BOLETA_ID });
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(200);
+    });
+
+    it("WEB-021: salta creación si ya existe membresía para esta boleta (cobro recurrente)", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: "rec-1", usuario_id: "u1" });
+        __setTableData("recurrencia", { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: true });
+        __setTableData("plan", { id: "plan-1", precio: 15000, tokens_mensuales: 10 });
+        __setTableData("boleta_item", { id: "item-nuevo" });
+        __setTableData("membresia", { id: "mem-1", boleta_id: BOLETA_ID });
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(200);
+    });
+
     // ── Recurrence deactivation on rejection ──────────
 
     it("desactiva recurrencia cuando el pago recurrente es rechazado (status 3)", async () => {

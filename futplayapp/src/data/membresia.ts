@@ -11,6 +11,7 @@ type MembresiaRow = {
     id: string;
     usuario_id: string;
     plan_id: string;
+    boleta_id?: string;
     tokens_totales: number;
     tokens_usados: number;
     mes: string;
@@ -160,7 +161,8 @@ export async function getAdminMembresias(): Promise<MembresiaConPlan[]> {
 export async function createMembresia(
     userId: string,
     planId: string,
-    tokensMensuales: number
+    tokensMensuales: number,
+    boletaId?: string
 ): Promise<boolean> {
     const supabase = createClient();
 
@@ -172,6 +174,7 @@ export async function createMembresia(
         .insert({
             usuario_id: userId,
             plan_id: planId,
+            boleta_id: boletaId,
             mes,
             tokens_totales: tokensMensuales,
             tokens_usados: 0,
@@ -192,12 +195,11 @@ export async function devolverToken(userId: string): Promise<boolean> {
         .from("membresia")
         .select("id, tokens_usados")
         .eq("usuario_id", userId)
-        .gt("tokens_usados", 0)
         .order("mes", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-    if (!membresia) return false;
+    if (!membresia || membresia.tokens_usados <= 0) return false;
 
     const { error } = await supabase
         .from("membresia")
