@@ -130,7 +130,7 @@ describe("getProximaClase", () => {
         expect(result[0].sede).toBe("");
     });
 
-    it("DATA-CLASES-GPC-007: filtra clases sin título (null)", async () => {
+    it("DATA-CLASES-GPC-007: filtra clases sin título (null) si es entrenamiento", async () => {
         const futureFecha = new Date(Date.now() + 86400000).toISOString();
         __setTableData("clase_usuario", [
             {
@@ -147,5 +147,47 @@ describe("getProximaClase", () => {
         const result = await getProximaClase(USER_ID);
 
         expect(result.length).toBe(0);
+    });
+
+    it("DATA-CLASES-GPC-008: retorna partido con titulo null como 'Partido'", async () => {
+        const futureFecha = new Date(Date.now() + 86400000).toISOString();
+        __setTableData("clase_usuario", [
+            {
+                clase: {
+                    titulo: null,
+                    descripcion: "Partido del sábado",
+                    fecha_hora: futureFecha,
+                    tipo_evento: "partido",
+                    sede: { nombre: "Sede Centro" },
+                },
+            },
+        ]);
+
+        const result = await getProximaClase(USER_ID);
+
+        expect(result.length).toBe(1);
+        expect(result[0].titulo).toBe("Partido");
+        expect(result[0].tipo_evento).toBe("partido");
+    });
+
+    it("DATA-CLASES-GPC-009: retorna partido sin titulo ni sede", async () => {
+        const futureFecha = new Date(Date.now() + 86400000).toISOString();
+        __setTableData("clase_usuario", [
+            {
+                clase: {
+                    titulo: null,
+                    descripcion: "Partido sin sede",
+                    fecha_hora: futureFecha,
+                    tipo_evento: "partido",
+                    sede: null,
+                },
+            },
+        ]);
+
+        const result = await getProximaClase(USER_ID);
+
+        expect(result.length).toBe(1);
+        expect(result[0].titulo).toBe("Partido");
+        expect(result[0].sede).toBe("");
     });
 });

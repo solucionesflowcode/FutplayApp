@@ -125,6 +125,24 @@ describe("POST /api/flow/create-order", () => {
             expect(json.error).toContain("plan activo");
         });
 
+        it("API-FLOW-CREATE-022: retorna 409 aunque la membresía activa sea de distinto plan", async () => {
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", [
+                { id: "plan-1", nombre: "Plan A", tokens_mensuales: 4, precio: 15000 },
+                { id: "plan-2", nombre: "Plan B", tokens_mensuales: 8, precio: 25000 },
+            ]);
+            const now = new Date();
+            const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+            __setTableData("membresia", { id: "m1", usuario_id: "user-1", plan_id: "plan-1", mes: mesActual });
+
+            const res = await POST(makeRequest({ planId: "plan-2" }));
+
+            expect(res.status).toBe(409);
+            const json = await res.json();
+            expect(json.error).toContain("plan activo");
+        });
+
         it("permite comprar si la membresía anterior está vencida", async () => {
             __setAuthUser(TEST_USER);
             __setTableData("usuario", TEST_USER);

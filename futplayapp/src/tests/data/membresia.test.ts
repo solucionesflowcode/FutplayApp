@@ -120,7 +120,7 @@ describe("createMembresia", () => {
 });
 
 describe("devolverToken", () => {
-    it("retorna true si puede devolver token", async () => {
+    it("retorna true si la membresía actual tiene tokens usados", async () => {
         __setTableData("membresia", { id: "m1", tokens_usados: 5 });
         __setTableData("membresia_update", { id: "m1", tokens_usados: 4 });
 
@@ -129,11 +129,62 @@ describe("devolverToken", () => {
         expect(result).toBe(true);
     });
 
-    it("retorna false si no hay membresía con tokens_usados > 0", async () => {
+    it("retorna false si no hay membresía", async () => {
         __setTableData("membresia", null);
 
         const result = await devolverToken(USER_ID);
 
         expect(result).toBe(false);
+    });
+
+    it("MB-009: retorna false si la membresía actual tiene tokens_usados=0 aunque haya una vieja con >0", async () => {
+        __setTableData("membresia", [
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, mes: "2026-06-01" },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, mes: "2026-05-01" },
+        ]);
+
+        const result = await devolverToken(USER_ID);
+
+        expect(result).toBe(false);
+    });
+});
+
+describe("getMembresiaByUser — múltiples membresías", () => {
+    it("MB-007: elige la membresía más reciente cuando hay varias", async () => {
+        __setTableData("membresia", [
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, mes: "2026-06-01" },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 20, mes: "2026-05-01" },
+        ]);
+        __setTableData("plan", { id: "p1", nombre: "Premium", tokens_mensuales: 30, precio: 40000 });
+
+        const result = await getMembresiaByUser(USER_ID);
+
+        expect(result).not.toBeNull();
+        expect(result!.membresia_id).toBe("m-new");
+        expect(result!.tokens_restantes).toBe(25);
+    });
+
+    it("MB-008: usa membresía nueva aunque la vieja tenga más tokens restantes", async () => {
+        __setTableData("membresia", [
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, mes: "2026-06-01" },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 10, mes: "2026-05-01" },
+        ]);
+        __setTableData("plan", { id: "p1", nombre: "Premium", tokens_mensuales: 30, precio: 40000 });
+
+        const result = await getMembresiaByUser(USER_ID);
+
+        expect(result).not.toBeNull();
+        expect(result!.membresia_id).toBe("m-new");
+        expect(result!.tokens_restantes).toBe(30);
+    });
+});
+
+describe("createMembresia — duplicados", () => {
+    it("MB-010: crea membresía aunque exista una del mes pasado (no hay constraint único)", async () => {
+        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, plan_id: "p1", mes: "2026-05-01" });
+
+        const result = await createMembresia(USER_ID, "p1", 30);
+
+        expect(result).toBe(true);
     });
 });
