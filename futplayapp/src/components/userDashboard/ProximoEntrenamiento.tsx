@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthUser } from "@/context";
 import Link from "next/link";
-import { Lock, CalendarPlus, Sparkles, ArrowRight } from "lucide-react";
+import { Lock, CalendarPlus, Sparkles, ArrowRight, Calendar, MapPin, Clock, GraduationCap } from "lucide-react";
 import { userHasMembresia } from "@/data/membresia";
 import { getProximaClase } from "@/data/clases";
 
@@ -124,48 +124,48 @@ function renderClase(clase: Clase) {
         : `${fechaFormateada}, ${horaFormateada}`;
 
     return (
-        <div className="w-full min-w-[380px] bg-white border-t-2 border-t-[#F39200] shadow-lg flex overflow-hidden">
-
-            <div className="w-3/4 p-6 flex flex-col justify-between">
-                <div>
-                    <div className="flex justify-between">
-                        <h1 className="text-[#F39200] text-[20px] font-bold">
-                            Mi Próximo Evento
-                        </h1>
-                    </div>
-
-                    <div className="flex flex-col gap-2 mt-5">
-                        <p className="font-extrabold text-[28px] text-[#00305B] leading-tight">
-                            {clase.titulo}
-                        </p>
-
-                        <p className="text-[16px] text-[#42474F] font-medium">
-                            {clase.descripcion}
-                        </p>
-
-                        {clase.sede && (
-                            <p className="text-[14px] text-gray-500 font-medium">
-                                {clase.sede}
-                            </p>
-                        )}
-                    </div>
+        <div className="w-full bg-white rounded-xl border-t-2 border-t-[#F39200] shadow-sm ring-1 ring-black/[0.03] flex items-center p-5 gap-5">
+            <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-1.5">
+                    <Calendar className="text-[#F39200]" size={14} />
+                    <span className="text-[#F39200] text-[11px] font-semibold uppercase tracking-widest">
+                        Mi Próximo Evento
+                    </span>
                 </div>
 
-                <div className="mt-5">
-                    <p className="font-extrabold text-[28px] text-[#00305B]">
-                        {textoFecha}
+                <div>
+                    <h2 className="text-[20px] font-extrabold text-[#00305B] leading-tight">
+                        {clase.titulo}
+                    </h2>
+                    <p className="text-[13px] text-[#42474F] font-medium mt-1">
+                        {clase.descripcion}
                     </p>
+                </div>
+
+                {clase.sede && (
+                    <div className="flex items-center gap-1.5 text-[12px] text-gray-500">
+                        <MapPin size={12} className="text-gray-400 shrink-0" />
+                        <span>{clase.sede}</span>
+                    </div>
+                )}
+
+                <div className="flex items-center gap-1.5">
+                    <Clock size={15} className="text-[#F39200] shrink-0" />
+                    <span className="text-[17px] font-extrabold text-[#00305B]">
+                        {textoFecha}
+                    </span>
                 </div>
             </div>
 
-            <Link
-                href="/misclases"
-                className="w-1/4 bg-[#F28C28] hover:bg-[#e07d1f] text-white flex flex-col items-center justify-center text-center p-4 transition-all duration-200 select-none group border-l border-orange-300/20"
-            >
-                <span className="font-extrabold text-[13px] sm:text-[14px] leading-tight uppercase tracking-wider group-hover:scale-105 transition-transform duration-200">
+            <div className="shrink-0">
+                <Link
+                    href="/misclases"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#F39200] bg-white text-[#F39200] text-[11px] font-bold uppercase tracking-wider hover:bg-[#FFF8F0] transition-all duration-200"
+                >
+                    <GraduationCap size={14} />
                     Ir a mis clases
-                </span>
-            </Link>
+                </Link>
+            </div>
         </div>
     );
 }
