@@ -47,5 +47,8 @@ webhook/.wwebjs_cache/
 webhook/.recordatorios.json
 
 
+# data
+.data/
+
 # editor
 .vscode/
