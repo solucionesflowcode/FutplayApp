@@ -1,42 +1,37 @@
+import { getAdminClient } from "@/utils/supabase/admin";
+
 const BUCKET = "modulos_miniaturas";
 const FILE_PATH = "config/capsula-destacada.json";
 
-function getStorageUrl(): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${FILE_PATH}`;
-}
-
-function getStorageUploadUrl(): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${BUCKET}/${FILE_PATH}`;
-}
-
 export async function getCapsulaDestacadaId(): Promise<string | null> {
   try {
-    const res = await fetch(getStorageUrl(), {
-      next: { revalidate: 5 },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.capsula_id || null;
+    const admin = await getAdminClient();
+    const { data, error } = await admin.storage
+      .from(BUCKET)
+      .download(FILE_PATH);
+
+    if (error || !data) return null;
+
+    const text = await data.text();
+    const json = JSON.parse(text);
+    return json.capsula_id ?? null;
   } catch {
     return null;
   }
 }
 
 export async function setCapsulaDestacadaId(capsulaId: string | null): Promise<boolean> {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) return false;
+  try {
+    const admin = await getAdminClient();
+    const content = JSON.stringify(capsulaId ? { capsula_id: capsulaId } : {});
+    const blob = new Blob([content], { type: "application/json" });
 
-  const body = JSON.stringify(capsulaId ? { capsula_id: capsulaId } : {});
+    const { error } = await admin.storage
+      .from(BUCKET)
+      .upload(FILE_PATH, blob, { upsert: true, contentType: "application/json" });
 
-  const res = await fetch(getStorageUploadUrl(), {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${serviceKey}`,
-      "Content-Type": "application/json",
-      "x-upsert": "true",
-    },
-    body,
-  });
-
-  return res.ok;
+    return !error;
+  } catch {
+    return false;
+  }
 }
