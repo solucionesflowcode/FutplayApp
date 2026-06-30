@@ -96,16 +96,31 @@ async function getHorariosProximos() {
   return (data ?? []).map(c => ({ id: c.id, fecha_hora: c.fecha_hora, clase_id: c.id }));
 }
 
+async function getHorariosFuturos() {
+  const ahora = new Date();
+  console.log(`[DEBUG DATA] getHorariosFuturos: desde=${ahora.toISOString()}`);
+
+  const { data, error } = await supabase
+    .from('clase')
+    .select('id, fecha_hora')
+    .gte('fecha_hora', ahora.toISOString());
+
+  console.log(`[DEBUG DATA] getHorariosFuturos: total=${data?.length ?? 0}, error=${error?.message ?? 'none'}`);
+  return (data ?? []).map(c => ({ id: c.id, fecha_hora: c.fecha_hora, clase_id: c.id }));
+}
+
 async function getHorarios24h() {
   const ahora = new Date();
   const hasta = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
+  console.log(`[DEBUG DATA] getHorarios24h: hasta=${hasta.toISOString()}`);
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('clase')
     .select('id, fecha_hora')
     .gte('fecha_hora', ahora.toISOString())
     .lte('fecha_hora', hasta.toISOString());
 
+  console.log(`[DEBUG DATA] getHorarios24h: total=${data?.length ?? 0}, error=${error?.message ?? 'none'}`);
   return (data ?? []).map(c => ({ id: c.id, fecha_hora: c.fecha_hora, clase_id: c.id }));
 }
 
@@ -228,14 +243,13 @@ async function getProximaClaseUsuarioActioned(usuarioId) {
 module.exports = {
   init,
   getClient,
-  _setTestClient,
   buscarUsuarioPorTelefono,
   getProximaClaseUsuario,
-  getProximaClaseUsuarioActioned,
   confirmarAsistencia,
   updateAsistencia,
   devolverToken,
   getHorariosProximos,
+  getHorariosFuturos,
   getHorarios24h,
   getHorariosPasados,
   getHorariosPasados1h,

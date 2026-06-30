@@ -61,29 +61,36 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
     const ahora = new Date();
 
     const horarios = await db.getHorarios24h();
+    console.log(`[DEBUG SERVER] Scheduler: horarios en 24h=${horarios.length}`);
     for (const h of horarios) {
+      console.log(`[DEBUG SERVER] Scheduler: procesando horario id=${h.id}, fecha_hora=${h.fecha_hora}`);
       const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
-      if (!inscripciones.length) continue;
+      if (!inscripciones.length) { console.log(`[DEBUG SERVER] Scheduler: sin inscripciones sin confirmar`); continue; }
       const clase = await db.getClase(h.clase_id);
 
       for (const insc of inscripciones) {
-        const marked = await db.setPendiente(insc.id);
-        if (!marked) continue;
-
+        if (recordatoriosEnviados.has(insc.id)) { console.log(`[DEBUG SERVER] Scheduler: recordatorio ya enviado para insc=${insc.id}`); continue; }
         const usuario = await db.getUsuario(insc.usuario_id);
-        if (!usuario?.telefono) continue;
+        if (!usuario?.telefono) { console.log(`[DEBUG SERVER] Scheduler: usuario ${insc.usuario_id} sin telefono`); continue; }
 
         const fecha = new Date(h.fecha_hora);
         const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
         const telefono = usuario.telefono.replace('+', '');
         const mensaje = `Hola ${usuario.nombre}! Recuerda que mañana a las ${hora} tienes "${clase?.titulo || 'tu clase'}". Responde *1* para confirmar o *2* para cancelar.`;
 
+        console.log(`[DEBUG SERVER] Scheduler: enviando a ${usuario.nombre} (${telefono}): "${mensaje}"`);
         try {
           await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
-          await new Promise(r => setTimeout(r, 1000));
+          await db.setPendiente(insc.id);
+          recordatoriosEnviados.add(insc.id);
+          guardarRecordatorios();
+          console.log(`[DEBUG SERVER] Scheduler: enviado OK a ${usuario.nombre}`);
         } catch (err) {
           console.error(`Error al enviar a ${usuario.nombre}:`, err.message);
         }
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
       }
     }
 
