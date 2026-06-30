@@ -105,6 +105,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("retorna pendiente si getFlowPaymentStatus lanza error (sandbox fallback)", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "false");
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Sandbox error"));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
 
@@ -137,6 +138,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("devuelve pendiente cuando token es literal {token} y boleta no está pagada", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "false");
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest("{token}", BOLETA_ID));
@@ -178,6 +180,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("CONFIRM-024: retorna estado rechazado si boleta está rechazada en Supabase (sin token real)", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "false");
         __setTableData("boleta", { id: BOLETA_ID, estado: "rechazado" });
 
         const res = await GET(makeRequest("{token}", BOLETA_ID));
@@ -189,6 +192,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("CONFIRM-025: retorna estado anulado si boleta está anulada en Supabase (sin token real)", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "false");
         __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
 
         const res = await GET(makeRequest("{token}", BOLETA_ID));
@@ -200,6 +204,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("CONFIRM-026: retorna estado rechazado en fallback tras error de Flow API si boleta está rechazada", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "false");
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Network error"));
         __setTableData("boleta", { id: BOLETA_ID, estado: "rechazado" });
 
@@ -211,6 +216,7 @@ describe("GET /api/flow/confirm", () => {
     });
 
     it("CONFIRM-027: retorna estado anulado en fallback tras error de Flow API si boleta está anulada", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "false");
         vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("Network error"));
         __setTableData("boleta", { id: BOLETA_ID, estado: "anulado" });
 

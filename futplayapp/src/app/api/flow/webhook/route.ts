@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
+import { ahoraChile } from "@/lib/fechas";
 
 export async function POST(request: Request) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -137,13 +138,16 @@ export async function POST(request: Request) {
               // ── Crear membresía ──
               try {
                 if (plan.tokens_mensuales) {
-                  const mes = new Date().toISOString();
+                  const fecha_inicio = ahoraChile().toISOString();
+                  const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
                   const { error: membresiaError } = await adminClient
                     .from("membresia")
                     .insert({
                       usuario_id: recurrencia.usuario_id,
                       plan_id: recurrencia.plan_id,
-                      mes,
+                      boleta_id: newBoleta.id,
+                      fecha_inicio,
+                      fecha_vencimiento,
                       tokens_totales: plan.tokens_mensuales,
                       tokens_usados: 0,
                       estado: true,
@@ -201,26 +205,27 @@ export async function POST(request: Request) {
             .maybeSingle();
 
           if (plan?.tokens_mensuales) {
-            const { data: existingForBoleta } = await adminClient
-              .from("membresia")
-              .select("id")
-              .eq("boleta_id", boleta.id)
-              .maybeSingle();
+              const { data: existingForBoleta } = await adminClient
+                    .from("membresia")
+                    .select("id")
+                    .eq("boleta_id", boleta.id)
+                    .maybeSingle();
 
-            if (!existingForBoleta) {
-              const ahora = new Date();
-              const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`;
-              const { error: membresiaError } = await adminClient
-                .from("membresia")
-                .insert({
-                  usuario_id: boleta.usuario_id,
-                  plan_id: boletaItem.plan_id,
-                  boleta_id: boleta.id,
-                  mes,
-                  tokens_totales: plan.tokens_mensuales,
-                  tokens_usados: 0,
-                  estado: true,
-                });
+                  if (!existingForBoleta) {
+                    const fecha_inicio = ahoraChile().toISOString();
+                    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                    const { error: membresiaError } = await adminClient
+                      .from("membresia")
+                      .insert({
+                        usuario_id: boleta.usuario_id,
+                        plan_id: boletaItem.plan_id,
+                        boleta_id: boleta.id,
+                        fecha_inicio,
+                        fecha_vencimiento,
+                        tokens_totales: plan.tokens_mensuales,
+                        tokens_usados: 0,
+                        estado: true,
+                      });
 
               if (membresiaError) {
                 console.error(`[Flow Webhook] Error al crear membresía: ${membresiaError.message}`);

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
 import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser } from "@/tests/mocks/supabase";
+import { getChileMonthBounds } from "@/lib/fechas";
 
 beforeAll(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
@@ -101,7 +102,7 @@ describe("POST /api/clases/inscribir", () => {
 
     it("API-CLASES-INS-005: retorna 400 si la clase está llena", async () => {
         __setTableData("clase", { id: "c1", cupo_maximo: 2, tipo_evento: "entrenamiento" });
-        __setTableData("clase_usuario", [{ id: "cu1" }, { id: "cu2" }, { id: "cu3" }]);
+        __setTableData("clase_usuario", [{ id: "cu1", clase_id: "c1" }, { id: "cu2", clase_id: "c1" }, { id: "cu3", clase_id: "c1" }]);
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",
@@ -204,8 +205,9 @@ describe("POST /api/clases/inscribir", () => {
 
     it("API-CLASES-INS-012: re-inscripción a entrenamiento con membresía válida", async () => {
         __setTableData("clase", CLASE_BASE);
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "cancelado" });
-        __setTableData("membresia", { id: "m1", tokens_totales: 10, tokens_usados: 3 });
+        __setTableData("clase_usuario", { id: "cu1", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
+        const { startISO } = getChileMonthBounds();
+        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, estado: true, fecha_inicio: startISO, fecha_vencimiento: new Date(new Date(startISO).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(), tokens_totales: 10, tokens_usados: 3 });
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",
@@ -220,7 +222,7 @@ describe("POST /api/clases/inscribir", () => {
 
     it("API-CLASES-INS-013: re-inscripción a entrenamiento sin membresía activa", async () => {
         __setTableData("clase", CLASE_BASE);
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "cancelado" });
+        __setTableData("clase_usuario", { id: "cu1", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
         __setTableData("membresia", null);
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
@@ -236,8 +238,9 @@ describe("POST /api/clases/inscribir", () => {
 
     it("API-CLASES-INS-014: re-inscripción a entrenamiento sin tokens disponibles", async () => {
         __setTableData("clase", CLASE_BASE);
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "cancelado" });
-        __setTableData("membresia", { id: "m1", tokens_totales: 5, tokens_usados: 5 });
+        __setTableData("clase_usuario", { id: "cu1", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
+        const { startISO } = getChileMonthBounds();
+        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, estado: true, fecha_inicio: startISO, fecha_vencimiento: new Date(new Date(startISO).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(), tokens_totales: 5, tokens_usados: 5 });
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",

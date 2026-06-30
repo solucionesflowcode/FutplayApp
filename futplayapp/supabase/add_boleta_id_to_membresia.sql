@@ -1,6 +1,6 @@
 -- Agrega boleta_id a membresia para trazabilidad e idempotencia del webhook.
 -- Una membresía puede estar asociada a la boleta que la originó.
--- El constraint UNIQUE (usuario_id, mes) se elimina porque el negocio permite
+-- El constraint UNIQUE (usuario_id, fecha_inicio) se elimina porque el negocio permite
 -- múltiples membresías en el mismo mes (distintos planes). En su lugar, el
 -- control es por (usuario_id, estado=true) — solo una activa por usuario.
 

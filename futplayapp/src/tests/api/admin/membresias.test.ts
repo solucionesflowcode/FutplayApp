@@ -34,7 +34,7 @@ describe("GET /api/admin/membresias", () => {
 
     it("API-ADM-MEMBRESIAS-GET-001: retorna lista de membresías", async () => {
         __setTableData("membresia", [
-            { id: "mc1", usuario_id: "u1", plan_id: "p1", tokens_totales: 100, tokens_usados: 10, mes: "2026-01-01" },
+            { id: "mc1", usuario_id: "u1", plan_id: "p1", tokens_totales: 100, tokens_usados: 10, fecha_inicio: "2026-01-01T00:00:00.000Z", fecha_vencimiento: "2026-01-31T00:00:00.000Z" },
         ]);
 
         const res = await GET(makeRequest("http://localhost:3000/api/admin/membresias"));

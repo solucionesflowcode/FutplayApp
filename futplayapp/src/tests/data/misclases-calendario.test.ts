@@ -36,7 +36,7 @@ describe("getAllClasesConInscripcion", () => {
             },
         ]);
         __setTableData("clase_usuario", [
-            { id: "cu1", asistencia: "sin_confirmar", clase_id: "c1" },
+            { id: "cu1", asistencia: "sin_confirmar", clase_id: "c1", usuario_id: "user-test-001" },
         ]);
 
         const result = await getAllClasesConInscripcion(USER_ID);
@@ -81,8 +81,8 @@ describe("getAllClasesConInscripcion", () => {
             { id: "c3", titulo: "Clase 3", descripcion: null, fecha_hora: "2026-07-03T10:00:00Z", tipo_evento: "entrenamiento", sede: null },
         ]);
         __setTableData("clase_usuario", [
-            { id: "cu1", asistencia: "asistio", clase_id: "c1" },
-            { id: "cu2", asistencia: "cancelado", clase_id: "c2" },
+            { id: "cu1", asistencia: "asistio", clase_id: "c1", usuario_id: "user-test-001" },
+            { id: "cu2", asistencia: "cancelado", clase_id: "c2", usuario_id: "user-test-001" },
         ]);
 
         const result = await getAllClasesConInscripcion(USER_ID);

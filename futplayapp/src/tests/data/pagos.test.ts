@@ -102,7 +102,8 @@ describe("getMiMembresia", () => {
         plan_id: "p1",
         tokens_totales: 25,
         tokens_usados: 5,
-        mes: "2026-06-01",
+        fecha_inicio: "2026-06-01T00:00:00.000Z",
+        fecha_vencimiento: "2026-07-01T00:00:00.000Z",
         created_at: "2026-06-01T12:00:00Z",
         plan: {
             nombre: "Pro",
@@ -145,7 +146,7 @@ describe("getMiMembresia", () => {
         __setTableData("membresia", {
             id: "memb-1", usuario_id: USER_ID, plan_id: "p1",
             tokens_totales: 25, tokens_usados: 5,
-            mes: "2026-06-01", created_at: "2026-06-01T12:00:00Z",
+            fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z", created_at: "2026-06-01T12:00:00Z",
             plan: null,
         });
 

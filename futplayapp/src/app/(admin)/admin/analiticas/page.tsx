@@ -13,6 +13,7 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { getAdminMembresias, type MembresiaConPlan } from "@/data/membresia";
 import { getPlanes, type Plan } from "@/data/plans";
+import { getChileMonthBounds } from "@/lib/fechas";
 
 type Resumen = {
   totalAlumnos: number;
@@ -106,15 +107,14 @@ export default function AnaliticasPage() {
         const jugadores = (usuarios || []).filter((u) => u.rol === "jugador");
         const totalAlumnos = jugadores.length;
 
-        const ahora = new Date();
-        const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}`;
+        const { startISO, endISO } = getChileMonthBounds();
 
         const activas = membresiasData.filter((m) => m.tokens_restantes > 0);
         const membresiasActivas = activas.length;
 
-        const apiIngresoMes = ingresosData.find((i) => i.mes === mesActual);
-        const membresiasMesActual = membresiasData.filter((m) => m.mes?.startsWith(mesActual));
+        const membresiasMesActual = membresiasData.filter((m) => m.fecha_inicio && m.fecha_inicio >= startISO && m.fecha_inicio < endISO);
         const ingresosMesLocal = membresiasMesActual.reduce((sum, m) => sum + (Number(m.precio) || 0), 0);
+        const apiIngresoMes = ingresosData.find((i) => i.mes === startISO.slice(0, 7));
         const ingresosMes = apiIngresoMes?.ingresos ?? ingresosMesLocal;
 
         const retencion = totalAlumnos > 0
@@ -149,7 +149,7 @@ export default function AnaliticasPage() {
   const membresiasPorMes = useMemo<MembresiaPorMes[]>(() => {
     const map = new Map<string, { total: number; count: number }>();
     membresias.forEach((m) => {
-      const mesKey = m.mes?.slice(0, 7);
+      const mesKey = m.fecha_inicio?.slice(0, 7);
       if (!mesKey) return;
       const prev = map.get(mesKey) || { total: 0, count: 0 };
       map.set(mesKey, {
@@ -248,7 +248,7 @@ export default function AnaliticasPage() {
   // ── Filtered data by selected month ──
   const filteredMembresias = useMemo(() => {
     if (!selectedMonth) return membresias;
-    return membresias.filter((m) => m.mes?.startsWith(selectedMonth));
+    return membresias.filter((m) => m.fecha_inicio?.startsWith(selectedMonth));
   }, [membresias, selectedMonth]);
 
   const filteredResumen = useMemo(() => {

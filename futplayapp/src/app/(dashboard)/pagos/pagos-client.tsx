@@ -38,7 +38,7 @@ import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import { getPlanes, type Plan } from "@/data/plans";
 import { getMisBoletas, getMiMembresia, type PagosBoleta, type PagosMembresia } from "@/data/pagos";
 import { useAuthUser } from "@/context";
-import { calcularVencimiento, membresiaActiva } from "@/lib/fechas";
+import { membresiaActiva } from "@/lib/fechas";
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -85,6 +85,7 @@ function formatDate(iso: string) {
         day: "2-digit",
         month: "short",
         year: "numeric",
+        timeZone: "America/Santiago",
     });
 }
 
@@ -186,13 +187,13 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                 metodo_pago_icon: "credit-card",
             };
         }
-        const estadoSub = membresiaActiva(rawMembresia.mes) ? "activa" : "vencida";
+        const estadoSub = membresiaActiva(rawMembresia.fecha_vencimiento) ? "activa" : "vencida";
         return {
             plan: rawMembresia.plan_nombre,
             planId: rawMembresia.plan_id,
             estado: estadoSub,
-            fecha_inicio: rawMembresia.mes,
-            fecha_vencimiento: calcularVencimiento(rawMembresia.mes).toISOString().split("T")[0],
+            fecha_inicio: rawMembresia.fecha_inicio,
+            fecha_vencimiento: rawMembresia.fecha_vencimiento.split("T")[0],
             tokens_totales: rawMembresia.tokens_totales,
             tokens_usados: rawMembresia.tokens_usados,
             precio: rawMembresia.precio,
@@ -1063,7 +1064,7 @@ export default function PagosClient() {
                 if (cancelled) return;
                 setPlanes(planesData);
                 if (membresia) {
-                    setTienePlanActivo(membresiaActiva(membresia.mes));
+                    setTienePlanActivo(membresiaActiva(membresia.fecha_vencimiento));
                 }
             } catch (err) {
                 console.error("Error obteniendo datos:", err);

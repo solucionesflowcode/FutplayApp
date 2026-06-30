@@ -86,7 +86,8 @@ export async function GET() {
         tokens_totales: m.tokens_totales,
         tokens_usados: m.tokens_usados,
         tokens_restantes: restantes,
-        mes: m.mes,
+        fecha_inicio: m.fecha_inicio,
+        fecha_vencimiento: m.fecha_vencimiento,
       });
     }
   }

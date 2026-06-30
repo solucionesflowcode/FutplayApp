@@ -204,7 +204,8 @@ const mockMembresia = (overrides = {}) => ({
     tokens_totales: 10,
     tokens_usados: 3,
     tokens_restantes: 7,
-    mes: "2026-06",
+    fecha_inicio: "2026-06-01T00:00:00.000Z",
+    fecha_vencimiento: "2026-07-01T00:00:00.000Z",
     ...overrides,
 });
 

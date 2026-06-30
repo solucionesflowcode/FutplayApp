@@ -37,8 +37,8 @@ describe("GET /api/admin/profesores", () => {
 
     it("API-ADM-PROFESORES-GET-001: retorna lista de profesores con joins", async () => {
         __setTableData("usuario", [
-            { id: "p1", nombre: "Profe 1", email: "p1@test.cl" },
-            { id: "p2", nombre: "Profe 2", email: "p2@test.cl" },
+            { id: "p1", nombre: "Profe 1", email: "p1@test.cl", rol: "profesor" },
+            { id: "p2", nombre: "Profe 2", email: "p2@test.cl", rol: "profesor" },
         ]);
         __setTableData("profesor", [
             { id: "p1", telefono: "123", especialidad: "Fútbol" },

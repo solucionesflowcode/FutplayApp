@@ -50,7 +50,7 @@ export default function PlanesPage() {
                     const membresia = await getMiMembresia(usuario.id);
                     if (cancelled) return;
                     if (membresia) {
-                        setTienePlanActivo(membresiaActiva(membresia.mes));
+                        setTienePlanActivo(membresiaActiva(membresia.fecha_vencimiento));
                     }
                 }
             } catch (err) {

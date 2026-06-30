@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
+import { ahoraChile } from "@/lib/fechas";
 
 async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServerClient>, boletaId: string) {
   try {
@@ -37,13 +38,14 @@ async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServe
 
     if (existing) return;
 
-    const ahora = new Date();
-    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`;
+    const fecha_inicio = ahoraChile().toISOString();
+    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const { error } = await adminClient.from("membresia").insert({
       usuario_id: boletaInfo.usuario_id,
       plan_id: boletaItem.plan_id,
       boleta_id: boletaId,
-      mes,
+      fecha_inicio,
+      fecha_vencimiento,
       tokens_totales: plan.tokens_mensuales,
       tokens_usados: 0,
       estado: true,

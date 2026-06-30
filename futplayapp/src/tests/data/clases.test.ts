@@ -181,6 +181,7 @@ describe("getProximaClase", () => {
         const futureFecha = new Date(Date.now() + 86400000).toISOString();
         __setTableData("clase_usuario", [
             {
+                usuario_id: "user-test-001",
                 clase: {
                     titulo: null,
                     descripcion: "Partido sin sede",

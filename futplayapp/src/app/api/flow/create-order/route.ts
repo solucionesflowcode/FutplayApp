@@ -80,15 +80,14 @@ export async function POST(request: Request) {
 
   const { data: existingMembresia } = await adminClient
     .from("membresia")
-    .select("id, mes")
-    .eq("usuario_id", usuario.id)
+    .select("id, fecha_inicio, fecha_vencimiento")
 
-    .order("mes", { ascending: false })
+    .order("fecha_inicio", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (existingMembresia) {
-    if (membresiaActiva(existingMembresia.mes)) {
+    if (membresiaActiva(existingMembresia.fecha_vencimiento)) {
       return NextResponse.json(
         { error: "Ya tienes un plan activo. No puedes comprar otro hasta que termine el período actual." },
         { status: 409 }

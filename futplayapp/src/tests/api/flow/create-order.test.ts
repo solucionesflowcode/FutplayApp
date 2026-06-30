@@ -113,10 +113,11 @@ describe("POST /api/flow/create-order", () => {
             __setAuthUser(TEST_USER);
             __setTableData("usuario", TEST_USER);
             __setTableData("plan", TEST_PLAN);
-            // Membresía con mes actual → vencimiento >= today
-            const now = new Date();
-            const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-            __setTableData("membresia", { id: "m1", mes: mesActual });
+            // Membresía con fecha_inicio actual → vencimiento >= today
+            const ahora = new Date();
+            const fecha_inicio = ahora.toISOString();
+            const fecha_vencimiento = new Date(ahora.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            __setTableData("membresia", { id: "m1", usuario_id: "user-1", fecha_inicio, fecha_vencimiento });
 
             const res = await POST(makeRequest({ planId: "plan-1" }));
 
@@ -132,9 +133,10 @@ describe("POST /api/flow/create-order", () => {
                 { id: "plan-1", nombre: "Plan A", tokens_mensuales: 4, precio: 15000 },
                 { id: "plan-2", nombre: "Plan B", tokens_mensuales: 8, precio: 25000 },
             ]);
-            const now = new Date();
-            const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-            __setTableData("membresia", { id: "m1", usuario_id: "user-1", plan_id: "plan-1", mes: mesActual });
+            const ahora = new Date();
+            const fecha_inicio = ahora.toISOString();
+            const fecha_vencimiento = new Date(ahora.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            __setTableData("membresia", { id: "m1", usuario_id: "user-1", plan_id: "plan-1", fecha_inicio, fecha_vencimiento });
 
             const res = await POST(makeRequest({ planId: "plan-2" }));
 
@@ -148,7 +150,7 @@ describe("POST /api/flow/create-order", () => {
             __setTableData("usuario", TEST_USER);
             __setTableData("plan", TEST_PLAN);
             // Membresía del mes pasado → vencida
-            __setTableData("membresia", { id: "m1", mes: "2020-01-01" });
+            __setTableData("membresia", { id: "m1", fecha_inicio: "2020-01-01T00:00:00.000Z", fecha_vencimiento: "2020-01-31T00:00:00.000Z" });
             __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 15000, recurrencia_id: null });
             __setTableData("boleta_item", { id: "item-1" });
 

@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
 
   const { data: membresias, error } = await adminClient
     .from("membresia")
-    .select("id, usuario_id, plan_id, mes")
-    .like("mes", `${mes}%`)
-    .order("mes", { ascending: false });
+    .select("id, usuario_id, plan_id, fecha_inicio")
+    .gte("fecha_inicio", `${mes}-01T00:00:00.000Z`)
+    .lt("fecha_inicio", new Date(new Date(`${mes}-01T00:00:00.000Z`).getTime() + 32 * 24 * 60 * 60 * 1000).toISOString().slice(0, 7) + "-01T00:00:00.000Z")
+    .order("fecha_inicio", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

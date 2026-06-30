@@ -65,8 +65,8 @@ export default function DashboardClient() {
                     .from("membresia")
                     .select("id")
                     .eq("usuario_id", user.id)
-                    .gte("mes", inicioMes)
-                    .lt("mes", inicioMesSiguiente)
+                    .gte("fecha_inicio", inicioMes)
+                    .lt("fecha_inicio", inicioMesSiguiente)
                     .limit(1)
                     .maybeSingle()
             ]);

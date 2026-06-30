@@ -11,7 +11,7 @@ export async function GET() {
 
   // Fetch both sources in parallel
   const [membresiasRes, boletasRes] = await Promise.all([
-    adminClient.from("membresia").select("mes, plan_id").order("mes", { ascending: true }),
+    adminClient.from("membresia").select("fecha_inicio, plan_id").order("fecha_inicio", { ascending: true }),
     adminClient.from("boleta").select("total, created_at").eq("estado", "pagado").order("created_at", { ascending: true }),
   ]);
 
@@ -28,7 +28,7 @@ export async function GET() {
     const precioMap = new Map((planes || []).map((p) => [p.id, p.precio || 0]));
 
     for (const m of membresiasRes.data || []) {
-      const mes = m.mes?.slice(0, 7);
+      const mes = m.fecha_inicio?.slice(0, 7);
       if (!mes) continue;
       const prev = membershipMap.get(mes) || { ingresos: 0, membresias: 0, transacciones: 0 };
       membershipMap.set(mes, {

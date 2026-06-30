@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { CreditCard } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { ahoraChile } from "@/lib/fechas";
 
 type MembresiaData = {
     id: string;
     plan_nombre: string;
     precio: number;
-    mes: string;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
     tokens_totales: number;
     tokens_usados: number;
 };
@@ -35,7 +37,7 @@ export default function ProximaRenovacion() {
                 .from("membresia")
                 .select("*, plan(nombre, precio)")
                 .eq("usuario_id", user.id)
-                .order("mes", { ascending: false })
+                .order("fecha_inicio", { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
@@ -48,7 +50,8 @@ export default function ProximaRenovacion() {
                 id: membresiaRes.id,
                 plan_nombre: (membresiaRes as any).plan?.nombre || "Sin plan",
                 precio: (membresiaRes as any).plan?.precio || 0,
-                mes: membresiaRes.mes,
+                fecha_inicio: membresiaRes.fecha_inicio,
+                fecha_vencimiento: membresiaRes.fecha_vencimiento,
                 tokens_totales: membresiaRes.tokens_totales,
                 tokens_usados: membresiaRes.tokens_usados,
             });
@@ -106,12 +109,16 @@ export default function ProximaRenovacion() {
         );
     }
 
-    const fechaCompra = new Date(membresia.mes);
-    const now = new Date();
-    const diasTranscurridos = Math.max(0, Math.floor((now.getTime() - fechaCompra.getTime()) / 86400000));
-    const porcentajeMes = Math.round(Math.min((diasTranscurridos / 30) * 100, 100));
-    const diasRestantes = Math.max(0, 30 - diasTranscurridos);
-    const proximaRenovacion = new Date(fechaCompra.getTime() + 30 * 86400000);
+    const now = ahoraChile();
+    const vencimiento = new Date(membresia.fecha_vencimiento);
+    const inicio = new Date(membresia.fecha_inicio);
+    const duracionMs = vencimiento.getTime() - inicio.getTime();
+    const diasDuracion = Math.max(duracionMs / 86400000, 1);
+    const elapsedMs = now.getTime() - inicio.getTime();
+    const diasTranscurridos = Math.max(0, Math.floor(elapsedMs / 86400000));
+    const porcentajeMes = Math.round(Math.min((diasTranscurridos / diasDuracion) * 100, 100));
+    const diasRestantes = Math.max(0, Math.ceil((vencimiento.getTime() - now.getTime()) / 86400000));
+    const proximaRenovacion = vencimiento;
 
     const formatoPeso = (n: number) =>
         new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(n);
@@ -262,7 +269,7 @@ export default function ProximaRenovacion() {
                                 Vence
                             </span>
                             <p className="text-white text-[10px] sm:text-xs font-black leading-none mt-0.5 uppercase">
-                                {proximaRenovacion.toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+                                {proximaRenovacion.toLocaleDateString("es-CL", { day: "numeric", month: "short", timeZone: "America/Santiago" })}
                             </p>
                         </div>
                     </div>

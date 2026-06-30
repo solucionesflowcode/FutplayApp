@@ -351,7 +351,7 @@ export default function ProfesoresPage() {
                             <span className="font-semibold text-gray-900">{p.nombre}</span>
                             <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                               <Calendar size={10} />
-                              {new Date(p.created_at).toLocaleDateString("es-CL")}
+                              {new Date(p.created_at).toLocaleDateString("es-CL", { timeZone: "America/Santiago" })}
                             </div>
                           </div>
                         </div>

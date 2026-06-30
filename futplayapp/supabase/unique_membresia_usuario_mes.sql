@@ -1,6 +1,4 @@
--- Evita que un usuario tenga más de una membresía en el mismo mes.
--- La única validación previa estaba en create-order/route.ts (nivel aplicación),
--- pero rutas admin (students/status) insertaban directo sin verificar.
-
-ALTER TABLE membresia
-ADD CONSTRAINT unique_usuario_mes UNIQUE (usuario_id, mes);
+-- DEPRECATED — This constraint was intentionally removed by add_boleta_id_to_membresia.sql.
+-- The business allows multiple memberships per month (different plans).
+-- Control is now via (usuario_id, estado=true) — only one active per user.
+-- Do NOT run this file if add_boleta_id_to_membresia.sql has been applied.

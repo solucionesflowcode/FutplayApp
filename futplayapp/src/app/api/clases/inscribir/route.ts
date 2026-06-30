@@ -2,13 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getChileMonthBounds } from "@/lib/fechas";
 
 async function consumirToken(supabase: any, userId: string): Promise<boolean> {
     const { data: membresia } = await supabase
         .from("membresia")
         .select("id, tokens_usados")
         .eq("usuario_id", userId)
-        .order("mes", { ascending: false })
+        .order("fecha_inicio", { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -102,16 +103,15 @@ export async function POST(request: Request) {
         }
 
         // Re-inscription to entrenamiento: validate membresía manually (trigger won't fire on UPDATE)
-        const now = new Date();
-        const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+        const { startISO } = getChileMonthBounds();
 
         const { data: membresia } = await supabase
             .from("membresia")
             .select("tokens_totales, tokens_usados")
             .eq("usuario_id", user.id)
             .eq("estado", true)
-            .gte("mes", startOfMonth)
-            .order("mes", { ascending: false })
+            .gte("fecha_inicio", startISO)
+        .order("fecha_inicio", { ascending: false })
             .limit(1)
             .maybeSingle();
 
@@ -150,11 +150,6 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Ya estás inscrito en esta clase" }, { status: 409 });
         }
         return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    // Partido: devolver el token que el trigger descontó
-    if (esPartido) {
-        await admin.rpc("devolver_token", { p_usuario_id: user.id });
     }
 
     return NextResponse.json({ inscripcionId: data.id });

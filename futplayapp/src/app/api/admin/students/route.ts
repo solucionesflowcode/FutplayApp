@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
+import { ahoraChile } from "@/lib/fechas";
 
 
 export async function POST(request: Request) {
@@ -70,8 +71,8 @@ export async function POST(request: Request) {
       .single();
 
     if (plan) {
-      const now = new Date();
-      const mes = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const fecha_inicio = ahoraChile().toISOString();
+      const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
       const { data: memData, error: memError } = await adminClient
         .from("membresia")
@@ -81,7 +82,8 @@ export async function POST(request: Request) {
           tokens_totales: plan.tokens_mensuales,
           tokens_usados: 0,
           estado: true,
-          mes,
+          fecha_inicio,
+          fecha_vencimiento,
         })
         .select()
         .single();

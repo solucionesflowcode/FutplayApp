@@ -1,6 +1,8 @@
--- Migration: Token consumption at registration time
--- 
--- Changes:
+-- DEPRECATED — See supabase/cambiar-mes-a-timestamptz.sql for canonical versions.
+-- Both functions below lack `AT TIME ZONE 'America/Santiago'` and are superseded.
+-- Do NOT run this file if cambiar-mes-a-timestamptz.sql has been applied.
+
+-- Original intent:
 -- 1. manejar_inscripcion_clase() now VALIDATES only (does NOT deduct tokens)
 --    Token deduction is done by the application code in POST /api/clases/inscribir
 -- 2. New devolver_token() function for server-side token refunds (used by admin DELETE clase)
@@ -17,7 +19,7 @@ begin
   select * into membresia_actual
   from membresia
   where usuario_id = new.usuario_id
-    and date_trunc('month', mes) = date_trunc('month', current_date)
+    and date_trunc('month', fecha_inicio) = date_trunc('month', current_date)
   limit 1;
   if membresia_actual is null then
     raise exception 'No tienes membresía activa este mes';
@@ -44,8 +46,8 @@ begin
   from membresia
   where usuario_id = p_usuario_id
     and tokens_usados > 0
-    and date_trunc('month', mes) = date_trunc('month', current_date)
-  order by mes desc
+    and date_trunc('month', fecha_inicio) = date_trunc('month', current_date)
+  order by fecha_inicio desc
   limit 1;
 
   if membresia_id is null then

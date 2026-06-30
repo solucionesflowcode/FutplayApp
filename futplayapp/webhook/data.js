@@ -209,6 +209,26 @@ async function getHorarioCompleto(claseId) {
   return data ? { id: data.id, fecha_hora: data.fecha_hora, clase_id: data.id } : null;
 }
 
+async function hayPendientesAnteriores(fechaHora) {
+  const { data: clases } = await supabase
+    .from('clase')
+    .select('id')
+    .lt('fecha_hora', fechaHora);
+
+  if (!clases?.length) return false;
+
+  const claseIds = clases.map(c => c.id);
+
+  const { data } = await supabase
+    .from('clase_usuario')
+    .select('id')
+    .in('clase_id', claseIds)
+    .eq('asistencia', 'pendiente')
+    .limit(1);
+
+  return (data?.length ?? 0) > 0;
+}
+
 async function getProximaClaseUsuarioActioned(usuarioId) {
   const { data: inscripciones } = await supabase
     .from('clase_usuario')
@@ -260,4 +280,7 @@ module.exports = {
   getUsuario,
   getHorario,
   getHorarioCompleto,
+  _setTestClient,
+  hayPendientesAnteriores,
+  getProximaClaseUsuarioActioned,
 };

@@ -23,7 +23,7 @@ begin
   select * into membresia_actual
   from membresia
   where usuario_id = new.usuario_id
-    and date_trunc('month', mes) = date_trunc('month', current_date)
+    and date_trunc('month', fecha_inicio AT TIME ZONE 'America/Santiago') = date_trunc('month', current_date AT TIME ZONE 'America/Santiago')
   limit 1;
   if membresia_actual is null then
     raise exception 'No tienes membresía activa este mes';

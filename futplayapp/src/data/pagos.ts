@@ -27,7 +27,8 @@ export type PagosMembresia = {
     tokens_totales: number;
     tokens_usados: number;
     tokens_restantes: number;
-    mes: string;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
     created_at: string;
     precio: number;
     tokens_mensuales: number;
@@ -72,7 +73,7 @@ export async function getMiMembresia(userId: string): Promise<PagosMembresia | n
         .from("membresia")
         .select("*, plan(nombre, tokens_mensuales, precio)")
         .eq("usuario_id", userId)
-        .order("mes", { ascending: false })
+        .order("fecha_inicio", { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -86,7 +87,8 @@ export async function getMiMembresia(userId: string): Promise<PagosMembresia | n
         tokens_totales: data.tokens_totales,
         tokens_usados: data.tokens_usados,
         tokens_restantes: data.tokens_totales - data.tokens_usados,
-        mes: data.mes,
+        fecha_inicio: data.fecha_inicio,
+        fecha_vencimiento: data.fecha_vencimiento,
         created_at: data.created_at,
         precio: data.plan?.precio || 0,
         tokens_mensuales: data.plan?.tokens_mensuales || 0,

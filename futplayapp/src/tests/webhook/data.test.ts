@@ -96,8 +96,8 @@ describe("webhook/data.js — scheduler data functions", () => {
     describe("getInscripcionesSinConfirmar", () => {
         it("SCH-DATA-008: devuelve inscripciones sin confirmar", async () => {
             __setTableData("clase_usuario", [
-                { id: "cu1", usuario_id: "u1" },
-                { id: "cu2", usuario_id: "u2" },
+                { id: "cu1", usuario_id: "u1", clase_id: "c1", asistencia: "sin_confirmar" },
+                { id: "cu2", usuario_id: "u2", clase_id: "c1", asistencia: "sin_confirmar" },
             ]);
 
             const result = await data.getInscripcionesSinConfirmar("c1");
@@ -118,7 +118,7 @@ describe("webhook/data.js — scheduler data functions", () => {
 
     describe("setPendiente", () => {
         it("SCH-DATA-010: retorna true si actualizó correctamente (row devuelta)", async () => {
-            __setTableData("clase_usuario", { id: "cu1" });
+            __setTableData("clase_usuario", { id: "cu1", asistencia: "sin_confirmar" });
 
             const result = await data.setPendiente("cu1");
 

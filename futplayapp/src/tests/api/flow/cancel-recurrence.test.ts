@@ -51,7 +51,7 @@ describe("POST /api/flow/cancel-recurrence", () => {
     });
 
     it("cancela la suscripción activa exitosamente", async () => {
-        __setTableData("recurrencia", { id: "rec-1", activa: true });
+        __setTableData("recurrencia", { id: "rec-1", activa: true, usuario_id: "user-1" });
 
         const res = await POST();
 

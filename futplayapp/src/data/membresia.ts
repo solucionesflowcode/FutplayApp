@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
-import { membresiaActiva } from "@/lib/fechas";
+import { ahoraChile, membresiaActiva } from "@/lib/fechas";
 
 type PlanRow = {
     id: string;
@@ -15,7 +15,8 @@ type MembresiaRow = {
     boleta_id?: string;
     tokens_totales: number;
     tokens_usados: number;
-    mes: string;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
     estado: boolean;
 };
 
@@ -29,7 +30,8 @@ export type MembresiaConPlan = {
     tokens_totales: number;
     tokens_usados: number;
     tokens_restantes: number;
-    mes: string;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
 };
 
 export async function userHasMembresia(userId: string): Promise<boolean> {
@@ -78,7 +80,8 @@ function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): Membresia
         tokens_totales: m.tokens_totales,
         tokens_usados: m.tokens_usados,
         tokens_restantes: restantes,
-        mes: m.mes,
+        fecha_inicio: m.fecha_inicio,
+        fecha_vencimiento: m.fecha_vencimiento,
     };
 }
 
@@ -90,7 +93,7 @@ export async function getMembresiaByUser(userId: string): Promise<MembresiaConPl
         .select("*")
         .eq("usuario_id", userId)
 
-        .order("mes", { ascending: false })
+        .order("fecha_inicio", { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -103,7 +106,7 @@ export async function getMembresiaByUser(userId: string): Promise<MembresiaConPl
 
     const membresia = data as MembresiaRow;
 
-    if (membresia.estado && !membresiaActiva(membresia.mes)) {
+    if (membresia.estado && !membresiaActiva(membresia.fecha_vencimiento)) {
         await supabase
             .from("membresia")
             .update({ estado: false })
@@ -181,8 +184,8 @@ export async function createMembresia(
 ): Promise<boolean> {
     const supabase = createClient();
 
-    const ahora = new Date();
-    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`;
+    const fecha_inicio = ahoraChile().toISOString();
+    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const { error } = await supabase
         .from("membresia")
@@ -190,7 +193,8 @@ export async function createMembresia(
             usuario_id: userId,
             plan_id: planId,
             boleta_id: boletaId,
-            mes,
+            fecha_inicio,
+            fecha_vencimiento,
             tokens_totales: tokensMensuales,
             tokens_usados: 0,
             estado: true,
@@ -212,7 +216,7 @@ export async function devolverToken(userId: string): Promise<boolean> {
         .select("id, tokens_usados")
         .eq("usuario_id", userId)
 
-        .order("mes", { ascending: false })
+        .order("fecha_inicio", { ascending: false })
         .limit(1)
         .maybeSingle();
 

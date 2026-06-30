@@ -198,7 +198,7 @@ describe("DELETE /api/admin/clases", () => {
 
     it("API-ADM-CLASES-DEL-001: elimina clase y retorna tokens devueltos", async () => {
         __setTableData("clase", { id: "c1" });
-        __setTableData("clase_usuario", [{ usuario_id: "u1" }, { usuario_id: "u1" }]);
+        __setTableData("clase_usuario", [{ usuario_id: "u1", clase_id: "c1" }, { usuario_id: "u1", clase_id: "c1" }]);
 
         const res = await DELETE(makeRequest("http://localhost:3000/api/admin/clases?id=c1"));
 

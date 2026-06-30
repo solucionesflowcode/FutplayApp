@@ -9,7 +9,7 @@
 -- 1. One-time: mark expired membresias as inactive
 UPDATE membresia SET estado = false
 WHERE (estado IS NULL OR estado = true)
-  AND mes + interval '30 days' < now();
+  AND fecha_vencimiento < (now() AT TIME ZONE 'America/Santiago')::timestamptz;
 
 -- 2. One-time: delete pending enrollments for users without active membership
 DELETE FROM clase_usuario cu
@@ -46,28 +46,6 @@ BEFORE DELETE ON membresia
 FOR EACH ROW
 EXECUTE FUNCTION public.limpiar_inscripciones_al_vencer();
 
--- 4. Update inscription trigger to check estado = true
-CREATE OR REPLACE FUNCTION public.manejar_inscripcion_clase()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-declare
-  tokens_disponibles int;
-  membresia_actual record;
-begin
-  select * into membresia_actual
-  from membresia
-  where usuario_id = new.usuario_id
-    and estado = true
-    and date_trunc('month', mes) = date_trunc('month', current_date)
-  limit 1;
-  if membresia_actual is null then
-    raise exception 'No tienes membresía activa este mes';
-  end if;
-  tokens_disponibles := membresia_actual.tokens_totales - membresia_actual.tokens_usados;
-  if tokens_disponibles <= 0 then
-    raise exception 'No tienes tokens disponibles';
-  end if;
-  return new;
-end;
-$function$;
+-- 4. DEPRECATED — See supabase/cambiar-mes-a-timestamptz.sql for the canonical version.
+--    This version lacks `AT TIME ZONE 'America/Santiago'` and is superseded.
+--    Do NOT run this section if cambiar-mes-a-timestamptz.sql has been applied.

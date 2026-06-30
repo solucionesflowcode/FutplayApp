@@ -9,26 +9,21 @@ type Membresia = {
     usuario_id: string;
     tokens_totales: number;
     tokens_usados: number;
-    mes: string;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
 };
 
 async function getMembresiaByUser(userId: string): Promise<Membresia | null> {
     const supabase = createClient();
 
-    const ahora = new Date();
-    const año = ahora.getFullYear();
-    const month = ahora.getMonth() + 1;
-    const inicioMes = `${año}-${String(month).padStart(2, '0')}-01`;
-    const inicioMesSiguiente = month === 12
-        ? `${año + 1}-01-01`
-        : `${año}-${String(month + 1).padStart(2, '0')}-01`;
+    const { startISO, endISO } = (await import("@/lib/fechas")).getChileMonthBounds();
 
     const { data, error } = await supabase
         .from("membresia")
         .select("*")
         .eq("usuario_id", userId)
-        .gte("mes", inicioMes)
-        .lt("mes", inicioMesSiguiente)
+        .gte("fecha_inicio", startISO)
+        .lt("fecha_inicio", endISO)
         .maybeSingle();
 
     if (error) {

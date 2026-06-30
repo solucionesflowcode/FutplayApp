@@ -9,7 +9,24 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 const db = require('./data');
 const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp } = require('./handlers');
 
+const RECORDATORIOS_PATH = path.join(__dirname, '.recordatorios.json');
+let recordatoriosEnviados = new Set();
+try {
+  if (fs.existsSync(RECORDATORIOS_PATH)) {
+    const arr = JSON.parse(fs.readFileSync(RECORDATORIOS_PATH, 'utf8'));
+    recordatoriosEnviados = new Set(arr);
+  }
+} catch (e) {
+  console.error('Error cargando recordatorios:', e.message);
+}
 
+function guardarRecordatorios() {
+  try {
+    fs.writeFileSync(RECORDATORIOS_PATH, JSON.stringify([...recordatoriosEnviados]));
+  } catch (e) {
+    console.error('Error guardando recordatorios:', e.message);
+  }
+}
 
 const app = express();
 app.use(express.json());
@@ -31,6 +48,22 @@ const whatsapp = new Client({
 });
 
 let whatsappReady = false;
+
+async function sendMessageWithRetry(chatId, message, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await whatsapp.sendMessage(chatId, message);
+      return;
+    } catch (err) {
+      if (err.message?.includes('detached Frame') && i < maxRetries - 1) {
+        console.log(`[WARN] Frame detached, reintento ${i + 1}/${maxRetries}...`);
+        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
 
 whatsapp.on('qr', qr => { qrcode.generate(qr, { small: true }); console.log('Escanea el QR.'); });
 whatsapp.on('ready', () => { console.log('WhatsApp conectado!'); whatsappReady = true; });
@@ -60,9 +93,15 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
     if (!whatsappReady) { console.log('[Scheduler] WhatsApp no conectado, saltando ciclo'); return; }
     const ahora = new Date();
 
-    const horarios = await db.getHorarios24h();
+    let horarios = await db.getHorarios24h();
+    horarios.sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
     console.log(`[DEBUG SERVER] Scheduler: horarios en 24h=${horarios.length}`);
     for (const h of horarios) {
+      const hayBloqueo = await db.hayPendientesAnteriores(h.fecha_hora);
+      if (hayBloqueo) {
+        console.log(`[DEBUG SERVER] Scheduler: clase ${h.id} bloqueada, esperando pendientes anteriores`);
+        break;
+      }
       console.log(`[DEBUG SERVER] Scheduler: procesando horario id=${h.id}, fecha_hora=${h.fecha_hora}`);
       const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
       if (!inscripciones.length) { console.log(`[DEBUG SERVER] Scheduler: sin inscripciones sin confirmar`); continue; }
@@ -80,7 +119,7 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
 
         console.log(`[DEBUG SERVER] Scheduler: enviando a ${usuario.nombre} (${telefono}): "${mensaje}"`);
         try {
-          await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
+          await sendMessageWithRetry(`${telefono}@c.us`, mensaje);
           await db.setPendiente(insc.id);
           recordatoriosEnviados.add(insc.id);
           guardarRecordatorios();
@@ -89,8 +128,6 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
           console.error(`Error al enviar a ${usuario.nombre}:`, err.message);
         }
         await new Promise(r => setTimeout(r, 1000));
-      }
-    }
       }
     }
 
@@ -146,7 +183,7 @@ app.get('/test-reminder/:claseId', async (req, res) => {
       const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
       const telefono = usuario.telefono.replace('+', '');
       const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé *1* para confirmar o *2* para cancelar.`;
-      await whatsapp.sendMessage(`${telefono}@c.us`, mensaje);
+      await sendMessageWithRetry(`${telefono}@c.us`, mensaje);
       await db.setPendiente(insc.id);
       res.send(`✅ Recordatorio enviado a ${usuario.nombre} (${telefono})`);
     }

@@ -49,7 +49,8 @@ describe("getMembresiaByUser", () => {
         plan_id: "p1",
         tokens_totales: 30,
         tokens_usados: 10,
-        mes: "2026-06-01",
+        fecha_inicio: "2026-06-01T00:00:00.000Z",
+        fecha_vencimiento: "2026-07-01T00:00:00.000Z",
         estado: true,
     };
 
@@ -145,8 +146,8 @@ describe("devolverToken", () => {
 
     it("MB-009: retorna false si la membresía actual tiene tokens_usados=0 aunque haya una vieja con >0", async () => {
         __setTableData("membresia", [
-            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, mes: "2026-06-01", estado: true },
-            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, mes: "2026-05-01", estado: true },
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z", estado: true },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, fecha_inicio: "2026-05-01T00:00:00.000Z", fecha_vencimiento: "2026-05-31T00:00:00.000Z", estado: true },
         ]);
 
         const result = await devolverToken(USER_ID);
@@ -158,8 +159,8 @@ describe("devolverToken", () => {
 describe("getMembresiaByUser — múltiples membresías", () => {
     it("MB-007: elige la membresía más reciente cuando hay varias", async () => {
         __setTableData("membresia", [
-            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, mes: "2026-06-01", estado: true },
-            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 20, mes: "2026-05-01", estado: true },
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 5, fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z", estado: true },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 20, fecha_inicio: "2026-05-01T00:00:00.000Z", fecha_vencimiento: "2026-05-31T00:00:00.000Z", estado: true },
         ]);
         __setTableData("plan", { id: "p1", nombre: "Premium", tokens_mensuales: 30, precio: 40000 });
 
@@ -172,8 +173,8 @@ describe("getMembresiaByUser — múltiples membresías", () => {
 
     it("MB-008: usa membresía nueva aunque la vieja tenga más tokens restantes", async () => {
         __setTableData("membresia", [
-            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, mes: "2026-06-01", estado: true },
-            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 10, mes: "2026-05-01", estado: true },
+            { id: "m-new", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 0, fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z", estado: true },
+            { id: "m-old", usuario_id: USER_ID, plan_id: "p1", tokens_totales: 30, tokens_usados: 10, fecha_inicio: "2026-05-01T00:00:00.000Z", fecha_vencimiento: "2026-05-31T00:00:00.000Z", estado: true },
         ]);
         __setTableData("plan", { id: "p1", nombre: "Premium", tokens_mensuales: 30, precio: 40000 });
 
@@ -187,7 +188,7 @@ describe("getMembresiaByUser — múltiples membresías", () => {
 
 describe("createMembresia — duplicados", () => {
     it("MB-010: crea membresía aunque exista una del mes pasado (no hay constraint único)", async () => {
-        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, plan_id: "p1", mes: "2026-05-01", estado: true });
+        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, plan_id: "p1", fecha_inicio: "2026-05-01T00:00:00.000Z", fecha_vencimiento: "2026-05-31T00:00:00.000Z", estado: true });
 
         const result = await createMembresia(USER_ID, "p1", 30);
 
@@ -200,9 +201,9 @@ describe("getAllMembresiasConPlan", () => {
 
     it("DATA-MEMB-TODAS-001: agrupa por usuario y elige la membresía con más tokens restantes", async () => {
         __setTableData("membresia", [
-            { id: "m1", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 2, mes: "2026-06-01", estado: true },
-            { id: "m2", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 0, mes: "2026-06-01", estado: true },
-            { id: "m3", usuario_id: "u2", plan_id: "pa", tokens_totales: 10, tokens_usados: 5, mes: "2026-06-01", estado: true },
+            { id: "m1", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 2, fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z", estado: true },
+            { id: "m2", usuario_id: "u1", plan_id: "pa", tokens_totales: 10, tokens_usados: 0, fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z", estado: true },
+            { id: "m3", usuario_id: "u2", plan_id: "pa", tokens_totales: 10, tokens_usados: 5, fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z", estado: true },
         ]);
         __setTableData("plan", [PLAN_A]);
 
@@ -237,7 +238,7 @@ describe("getAllMembresiasConPlan", () => {
 
     it("DATA-MEMB-TODAS-004: usa 'Sin plan' si el plan no existe", async () => {
         __setTableData("membresia", [
-            { id: "m1", usuario_id: "u1", plan_id: "unknown", tokens_totales: 10, tokens_usados: 0, mes: "2026-06-01" },
+            { id: "m1", usuario_id: "u1", plan_id: "unknown", tokens_totales: 10, tokens_usados: 0, fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z" },
         ]);
         __setTableData("plan", []);
 
