@@ -89,20 +89,20 @@ export async function POST(request: Request) {
 
     if (existing && (existing.asistencia === "cancelado" || existing.asistencia === "cancelado_sin_reembolso")) {
         if (esPartido) {
-            // Partido: no requiere membresía ni token
-            const { error: updateError } = await admin
+            // DELETE + INSERT para obtener nuevo id (el scheduler no re-enviaría recordatorio con el id anterior)
+            await admin.from("clase_usuario").delete().eq("id", existing.id);
+            const { data, error: insertError } = await supabase
                 .from("clase_usuario")
-                .update({ asistencia: "sin_confirmar" })
-                .eq("id", existing.id);
-
-            if (updateError) {
-                return NextResponse.json({ error: updateError.message }, { status: 400 });
+                .insert({ usuario_id: user.id, clase_id: claseId })
+                .select("id")
+                .single();
+            if (insertError) {
+                return NextResponse.json({ error: insertError.message }, { status: 400 });
             }
-
-            return NextResponse.json({ inscripcionId: existing.id });
+            return NextResponse.json({ inscripcionId: data.id });
         }
 
-        // Re-inscription to entrenamiento: validate membresía manually (trigger won't fire on UPDATE)
+        // Re-inscription a entrenamiento: validar membresía manualmente (trigger no se dispara en DELETE)
         const { startISO } = getChileMonthBounds();
 
         const { data: membresia } = await supabase
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
             .eq("usuario_id", user.id)
             .eq("estado", true)
             .gte("fecha_inicio", startISO)
-        .order("fecha_inicio", { ascending: false })
+            .order("fecha_inicio", { ascending: false })
             .limit(1)
             .maybeSingle();
 
@@ -124,18 +124,19 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "No tienes tokens disponibles" }, { status: 400 });
         }
 
-        const { error: updateError } = await admin
+        // DELETE + INSERT para obtener nuevo id (el scheduler re-enviará el recordatorio)
+        await admin.from("clase_usuario").delete().eq("id", existing.id);
+        const { data, error: insertError } = await supabase
             .from("clase_usuario")
-            .update({ asistencia: "sin_confirmar" })
-            .eq("id", existing.id);
+            .insert({ usuario_id: user.id, clase_id: claseId })
+            .select("id")
+            .single();
 
-        if (updateError) {
-            return NextResponse.json({ error: updateError.message }, { status: 400 });
+        if (insertError) {
+            return NextResponse.json({ error: insertError.message }, { status: 400 });
         }
 
-        await consumirToken(admin, user.id);
-
-        return NextResponse.json({ inscripcionId: existing.id });
+        return NextResponse.json({ inscripcionId: data.id });
     }
 
     // First-time inscription: INSERT (trigger will deduct token — compensate if partido)
