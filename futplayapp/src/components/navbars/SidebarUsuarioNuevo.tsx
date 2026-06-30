@@ -14,7 +14,8 @@ import {
   Crown,
   GraduationCap,
   Shield,
-  User
+  User,
+  ChevronLeft
 } from "lucide-react";
 import { useAuthUser } from "@/context";
 
@@ -77,9 +78,8 @@ export default function Sidebar() {
                 {initials}
               </div>
             </Link>
-            <div className="flex flex-col">
+            <div>
               <h2 className="text-lg font-bold leading-tight">FutPlay</h2>
-              <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
             </div>
           </div>
           <button
@@ -157,11 +157,16 @@ export default function Sidebar() {
       </div>
 
       {/* SIDEBAR ESCRITORIO */}
-      <aside className="hidden md:flex w-64 bg-[#001529] h-screen text-white flex-col p-4 shrink-0 overflow-y-auto">
+      <aside className={`hidden md:flex ${collapsed ? "w-16" : "w-64"} bg-[#001529] h-screen text-white flex-col p-4 shrink-0 overflow-y-auto transition-all duration-300`}>
         {/* Header */}
-        <div className="mb-10 px-2">
-          <h2 className="text-xl font-bold">FutPlay</h2>
-          <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
+        <div className={`flex items-center justify-between mb-10 px-2 ${collapsed ? "flex-col" : ""}`}>
+          <h2 className={`font-bold ${collapsed ? "text-lg" : "text-xl"}`}>{collapsed ? "FP" : "FutPlay"}</h2>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-all cursor-pointer"
+          >
+            <ChevronLeft size={16} className={`transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`} />
+          </button>
         </div>
 
         {/* Navegación */}
@@ -174,7 +179,7 @@ export default function Sidebar() {
             return (
               <Link key={item.name} href={item.href}>
                 <div className={`
-                  flex items-center gap-3 px-4 py-3 rounded transition-all duration-200 group
+                  flex items-center ${collapsed ? "justify-center" : "gap-3"} px-4 py-3 rounded transition-all duration-200 group
                   ${isActive
                     ? "bg-[#F28C28] text-white shadow-md font-semibold"
                     : "text-gray-400 hover:bg-white/5 hover:text-white"
@@ -182,9 +187,9 @@ export default function Sidebar() {
                 `}>
                   <item.icon
                     size={20}
-                    className={isActive ? "text-white" : "text-gray-500 group-hover:text-white"}
+                    className={isActive ? "text-white" : "text-gray-500 group-hover:text-white shrink-0"}
                   />
-                  <span className="text-sm">{item.name}</span>
+                  {!collapsed && <span className="text-sm">{item.name}</span>}
                 </div>
               </Link>
             );
@@ -196,28 +201,28 @@ export default function Sidebar() {
           {usuario?.rol === "profesor" && (
             <Link href="/profesor">
               <div className={`
-                flex items-center gap-3 px-4 py-3 rounded transition-all duration-200 group
+                flex items-center ${collapsed ? "justify-center" : "gap-3"} px-4 py-3 rounded transition-all duration-200 group
                 ${pathname.startsWith("/profesor")
                   ? "bg-[#F28C28] text-white shadow-md font-semibold"
                   : "text-gray-400 hover:bg-white/5 hover:text-white"
                 }
               `}>
-                <GraduationCap size={20} className="text-gray-500 group-hover:text-white" />
-                <span className="text-sm">Panel Profesor</span>
+                <GraduationCap size={20} className="text-gray-500 group-hover:text-white shrink-0" />
+                {!collapsed && <span className="text-sm">Panel Profesor</span>}
               </div>
             </Link>
           )}
           {usuario?.rol === "administrador" && (
             <Link href="/admin">
               <div className={`
-                flex items-center gap-3 px-4 py-3 rounded transition-all duration-200 group
+                flex items-center ${collapsed ? "justify-center" : "gap-3"} px-4 py-3 rounded transition-all duration-200 group
                 ${pathname.startsWith("/admin")
                   ? "bg-[#F28C28] text-white shadow-md font-semibold"
                   : "text-gray-400 hover:bg-white/5 hover:text-white"
                 }
               `}>
-                <Shield size={20} className="text-gray-500 group-hover:text-white" />
-                <span className="text-sm">Panel Admin</span>
+                <Shield size={20} className="text-gray-500 group-hover:text-white shrink-0" />
+                {!collapsed && <span className="text-sm">Panel Admin</span>}
               </div>
             </Link>
           )}
@@ -225,9 +230,9 @@ export default function Sidebar() {
 
         {/* Footer */}
         <div className="border-t border-gray-800 pt-4 space-y-2">
-          <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded transition-all cursor-pointer">
-            <LogOut size={20} />
-            <span className="text-sm">Cerrar Sesión</span>
+          <button onClick={handleSignOut} className={`w-full flex items-center ${collapsed ? "justify-center" : "gap-3"} px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded transition-all cursor-pointer`}>
+            <LogOut size={20} className="shrink-0" />
+            {!collapsed && <span className="text-sm">Cerrar Sesión</span>}
           </button>
         </div>
       </aside>

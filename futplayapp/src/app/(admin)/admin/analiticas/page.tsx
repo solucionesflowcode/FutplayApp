@@ -367,34 +367,42 @@ export default function AnaliticasPage() {
 
         {/* Section 1: Stat Cards */}
         <div className="flex-none self-stretch z-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-              <div className="w-8 h-8 rounded-full bg-[#00305B]/10 flex items-center justify-center mb-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-blue-600 to-[#00305B]" />
+              <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
                 <Users className="w-4 h-4 text-[#00305B]" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Total Alumnos</span>
-              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.totalAlumnos.toString()}</p>
+              <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Total Alumnos</span>
+              <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{filteredResumen.totalAlumnos.toString()}</p>
             </div>
-            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-              <div className="w-8 h-8 rounded-full bg-[#00A86B]/10 flex items-center justify-center mb-1.5">
+            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-teal-400 to-emerald-500" />
+              <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
                 <DollarSign className="w-4 h-4 text-[#00A86B]" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Ingresos del Mes</span>
-              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{formatCLP(filteredResumen.ingresosMes)}</p>
+              <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Ingresos del Mes</span>
+              <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{formatCLP(filteredResumen.ingresosMes)}</p>
             </div>
-            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-              <div className="w-8 h-8 rounded-full bg-[#F28C28]/10 flex items-center justify-center mb-1.5">
-                <CreditCard className="w-4 h-4 text-[#F28C28]" />
+            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-[#F39200]" />
+              <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                <CreditCard className="w-4 h-4 text-[#F39200]" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Membresías Activas</span>
-              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.membresiasActivas.toString()}</p>
+              <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Membresías Activas</span>
+              <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{filteredResumen.membresiasActivas.toString()}</p>
             </div>
-            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#7C3AED] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-              <div className="w-8 h-8 rounded-full bg-[#7C3AED]/10 flex items-center justify-center mb-1.5">
-                <TrendingUp className="w-4 h-4 text-[#7C3AED]" />
+            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-600" />
+              <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                <TrendingUp className="w-4 h-4 text-[#8B5CF6]" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Tasa de Retención</span>
-              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.retencion}%</p>
+              <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Tasa de Retención</span>
+              <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{filteredResumen.retencion}%</p>
             </div>
           </div>
         </div>
@@ -756,26 +764,32 @@ export default function AnaliticasPage() {
                 <>
                   {/* Summary card */}
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                      <div className="w-8 h-8 rounded-full bg-[#00305B]/10 flex items-center justify-center mb-1.5">
-                        <DollarSign className="w-4 h-4 text-[#00305B]" />
+                    <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-teal-400 to-emerald-500" />
+                      <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                        <DollarSign className="w-4 h-4 text-[#00A86B]" />
                       </div>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Ingresos</span>
-                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{formatCLP(monthDetail.totalIngresos)}</p>
+                      <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Ingresos</span>
+                      <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{formatCLP(monthDetail.totalIngresos)}</p>
                     </div>
-                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                      <div className="w-8 h-8 rounded-full bg-[#00A86B]/10 flex items-center justify-center mb-1.5">
-                        <CreditCard className="w-4 h-4 text-[#00A86B]" />
+                    <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-[#F39200]" />
+                      <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                        <CreditCard className="w-4 h-4 text-[#F39200]" />
                       </div>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Membresías</span>
-                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{monthDetail.membresiasCount}</p>
+                      <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Membresías</span>
+                      <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{monthDetail.membresiasCount}</p>
                     </div>
-                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#7C3AED] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                      <div className="w-8 h-8 rounded-full bg-[#7C3AED]/10 flex items-center justify-center mb-1.5">
-                        <Users className="w-4 h-4 text-[#7C3AED]" />
+                    <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-600" />
+                      <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                        <Users className="w-4 h-4 text-[#8B5CF6]" />
                       </div>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Planes</span>
-                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{monthDetail.planes.length}</p>
+                      <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Planes</span>
+                      <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{monthDetail.planes.length}</p>
                     </div>
                   </div>
 

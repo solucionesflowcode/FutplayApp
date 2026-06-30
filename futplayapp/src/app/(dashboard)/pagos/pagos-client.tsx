@@ -294,42 +294,56 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
             </div>
 
             {/* Stats cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Membresía
-                    </span>
-                    <p className="text-sm font-black text-[#00305B] capitalize leading-tight mt-0.5">{suscripcion.plan}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+                {/* Membresía */}
+                <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-[#F39200]" />
+                    <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                        <Crown className="w-4 h-5 text-[#F39200]" />
+                    </div>
+                    <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Membresía</span>
+                    <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1 capitalize">{suscripcion.plan}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                         <span className={`text-[10px] font-bold ${sc.text}`}>{sc.label}</span>
                     </div>
                 </div>
 
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Total pagado
-                    </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{formatCLP(stats.totalPagado)}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">
-                        {historial.filter((p) => p.estado === "aprobado").length} transacciones
-                    </p>
+                {/* Total pagado */}
+                <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-blue-600 to-[#00305B]" />
+                    <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                        <Receipt className="w-4 h-4 text-[#00305B]" />
+                    </div>
+                    <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Total pagado</span>
+                    <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{formatCLP(stats.totalPagado)}</p>
+                    <p className="text-[9px] text-slate-500 font-medium mt-0.5">{historial.filter((p) => p.estado === "aprobado").length} transacciones</p>
                 </div>
 
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Pendientes
-                    </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.pendientes}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">por confirmar</p>
+                {/* Pendientes */}
+                <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-[#F28C28]" />
+                    <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                        <Clock className="w-4 h-4 text-[#F28C28]" />
+                    </div>
+                    <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Pendientes</span>
+                    <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{stats.pendientes}</p>
+                    <p className="text-[9px] text-slate-500 font-medium mt-0.5">por confirmar</p>
                 </div>
 
-                <div className="bg-white border border-[#edeef0] shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#ba1a1a] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">
-                        Rechazados
-                    </span>
-                    <p className="text-sm font-black text-[#00305B] leading-tight mt-0.5">{stats.rechazados}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight mt-0.5">sin éxito</p>
+                {/* Rechazados */}
+                <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-rose-400 to-red-500" />
+                    <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
+                        <X className="w-4 h-4 text-[#ba1a1a]" />
+                    </div>
+                    <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Rechazados</span>
+                    <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{stats.rechazados}</p>
+                    <p className="text-[9px] text-slate-500 font-medium mt-0.5">sin éxito</p>
                 </div>
             </div>
 
