@@ -798,8 +798,7 @@ export default function MisClasesClient() {
 
                             {/* Leyenda de Estados de Asistencia */}
                             <div className="bg-white border border-[#edeef0] rounded-[1rem] p-5 mt-6 shadow-[0_4px_20px_-2px_rgba(25,28,30,0.04)]">
-                                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-1.5">
-                                    <ListChecks className="w-3.5 h-3.5 text-[#00305b]" />
+                                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
                                     Leyenda de estados de asistencia
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
