@@ -65,7 +65,7 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
 
       {/* TABLA */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[800px]">
 
           <thead>
             <tr className="text-left text-gray-500 border-b">
@@ -84,11 +84,11 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
             {currentData.map((student) => (
               <tr key={student.id} className="border-b hover:bg-gray-50">
 
-                <td className="p-3">
-                  <div className="font-semibold text-black">
+                <td className="p-3 max-w-[200px]">
+                  <div className="font-semibold text-black truncate">
                     {student.name}
                   </div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-gray-400 truncate">
                     {student.id}
                   </div>
                 </td>

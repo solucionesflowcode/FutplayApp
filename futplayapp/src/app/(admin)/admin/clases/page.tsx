@@ -263,11 +263,11 @@ export default function ClasesPage() {
 
   return (
     <>
-      <div className="p-6">
-        <div className="flex flex-col gap-6 w-full" style={{ maxWidth: "1216px" }}>
+      <div className="p-4 sm:p-6">
+        <div className="flex flex-col gap-6 w-full mx-auto" style={{ maxWidth: "1216px" }}>
 
           {/* ─── HEADER ─── */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-extrabold text-gray-900">Gestión de Clases</h1>
               <p className="text-gray-500 text-sm mt-1">Administra clases, sedes y cupos</p>
@@ -276,7 +276,7 @@ export default function ClasesPage() {
               {view !== "list" && (
                 <button
                   onClick={() => { setView("list"); setDetalleClase(null); }}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                  className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 w-full sm:w-auto"
                 >
                   <ChevronLeft size={16} />
                   Volver
@@ -285,7 +285,7 @@ export default function ClasesPage() {
               {view === "list" ? (
                 <button
                   onClick={openCreate}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto"
                 >
                   <Plus size={16} />
                   Nueva Clase
@@ -299,8 +299,8 @@ export default function ClasesPage() {
             <div className="bg-white border border-gray-200">
               {/* ─── FILTROS ─── */}
               <div className="p-4 border-b border-gray-100 space-y-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="relative flex-1 min-w-[200px] max-w-xs">
+                <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
+                  <div className="relative w-full sm:flex-1 sm:max-w-xs">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
@@ -311,21 +311,21 @@ export default function ClasesPage() {
                     />
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <label className="text-gray-500 font-medium">Desde:</label>
+                    <label className="text-gray-500 font-medium shrink-0">Desde:</label>
                     <input
                       type="date"
                       value={fechaDesde}
                       onChange={(e) => setFechaDesde(e.target.value)}
-                      className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                      className="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                     />
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <label className="text-gray-500 font-medium">Hasta:</label>
+                    <label className="text-gray-500 font-medium shrink-0">Hasta:</label>
                     <input
                       type="date"
                       value={fechaHasta}
                       onChange={(e) => setFechaHasta(e.target.value)}
-                      className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                      className="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                     />
                   </div>
                   {(fechaDesde || fechaHasta || diasFiltro.length > 0) && (
@@ -388,10 +388,10 @@ export default function ClasesPage() {
                           className="border-b hover:bg-blue-50/50 cursor-pointer transition-colors"
                           onClick={() => handleAsistenciaClase(c.id)}
                         >
-                          <td className="p-3">
-                            <p className="font-semibold text-gray-900">{c.titulo || "Partido"}</p>
+                          <td className="p-3 max-w-[200px]">
+                            <p className="font-semibold text-gray-900 truncate">{c.titulo || "Partido"}</p>
                             {c.descripcion && (
-                              <p className="text-xs text-gray-400 truncate max-w-[200px]">{c.descripcion}</p>
+                              <p className="text-xs text-gray-400 truncate">{c.descripcion}</p>
                             )}
                             {c.tipo_evento && (
                               <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
@@ -399,17 +399,17 @@ export default function ClasesPage() {
                               </span>
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="p-3 max-w-[150px]">
                             {c.profesor_nombre ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold truncate max-w-full">
                                 <PersonStanding size={12} />
-                                {c.profesor_nombre}
+                                <span className="truncate">{c.profesor_nombre}</span>
                               </span>
                             ) : (
                               <span className="text-gray-300">—</span>
                             )}
                           </td>
-                          <td className="p-3 text-gray-600">{c.sede_nombre || "—"}</td>
+                          <td className="p-3 text-gray-600 truncate max-w-[120px]">{c.sede_nombre || "—"}</td>
                           <td className="p-3">
                             {c.cupo_maximo != null ? (
                               <>

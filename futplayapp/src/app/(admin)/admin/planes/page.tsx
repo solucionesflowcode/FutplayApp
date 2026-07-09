@@ -131,11 +131,11 @@ export default function PlanesPage() {
 
   return (
     <>
-      <div className="p-6">
-        <div className="flex flex-col gap-6 w-full" style={{ maxWidth: "1216px" }}>
+      <div className="p-4 sm:p-6">
+        <div className="flex flex-col gap-6 w-full mx-auto" style={{ maxWidth: "1216px" }}>
 
           {/* HEADER */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-extrabold text-gray-900">Planes</h1>
               <p className="text-gray-500 text-sm mt-1">Administra los planes de membresía</p>
@@ -143,7 +143,7 @@ export default function PlanesPage() {
             <div className="flex gap-3">
               <button
                 onClick={openCreate}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto"
               >
                 <Plus size={16} />
                 Nuevo Plan
@@ -157,8 +157,8 @@ export default function PlanesPage() {
 
           {/* LISTA */}
           <div className="bg-white border border-gray-200">
-            <div className="p-4 border-b border-gray-100 flex items-center gap-4">
-              <div className="relative flex-1 max-w-xs">
+            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="relative w-full sm:max-w-xs">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
@@ -168,7 +168,7 @@ export default function PlanesPage() {
                   className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <span className="text-sm text-gray-500">{filtered.length} plan{filtered.length !== 1 ? "es" : ""}</span>
+              <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} plan{filtered.length !== 1 ? "es" : ""}</span>
             </div>
 
             <div className="overflow-x-auto">
@@ -191,8 +191,8 @@ export default function PlanesPage() {
                   ) : filtered.map((p) => {
                     return (
                       <tr key={p.id} className="border-b hover:bg-gray-50/50">
-                        <td className="p-3 font-semibold text-gray-900">{p.nombre}</td>
-                        <td className="p-3 font-semibold text-gray-900">{formatPrice(p.precio)}</td>
+                        <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{p.nombre}</td>
+                        <td className="p-3 font-semibold text-gray-900 whitespace-nowrap">{formatPrice(p.precio)}</td>
                         <td className="p-3 text-gray-600">
                           <span className="font-semibold">{p.tokens_mensuales}</span>
                           <span className="text-gray-400"> sesiones</span>

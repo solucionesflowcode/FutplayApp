@@ -198,7 +198,7 @@ export default function ModulosPage() {
                   </tr>
                 ) : filtered.map((m) => (
                   <tr key={m.id} className="border-b hover:bg-gray-50/50">
-                    <td className="p-3 font-semibold text-gray-900">{m.nombre}</td>
+                    <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{m.nombre}</td>
                     <td className="p-3 text-gray-500 max-w-[280px] truncate">
                       {m.descripcion || <span className="text-gray-300">—</span>}
                     </td>
