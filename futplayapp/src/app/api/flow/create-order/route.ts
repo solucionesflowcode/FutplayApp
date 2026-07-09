@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   const { data: existingMembresia } = await adminClient
     .from("membresia")
     .select("id, fecha_inicio, fecha_vencimiento")
-
+    .eq("usuario_id", user.id)
     .order("fecha_inicio", { ascending: false })
     .limit(1)
     .maybeSingle();
