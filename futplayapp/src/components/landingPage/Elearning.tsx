@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 export default function Elearning() {
     return (
@@ -22,25 +23,37 @@ export default function Elearning() {
                     </div>
 
                     <div className="w-full md:w-2/5 relative z-10">
-                        <div className="bg-white rounded p-6 shadow-xl transform md:rotate-2 hover:rotate-0 transition-transform duration-300 border-4 border-white">
-                            <div className="w-full h-48 bg-gray-200 rounded-lg mb-4 relative overflow-hidden group cursor-pointer">
-                                <img src="https://images.unsplash.com/photo-1517466787929-bc90951d0974?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Video de táctica" />
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                    <div className="w-14 h-14 bg-[#f59e0b] rounded-full flex items-center justify-center text-white pl-1 shadow-lg">
-                                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"></path></svg>
+                        <Link href="/capsules" className="block h-full">
+                            <div className="relative aspect-square rounded-2xl overflow-hidden shadow-sm hover:translate-y-[-3px] transition-all duration-300 cursor-pointer group ring-1 ring-inset ring-black/[0.03]">
+                                <img
+                                    src="https://images.unsplash.com/photo-1517466787929-bc90951d0974?q=80&w=800&auto=format&fit=crop"
+                                    alt="Triangulación Básica"
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#001220]/85 via-[#001220]/30 to-transparent" />
+
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="bg-white/20 backdrop-blur-md border border-white/40 rounded-full w-12 h-12 flex items-center justify-center text-white">
+                                        <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"></path></svg>
                                     </div>
                                 </div>
-                            </div>
-                            <h4 className="text-gray-800 font-bold text-lg">Cápsula: Triangulación Básica</h4>
-                            <p className="text-gray-500 text-sm mt-1">Metodología estilo Barcelona</p>
-                            <div className="mt-4 flex items-center justify-between">
-                                <div className="flex -space-x-2">
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-xs font-bold text-[#002a58]">JS</div>
-                                    <div className="w-8 h-8 rounded-full bg-green-100 border-2 border-white flex items-center justify-center text-xs font-bold text-green-700">M</div>
+
+                                <div className="absolute top-2.5 left-2.5 bg-black/75 text-white text-[9px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <svg className="w-[9px] h-[9px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    8 min
                                 </div>
-                                <span className="text-xs font-semibold text-[#0284c7] bg-[#e0f2fe] px-2 py-1 rounded-md">8 min</span>
+
+                                <div className="absolute bottom-0 left-0 right-0 p-3 text-center">
+                                    <span className="inline-block bg-[#F39200]/10 text-[#F39200] text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full mb-1">
+                                        Táctica
+                                    </span>
+                                    <h3 className="text-white font-bold text-[0.85rem] leading-snug">
+                                        Triangulación Básica
+                                    </h3>
+                                    <p className="text-white/60 text-[11px] mt-0.5">Metodología Barcelona</p>
+                                </div>
                             </div>
-                        </div>
+                        </Link>
                     </div>
                 </div>
             </div>
