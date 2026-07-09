@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     {
       cookies: {
         getAll() { return cookieStore.getAll(); },
-        setAll() {},
+        setAll() { },
       },
     }
   );
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     {
       cookies: {
         getAll() { return []; },
-        setAll() {},
+        setAll() { },
       },
     }
   );
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   const { data: existingMembresia } = await adminClient
     .from("membresia")
     .select("id, fecha_inicio, fecha_vencimiento")
-
+    .eq("usuario_id", user.id)
     .order("fecha_inicio", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -164,7 +164,7 @@ export async function POST(request: Request) {
       amount: plan.precio,
       email: usuario.email,
       urlConfirmation: `${publicUrl}/api/flow/webhook?boletaId=${boleta.id}`,
-      urlReturn: `${publicUrl}/dashboard?flowSuccess=1`,
+      urlReturn: `${publicUrl}/api/flow/return`,
       timeout: 1800,
       paymentMethod: 1, // solo tarjetas crédito + débito
       ...(conRecurrencia ? { recurrence: { period: 30 } } : {}),
