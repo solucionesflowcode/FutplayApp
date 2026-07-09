@@ -261,8 +261,8 @@ export default function ProfesoresPage() {
                 <tbody>
                   {resultadosBusqueda.map((u) => (
                     <tr key={u.id} className="border-b last:border-0 hover:bg-gray-50/50">
-                      <td className="p-3 font-medium text-gray-900">{u.nombre}</td>
-                      <td className="p-3 text-gray-600">{u.email}</td>
+                      <td className="p-3 font-medium text-gray-900 truncate max-w-[180px]">{u.nombre}</td>
+                      <td className="p-3 text-gray-600 truncate max-w-[200px]">{u.email}</td>
                       <td className="p-3">
                         <span className="inline-flex items-center px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold capitalize">
                           {u.rol}
@@ -338,7 +338,7 @@ export default function ProfesoresPage() {
                 ) : filtered.map((p) => (
                   <Fragment key={p.id}>
                     <tr className="border-b hover:bg-gray-50/50">
-                      <td className="p-3">
+                      <td className="p-3 max-w-[200px]">
                         <div className="flex items-center gap-3">
                           {p.foto_url ? (
                             <img src={p.foto_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
@@ -347,16 +347,16 @@ export default function ProfesoresPage() {
                               {p.nombre.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <div>
-                            <span className="font-semibold text-gray-900">{p.nombre}</span>
-                            <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                          <div className="min-w-0">
+                            <span className="font-semibold text-gray-900 truncate block">{p.nombre}</span>
+                            <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5 truncate">
                               <Calendar size={10} />
                               {new Date(p.created_at).toLocaleDateString("es-CL", { timeZone: "America/Santiago" })}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="p-3 text-gray-600">{p.email}</td>
+                      <td className="p-3 text-gray-600 truncate max-w-[200px]">{p.email}</td>
                       <td className="p-3 text-gray-600">{p.telefono || <span className="text-gray-300">—</span>}</td>
                       <td className="p-3">
                         <button

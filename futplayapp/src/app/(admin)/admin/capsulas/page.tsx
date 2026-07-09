@@ -828,7 +828,7 @@ export default function CapsulasPage() {
                     </tr>
                   ) : filtered.map((c) => (
                     <tr key={c.id} className="border-b hover:bg-gray-50/50">
-                      <td className="p-3">
+                      <td className="p-3 max-w-[200px]">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-7 rounded bg-gray-100 overflow-hidden shrink-0">
                             {c.imagen ? (
@@ -839,7 +839,7 @@ export default function CapsulasPage() {
                               </div>
                             )}
                           </div>
-                          <span className="font-semibold text-gray-900">{c.titulo}</span>
+                          <span className="font-semibold text-gray-900 truncate">{c.titulo}</span>
                         </div>
                       </td>
                       <td className="p-3 text-gray-600">{c.creado || <span className="text-gray-300">—</span>}</td>
