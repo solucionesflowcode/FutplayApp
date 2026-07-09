@@ -27,7 +27,7 @@ export default function Hero() {
                    <div className="absolute inset-0 bg-gradient-to-tr from-[#f59e0b] to-transparent blur-2xl opacity-30 animate-pulse pointer-events-none"></div>
                     <img
                         src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1500&auto=format&fit=crop"
-                        className="border-t-2 border-t-[#f59e0b] relative z-10 border-4 border-white/10 shadow-2xl object-cover h-[300px] md:h-[500px] w-full"
+                        className="border-t-2 border-t-[#f59e0b] relative z-10 border-4 border-white/10 shadow-2xl object-cover w-full max-h-[50vh] md:max-h-none md:h-[450px]"
                         alt=""
                     />
                 </div>

@@ -32,7 +32,7 @@ function SectionHeader() {
       <div className="w-16 h-0.5 bg-[#f59e0b]/60 mt-6 mb-10" />
       <div className="grid md:grid-cols-2 gap-12 max-w-5xl">
         <div>
-          <p className="text-lg md:text-xl font-bold text-white/90 uppercase tracking-wide leading-snug">
+          <p className="text-lg md:text-xl font-bold text-white/90">
             Formamos la próxima generación de talento futbolístico con metodología de clase mundial.
           </p>
         </div>
@@ -106,9 +106,8 @@ function TeamSection() {
       <div className="max-w-7xl mx-auto px-8 pb-24">
         <div className="relative">
           <div
-            className={`transition-all duration-700 ease-out overflow-hidden ${
-              expanded ? "max-h-[500px] opacity-100 mb-8" : "max-h-0 opacity-0 mb-0"
-            }`}
+            className={`transition-all duration-700 ease-out overflow-hidden ${expanded ? "max-h-[500px] opacity-100 mb-8" : "max-h-0 opacity-0 mb-0"
+              }`}
           >
             {expanded && (
               <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start bg-white/5 border-t-2 border-t-[#f59e0b] p-5 md:p-8">
@@ -168,7 +167,7 @@ function TeamSection() {
 
 export default function AboutPage() {
   return (
-    <main className="bg-white min-h-screen font-sans">
+    <main className="bg-white min-h-screen font-sans pb-16">
       <TeamSection />
       <Footer />
     </main>
