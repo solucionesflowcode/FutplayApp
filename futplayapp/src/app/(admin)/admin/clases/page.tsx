@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import {
   Plus,
   Pencil,
@@ -359,9 +359,9 @@ export default function ClasesPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="md:overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="hidden md:table-header-group">
                     <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                       <th className="p-3 font-semibold">Nombre</th>
                       <th className="p-3 font-semibold">Profesor</th>
@@ -383,91 +383,133 @@ export default function ClasesPage() {
                       </tr>
                     ) : filtered.map((c) => {
                       return (
-                        <tr
-                          key={c.id}
-                          className="border-b hover:bg-blue-50/50 cursor-pointer transition-colors"
-                          onClick={() => handleAsistenciaClase(c.id)}
-                        >
-                          <td className="p-3 max-w-[200px]">
-                            <p className="font-semibold text-gray-900 truncate">{c.titulo || "Partido"}</p>
-                            {c.descripcion && (
-                              <p className="text-xs text-gray-400 truncate">{c.descripcion}</p>
-                            )}
-                            {c.tipo_evento && (
-                              <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
-                                {c.tipo_evento === "partido" ? "Partido" : "Entrenamiento"}
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 max-w-[150px]">
-                            {c.profesor_nombre ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold truncate max-w-full">
-                                <PersonStanding size={12} />
-                                <span className="truncate">{c.profesor_nombre}</span>
-                              </span>
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                          <td className="p-3 text-gray-600 truncate max-w-[120px]">{c.sede_nombre || "—"}</td>
-                          <td className="p-3">
-                            {c.cupo_maximo != null ? (
-                              <>
-                                <span className={`font-semibold ${c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
-                                  {c.inscritos}
-                                </span>
-                                <span className="text-gray-400">/{c.cupo_maximo}</span>
-                              </>
-                            ) : (
-                              <span className="text-gray-400">{c.inscritos} inscritos</span>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-green-600 font-semibold">{c.presentes} ✓</span>
-                              <span className="text-red-500 font-semibold">{c.ausentes} ✗</span>
-                              {c.pendientes > 0 ? (
-                                <button
-                                  onClick={() => handleAsistenciaClase(c.id)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold hover:bg-amber-200 hover:animate-none transition-colors border border-amber-300 animate-pulse"
-                                >
-                                  {c.pendientes} Pendientes
-                                </button>
-                              ) : (
-                                <span className="text-gray-300 font-semibold">—</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            {c.fecha_hora ? (
-                              <div className="text-xs text-gray-600">
-                                <span className="font-medium">{formatFecha(c.fecha_hora)}</span>
-                                <br />
-                                <span className="text-gray-400">{formatHora(c.fecha_hora)}</span>
+                        <Fragment key={c.id}>
+                          {/* MOBILE CARD */}
+                          <tr className="md:hidden border-b border-gray-100">
+                            <td colSpan={7} className="p-0">
+                              <div className="p-3 space-y-1.5" onClick={() => handleAsistenciaClase(c.id)}>
+                                <div className="flex items-start justify-between">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-semibold text-gray-900 truncate text-sm">{c.titulo || "Partido"}</p>
+                                    {c.tipo_evento && (
+                                      <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">{c.tipo_evento === "partido" ? "Partido" : "Entrenamiento"}</span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-gray-500 shrink-0 ml-2 text-right leading-tight">
+                                    {c.fecha_hora ? <>{formatFecha(c.fecha_hora)}<br/>{formatHora(c.fecha_hora)}</> : "Sin horario"}
+                                  </span>
+                                </div>
+                                {c.descripcion && <p className="text-[11px] text-gray-400 truncate">{c.descripcion}</p>}
+                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+                                  {c.profesor_nombre && <div><span className="text-gray-400">Prof: </span><span className="font-medium text-gray-700">{c.profesor_nombre}</span></div>}
+                                  {c.sede_nombre && <div><span className="text-gray-400">Sede: </span><span className="font-medium text-gray-700">{c.sede_nombre}</span></div>}
+                                  <div>
+                                    <span className="text-gray-400">Inscritos: </span>
+                                    <span className={`font-medium ${c.cupo_maximo != null && c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
+                                      {c.inscritos}{c.cupo_maximo != null ? `/${c.cupo_maximo}` : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                                  <span className="text-green-600 font-semibold">{c.presentes} ✓</span>
+                                  <span className="text-red-500 font-semibold">{c.ausentes} ✗</span>
+                                  {c.pendientes > 0 ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold border border-amber-300 animate-pulse">{c.pendientes} Pendientes</span>
+                                  ) : <span className="text-gray-300 font-semibold">—</span>}
+                                </div>
+                                <div className="flex gap-2 pt-1 border-t border-gray-50" onClick={(e) => e.stopPropagation()}>
+                                  <button onClick={() => openEdit(c)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
+                                  <button onClick={() => setDeleteId(c.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
+                                </div>
                               </div>
-                            ) : (
-                              <span className="text-xs text-gray-400">Sin horario</span>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={() => openEdit(c)}
-                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                title="Editar"
-                              >
-                                <Pencil size={16} />
-                              </button>
-                              <button
-                                onClick={() => setDeleteId(c.id)}
-                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                                title="Eliminar"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                          </tr>
+                          {/* DESKTOP ROW */}
+                          <tr
+                            className="hidden md:table-row border-b hover:bg-blue-50/50 cursor-pointer transition-colors"
+                            onClick={() => handleAsistenciaClase(c.id)}
+                          >
+                            <td className="p-3 max-w-[200px]">
+                              <p className="font-semibold text-gray-900 truncate">{c.titulo || "Partido"}</p>
+                              {c.descripcion && (
+                                <p className="text-xs text-gray-400 truncate">{c.descripcion}</p>
+                              )}
+                              {c.tipo_evento && (
+                                <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                                  {c.tipo_evento === "partido" ? "Partido" : "Entrenamiento"}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 max-w-[150px]">
+                              {c.profesor_nombre ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold truncate max-w-full">
+                                  <PersonStanding size={12} />
+                                  <span className="truncate">{c.profesor_nombre}</span>
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-gray-600 truncate max-w-[120px]">{c.sede_nombre || "—"}</td>
+                            <td className="p-3">
+                              {c.cupo_maximo != null ? (
+                                <>
+                                  <span className={`font-semibold ${c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
+                                    {c.inscritos}
+                                  </span>
+                                  <span className="text-gray-400">/{c.cupo_maximo}</span>
+                                </>
+                              ) : (
+                                <span className="text-gray-400">{c.inscritos} inscritos</span>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                                <span className="text-green-600 font-semibold">{c.presentes} ✓</span>
+                                <span className="text-red-500 font-semibold">{c.ausentes} ✗</span>
+                                {c.pendientes > 0 ? (
+                                  <button
+                                    onClick={() => handleAsistenciaClase(c.id)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold hover:bg-amber-200 hover:animate-none transition-colors border border-amber-300 animate-pulse"
+                                  >
+                                    {c.pendientes} Pendientes
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-300 font-semibold">—</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              {c.fecha_hora ? (
+                                <div className="text-xs text-gray-600">
+                                  <span className="font-medium">{formatFecha(c.fecha_hora)}</span>
+                                  <br />
+                                  <span className="text-gray-400">{formatHora(c.fecha_hora)}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-400">Sin horario</span>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => openEdit(c)}
+                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                  title="Editar"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteId(c.id)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -675,9 +717,9 @@ function AsistenciaDetalle({
         </p>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="md:overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="hidden md:table-header-group">
             <tr className="text-left text-gray-500 border-b bg-gray-50/50">
               <th className="p-3 font-semibold">Alumno</th>
               <th className="p-3 font-semibold">Asistencia</th>
@@ -688,40 +730,64 @@ function AsistenciaDetalle({
             {inscripciones.length === 0 ? (
               <tr><td colSpan={3} className="p-8 text-center text-gray-400">No hay alumnos inscritos en esta clase</td></tr>
             ) : inscripciones.map((ins: any) => (
-              <tr key={ins.id} className="border-b hover:bg-gray-50/50">
-                <td className="p-3 font-medium text-gray-900">{ins.usuario_nombre}</td>
-                <td className="p-3">
-                  {ins.asistencia === "asistio" ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                      <Check size={12} /> Presente
-                    </span>
-                  ) : ins.asistencia === "no_asistio" ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
-                      <X size={12} /> Ausente
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">
-                      Pendiente
-                    </span>
-                  )}
-                </td>
-                <td className="p-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onToggle(ins.usuario_id, true)}
-                      className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"
-                    >
-                      <Check size={14} className="inline" /> Presente
-                    </button>
-                    <button
-                      onClick={() => onToggle(ins.usuario_id, false)}
-                      className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"
-                    >
-                      <X size={14} className="inline" /> Ausente
-                    </button>
-                  </div>
-                </td>
-              </tr>
+              <Fragment key={ins.id}>
+                {/* MOBILE CARD */}
+                <tr className="md:hidden border-b border-gray-100">
+                  <td colSpan={3} className="p-0">
+                    <div className="p-3 space-y-2">
+                      <p className="font-medium text-gray-900 text-sm">{ins.usuario_nombre}</p>
+                      <div className="flex items-center justify-between">
+                        {ins.asistencia === "asistio" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold"><Check size={12} /> Presente</span>
+                        ) : ins.asistencia === "no_asistio" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold"><X size={12} /> Ausente</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">Pendiente</span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => onToggle(ins.usuario_id, true)} className="flex-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"><Check size={14} className="inline" /> Presente</button>
+                        <button onClick={() => onToggle(ins.usuario_id, false)} className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"><X size={14} className="inline" /> Ausente</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {/* DESKTOP ROW */}
+                <tr key={ins.id} className="hidden md:table-row border-b hover:bg-gray-50/50">
+                  <td className="p-3 font-medium text-gray-900">{ins.usuario_nombre}</td>
+                  <td className="p-3">
+                    {ins.asistencia === "asistio" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                        <Check size={12} /> Presente
+                      </span>
+                    ) : ins.asistencia === "no_asistio" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
+                        <X size={12} /> Ausente
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">
+                        Pendiente
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onToggle(ins.usuario_id, true)}
+                        className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"
+                      >
+                        <Check size={14} className="inline" /> Presente
+                      </button>
+                      <button
+                        onClick={() => onToggle(ins.usuario_id, false)}
+                        className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"
+                      >
+                        <X size={14} className="inline" /> Ausente
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>

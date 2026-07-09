@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import {
   Plus,
   Pencil,
@@ -171,9 +171,9 @@ export default function PlanesPage() {
               <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} plan{filtered.length !== 1 ? "es" : ""}</span>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="md:overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="hidden md:table-header-group">
                   <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                     <th className="p-3 font-semibold">Nombre</th>
                     <th className="p-3 font-semibold">Precio</th>
@@ -190,32 +190,51 @@ export default function PlanesPage() {
                     </tr>
                   ) : filtered.map((p) => {
                     return (
-                      <tr key={p.id} className="border-b hover:bg-gray-50/50">
-                        <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{p.nombre}</td>
-                        <td className="p-3 font-semibold text-gray-900 whitespace-nowrap">{formatPrice(p.precio)}</td>
-                        <td className="p-3 text-gray-600">
-                          <span className="font-semibold">{p.tokens_mensuales}</span>
-                          <span className="text-gray-400"> sesiones</span>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => openEdit(p)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                              title="Editar"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={() => setDeleteId(p.id)}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                              title="Eliminar"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                      <Fragment key={p.id}>
+                        {/* MOBILE CARD */}
+                        <tr className="md:hidden border-b border-gray-100">
+                          <td colSpan={4} className="p-0">
+                            <div className="p-3 space-y-1.5">
+                              <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
+                              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
+                                <div><span className="text-gray-400">Precio: </span><span className="font-semibold text-gray-900">{formatPrice(p.precio)}</span></div>
+                                <div><span className="text-gray-400">Tokens: </span><span className="font-semibold text-gray-700">{p.tokens_mensuales}</span><span className="text-gray-400"> sesiones</span></div>
+                              </div>
+                              <div className="flex gap-2 pt-1 border-t border-gray-50">
+                                <button onClick={() => openEdit(p)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
+                                <button onClick={() => setDeleteId(p.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                        {/* DESKTOP ROW */}
+                        <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
+                          <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{p.nombre}</td>
+                          <td className="p-3 font-semibold text-gray-900 whitespace-nowrap">{formatPrice(p.precio)}</td>
+                          <td className="p-3 text-gray-600">
+                            <span className="font-semibold">{p.tokens_mensuales}</span>
+                            <span className="text-gray-400"> sesiones</span>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => openEdit(p)}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                title="Editar"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => setDeleteId(p.id)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                                title="Eliminar"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      </Fragment>
                     );
                   })}
                 </tbody>

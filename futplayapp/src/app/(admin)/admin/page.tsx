@@ -104,9 +104,9 @@ function AdminContent() {
             <Users className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00305B]" />
           </div>
           <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-          <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Total</span>
-          <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{total}</p>
-          <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">usuarios</p>
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Total</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{total}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">usuarios</p>
         </div>
 
         {/* Alumnos */}
@@ -116,9 +116,9 @@ function AdminContent() {
             <GraduationCap className="w-1.5 h-2 sm:w-4 sm:h-5 text-[#6366F1]" />
           </div>
           <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-          <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Alumnos</span>
-          <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{jugadores}</p>
-          <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">estudiantes</p>
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Alumnos</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{jugadores}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">estudiantes</p>
         </div>
 
         {/* Profesores */}
@@ -128,9 +128,9 @@ function AdminContent() {
             <UserCheck className="w-1.5 h-1.5 sm:w-5 sm:h-5 text-[#8B5CF6]" />
           </div>
           <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-          <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Profesores</span>
-          <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{profesores}</p>
-          <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">instructores</p>
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Profesores</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{profesores}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">instructores</p>
         </div>
 
         {/* Administrador */}
@@ -140,9 +140,9 @@ function AdminContent() {
             <ShieldCheck className="w-1.5 h-2 sm:w-4 sm:h-5 text-[#F39200]" />
           </div>
           <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-          <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Admins</span>
-          <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{admins}</p>
-          <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">supervisores</p>
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Admins</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{admins}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">supervisores</p>
         </div>
 
         {/* Con Plan */}
@@ -152,9 +152,9 @@ function AdminContent() {
             <CreditCard className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00A86B]" />
           </div>
           <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-          <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Con Plan</span>
-          <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{total - inactivos}</p>
-          <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">membresías</p>
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Con Plan</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{total - inactivos}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">membresías</p>
         </div>
 
         {/* Activos */}
@@ -164,9 +164,9 @@ function AdminContent() {
             <CheckCircle2 className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00A86B]" />
           </div>
           <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-          <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Activos</span>
-          <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{activos}</p>
-          <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">al día</p>
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Activos</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{activos}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">al día</p>
         </div>
 
         {/* Vencidos */}
@@ -176,9 +176,9 @@ function AdminContent() {
             <TriangleAlert className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#ba1a1a]" />
           </div>
           <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-          <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Vencidos</span>
-          <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{vencidos}</p>
-          <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">morosos</p>
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Vencidos</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{vencidos}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">morosos</p>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import {
   Plus,
   Pencil,
@@ -178,9 +178,9 @@ export default function ModulosPage() {
             <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} módulo{filtered.length !== 1 ? "s" : ""}</span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
-              <thead>
+          <div className="md:overflow-x-auto">
+            <table className="w-full text-sm md:min-w-[700px]">
+              <thead className="hidden md:table-header-group">
                 <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                   <th className="p-3 font-semibold">Nombre</th>
                   <th className="p-3 font-semibold">Descripción</th>
@@ -197,42 +197,62 @@ export default function ModulosPage() {
                     </td>
                   </tr>
                 ) : filtered.map((m) => (
-                  <tr key={m.id} className="border-b hover:bg-gray-50/50">
-                    <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{m.nombre}</td>
-                    <td className="p-3 text-gray-500 max-w-[280px] truncate">
-                      {m.descripcion || <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="p-3">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">
-                        <BookOpen size={12} />
-                        {m.categoria_nombre}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <span className="inline-flex items-center gap-1 text-gray-600">
-                        <Video size={14} />
-                        {m.total_capsulas}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => openEdit(m)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                          title="Editar"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget({ id: m.id, nombre: m.nombre })}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <Fragment key={m.id}>
+                    {/* MOBILE CARD */}
+                    <tr className="md:hidden border-b border-gray-100">
+                      <td colSpan={5} className="p-0">
+                        <div className="p-3 space-y-1.5">
+                          <p className="font-semibold text-gray-900 truncate text-sm">{m.nombre}</p>
+                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
+                            {m.descripcion && <div className="w-full"><span className="text-gray-400">Desc: </span><span className="text-gray-600">{m.descripcion}</span></div>}
+                            <div><span className="text-gray-400">Categoría: </span><span className="font-medium text-blue-700">{m.categoria_nombre}</span></div>
+                            <div><span className="text-gray-400">Cápsulas: </span><span className="font-medium text-gray-700">{m.total_capsulas}</span></div>
+                          </div>
+                          <div className="flex gap-2 pt-1 border-t border-gray-50">
+                            <button onClick={() => openEdit(m)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
+                            <button onClick={() => setDeleteTarget({ id: m.id, nombre: m.nombre })} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* DESKTOP ROW */}
+                    <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
+                      <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{m.nombre}</td>
+                      <td className="p-3 text-gray-500 max-w-[280px] truncate">
+                        {m.descripcion || <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="p-3">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">
+                          <BookOpen size={12} />
+                          {m.categoria_nombre}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <span className="inline-flex items-center gap-1 text-gray-600">
+                          <Video size={14} />
+                          {m.total_capsulas}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openEdit(m)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="Editar"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget({ id: m.id, nombre: m.nombre })}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                            title="Eliminar"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </Fragment>
                 ))}
               </tbody>
             </table>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { Eye, Pencil, Trash2, Heart, X, Loader2 } from "lucide-react";
 import { getFichaMedicaByUser, calcularEdad, type FichaMedicaData } from "@/data/fichaMedica";
 
@@ -64,10 +64,10 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
     <div className="bg-white shadow-sm rounded-lg w-full p-4 mt-6">
 
       {/* TABLA */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[800px]">
+      <div className="md:overflow-x-auto">
+        <table className="w-full text-sm md:min-w-[800px]">
 
-          <thead>
+          <thead className="hidden md:table-header-group">
             <tr className="text-left text-gray-500 border-b">
               <th className="p-3">Nombre</th>
               <th className="p-3">Usuario</th>
@@ -82,84 +82,124 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
 
           <tbody>
             {currentData.map((student) => (
-              <tr key={student.id} className="border-b hover:bg-gray-50">
+              <Fragment key={student.id}>
+                {/* MOBILE CARD */}
+                <tr className="md:hidden border-b border-gray-100">
+                  <td colSpan={8} className="p-0">
+                    <div className="p-3 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-black truncate text-sm">{student.name}</p>
+                          <p className="text-[10px] text-gray-400 truncate">{student.id}</p>
+                        </div>
+                        <span className={`shrink-0 ml-2 px-2 py-0.5 rounded text-[10px] font-medium ${
+                          student.status === "Activo"
+                            ? "bg-green-100 text-green-600"
+                            : student.status === "Inactivo"
+                            ? "bg-yellow-100 text-yellow-600"
+                            : "bg-red-100 text-red-600"
+                        }`}>{student.status}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
+                        {student.rut && <div><span className="text-gray-400">RUT: </span><span className="font-medium text-gray-700">{student.rut}</span></div>}
+                        {student.phone && <div><span className="text-gray-400">Tel: </span><span className="font-medium text-gray-700">{student.phone}</span></div>}
+                        <div><span className="text-gray-400">Plan: </span><span className="font-medium text-gray-700">{student.plan}</span></div>
+                        <div><span className="text-gray-400">Tokens: </span><span className="font-medium text-gray-700">{student.tokens}</span></div>
+                        <div><span className="text-gray-400">Rol: </span><span className={`font-medium ${
+                          student.role === "Alumno" ? "text-blue-700" : "text-purple-700"
+                        }`}>{student.role}</span></div>
+                      </div>
+                      <div className="flex gap-2 items-center pt-1.5 border-t border-gray-50">
+                        <button onClick={() => openFicha(student.id)} className="flex items-center gap-1 text-purple-600 text-[10px] border px-2 py-1 rounded hover:bg-purple-100">
+                          <Heart size={11} /> Ficha
+                        </button>
+                        <button onClick={() => onView?.(student)} className="text-blue-500 hover:scale-110 p-1"><Eye size={14} /></button>
+                        <button onClick={() => onEdit?.(student)} className="text-green-500 hover:scale-110 p-1"><Pencil size={14} /></button>
+                        <button onClick={() => onDelete?.(student)} className="text-red-500 hover:scale-110 p-1"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {/* DESKTOP ROW */}
+                <tr className="hidden md:table-row border-b hover:bg-gray-50">
 
-                <td className="p-3 max-w-[200px]">
-                  <div className="font-semibold text-black truncate">
-                    {student.name}
-                  </div>
-                  <div className="text-xs text-gray-400 truncate">
-                    {student.id}
-                  </div>
-                </td>
+                  <td className="p-3 max-w-[200px]">
+                    <div className="font-semibold text-black truncate">
+                      {student.name}
+                    </div>
+                    <div className="text-xs text-gray-400 truncate">
+                      {student.id}
+                    </div>
+                  </td>
 
-                <td className="p-3">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      student.role === "Alumno"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-purple-100 text-purple-700"
-                    }`}
-                  >
-                    {student.role}
-                  </span>
-                </td>
+                  <td className="p-3">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        student.role === "Alumno"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-purple-100 text-purple-700"
+                      }`}
+                    >
+                      {student.role}
+                    </span>
+                  </td>
 
-                <td className="p-3 text-gray-900 font-medium">
-                  {student.rut}
-                </td>
+                  <td className="p-3 text-gray-900 font-medium">
+                    {student.rut}
+                  </td>
 
-                <td className="p-3 text-gray-900 font-medium">
-                  {student.phone}
-                </td>
+                  <td className="p-3 text-gray-900 font-medium">
+                    {student.phone}
+                  </td>
 
-                <td className="p-3 text-gray-900 font-medium">
-                  {student.plan}
-                </td>
+                  <td className="p-3 text-gray-900 font-medium">
+                    {student.plan}
+                  </td>
 
-                <td className="p-3 text-gray-900 font-medium">
-                  {student.tokens}
-                </td>
+                  <td className="p-3 text-gray-900 font-medium">
+                    {student.tokens}
+                  </td>
 
-                <td className="p-3">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      student.status === "Activo"
-                        ? "bg-green-100 text-green-600"
-                        : student.status === "Inactivo"
-                        ? "bg-yellow-100 text-yellow-600"
-                        : "bg-red-100 text-red-600"
-                    }`}
-                  >
-                    {student.status}
-                  </span>
-                </td>
+                  <td className="p-3">
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        student.status === "Activo"
+                          ? "bg-green-100 text-green-600"
+                          : student.status === "Inactivo"
+                          ? "bg-yellow-100 text-yellow-600"
+                          : "bg-red-100 text-red-600"
+                      }`}
+                    >
+                      {student.status}
+                    </span>
+                  </td>
 
-                <td className="p-3 flex gap-2 items-center">
+                  <td className="p-3 flex gap-2 items-center">
 
-                  <button
-                    onClick={() => openFicha(student.id)}
-                    className="flex items-center gap-1 text-purple-600 text-xs border px-2 py-1 rounded hover:bg-purple-100"
-                  >
-                    <Heart size={14} />
-                    Ficha
-                  </button>
+                    <button
+                      onClick={() => openFicha(student.id)}
+                      className="flex items-center gap-1 text-purple-600 text-xs border px-2 py-1 rounded hover:bg-purple-100"
+                    >
+                      <Heart size={14} />
+                      Ficha
+                    </button>
 
-                  <button onClick={() => onView?.(student)} className="text-blue-500 hover:scale-110">
-                    <Eye size={16} />
-                  </button>
+                    <button onClick={() => onView?.(student)} className="text-blue-500 hover:scale-110">
+                      <Eye size={16} />
+                    </button>
 
-                  <button onClick={() => onEdit?.(student)} className="text-green-500 hover:scale-110">
-                    <Pencil size={16} />
-                  </button>
+                    <button onClick={() => onEdit?.(student)} className="text-green-500 hover:scale-110">
+                      <Pencil size={16} />
+                    </button>
 
-                  <button onClick={() => onDelete?.(student)} className="text-red-500 hover:scale-110">
-                    <Trash2 size={16} />
-                  </button>
+                    <button onClick={() => onDelete?.(student)} className="text-red-500 hover:scale-110">
+                      <Trash2 size={16} />
+                    </button>
 
-                </td>
+                  </td>
 
-              </tr>
+                </tr>
+              </Fragment>
             ))}
           </tbody>
 

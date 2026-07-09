@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, Fragment } from "react";
 import {
   Users,
   DollarSign,
@@ -355,9 +355,9 @@ export default function AnaliticasPage() {
                 <Users className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00305B]" />
               </div>
               <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-              <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Alumnos</span>
-              <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.totalAlumnos.toString()}</p>
-              <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">estudiantes</p>
+              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Alumnos</span>
+              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.totalAlumnos.toString()}</p>
+              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">estudiantes</p>
             </div>
 
             {/* Ingresos del Mes */}
@@ -367,9 +367,9 @@ export default function AnaliticasPage() {
                 <DollarSign className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00A86B]" />
               </div>
               <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-              <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Ingresos del Mes</span>
-              <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{formatCLP(filteredResumen.ingresosMes)}</p>
-              <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">facturación</p>
+              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Ingresos del Mes</span>
+              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{formatCLP(filteredResumen.ingresosMes)}</p>
+              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">facturación</p>
             </div>
 
             {/* Membresías Activas */}
@@ -379,9 +379,9 @@ export default function AnaliticasPage() {
                 <CreditCard className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#F39200]" />
               </div>
               <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-              <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Membresías Activas</span>
-              <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.membresiasActivas.toString()}</p>
-              <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">al día</p>
+              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Membresías Activas</span>
+              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.membresiasActivas.toString()}</p>
+              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">al día</p>
             </div>
 
             {/* Tasa de Retención */}
@@ -391,9 +391,9 @@ export default function AnaliticasPage() {
                 <TrendingUp className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#8B5CF6]" />
               </div>
               <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-              <span className="text-[5px] leading-[1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Tasa de Retención</span>
-              <p className="text-[9px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.retencion}%</p>
-              <p className="text-[5px] sm:text-[9px] text-slate-500 font-medium mt-0">fidelización</p>
+              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Tasa de Retención</span>
+              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.retencion}%</p>
+              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">fidelización</p>
             </div>
           </div>
         </div>
@@ -511,10 +511,10 @@ export default function AnaliticasPage() {
                 </div>
 
                 {/* Data Table */}
-                <div className="overflow-x-auto">
+                <div className="md:overflow-x-auto">
                 <div className="bg-gray-50/70 rounded-lg border border-gray-100 overflow-hidden">
-                  <table className="w-full text-sm min-w-[600px]">
-                    <thead>
+                  <table className="w-full text-sm md:min-w-[600px]">
+                    <thead className="hidden md:table-header-group">
                       <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
                         <th className="p-3 pl-4 font-semibold">Mes</th>
                         <th className="p-3 font-semibold">Ingresos</th>
@@ -529,48 +529,89 @@ export default function AnaliticasPage() {
                         const isLast = !selectedMonth && item.mes === filteredMesesData[filteredMesesData.length - 1]?.mes;
                         const barWidth = (item.ingresos / maxRevenue) * 100;
                         return (
-                          <tr key={item.mes} onClick={() => handleSelectMonth(item.mes)} className={`border-b border-gray-100 last:border-0 hover:bg-white transition-colors cursor-pointer ${isLast ? "bg-amber-50/40" : ""}`}>
-                            <td className="p-3 pl-4 font-medium text-gray-900 whitespace-nowrap">
-                              {isLast && (
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] mr-2 animate-pulse" />
-                              )}
-                              {item.label}
-                            </td>
-                            <td className="p-3">
-                              <span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span>
-                            </td>
-                            <td className="p-3">
-                              <span className="text-gray-700">{item.transacciones}</span>
-                            </td>
-                            <td className="p-3">
-                              <span className="text-gray-700">{item.membresias}</span>
-                            </td>
-                            <td className="p-3">
-                              {item.vsAnterior !== null ? (
-                                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold ${
-                                  item.vsAnterior >= 0
-                                    ? "bg-green-50 text-green-700"
-                                    : "bg-red-50 text-red-700"
-                                }`}>
-                                  {item.vsAnterior >= 0 ? (
-                                    <TrendingUp size={12} />
-                                  ) : (
-                                    <TrendingDown size={12} />
-                                  )}
-                                  {Math.abs(item.vsAnterior)}%
+                          <Fragment key={item.mes}>
+                            {/* MOBILE CARD */}
+                            <tr className="md:hidden border-b border-gray-100">
+                              <td colSpan={6} className="p-0">
+                                <div onClick={() => handleSelectMonth(item.mes)} className="p-3 space-y-1.5 cursor-pointer">
+                                  <div className="flex items-center justify-between">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-semibold text-gray-900 text-sm">{item.label}</p>
+                                    </div>
+                                    {isLast && (
+                                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] animate-pulse shrink-0 ml-2" />
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
+                                    <div><span className="text-gray-400">Ingresos: </span><span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span></div>
+                                    <div><span className="text-gray-400">Ventas: </span><span className="font-medium text-gray-700">{item.transacciones}</span></div>
+                                    <div><span className="text-gray-400">Membresías: </span><span className="font-medium text-gray-700">{item.membresias}</span></div>
+                                  </div>
+                                  <div className="flex items-center justify-between pt-0.5">
+                                    <div>
+                                      {item.vsAnterior !== null ? (
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                          item.vsAnterior >= 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                                        }`}>
+                                          {item.vsAnterior >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                          {Math.abs(item.vsAnterior)}%
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-300 text-[10px]">—</span>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-gray-400 text-[10px]">Acumulado: </span>
+                                      <span className="font-semibold text-gray-900 text-[11px]">{formatCLP(item.acumulado)}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                              ) : (
-                                <span className="text-gray-300">—</span>
-                              )}
-                            </td>
-                            <td className="p-3 pr-4 text-right">
-                              <span className="font-semibold text-gray-900">{formatCLP(item.acumulado)}</span>
-                            </td>
-                          </tr>
+                              </td>
+                            </tr>
+                            {/* DESKTOP ROW */}
+                            <tr onClick={() => handleSelectMonth(item.mes)} className={`hidden md:table-row border-b border-gray-100 last:border-0 hover:bg-white transition-colors cursor-pointer ${isLast ? "bg-amber-50/40" : ""}`}>
+                              <td className="p-3 pl-4 font-medium text-gray-900 whitespace-nowrap">
+                                {isLast && (
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] mr-2 animate-pulse" />
+                                )}
+                                {item.label}
+                              </td>
+                              <td className="p-3">
+                                <span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span>
+                              </td>
+                              <td className="p-3">
+                                <span className="text-gray-700">{item.transacciones}</span>
+                              </td>
+                              <td className="p-3">
+                                <span className="text-gray-700">{item.membresias}</span>
+                              </td>
+                              <td className="p-3">
+                                {item.vsAnterior !== null ? (
+                                  <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold ${
+                                    item.vsAnterior >= 0
+                                      ? "bg-green-50 text-green-700"
+                                      : "bg-red-50 text-red-700"
+                                  }`}>
+                                    {item.vsAnterior >= 0 ? (
+                                      <TrendingUp size={12} />
+                                    ) : (
+                                      <TrendingDown size={12} />
+                                    )}
+                                    {Math.abs(item.vsAnterior)}%
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-300">—</span>
+                                )}
+                              </td>
+                              <td className="p-3 pr-4 text-right">
+                                <span className="font-semibold text-gray-900">{formatCLP(item.acumulado)}</span>
+                              </td>
+                            </tr>
+                          </Fragment>
                         );
                       })}
                     </tbody>
-                    <tfoot>
+                    <tfoot className="hidden md:table-footer-group">
                       <tr className="bg-gray-100/60 border-t-2 border-gray-200">
                         <td className="p-3 pl-4 font-bold text-gray-700">{selectedMonth ? "Total mes" : "Total"}</td>
                         <td className="p-3 font-black text-gray-900">
@@ -586,6 +627,16 @@ export default function AnaliticasPage() {
                       </tr>
                     </tfoot>
                   </table>
+                  {/* MOBILE TOTALS */}
+                  {filteredMesesData.length > 0 && (
+                    <div className="md:hidden p-3 bg-gray-100/60 border-t-2 border-gray-200">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        <div><span className="text-gray-500 font-semibold">{selectedMonth ? "Total mes" : "Total"}: </span><span className="font-black text-gray-900">{formatCLP(filteredMesesData.reduce((s, m) => s + m.ingresos, 0))}</span></div>
+                        <div><span className="text-gray-500">Ventas: </span><span className="font-bold text-gray-900">{filteredMesesData.reduce((s, m) => s + m.transacciones, 0)}</span></div>
+                        <div><span className="text-gray-500">Membresías: </span><span className="font-bold text-gray-900">{filteredMesesData.reduce((s, m) => s + m.membresias, 0)}</span></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 </div>
               </>
@@ -698,9 +749,9 @@ export default function AnaliticasPage() {
                 No hay planes configurados
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="md:overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="hidden md:table-header-group">
                     <tr className="text-left text-gray-500 border-b">
                       <th className="p-3 font-semibold">Nombre</th>
                       <th className="p-3 font-semibold">Tokens</th>
