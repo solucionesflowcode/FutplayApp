@@ -79,7 +79,7 @@ export default function Sidebar() {
             </Link>
             <div className="flex flex-col">
               <h2 className="text-lg font-bold leading-tight">FutPlay</h2>
-              <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
+              <p className="text-[10px] text-gray-500 tracking-widest uppercase"></p>
             </div>
           </div>
           <button
