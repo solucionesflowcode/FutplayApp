@@ -7,8 +7,10 @@
 - [x] `vercel.json` eliminado del remoto (contenía `rootDirectory` inválido)
 - [x] Commit + push de cambios a `deploy-main`
 - [x] Build local exitoso (Next.js compila, TypeScript pasa)
+- [x] Build en Vercel exitoso con `framework=nextjs` detectado
+- [x] App funcionando en preview URL
 - [ ] `productionBranch` cambiado de `main` a `deploy-main` en Dashboard
-- [ ] Verificar que el deployment funciona (entrar al deploy desde Dashboard)
+- [ ] Hacer deploy a producción (alias `futplay-app.vercel.app`)
 - [ ] Desactivar SSO/Deployment Protection (o agregar dominio personalizado)
 
 ## 2. Supabase — Base de Datos
