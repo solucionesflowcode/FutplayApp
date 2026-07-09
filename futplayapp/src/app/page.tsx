@@ -1,13 +1,10 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useAuthUser } from "@/context";
-import { Loader2 } from "lucide-react";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 
 /**
- * Página raíz de la aplicación.
- * Detecta si hay un usuario autenticado y redirige según su rol.
+ * Página raíz de la aplicación (Server Component).
+ * Detecta si hay un usuario autenticado vía cookie y redirige según su rol.
  * 
  * Redirecciones:
  * - Sin usuario → /home
@@ -15,40 +12,34 @@ import { Loader2 } from "lucide-react";
  * - profesor → /dashboard
  * - jugador → /dashboard
  */
-export default function Home() {
-  const router = useRouter();
-  const { usuario, loading } = useAuthUser();
+export default async function Home() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
 
-  useEffect(() => {
-    if (loading) return;
+  const { data: { user } } = await supabase.auth.getUser();
 
-    if (!usuario) {
-      router.replace("/home");
-      return;
-    }
-
-    switch (usuario.rol) {
-      case "administrador":
-        router.replace("/admin");
-        break;
-      case "profesor":
-        router.replace("/dashboard");
-        break;
-      case "jugador":
-        router.replace("/dashboard");
-        break;
-      default:
-        router.replace("/login");
-    }
-  }, [usuario, loading, router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[#F39200]" />
-      </div>
-    );
+  if (!user) {
+    redirect("/home");
   }
 
-  return <p>Redirigiendo...</p>;
+  const { data: usuario } = await supabase
+    .from("usuario")
+    .select("rol")
+    .eq("id", user.id)
+    .single();
+
+  if (!usuario) {
+    redirect("/login");
+  }
+
+  switch (usuario.rol) {
+    case "administrador":
+      redirect("/admin");
+    case "profesor":
+      redirect("/dashboard");
+    case "jugador":
+      redirect("/dashboard");
+    default:
+      redirect("/login");
+  }
 }

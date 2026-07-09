@@ -28,7 +28,7 @@ export default function Login() {
         <ArrowLeft className="w-5 h-5" />
         <span className="text-sm">Volver al inicio</span>
       </Link>
-      <div className="flex justify-center w-[850px] h-[500px] md:h-[500px] md:w-[650px] bg-transparent md:bg-white border-0 md:border-2 md:border-gray-200 border-t-2 border-t-[#00305B] shadow-none md:shadow-[0px_7px_18px_-4px_rgba(0,_0,_0,_0.35)]">
+      <div className="flex justify-center w-[900px] h-[560px] md:h-[560px] md:w-[780px] bg-transparent md:bg-white border-0 md:border-2 md:border-gray-200 border-t-2 border-t-[#00305B] shadow-none md:shadow-[0px_7px_18px_-4px_rgba(0,_0,_0,_0.35)]">
         <div className="hidden md:block relative flex items-center justify-center bg-[#FFAD91] md:w-[50%] m-[8px] border-t-2 border-t-[#F39200]">
 
 

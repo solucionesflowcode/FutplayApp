@@ -16,14 +16,15 @@ type Membresia = {
 async function getMembresiaByUser(userId: string): Promise<Membresia | null> {
     const supabase = createClient();
 
-    const { startISO, endISO } = (await import("@/lib/fechas")).getChileMonthBounds();
+    const ahora = (await import("@/lib/fechas")).ahoraChile().toISOString();
 
     const { data, error } = await supabase
         .from("membresia")
         .select("*")
         .eq("usuario_id", userId)
-        .gte("fecha_inicio", startISO)
-        .lt("fecha_inicio", endISO)
+        .gte("fecha_vencimiento", ahora)
+        .order("fecha_vencimiento", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
     if (error) {
