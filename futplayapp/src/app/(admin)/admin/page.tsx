@@ -68,13 +68,13 @@ function AdminContent() {
       s.status.toLowerCase().includes(q)
   );
 
-  const total = filtered.length;
-  const jugadores = filtered.filter((s) => s.role === "Alumno").length;
-  const profesores = filtered.filter((s) => s.role === "Profesor").length;
-  const admins = filtered.filter((s) => s.role === "Admin").length;
-  const activos = filtered.filter((s) => s.status === "Activo").length;
-  const vencidos = filtered.filter((s) => s.status === "Vencido").length;
-  const inactivos = filtered.filter((s) => s.status === "Inactivo").length;
+  const total = students.length;
+  const jugadores = students.filter((s) => s.role === "Alumno").length;
+  const profesores = students.filter((s) => s.role === "Profesor").length;
+  const admins = students.filter((s) => s.role === "Admin").length;
+  const activos = students.filter((s) => s.status === "Activo").length;
+  const vencidos = students.filter((s) => s.status === "Vencido").length;
+  const inactivos = students.filter((s) => s.status === "Inactivo").length;
 
   if (loading) {
     return (

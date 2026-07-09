@@ -1,15 +1,10 @@
 "use client";
 
 import { Search } from "lucide-react";
-import type { Student } from "./StudentsTable";
 
 type Props = {
   search?: string;
   onSearchChange?: (value: string) => void;
-  vencidos?: Student[];
-  students?: Student[];
-  onView?: (student: Student) => void;
-  exportCSV?: (students: Student[]) => void;
 };
 
 export default function AdminHeader({ search, onSearchChange }: Props) {
