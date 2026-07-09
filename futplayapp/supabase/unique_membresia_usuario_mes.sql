@@ -1,4 +1,0 @@
--- DEPRECATED — This constraint was intentionally removed by add_boleta_id_to_membresia.sql.
--- The business allows multiple memberships per month (different plans).
--- Control is now via (usuario_id, estado=true) — only one active per user.
--- Do NOT run this file if add_boleta_id_to_membresia.sql has been applied.

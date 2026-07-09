@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Users, GraduationCap, UserCheck, ShieldCheck, CreditCard, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Users, GraduationCap, UserCheck, ShieldCheck, CreditCard, CheckCircle2, TriangleAlert } from "lucide-react";
 import StudentsTable, { Student } from "@/components/admin/StudentsTable";
 
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -161,7 +161,7 @@ function AdminContent() {
         <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-green-400 to-[#00A86B]" />
           <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <CheckCircle className="w-4 h-4 text-[#00A86B]" />
+            <CheckCircle2 className="w-4 h-4 text-[#00A86B]" />
           </div>
           <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
           <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Activos</span>
@@ -173,7 +173,7 @@ function AdminContent() {
         <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-rose-400 to-red-500" />
           <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <AlertTriangle className="w-4 h-4 text-[#ba1a1a]" />
+            <TriangleAlert className="w-4 h-4 text-[#ba1a1a]" />
           </div>
           <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
           <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Vencidos</span>
