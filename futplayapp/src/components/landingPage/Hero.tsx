@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Hero() {
     return (
         <section className="relative min-h-[90vh] flex items-center pt-20 bg-[#002a58] text-white overflow-hidden">
@@ -16,8 +18,8 @@ export default function Hero() {
                     </p>
 
                     <div className="flex gap-4 mt-4 flex-wrap">
-                        <button className="bg-[#f59e0b] hover:bg-[#d97706] transition-colors px-8 py-4 rounded-full font-bold text-[#002a58] shadow-lg hover:shadow-xl transform hover:-translate-y-1">Únete a la Academia</button>
-                        <button className="border-2 border-white hover:bg-white hover:text-[#002a58] transition-colors px-8 py-4 rounded-full font-bold">Conoce Más</button>
+                        <Link href="/login" className="bg-[#f59e0b] hover:bg-[#d97706] transition-colors px-8 py-4 rounded-full font-bold text-[#002a58] shadow-lg hover:shadow-xl transform hover:-translate-y-1 inline-block">Únete a la Academia</Link>
+                        <Link href="/home/acerca-de-nosotros" className="border-2 border-white hover:bg-white hover:text-[#002a58] transition-colors px-8 py-4 rounded-full font-bold inline-block">Conoce Más</Link>
                     </div>
                 </div>
 
