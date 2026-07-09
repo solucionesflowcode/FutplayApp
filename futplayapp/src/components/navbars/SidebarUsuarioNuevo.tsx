@@ -78,7 +78,7 @@ export default function Sidebar() {
               </div>
             </Link>
             <div className="flex flex-col">
-              <h2 className="text-lg font-bold leading-tight">FutPlay</h2>
+              <h2 className="text-lg font-bold leading-tight flex items-center gap-1.5">FutPlay <img src="/futplay-logo-original.svg" alt="" className="h-4 w-auto" /></h2>
               <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
             </div>
           </div>
@@ -160,7 +160,7 @@ export default function Sidebar() {
       <aside className="hidden md:flex w-64 bg-[#001529] h-screen text-white flex-col p-4 shrink-0 overflow-y-auto">
         {/* Header */}
         <div className="mb-10 px-2">
-          <h2 className="text-xl font-bold">FutPlay</h2>
+          <h2 className="text-xl font-bold flex items-center gap-1.5">FutPlay <img src="/futplay-logo-original.svg" alt="" className="h-5 w-auto" /></h2>
           <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
         </div>
 

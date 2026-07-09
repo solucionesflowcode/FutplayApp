@@ -19,7 +19,7 @@ export default function Navbar() {
     return (
         <nav className="fixed top-0 w-full z-50 bg-[#002a58] shadow-sm">
             <div className="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
-                <Link href="/home" className="text-2xl font-bold text-white">FutPlay</Link>
+                <Link href="/home" className="text-2xl font-bold text-white flex items-center gap-1.5">FutPlay <img src="/futplay-logo-original.svg" alt="" className="h-5 w-auto" /></Link>
 
                 {/* Desktop Menu */}
                 <div className="hidden md:flex items-center gap-8">

@@ -28,7 +28,7 @@ export default function SidebarProfesor() {
       <div className="md:hidden flex flex-col w-full bg-[#001529] text-white z-50">
         <div className="flex items-center justify-between p-4 border-b border-white/5">
           <div className="flex flex-col">
-            <h2 className="text-xl font-bold">FutPlay</h2>
+            <h2 className="text-xl font-bold flex items-center gap-1.5">FutPlay <img src="/futplay-logo-original.svg" alt="" className="h-5 w-auto" /></h2>
             <p className="text-[10px] text-gray-500 tracking-widest uppercase">Panel Profesor</p>
           </div>
           <button
@@ -90,7 +90,7 @@ export default function SidebarProfesor() {
       {/* SIDEBAR ESCRITORIO */}
       <aside className="hidden md:flex fixed left-0 top-0 w-64 bg-[#001529] h-dvh text-white flex-col p-4 overflow-y-auto z-40">
         <div className="mb-10 px-2">
-          <h2 className="text-xl font-bold">FutPlay</h2>
+          <h2 className="text-xl font-bold flex items-center gap-1.5">FutPlay <img src="/futplay-logo-original.svg" alt="" className="h-5 w-auto" /></h2>
           <p className="text-[10px] text-gray-500 tracking-widest uppercase">Panel Profesor</p>
         </div>
 
