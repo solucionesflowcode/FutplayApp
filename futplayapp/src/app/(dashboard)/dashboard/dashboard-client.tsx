@@ -39,6 +39,7 @@ export default function DashboardClient() {
             }
             const params = new URLSearchParams(window.location.search);
             params.delete("flowSuccess");
+            params.delete("token");
             const newUrl = params.toString()
                 ? `${window.location.pathname}?${params.toString()}`
                 : window.location.pathname;
