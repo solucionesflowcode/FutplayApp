@@ -29,7 +29,7 @@ export default function Login() {
         className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-medium z-10"
       >
         <ArrowLeft className="w-5 h-5" />
-        <span className="text-sm">Volver al inicio</span>
+        <span className="text-sm hidden md:inline">Inicio</span>
       </Link>
 
       <div className="flex flex-col md:flex-row w-full max-w-[850px] mx-4 bg-white border-t-2 border-t-[#f59e0b] shadow-2xl overflow-hidden">
@@ -74,7 +74,7 @@ export default function Login() {
             </button>
           </div>
 
-          <p className="text-center md:text-left text-gray-400 text-xs mt-6">¿Necesitas ayuda?</p>
+
         </div>
       </div>
 

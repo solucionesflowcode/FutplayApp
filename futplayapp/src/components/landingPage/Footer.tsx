@@ -2,19 +2,12 @@ export default function Footer() {
     return (
         <>
             <footer className="fixed bottom-0 left-0 right-0 z-50 bg-[#001730]/90 backdrop-blur-md text-gray-400 py-1.5 border-t border-white/5 md:hidden">
-                <div className="max-w-7xl mx-auto px-4 grid grid-cols-3 gap-2">
+                <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 gap-2">
                     <div>
                         <h3 className="text-xs font-black text-white mb-1">Futplay<span className="text-[#f59e0b]">.</span></h3>
                         <p className="text-[10px] leading-tight text-gray-400">
                             Academia de alto rendimiento
                         </p>
-                    </div>
-                    <div>
-                        <h4 className="text-white font-bold mb-1 text-[10px]">Sedes</h4>
-                        <ul className="text-[10px] space-y-0.5">
-                            <li>Quilpué</li>
-                            <li>Reñaca</li>
-                        </ul>
                     </div>
                     <div>
                         <h4 className="text-white font-bold mb-1 text-[10px]">Contáctanos</h4>
@@ -37,19 +30,12 @@ export default function Footer() {
             </footer>
 
             <footer className="hidden md:block fixed bottom-0 left-0 right-0 z-50 bg-[#001730]/90 backdrop-blur-md text-gray-400 py-3 border-t border-white/5">
-                <div className="max-w-7xl mx-auto px-8 grid grid-cols-3 gap-6">
+                <div className="max-w-7xl mx-auto px-8 grid grid-cols-2 gap-6">
                     <div>
                         <h3 className="text-lg font-black text-white mb-1">Futplay<span className="text-[#f59e0b]">.</span></h3>
                         <p className="text-xs leading-tight text-gray-400 max-w-xs">
                             Academia de fútbol de alto rendimiento con metodologías avanzadas, e-learning y entrenamiento físico estilo Barcelona.
                         </p>
-                    </div>
-                    <div>
-                        <h4 className="text-white font-bold mb-1 text-sm">Sedes Físicas</h4>
-                        <ul className="text-xs space-y-1">
-                            <li>Sede Quilpué</li>
-                            <li>Sede Reñaca</li>
-                        </ul>
                     </div>
                     <div>
                         <h4 className="text-white font-bold mb-1 text-sm">Contáctanos</h4>
