@@ -78,14 +78,16 @@ function TeamCard({
               {nombre.charAt(0)}
             </span>
           </div>
-          <div className="p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200">
-            <span className="inline-block px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-900 shadow-sm mb-2">
-              {nombre}
-            </span>
-            <p className="text-[11px] text-gray-600 leading-snug">
-              {descripcion}
-            </p>
-          </div>
+          {!expanded && (
+            <div className="p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200">
+              <span className="inline-block px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-900 shadow-sm mb-2">
+                {nombre}
+              </span>
+              <p className="text-[11px] text-[#f59e0b] font-semibold leading-snug">
+                Conoce más acerca de mí →
+              </p>
+            </div>
+          )}
         </div>
       </button>
     </div>
@@ -136,12 +138,13 @@ function TeamSection() {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-6 justify-center">
+          <div className="flex flex-col md:flex-row flex-wrap gap-6 justify-center items-stretch">
             {collapsed.map((socio, i) => {
               const originalIndex = socios.indexOf(socio);
               return (
                 <div
                   key={socio.nombre}
+                  className="w-full md:w-auto"
                   style={{
                     flexGrow: 0,
                     flexShrink: 0,
@@ -150,7 +153,7 @@ function TeamSection() {
                     willChange: "flex-basis",
                   }}
                 >
-                  <div className="mx-auto max-w-[300px]">
+                  <div className="mx-auto w-full md:max-w-[300px]">
                     <TeamCard
                       nombre={socio.nombre}
                       descripcion={socio.descripcion}
