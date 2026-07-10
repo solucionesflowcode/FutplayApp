@@ -78,10 +78,13 @@ function TeamCard({
               {nombre.charAt(0)}
             </span>
           </div>
-          <div className="absolute bottom-3 left-3 right-3">
-            <span className="inline-block px-3 py-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full text-xs font-bold text-gray-900 shadow-sm">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-100 via-gray-100/90 to-transparent p-3 pt-8">
+            <span className="inline-block px-3 py-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full text-xs font-bold text-gray-900 shadow-sm mb-1.5">
               {nombre}
             </span>
+            <p className="text-[11px] text-gray-600 leading-snug line-clamp-2">
+              {descripcion}
+            </p>
           </div>
         </div>
       </button>
