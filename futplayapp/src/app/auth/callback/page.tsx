@@ -78,12 +78,20 @@ export default function AuthCallback() {
           .eq("id", user.id)
           .single();
 
-        // Si no se encontró por id (posiblemente signInWithIdToken creó
-        // un auth.users nuevo para cuentas Google Workspace), buscar por
-        // email mediante API route con service role.
-        if (!usuario) {
+        // Si no se encontró por id (el auth.users ID puede diferir del
+        // registrado en usuario para cuentas Google Workspace), buscar
+        // por email mediante API route con service role.
+        if (!usuario && user.email) {
           try {
-            const linkRes = await fetch("/api/auth/link-usuario", { method: "POST" });
+            const linkRes = await fetch("/api/auth/link-usuario", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: user.email,
+                id: user.id,
+                nombre: user.user_metadata?.full_name || undefined,
+              }),
+            });
             if (linkRes.ok) {
               const linkData = await linkRes.json();
               usuario = linkData.usuario;
