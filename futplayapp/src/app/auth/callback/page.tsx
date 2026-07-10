@@ -20,8 +20,8 @@ export default function AuthCallback() {
         return;
       }
 
-      const savedState = sessionStorage.getItem("oauth_state");
-      sessionStorage.removeItem("oauth_state");
+      const savedState = localStorage.getItem("oauth_state");
+      localStorage.removeItem("oauth_state");
       if (!savedState || state !== savedState) {
         router.replace("/login?error=csrf");
         return;

@@ -52,7 +52,7 @@ export async function signInWithGoogle(): Promise<{ error: string | null }> {
         const redirectUri = `${window.location.origin}/auth/callback`;
 
         const state = crypto.randomUUID();
-        sessionStorage.setItem("oauth_state", state);
+        localStorage.setItem("oauth_state", state);
 
         const params = new URLSearchParams({
             client_id: clientId,

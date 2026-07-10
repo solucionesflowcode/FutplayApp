@@ -42,13 +42,9 @@ export default function Home() {
     }
   }, [usuario, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="w-8 h-8 animate-spin text-[#f59e0b]" />
-      </div>
-    );
-  }
-
-  return <p>Redirigiendo...</p>;
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <Loader2 className="w-8 h-8 animate-spin text-[#f59e0b]" />
+    </div>
+  );
 }
