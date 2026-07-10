@@ -47,6 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { user, error: authError } = await getCurrentUser();
 
       if (authError) {
+        if (authError === "Auth session missing!") {
+          setUser(null);
+          setUsuario(null);
+          setLoading(false);
+          return;
+        }
         console.error("[AuthContext] Error de autenticación:", authError);
         setError(`Error de autenticación: ${authError}`);
         setUser(null);

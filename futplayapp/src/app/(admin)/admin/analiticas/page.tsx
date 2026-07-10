@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, Fragment } from "react";
 import {
   Users,
   DollarSign,
@@ -81,8 +81,6 @@ export default function AnaliticasPage() {
   const [ingresosMensuales, setIngresosMensuales] = useState<IngresoMensual[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [monthDetail, setMonthDetail] = useState<any>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [showMonthDropdown, setShowMonthDropdown] = useState(false);
 
   useEffect(() => {
@@ -305,27 +303,9 @@ export default function AnaliticasPage() {
   const formatCLP = (n: number) =>
     `$${n.toLocaleString("es-CL")}`;
 
-  const handleSelectMonth = async (mes: string | null) => {
+  const handleSelectMonth = (mes: string | null) => {
     setShowMonthDropdown(false);
     setSelectedMonth(mes);
-
-    if (!mes) {
-      setMonthDetail(null);
-      return;
-    }
-
-    setDetailLoading(true);
-    try {
-      const res = await fetch(`/api/admin/analiticas/detalle?mes=${mes}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMonthDetail(data);
-      }
-    } catch {
-      console.error("Error fetching month detail");
-    } finally {
-      setDetailLoading(false);
-    }
   };
 
   if (loading) {
@@ -350,9 +330,9 @@ export default function AnaliticasPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div
-        className="flex flex-col items-start gap-8 w-full"
+        className="flex flex-col items-start gap-8 w-full mx-auto"
         style={{ maxWidth: "1216px" }}
       >
         {/* Section 0: Header */}
@@ -367,34 +347,53 @@ export default function AnaliticasPage() {
 
         {/* Section 1: Stat Cards */}
         <div className="flex-none self-stretch z-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-              <div className="w-8 h-8 rounded-full bg-[#00305B]/10 flex items-center justify-center mb-1.5">
-                <Users className="w-4 h-4 text-[#00305B]" />
+          <div className="grid grid-cols-4 gap-1 sm:gap-4 md:gap-6">
+            {/* Total Alumnos */}
+            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+              <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-blue-600 to-[#00305B]" />
+              <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+                <Users className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00305B]" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Total Alumnos</span>
-              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.totalAlumnos.toString()}</p>
+              <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Alumnos</span>
+              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.totalAlumnos.toString()}</p>
+              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">estudiantes</p>
             </div>
-            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-              <div className="w-8 h-8 rounded-full bg-[#00A86B]/10 flex items-center justify-center mb-1.5">
-                <DollarSign className="w-4 h-4 text-[#00A86B]" />
+
+            {/* Ingresos del Mes */}
+            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+              <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-teal-400 to-emerald-500" />
+              <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+                <DollarSign className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00A86B]" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Ingresos del Mes</span>
-              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{formatCLP(filteredResumen.ingresosMes)}</p>
+              <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Ingresos del Mes</span>
+              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{formatCLP(filteredResumen.ingresosMes)}</p>
+              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">facturación</p>
             </div>
-            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#F28C28] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-              <div className="w-8 h-8 rounded-full bg-[#F28C28]/10 flex items-center justify-center mb-1.5">
-                <CreditCard className="w-4 h-4 text-[#F28C28]" />
+
+            {/* Membresías Activas */}
+            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+              <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-[#F39200]" />
+              <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+                <CreditCard className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#F39200]" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Membresías Activas</span>
-              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.membresiasActivas.toString()}</p>
+              <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Membresías Activas</span>
+              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.membresiasActivas.toString()}</p>
+              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">al día</p>
             </div>
-            <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#7C3AED] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-              <div className="w-8 h-8 rounded-full bg-[#7C3AED]/10 flex items-center justify-center mb-1.5">
-                <TrendingUp className="w-4 h-4 text-[#7C3AED]" />
+
+            {/* Tasa de Retención */}
+            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+              <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-600" />
+              <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+                <TrendingUp className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#8B5CF6]" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Tasa de Retención</span>
-              <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{filteredResumen.retencion}%</p>
+              <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Tasa de Retención</span>
+              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.retencion}%</p>
+              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">fidelización</p>
             </div>
           </div>
         </div>
@@ -471,7 +470,8 @@ export default function AnaliticasPage() {
             ) : (
               <>
                 {/* Bar Chart */}
-                <div className="flex items-end gap-3 h-48 mb-6">
+                <div className="overflow-x-auto pb-2">
+                <div className="flex items-end gap-3 h-48 mb-6 min-w-[500px]">
                   {filteredMesesData.map((item) => {
                     const BAR_PX = 192;
                     const pixelHeight = Math.max((item.ingresos / maxRevenue) * BAR_PX, 4);
@@ -508,11 +508,13 @@ export default function AnaliticasPage() {
                     );
                   })}
                 </div>
+                </div>
 
                 {/* Data Table */}
+                <div className="md:overflow-x-auto">
                 <div className="bg-gray-50/70 rounded-lg border border-gray-100 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
+                  <table className="w-full text-sm md:min-w-[600px]">
+                    <thead className="hidden md:table-header-group">
                       <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
                         <th className="p-3 pl-4 font-semibold">Mes</th>
                         <th className="p-3 font-semibold">Ingresos</th>
@@ -527,48 +529,89 @@ export default function AnaliticasPage() {
                         const isLast = !selectedMonth && item.mes === filteredMesesData[filteredMesesData.length - 1]?.mes;
                         const barWidth = (item.ingresos / maxRevenue) * 100;
                         return (
-                          <tr key={item.mes} onClick={() => handleSelectMonth(item.mes)} className={`border-b border-gray-100 last:border-0 hover:bg-white transition-colors cursor-pointer ${isLast ? "bg-amber-50/40" : ""}`}>
-                            <td className="p-3 pl-4 font-medium text-gray-900 whitespace-nowrap">
-                              {isLast && (
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] mr-2 animate-pulse" />
-                              )}
-                              {item.label}
-                            </td>
-                            <td className="p-3">
-                              <span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span>
-                            </td>
-                            <td className="p-3">
-                              <span className="text-gray-700">{item.transacciones}</span>
-                            </td>
-                            <td className="p-3">
-                              <span className="text-gray-700">{item.membresias}</span>
-                            </td>
-                            <td className="p-3">
-                              {item.vsAnterior !== null ? (
-                                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold ${
-                                  item.vsAnterior >= 0
-                                    ? "bg-green-50 text-green-700"
-                                    : "bg-red-50 text-red-700"
-                                }`}>
-                                  {item.vsAnterior >= 0 ? (
-                                    <TrendingUp size={12} />
-                                  ) : (
-                                    <TrendingDown size={12} />
-                                  )}
-                                  {Math.abs(item.vsAnterior)}%
+                          <Fragment key={item.mes}>
+                            {/* MOBILE CARD */}
+                            <tr className="md:hidden border-b border-gray-100">
+                              <td colSpan={6} className="p-0">
+                                <div onClick={() => handleSelectMonth(item.mes)} className="p-3 space-y-1.5 cursor-pointer">
+                                  <div className="flex items-center justify-between">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-semibold text-gray-900 text-sm">{item.label}</p>
+                                    </div>
+                                    {isLast && (
+                                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] animate-pulse shrink-0 ml-2" />
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
+                                    <div><span className="text-gray-400">Ingresos: </span><span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span></div>
+                                    <div><span className="text-gray-400">Ventas: </span><span className="font-medium text-gray-700">{item.transacciones}</span></div>
+                                    <div><span className="text-gray-400">Membresías: </span><span className="font-medium text-gray-700">{item.membresias}</span></div>
+                                  </div>
+                                  <div className="flex items-center justify-between pt-0.5">
+                                    <div>
+                                      {item.vsAnterior !== null ? (
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                          item.vsAnterior >= 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                                        }`}>
+                                          {item.vsAnterior >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                          {Math.abs(item.vsAnterior)}%
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-300 text-[10px]">—</span>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-gray-400 text-[10px]">Acumulado: </span>
+                                      <span className="font-semibold text-gray-900 text-[11px]">{formatCLP(item.acumulado)}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                              ) : (
-                                <span className="text-gray-300">—</span>
-                              )}
-                            </td>
-                            <td className="p-3 pr-4 text-right">
-                              <span className="font-semibold text-gray-900">{formatCLP(item.acumulado)}</span>
-                            </td>
-                          </tr>
+                              </td>
+                            </tr>
+                            {/* DESKTOP ROW */}
+                            <tr onClick={() => handleSelectMonth(item.mes)} className={`hidden md:table-row border-b border-gray-100 last:border-0 hover:bg-white transition-colors cursor-pointer ${isLast ? "bg-amber-50/40" : ""}`}>
+                              <td className="p-3 pl-4 font-medium text-gray-900 whitespace-nowrap">
+                                {isLast && (
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] mr-2 animate-pulse" />
+                                )}
+                                {item.label}
+                              </td>
+                              <td className="p-3">
+                                <span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span>
+                              </td>
+                              <td className="p-3">
+                                <span className="text-gray-700">{item.transacciones}</span>
+                              </td>
+                              <td className="p-3">
+                                <span className="text-gray-700">{item.membresias}</span>
+                              </td>
+                              <td className="p-3">
+                                {item.vsAnterior !== null ? (
+                                  <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold ${
+                                    item.vsAnterior >= 0
+                                      ? "bg-green-50 text-green-700"
+                                      : "bg-red-50 text-red-700"
+                                  }`}>
+                                    {item.vsAnterior >= 0 ? (
+                                      <TrendingUp size={12} />
+                                    ) : (
+                                      <TrendingDown size={12} />
+                                    )}
+                                    {Math.abs(item.vsAnterior)}%
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-300">—</span>
+                                )}
+                              </td>
+                              <td className="p-3 pr-4 text-right">
+                                <span className="font-semibold text-gray-900">{formatCLP(item.acumulado)}</span>
+                              </td>
+                            </tr>
+                          </Fragment>
                         );
                       })}
                     </tbody>
-                    <tfoot>
+                    <tfoot className="hidden md:table-footer-group">
                       <tr className="bg-gray-100/60 border-t-2 border-gray-200">
                         <td className="p-3 pl-4 font-bold text-gray-700">{selectedMonth ? "Total mes" : "Total"}</td>
                         <td className="p-3 font-black text-gray-900">
@@ -584,6 +627,17 @@ export default function AnaliticasPage() {
                       </tr>
                     </tfoot>
                   </table>
+                  {/* MOBILE TOTALS */}
+                  {filteredMesesData.length > 0 && (
+                    <div className="md:hidden p-3 bg-gray-100/60 border-t-2 border-gray-200">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        <div><span className="text-gray-500 font-semibold">{selectedMonth ? "Total mes" : "Total"}: </span><span className="font-black text-gray-900">{formatCLP(filteredMesesData.reduce((s, m) => s + m.ingresos, 0))}</span></div>
+                        <div><span className="text-gray-500">Ventas: </span><span className="font-bold text-gray-900">{filteredMesesData.reduce((s, m) => s + m.transacciones, 0)}</span></div>
+                        <div><span className="text-gray-500">Membresías: </span><span className="font-bold text-gray-900">{filteredMesesData.reduce((s, m) => s + m.membresias, 0)}</span></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 </div>
               </>
             )}
@@ -695,9 +749,9 @@ export default function AnaliticasPage() {
                 No hay planes configurados
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="md:overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="hidden md:table-header-group">
                     <tr className="text-left text-gray-500 border-b">
                       <th className="p-3 font-semibold">Nombre</th>
                       <th className="p-3 font-semibold">Tokens</th>
@@ -722,114 +776,6 @@ export default function AnaliticasPage() {
         </div>
       </div>
 
-      {/* Detail Modal */}
-      {monthDetail && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 pb-8">
-          <div className="fixed inset-0 bg-black/40" onClick={() => { setMonthDetail(null); setSelectedMonth(null); }} />
-          <div className="relative bg-white border-t-2 border-t-[#F28C28] border border-gray-200 shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto z-10">
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Detalle de {(() => {
-                    const p = selectedMonth?.split("-");
-                    if (!p) return "";
-                    return `${MESES[parseInt(p[1]) - 1]} ${p[0]}`;
-                  })()}
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {monthDetail.membresiasCount} membresía{monthDetail.membresiasCount !== 1 ? "s" : ""} · {formatCLP(monthDetail.totalIngresos)} total
-                </p>
-              </div>
-              <button
-                onClick={() => { setMonthDetail(null); setSelectedMonth(null); }}
-                className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              {detailLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#F28C28]" />
-                </div>
-              ) : (
-                <>
-                  {/* Summary card */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00305B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                      <div className="w-8 h-8 rounded-full bg-[#00305B]/10 flex items-center justify-center mb-1.5">
-                        <DollarSign className="w-4 h-4 text-[#00305B]" />
-                      </div>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Ingresos</span>
-                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{formatCLP(monthDetail.totalIngresos)}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#00A86B] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                      <div className="w-8 h-8 rounded-full bg-[#00A86B]/10 flex items-center justify-center mb-1.5">
-                        <CreditCard className="w-4 h-4 text-[#00A86B]" />
-                      </div>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Membresías</span>
-                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{monthDetail.membresiasCount}</p>
-                    </div>
-                    <div className="bg-white border border-gray-200 shadow-sm ring-1 ring-inset ring-black/[0.03] border-t-4 border-t-[#7C3AED] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                      <div className="w-8 h-8 rounded-full bg-[#7C3AED]/10 flex items-center justify-center mb-1.5">
-                        <Users className="w-4 h-4 text-[#7C3AED]" />
-                      </div>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 leading-tight">Planes</span>
-                      <p className="text-sm font-black text-gray-800 leading-tight mt-0.5">{monthDetail.planes.length}</p>
-                    </div>
-                  </div>
-
-                  {/* Breakdown by plan */}
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-700 mb-3">Desglose por Plan</h4>
-                    <div className="space-y-2">
-                      {monthDetail.planes.map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-2.5 h-2.5 rounded-full bg-[#F28C28]" />
-                            <span className="font-medium text-gray-800">{p.nombre}</span>
-                            <span className="text-xs text-gray-400">×{p.count}</span>
-                          </div>
-                          <span className="font-bold text-gray-900">{formatCLP(p.subtotal)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Membership list */}
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-700 mb-3">Membresías</h4>
-                    {monthDetail.detalle.length === 0 ? (
-                      <p className="text-gray-400 text-sm text-center py-4">Sin membresías registradas</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="text-left text-gray-500 border-b">
-                              <th className="pb-2 font-semibold">Alumno</th>
-                              <th className="pb-2 font-semibold">Plan</th>
-                              <th className="pb-2 font-semibold text-right">Precio</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {monthDetail.detalle.map((d: any, i: number) => (
-                              <tr key={i} className="border-b border-gray-50 last:border-0">
-                                <td className="py-2.5 font-medium text-gray-800">{d.usuario_nombre}</td>
-                                <td className="py-2.5 text-gray-600">{d.plan_nombre}</td>
-                                <td className="py-2.5 text-right font-semibold text-gray-900">{formatCLP(d.precio)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

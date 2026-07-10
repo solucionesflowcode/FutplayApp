@@ -248,9 +248,9 @@ export default function ProfesoresPage() {
 
           {/* ─── RESULTADOS DE BÚSQUEDA ─── */}
           {resultadosBusqueda !== null && resultadosBusqueda.length > 0 && (
-            <div className="mt-4 border border-gray-100 rounded-lg overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
-                <thead>
+            <div className="mt-4 border border-gray-100 rounded-lg">
+              <table className="w-full text-sm">
+                <thead className="hidden md:table-header-group">
                   <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                     <th className="p-3 font-semibold">Nombre</th>
                     <th className="p-3 font-semibold">Email</th>
@@ -260,29 +260,48 @@ export default function ProfesoresPage() {
                 </thead>
                 <tbody>
                   {resultadosBusqueda.map((u) => (
-                    <tr key={u.id} className="border-b last:border-0 hover:bg-gray-50/50">
-                      <td className="p-3 font-medium text-gray-900">{u.nombre}</td>
-                      <td className="p-3 text-gray-600">{u.email}</td>
-                      <td className="p-3">
-                        <span className="inline-flex items-center px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold capitalize">
-                          {u.rol}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <button
-                          onClick={() => handleConvertir(u.id)}
-                          disabled={convertiendoId === u.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {convertiendoId === u.id ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <Check size={14} />
-                          )}
-                          Convertir a Profesor
-                        </button>
-                      </td>
-                    </tr>
+                    <Fragment key={u.id}>
+                      {/* MOBILE CARD */}
+                      <tr className="md:hidden border-b border-gray-100">
+                        <td colSpan={4} className="p-0">
+                          <div className="p-3 space-y-1.5">
+                            <p className="font-semibold text-gray-900 text-sm">{u.nombre}</p>
+                            <p className="text-[11px] text-gray-500">{u.email}</p>
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-lg text-[10px] font-semibold capitalize">{u.rol}</span>
+                              <button onClick={() => handleConvertir(u.id)} disabled={convertiendoId === u.id} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 disabled:opacity-50">
+                                {convertiendoId === u.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
+                                Convertir
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* DESKTOP ROW */}
+                      <tr className="hidden md:table-row border-b last:border-0 hover:bg-gray-50/50">
+                        <td className="p-3 font-medium text-gray-900 truncate max-w-[180px]">{u.nombre}</td>
+                        <td className="p-3 text-gray-600 truncate max-w-[200px]">{u.email}</td>
+                        <td className="p-3">
+                          <span className="inline-flex items-center px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold capitalize">
+                            {u.rol}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <button
+                            onClick={() => handleConvertir(u.id)}
+                            disabled={convertiendoId === u.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {convertiendoId === u.id ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <Check size={14} />
+                            )}
+                            Convertir a Profesor
+                          </button>
+                        </td>
+                      </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -316,9 +335,9 @@ export default function ProfesoresPage() {
             <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} profesor{filtered.length !== 1 ? "es" : ""}</span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[800px]">
-              <thead>
+          <div className="md:overflow-x-auto">
+            <table className="w-full text-sm md:min-w-[800px]">
+              <thead className="hidden md:table-header-group">
                 <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                   <th className="p-3 font-semibold">Nombre</th>
                   <th className="p-3 font-semibold">Email</th>
@@ -337,8 +356,43 @@ export default function ProfesoresPage() {
                   </tr>
                 ) : filtered.map((p) => (
                   <Fragment key={p.id}>
-                    <tr className="border-b hover:bg-gray-50/50">
-                      <td className="p-3">
+                    {/* MOBILE CARD */}
+                    <tr className="md:hidden border-b border-gray-100">
+                      <td colSpan={6} className="p-0">
+                        <div className="p-3 space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            {p.foto_url ? (
+                              <img src={p.foto_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-[#F28C28]/10 flex items-center justify-center text-[#F28C28] font-bold text-xs shrink-0">{p.nombre.charAt(0).toUpperCase()}</div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
+                              <p className="text-[10px] text-gray-400 truncate">{p.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
+                            {p.telefono && <div><span className="text-gray-400">Tel: </span><span className="font-medium text-gray-700">{p.telefono}</span></div>}
+                            <div><span className="text-gray-400">Registro: </span><span className="font-medium text-gray-700">{new Date(p.created_at).toLocaleDateString("es-CL", { timeZone: "America/Santiago" })}</span></div>
+                          </div>
+                          <div className="flex gap-2 text-[11px]">
+                            <button onClick={() => toggleExpand(p.id)} className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold">
+                              <BookOpen size={11} /> {p.clases.length} clase{p.clases.length !== 1 ? "s" : ""}
+                            </button>
+                            <button onClick={() => toggleExpand(p.id)} className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold">
+                              <Video size={11} /> {p.capsulas.length} cápsula{p.capsulas.length !== 1 ? "s" : ""}
+                            </button>
+                          </div>
+                          <div className="flex gap-2 pt-1 border-t border-gray-50">
+                            <button onClick={() => openEdit(p)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
+                            <button onClick={() => setDeleteTarget({ id: p.id, nombre: p.nombre })} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* DESKTOP ROW */}
+                    <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
+                      <td className="p-3 max-w-[200px]">
                         <div className="flex items-center gap-3">
                           {p.foto_url ? (
                             <img src={p.foto_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
@@ -347,16 +401,16 @@ export default function ProfesoresPage() {
                               {p.nombre.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <div>
-                            <span className="font-semibold text-gray-900">{p.nombre}</span>
-                            <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                          <div className="min-w-0">
+                            <span className="font-semibold text-gray-900 truncate block">{p.nombre}</span>
+                            <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5 truncate">
                               <Calendar size={10} />
                               {new Date(p.created_at).toLocaleDateString("es-CL", { timeZone: "America/Santiago" })}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="p-3 text-gray-600">{p.email}</td>
+                      <td className="p-3 text-gray-600 truncate max-w-[200px]">{p.email}</td>
                       <td className="p-3 text-gray-600">{p.telefono || <span className="text-gray-300">—</span>}</td>
                       <td className="p-3">
                         <button
@@ -396,8 +450,8 @@ export default function ProfesoresPage() {
                       </td>
                     </tr>
                     {expandedId === p.id && (p.clases.length > 0 || p.capsulas.length > 0) && (
-                      <tr className="bg-gray-50/70">
-                        <td colSpan={6} className="p-3 pl-12">
+                      <tr className="bg-gray-50/70 hidden md:table-row">
+                        <td colSpan={6} className="p-3 pl-4 md:pl-12">
                           {p.clases.length > 0 && (
                             <>
                               <div className="text-xs font-semibold text-gray-500 mb-2">Clases que imparte:</div>

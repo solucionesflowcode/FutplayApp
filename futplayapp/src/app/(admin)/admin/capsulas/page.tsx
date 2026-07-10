@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import {
   Plus,
   Pencil,
@@ -804,9 +804,9 @@ export default function CapsulasPage() {
               <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} cápsula{filtered.length !== 1 ? "s" : ""}</span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[800px]">
-                <thead>
+            <div className="md:overflow-x-auto">
+              <table className="w-full text-sm md:min-w-[800px]">
+                <thead className="hidden md:table-header-group">
                   <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                     <th className="p-3 font-semibold">Título</th>
                     <th className="p-3 font-semibold">Coach</th>
@@ -827,103 +827,141 @@ export default function CapsulasPage() {
                       </td>
                     </tr>
                   ) : filtered.map((c) => (
-                    <tr key={c.id} className="border-b hover:bg-gray-50/50">
-                      <td className="p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-7 rounded bg-gray-100 overflow-hidden shrink-0">
-                            {c.imagen ? (
-                              <img src={c.imagen} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                <Image size={14} />
+                    <Fragment key={c.id}>
+                      {/* MOBILE CARD */}
+                      <tr className="md:hidden border-b border-gray-100">
+                        <td colSpan={9} className="p-0">
+                          <div className="p-3 space-y-1.5">
+                            <div className="flex items-start gap-2">
+                              <div className="w-8 h-6 rounded bg-gray-100 overflow-hidden shrink-0">
+                                {c.imagen ? <img src={c.imagen} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><Image size={11} /></div>}
                               </div>
-                            )}
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-gray-900 truncate text-sm">{c.titulo}</p>
+                                <p className="text-[10px] text-gray-400">{c.creado || ""}{c.duracion ? ` · ${c.duracion}` : ""}</p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button onClick={() => handleToggleDestacada(c)} disabled={togglingDestacada === c.id} className={`p-1 rounded-lg ${c.destacada ? "text-yellow-500" : "text-gray-300"}`} title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}>
+                                  {togglingDestacada === c.id ? <Loader2 size={14} className="animate-spin" /> : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+                              {c.modulo_nombre && <div><span className="text-gray-400">Módulo: </span><span className="font-medium text-gray-700">{c.modulo_nombre}</span></div>}
+                              {c.profesor_nombre && <div><span className="text-gray-400">Prof: </span><span className="font-medium text-gray-700">{c.profesor_nombre}</span></div>}
+                              {c.bunny_video_id && <div><span className="text-gray-400">Video ID: </span><span className="font-medium text-gray-500 font-mono">{c.bunny_video_id.slice(0, 8)}...</span></div>}
+                              <div><span className="text-gray-400">Orden: </span><span className="font-medium text-gray-700">{c.order_index ?? 0}</span></div>
+                            </div>
+                            <div className="flex gap-2 pt-1 border-t border-gray-50">
+                              <button onClick={() => openEdit(c)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
+                              <button onClick={() => setDeleteTarget({ id: c.id, titulo: c.titulo })} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
+                            </div>
                           </div>
-                          <span className="font-semibold text-gray-900">{c.titulo}</span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-gray-600">{c.creado || <span className="text-gray-300">—</span>}</td>
-                      <td className="p-3 text-gray-600">{c.duracion || <span className="text-gray-300">—</span>}</td>
-                      <td className="p-3">
-                        {c.modulo_nombre ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold">
-                            <BookOpen size={12} />
-                            {c.modulo_nombre}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {c.profesor_nombre ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold">
-                            <PersonStanding size={12} />
-                            {c.profesor_nombre}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {c.bunny_video_id ? (
-                          <a
-                            href={`https://dash.bunny.net/stream/library/${c.bunny_video_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-mono"
-                          >
-                            <Video size={12} />
-                            {c.bunny_video_id.slice(0, 8)}...
-                            <ExternalLink size={10} />
-                          </a>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <span className="inline-flex items-center gap-1 text-gray-500 text-xs">
-                          <Hash size={12} />
-                          {c.order_index ?? 0}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center">
-                        <button
-                          onClick={() => handleToggleDestacada(c)}
-                          disabled={togglingDestacada === c.id}
-                          className={`p-1.5 rounded-lg ${c.destacada
-                            ? "text-yellow-500 hover:bg-yellow-50"
-                            : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"
-                            }`}
-                          title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
-                        >
-                          {togglingDestacada === c.id ? (
-                            <Loader2 size={16} className="animate-spin" />
+                        </td>
+                      </tr>
+                      {/* DESKTOP ROW */}
+                      <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
+                        <td className="p-3 max-w-[200px]">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-7 rounded bg-gray-100 overflow-hidden shrink-0">
+                              {c.imagen ? (
+                                <img src={c.imagen} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                  <Image size={14} />
+                                </div>
+                              )}
+                            </div>
+                            <span className="font-semibold text-gray-900 truncate">{c.titulo}</span>
+                          </div>
+                        </td>
+                        <td className="p-3 text-gray-600">{c.creado || <span className="text-gray-300">—</span>}</td>
+                        <td className="p-3 text-gray-600">{c.duracion || <span className="text-gray-300">—</span>}</td>
+                        <td className="p-3">
+                          {c.modulo_nombre ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold">
+                              <BookOpen size={12} />
+                              {c.modulo_nombre}
+                            </span>
                           ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                            </svg>
+                            <span className="text-gray-300">—</span>
                           )}
-                        </button>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex gap-2">
+                        </td>
+                        <td className="p-3">
+                          {c.profesor_nombre ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold">
+                              <PersonStanding size={12} />
+                              {c.profesor_nombre}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {c.bunny_video_id ? (
+                            <a
+                              href={`https://dash.bunny.net/stream/library/${c.bunny_video_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-mono"
+                            >
+                              <Video size={12} />
+                              {c.bunny_video_id.slice(0, 8)}...
+                              <ExternalLink size={10} />
+                            </a>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <span className="inline-flex items-center gap-1 text-gray-500 text-xs">
+                            <Hash size={12} />
+                            {c.order_index ?? 0}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
                           <button
-                            onClick={() => openEdit(c)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                            title="Editar"
+                            onClick={() => handleToggleDestacada(c)}
+                            disabled={togglingDestacada === c.id}
+                            className={`p-1.5 rounded-lg ${c.destacada
+                              ? "text-yellow-500 hover:bg-yellow-50"
+                              : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"
+                              }`}
+                            title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
                           >
-                            <Pencil size={16} />
+                            {togglingDestacada === c.id ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                            )}
                           </button>
-                          <button
-                            onClick={() => setDeleteTarget({ id: c.id, titulo: c.titulo })}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openEdit(c)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                              title="Editar"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget({ id: c.id, titulo: c.titulo })}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

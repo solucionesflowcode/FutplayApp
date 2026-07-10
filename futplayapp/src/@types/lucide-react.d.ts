@@ -91,4 +91,7 @@ declare module "lucide-react" {
   export const Users: Icon;
   export const Video: Icon;
   export const XCircle: Icon;
+  export const LogIn: Icon;
+  export const ShieldX: Icon;
+  export const TriangleAlert: Icon;
 }

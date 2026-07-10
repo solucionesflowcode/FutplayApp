@@ -69,13 +69,13 @@ function AdminContent() {
       s.status.toLowerCase().includes(q)
   );
 
-  const total = filtered.length;
-  const jugadores = filtered.filter((s) => s.role === "Alumno").length;
-  const profesores = filtered.filter((s) => s.role === "Profesor").length;
-  const admins = filtered.filter((s) => s.role === "Admin").length;
-  const activos = filtered.filter((s) => s.status === "Activo").length;
-  const vencidos = filtered.filter((s) => s.status === "Vencido").length;
-  const inactivos = filtered.filter((s) => s.status === "Inactivo").length;
+  const total = students.length;
+  const jugadores = students.filter((s) => s.role === "Alumno").length;
+  const profesores = students.filter((s) => s.role === "Profesor").length;
+  const admins = students.filter((s) => s.role === "Admin").length;
+  const activos = students.filter((s) => s.status === "Activo").length;
+  const vencidos = students.filter((s) => s.status === "Vencido").length;
+  const inactivos = students.filter((s) => s.status === "Inactivo").length;
 
   if (loading) {
     return (
@@ -90,96 +90,96 @@ function AdminContent() {
 
   return (
 
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <AdminHeader
         search={search}
         onSearchChange={setSearch}
       />
 
       {/* Stats cards — diseño tipo pagos */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 md:gap-6 mb-8">
+      <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-7 gap-1 sm:gap-4 md:gap-6 mb-8">
         {/* Total */}
-        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-blue-600 to-[#00305B]" />
-          <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <Users className="w-4 h-4 text-[#00305B]" />
+        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+          <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-blue-600 to-[#00305B]" />
+          <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+            <Users className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00305B]" />
           </div>
-          <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Total</span>
-          <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{total}</p>
-          <p className="text-[9px] text-slate-500 font-medium mt-0.5">usuarios</p>
+          <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Total</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{total}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">usuarios</p>
         </div>
 
         {/* Alumnos */}
-        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-indigo-400 to-indigo-600" />
-          <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <GraduationCap className="w-4 h-5 text-[#6366F1]" />
+        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+          <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-indigo-400 to-indigo-600" />
+          <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+            <GraduationCap className="w-1.5 h-2 sm:w-4 sm:h-5 text-[#6366F1]" />
           </div>
-          <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Alumnos</span>
-          <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{jugadores}</p>
-          <p className="text-[9px] text-slate-500 font-medium mt-0.5">estudiantes</p>
+          <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Alumnos</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{jugadores}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">estudiantes</p>
         </div>
 
         {/* Profesores */}
-        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-600" />
-          <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <UserCheck className="w-5 h-5 text-[#8B5CF6]" />
+        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+          <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-600" />
+          <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+            <UserCheck className="w-1.5 h-1.5 sm:w-5 sm:h-5 text-[#8B5CF6]" />
           </div>
-          <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Profesores</span>
-          <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{profesores}</p>
-          <p className="text-[9px] text-slate-500 font-medium mt-0.5">instructores</p>
+          <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Profesores</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{profesores}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">instructores</p>
         </div>
 
         {/* Administrador */}
-        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-[#F39200]" />
-          <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <ShieldCheck className="w-4 h-5 text-[#F39200]" />
+        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+          <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-[#F39200]" />
+          <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+            <ShieldCheck className="w-1.5 h-2 sm:w-4 sm:h-5 text-[#F39200]" />
           </div>
-          <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Admins</span>
-          <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{admins}</p>
-          <p className="text-[9px] text-slate-500 font-medium mt-0.5">supervisores</p>
+          <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Admins</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{admins}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">supervisores</p>
         </div>
 
         {/* Con Plan */}
-        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-teal-400 to-emerald-500" />
-          <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <CreditCard className="w-4 h-4 text-[#00A86B]" />
+        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+          <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-teal-400 to-emerald-500" />
+          <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+            <CreditCard className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00A86B]" />
           </div>
-          <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Con Plan</span>
-          <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{total - inactivos}</p>
-          <p className="text-[9px] text-slate-500 font-medium mt-0.5">membresías</p>
+          <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Con Plan</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{total - inactivos}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">membresías</p>
         </div>
 
         {/* Activos */}
-        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-green-400 to-[#00A86B]" />
-          <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <CheckCircle2 className="w-4 h-4 text-[#00A86B]" />
+        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+          <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-green-400 to-[#00A86B]" />
+          <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+            <CheckCircle2 className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00A86B]" />
           </div>
-          <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Activos</span>
-          <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{activos}</p>
-          <p className="text-[9px] text-slate-500 font-medium mt-0.5">al día</p>
+          <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Activos</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{activos}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">al día</p>
         </div>
 
         {/* Vencidos */}
-        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-gradient-to-r from-rose-400 to-red-500" />
-          <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-2 transition-colors group-hover:bg-slate-100">
-            <TriangleAlert className="w-4 h-4 text-[#ba1a1a]" />
+        <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
+          <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-rose-400 to-red-500" />
+          <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
+            <TriangleAlert className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#ba1a1a]" />
           </div>
-          <div className="w-6 h-[2px] bg-slate-100 mb-1.5 rounded-full" />
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Vencidos</span>
-          <p className="text-base md:text-lg font-black text-[#00305B] leading-none my-1 truncate max-w-full px-1">{vencidos}</p>
-          <p className="text-[9px] text-slate-500 font-medium mt-0.5">morosos</p>
+          <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
+          <span className="text-[7px] leading-[1.15] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Vencidos</span>
+          <p className="text-[14px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{vencidos}</p>
+          <p className="text-[7px] sm:text-[9px] text-slate-500 font-medium mt-0">morosos</p>
         </div>
       </div>
 
