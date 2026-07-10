@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Loader2 } from "lucide-react";
 
 export default function AuthCallback() {
   const router = useRouter();
+  const called = useRef(false);
 
   useEffect(() => {
+    if (called.current) return;
+    called.current = true;
+
+    const fallback = setTimeout(() => {
+      window.location.href = "/login?error=timeout";
+    }, 15000);
+
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
@@ -16,14 +24,16 @@ export default function AuthCallback() {
       const state = params.get("state");
 
       if (error || !code) {
-        router.replace("/login?error=auth");
+        clearTimeout(fallback);
+        window.location.href = "/login?error=auth";
         return;
       }
 
       const savedState = localStorage.getItem("oauth_state");
       localStorage.removeItem("oauth_state");
       if (!savedState || state !== savedState) {
-        router.replace("/login?error=csrf");
+        clearTimeout(fallback);
+        window.location.href = "/login?error=csrf";
         return;
       }
 
@@ -50,13 +60,15 @@ export default function AuthCallback() {
 
         if (signInError) {
           console.error("Supabase signInWithIdToken error:", signInError.message);
-          router.replace("/login?error=auth");
+          clearTimeout(fallback);
+          window.location.href = "/login?error=auth";
           return;
         }
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          router.replace("/login?error=session");
+          clearTimeout(fallback);
+          window.location.href = "/login?error=session";
           return;
         }
 
@@ -66,17 +78,19 @@ export default function AuthCallback() {
           .eq("id", user.id)
           .single();
 
+        clearTimeout(fallback);
         const role = usuario?.rol;
         if (role === "administrador") {
-          router.replace("/admin");
+          window.location.href = "/admin";
         } else if (role === "profesor" || role === "jugador") {
-          router.replace("/dashboard");
+          window.location.href = "/dashboard";
         } else {
-          router.replace("/home");
+          window.location.href = "/home";
         }
       } catch (e) {
         console.error("Auth callback error:", e);
-        router.replace("/login?error=auth");
+        clearTimeout(fallback);
+        window.location.href = "/login?error=auth";
       }
     };
 
