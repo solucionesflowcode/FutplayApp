@@ -54,7 +54,26 @@ export default function AuthCallback() {
           return;
         }
 
-        router.replace("/");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.replace("/login?error=session");
+          return;
+        }
+
+        const { data: usuario } = await supabase
+          .from("usuario")
+          .select("rol")
+          .eq("id", user.id)
+          .single();
+
+        const role = usuario?.rol;
+        if (role === "administrador") {
+          router.replace("/admin");
+        } else if (role === "profesor" || role === "jugador") {
+          router.replace("/dashboard");
+        } else {
+          router.replace("/home");
+        }
       } catch (e) {
         console.error("Auth callback error:", e);
         router.replace("/login?error=auth");
