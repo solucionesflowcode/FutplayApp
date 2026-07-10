@@ -72,11 +72,26 @@ export default function AuthCallback() {
           return;
         }
 
-        const { data: usuario } = await supabase
+        let { data: usuario } = await supabase
           .from("usuario")
           .select("rol")
           .eq("id", user.id)
           .single();
+
+        // Si no se encontró por id (posiblemente signInWithIdToken creó
+        // un auth.users nuevo para cuentas Google Workspace), buscar por
+        // email mediante API route con service role.
+        if (!usuario) {
+          try {
+            const linkRes = await fetch("/api/auth/link-usuario", { method: "POST" });
+            if (linkRes.ok) {
+              const linkData = await linkRes.json();
+              usuario = linkData.usuario;
+            }
+          } catch {
+            // fallback a /home
+          }
+        }
 
         clearTimeout(fallback);
         const role = usuario?.rol;
