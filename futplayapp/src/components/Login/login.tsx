@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Loader2, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { signInWithGoogle } from "@/data/auth";
 
 export default function Login() {
@@ -23,14 +22,6 @@ export default function Login() {
     <div className="min-h-screen bg-[#001730] flex items-center justify-center relative overflow-hidden">
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-[#f59e0b] opacity-5 blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-[#f59e0b] opacity-5 blur-3xl pointer-events-none" />
-
-      <Link
-        href="/home"
-        className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-medium z-10"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        <span className="text-sm hidden md:inline">Inicio</span>
-      </Link>
 
       <div className="flex flex-col md:flex-row w-full max-w-[850px] mx-4 bg-white border-t-2 border-t-[#f59e0b] shadow-2xl overflow-hidden">
         <div className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-[#002a58] to-[#001730] md:w-[45%] p-8 relative">

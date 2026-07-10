@@ -1,29 +1,35 @@
-import { createClient } from "@/utils/supabase/server";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { type NextRequest, NextResponse } from "next/server";
 
-/**
- * Route handler para callbacks de autenticación OAuth (Google).
- * Recibe el código de autorización desde Google, lo intercambia por una sesión
- * y redirige al usuario a la página de perfil.
- * 
- * Flujo:
- * 1. Google redirige aquí con ?code=...
- * 2. Se intercambia el código por una sesión de Supabase
- * 3. Se guardan las cookies de sesión
- * 4. Se redirige a / (raíz), que redirige según el rol
- */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 
   if (code) {
-    const cookieStore = await cookies();
-    const supabase = await createClient(cookieStore);
+    let redirectResponse = NextResponse.redirect(`${origin}/`);
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value);
+              redirectResponse.cookies.set(name, value, options);
+            });
+          },
+        },
+      },
+    );
+
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}/`);
+      return redirectResponse;
     }
   }
 
