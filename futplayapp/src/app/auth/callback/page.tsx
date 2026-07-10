@@ -12,22 +12,45 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
+      const error = params.get("error");
 
-      if (!code) {
-        router.replace("/login?error=no-code");
-        return;
-      }
-
-      const supabase = createClient();
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-      if (error) {
-        console.error("Auth callback error:", error.message);
+      if (error || !code) {
         router.replace("/login?error=auth");
         return;
       }
 
-      router.replace("/");
+      try {
+        const redirectUri = `${window.location.origin}/auth/callback`;
+
+        const res = await fetch("/api/auth/google/exchange", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, redirectUri }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Token exchange failed");
+        }
+
+        const { idToken } = await res.json();
+
+        const supabase = createClient();
+        const { error: signInError } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: idToken,
+        });
+
+        if (signInError) {
+          console.error("Supabase signInWithIdToken error:", signInError.message);
+          router.replace("/login?error=auth");
+          return;
+        }
+
+        router.replace("/");
+      } catch (e) {
+        console.error("Auth callback error:", e);
+        router.replace("/login?error=auth");
+      }
     };
 
     handleCallback();

@@ -47,15 +47,21 @@ export async function signOut(): Promise<void> {
 }
 
 export async function signInWithGoogle(): Promise<{ error: string | null }> {
-    const supabase = createClient();
     try {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
-            },
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!;
+        const redirectUri = `${window.location.origin}/auth/callback`;
+
+        const params = new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: redirectUri,
+            response_type: "code",
+            scope: "openid email profile",
+            access_type: "offline",
+            prompt: "consent",
         });
-        return { error: error?.message ?? null };
+
+        window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+        return { error: null };
     } catch {
         return { error: "Error al iniciar sesión con Google" };
     }
