@@ -72,17 +72,17 @@ function TeamCard({
         className="w-full text-left focus:outline-none"
         aria-expanded={expanded}
       >
-        <div className="relative overflow-hidden border-t-2 border-t-[#f59e0b] bg-gray-100 aspect-[4/5]">
-          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+        <div className="relative overflow-hidden border-t-2 border-t-[#f59e0b] bg-gradient-to-br from-gray-100 to-gray-200 min-h-[320px] flex flex-col">
+          <div className="flex-1 flex items-center justify-center py-6">
             <span className="text-5xl md:text-6xl font-black text-gray-300 select-none">
               {nombre.charAt(0)}
             </span>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-100 via-gray-100/90 to-transparent p-3 pt-8">
-            <span className="inline-block px-3 py-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full text-xs font-bold text-gray-900 shadow-sm mb-1.5">
+          <div className="p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200">
+            <span className="inline-block px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-900 shadow-sm mb-2">
               {nombre}
             </span>
-            <p className="text-[11px] text-gray-600 leading-snug line-clamp-2">
+            <p className="text-[11px] text-gray-600 leading-snug">
               {descripcion}
             </p>
           </div>
