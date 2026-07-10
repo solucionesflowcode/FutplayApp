@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <main className="bg-white min-h-screen font-sans pb-16 md:pb-0">
+    <main className="bg-white min-h-screen font-sans pb-16">
       <Hero />
       <Benefits />
       <About />
