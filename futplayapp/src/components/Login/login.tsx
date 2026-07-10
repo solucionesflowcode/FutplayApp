@@ -29,7 +29,7 @@ export default function Login() {
           <h2 className="text-2xl font-black text-white text-center">Futplay<span className="text-[#f59e0b]">.</span></h2>
           <p className="text-gray-400 text-xs text-center mt-2">Academia de fútbol de alto rendimiento</p>
           <div className="absolute bottom-6 left-6 right-6 text-center">
-            <p className="text-gray-500 text-[8px]">© {new Date().getFullYear()} FutPlay™</p>
+            <p className="text-gray-500 text-[8px]">© 2024 FutPlay™</p>
           </div>
         </div>
 

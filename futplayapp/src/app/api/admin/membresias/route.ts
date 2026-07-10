@@ -68,7 +68,20 @@ export async function GET() {
 
   const planesMap = new Map((planes || []).map((p) => [p.id, p]));
 
-  const resultMap = new Map<string, any>();
+  type MembresiaRow = {
+    membresia_id: string;
+    usuario_id: string;
+    plan_id: string;
+    plan_nombre: string;
+    tokens_mensuales: number;
+    precio: number;
+    tokens_totales: number;
+    tokens_usados: number;
+    tokens_restantes: number;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
+  };
+  const resultMap = new Map<string, MembresiaRow>();
 
   for (const m of membresias || []) {
     const existing = resultMap.get(m.usuario_id);

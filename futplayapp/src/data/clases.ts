@@ -26,6 +26,13 @@ export type Sede = {
   nombre: string;
 };
 
+export type InscripcionRow = {
+  id: string;
+  usuario_id: string;
+  asistencia: string | null;
+  usuario_nombre: string;
+};
+
 function localISONow(): string {
   return new Date().toISOString();
 }
@@ -59,7 +66,7 @@ export async function getProximaClase(userId: string): Promise<Array<{
   const excluded = new Set(["cancelado", "cancelado_sin_reembolso", "presente", "ausente"]);
   const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string; tipo_evento: "entrenamiento" | "partido" }> = [];
   for (const item of data) {
-    if (excluded.has((item as any).asistencia)) continue;
+    if (excluded.has((item as { asistencia: string | null }).asistencia ?? "")) continue;
     const raw = item.clase;
     const c = (Array.isArray(raw) ? (raw as Record<string, unknown>[])[0] : raw) as Record<string, unknown>;
     if (!c || (!c.titulo && c.tipo_evento !== "partido")) continue;
@@ -151,16 +158,33 @@ export async function deleteClase(id: string): Promise<{ success: boolean; error
 
 // ─── Asistencia ───
 
-export async function getAsistenciaGeneral(): Promise<any[]> {
+type AsistenciaGeneralRow = {
+  id: string;
+  asistencia: string | null;
+  clase_id: string;
+  usuario_id: string;
+  clase_titulo: string;
+  usuario_nombre: string;
+};
+
+export type AsistenciaDetalleClase = {
+  clase: {
+    id: string;
+    titulo: string | null;
+    fecha_hora: string | null;
+    cupo_maximo: number | null;
+    [key: string]: unknown;
+  };
+  inscripciones: Array<InscripcionRow>;
+};
+
+export async function getAsistenciaGeneral(): Promise<AsistenciaGeneralRow[]> {
   const res = await fetch("/api/admin/clases?tipo=asistencia-general");
   if (!res.ok) return [];
   return res.json();
 }
 
-export async function getAsistenciaPorClase(claseId: string): Promise<{
-  clase: any;
-  inscripciones: any[];
-} | null> {
+export async function getAsistenciaPorClase(claseId: string): Promise<AsistenciaDetalleClase | null> {
   const res = await fetch(`/api/admin/clases?tipo=asistencia&clase_id=${claseId}`);
   if (!res.ok) return null;
   return res.json();

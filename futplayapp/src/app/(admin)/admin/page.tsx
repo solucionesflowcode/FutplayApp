@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-// @ts-ignore
 import { Loader2, Users, GraduationCap, UserCheck, ShieldCheck, CreditCard, CheckCircle2, TriangleAlert } from "lucide-react";
 import StudentsTable, { Student } from "@/components/admin/StudentsTable";
 

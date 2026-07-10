@@ -51,7 +51,8 @@ export async function POST(request: Request) {
     const { data: publicUrlData } = adminClient.storage.from("modulos_miniaturas").getPublicUrl(fileName);
 
     return NextResponse.json({ url: publicUrlData.publicUrl });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Error interno";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

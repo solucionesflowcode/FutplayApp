@@ -14,7 +14,8 @@ export async function PUT(request: Request) {
     if (!ok) return NextResponse.json({ error: "Error al guardar" }, { status: 500 });
 
     return NextResponse.json({ success: true, capsula_id: capsulaId });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Error interno";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

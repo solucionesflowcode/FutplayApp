@@ -83,8 +83,8 @@ export default function ProfesoresPage() {
       if (resultados.length === 0) {
         setError("No se encontraron usuarios con ese email");
       }
-    } catch (err: any) {
-      setError(err.message || "Error al buscar");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al buscar");
     } finally {
       setBuscando(false);
     }

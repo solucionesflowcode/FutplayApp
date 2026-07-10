@@ -131,6 +131,7 @@ export default function MisClasesClient() {
     const [cancelMsg, setCancelMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [cancelTarget, setCancelTarget] = useState<SessionItem | null>(null);
 
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     const load = useCallback(async () => {
         if (!usuario?.id) {
             setLoading(false);

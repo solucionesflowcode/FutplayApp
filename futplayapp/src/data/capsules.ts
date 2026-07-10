@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type Capsula = {
     id: string;
@@ -12,7 +13,7 @@ export type Capsula = {
     bunny_video_id: string | null;
 };
 
-async function fetchCapsulaData(supabase: any, tipo: 'alumno' | 'profesor' | 'admin' = 'alumno'): Promise<Capsula[]> {
+async function fetchCapsulaData(supabase: SupabaseClient, tipo: 'alumno' | 'profesor' | 'admin' = 'alumno'): Promise<Capsula[]> {
     const { data: capsulas, error: capsulasError } = await supabase
         .from("capsula")
         .select("id, titulo, imagen, creado, duracion, modulo_id, bunny_video_id, descripcion")
@@ -24,7 +25,7 @@ async function fetchCapsulaData(supabase: any, tipo: 'alumno' | 'profesor' | 'ad
     }
 
     const moduloIds = capsulas
-        .map((c: any) => c.modulo_id)
+        .map((c: { modulo_id: string | null }) => c.modulo_id)
         .filter(Boolean);
 
     const { data: modulos, error: modulosError } = moduloIds.length > 0
@@ -39,7 +40,7 @@ async function fetchCapsulaData(supabase: any, tipo: 'alumno' | 'profesor' | 'ad
     }
 
     const categoriaIds = modulos
-        ?.map((m: any) => m.categoria_id)
+        ?.map((m: { categoria_id: string | null }) => m.categoria_id)
         .filter(Boolean) ?? [];
 
     const { data: categorias, error: categoriasError } = categoriaIds.length > 0
@@ -55,11 +56,11 @@ async function fetchCapsulaData(supabase: any, tipo: 'alumno' | 'profesor' | 'ad
 
     const moduloMap = new Map<string, string>();
     for (const mod of modulos ?? []) {
-        const cat = categorias?.find((c: any) => c.id === mod.categoria_id);
+        const cat = categorias?.find((c: { id: string; nombre: string }) => c.id === mod.categoria_id);
         moduloMap.set(mod.id, cat?.nombre ?? "");
     }
 
-    let result = capsulas.map((item: any) => ({
+    let result = capsulas.map((item: { id: string; titulo: string; imagen: string | null; creado: string | null; duracion: string | null; modulo_id: string | null; descripcion: string | null; bunny_video_id: string | null }) => ({
         id: item.id,
         titulo: item.titulo,
         imagen: item.imagen || "",

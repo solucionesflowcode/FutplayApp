@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { getCapsulaDestacadaId } from "@/lib/capsula-destacada";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 
 export async function GET(request: Request) {
@@ -23,8 +24,8 @@ export async function GET(request: Request) {
       return NextResponse.json(data || []);
     }
 
-    let capsulas: any[];
-    let capsulasError: any;
+    let capsulas: Record<string, unknown>[];
+    let capsulasError: PostgrestError | null;
 
     const result = await admin
       .from("capsula")
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
       capsulasError = fallback.error;
     } else {
       capsulas = result.data || [];
+      capsulasError = null;
     }
 
     if (capsulasError) return NextResponse.json({ error: capsulasError.message }, { status: 500 });
@@ -76,8 +78,9 @@ export async function GET(request: Request) {
       descripcion: c.descripcion || null,
       destacada: c.id === destacadaId,
     })));
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Error interno";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -93,7 +96,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "El título es obligatorio" }, { status: 400 });
     }
 
-    const insertData: any = {
+    const insertData: Record<string, unknown> = {
       titulo: body.titulo,
       imagen: body.imagen || null,
       creado: body.creado || null,
@@ -113,8 +116,9 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Error interno";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -128,7 +132,7 @@ export async function PUT(request: Request) {
 
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (body.titulo !== undefined) updateData.titulo = body.titulo;
     if (body.imagen !== undefined) updateData.imagen = body.imagen;
     if (body.creado !== undefined) updateData.creado = body.creado;
@@ -143,8 +147,9 @@ export async function PUT(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Error interno";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -163,7 +168,8 @@ export async function DELETE(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Error interno";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

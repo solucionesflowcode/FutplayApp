@@ -24,6 +24,8 @@ import {
   registrarAsistencia,
   type ClaseConRelaciones,
   type Sede,
+  type InscripcionRow,
+  type AsistenciaDetalleClase,
 } from "@/data/clases";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
@@ -70,7 +72,7 @@ export default function ClasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const [detalleClase, setDetalleClase] = useState<any>(null);
+  const [detalleClase, setDetalleClase] = useState<AsistenciaDetalleClase | null>(null);
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [diasFiltro, setDiasFiltro] = useState<number[]>([]);
@@ -157,7 +159,7 @@ export default function ClasesPage() {
 
     const fecha_hora = form.fecha && form.hora ? `${form.fecha}T${form.hora}` : undefined;
     const fecha_hora_local: string | null = fecha_hora ?? null;
-    const base: any = {
+    const base: Parameters<typeof createClase>[0] = {
       tipo_evento: form.tipo_evento,
       descripcion: form.descripcion,
     };
@@ -225,12 +227,15 @@ export default function ClasesPage() {
   const toggleAsistencia = async (usuarioId: string, asistencia: boolean) => {
     if (!detalleClase) return;
     await registrarAsistencia(detalleClase.clase.id, usuarioId, asistencia);
-    setDetalleClase((prev: any) => ({
-      ...prev,
-      inscripciones: prev.inscripciones.map((i: any) =>
-        i.usuario_id === usuarioId ? { ...i, asistencia: asistencia ? "asistio" : "no_asistio" } : i
-      ),
-    }));
+    setDetalleClase((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        inscripciones: prev.inscripciones.map((i) =>
+          i.usuario_id === usuarioId ? { ...i, asistencia: asistencia ? "asistio" : "no_asistio" } : i
+        ),
+      };
+    });
   };
 
   const formatFecha = (f: string) => {
@@ -690,7 +695,7 @@ function AsistenciaDetalle({
   data,
   onToggle,
 }: {
-  data: any;
+  data: AsistenciaDetalleClase;
   onToggle: (usuarioId: string, asistencia: boolean) => void;
 }) {
   const { clase, inscripciones } = data;
@@ -729,7 +734,7 @@ function AsistenciaDetalle({
           <tbody>
             {inscripciones.length === 0 ? (
               <tr><td colSpan={3} className="p-8 text-center text-gray-400">No hay alumnos inscritos en esta clase</td></tr>
-            ) : inscripciones.map((ins: any) => (
+            ) : inscripciones.map((ins: InscripcionRow) => (
               <Fragment key={ins.id}>
                 {/* MOBILE CARD */}
                 <tr className="md:hidden border-b border-gray-100">
@@ -796,9 +801,9 @@ function AsistenciaDetalle({
       <div className="p-3 border-t border-gray-100 flex items-center gap-4 text-sm">
         <Users size={16} className="text-gray-400" />
         <span className="text-gray-600">
-          <strong className="text-green-600">{inscripciones.filter((i: any) => i.asistencia === "asistio").length}</strong> presentes ·{" "}
-          <strong className="text-red-500">{inscripciones.filter((i: any) => i.asistencia === "no_asistio").length}</strong> ausentes ·{" "}
-          <strong className="text-gray-400">{inscripciones.filter((i: any) => i.asistencia !== "asistio" && i.asistencia !== "no_asistio").length}</strong> pendientes
+          <strong className="text-green-600">{inscripciones.filter((i: InscripcionRow) => i.asistencia === "asistio").length}</strong> presentes ·{" "}
+          <strong className="text-red-500">{inscripciones.filter((i: InscripcionRow) => i.asistencia === "no_asistio").length}</strong> ausentes ·{" "}
+          <strong className="text-gray-400">{inscripciones.filter((i: InscripcionRow) => i.asistencia !== "asistio" && i.asistencia !== "no_asistio").length}</strong> pendientes
         </span>
       </div>
     </div>

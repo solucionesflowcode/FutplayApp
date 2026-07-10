@@ -36,14 +36,15 @@ export async function getAllClasesConInscripcion(
         inscMap.set(ins.clase_id, { id: ins.id, asistencia: ins.asistencia });
     }
 
-    return (clases ?? []).map((clase: any) => {
+    type ClaseRaw = { id: string; titulo: string; descripcion: string | null; fecha_hora: string | null; sede: { nombre: string }[] | { nombre: string } | null; tipo_evento: "entrenamiento" | "partido" };
+    return (clases ?? []).map((clase: ClaseRaw) => {
         const ins = inscMap.get(clase.id);
         return {
             id: clase.id,
             titulo: clase.titulo,
             descripcion: clase.descripcion,
             fecha_hora: clase.fecha_hora,
-            sede: (clase.sede as { nombre: string } | null) ?? null,
+            sede: (Array.isArray(clase.sede) ? (clase.sede[0] ?? null) : clase.sede) as { nombre: string } | null,
             inscripcionId: ins?.id ?? null,
             asistencia: ins?.asistencia ?? null,
             tipo_evento: clase.tipo_evento,

@@ -23,7 +23,7 @@ async function fetchCapsulaData(supabase: ReturnType<typeof createClient>, tipo:
     }
 
     const moduloIds = capsulas
-        .map((c: any) => c.modulo_id)
+        .map((c: { modulo_id: string | null }) => c.modulo_id)
         .filter(Boolean);
 
     const { data: modulos, error: modulosError } = moduloIds.length > 0
@@ -38,7 +38,7 @@ async function fetchCapsulaData(supabase: ReturnType<typeof createClient>, tipo:
     }
 
     const categoriaIds = modulos
-        ?.map((m: any) => m.categoria_id)
+        ?.map((m: { categoria_id: string | null }) => m.categoria_id)
         .filter(Boolean) ?? [];
 
     const { data: categorias, error: categoriasError } = categoriaIds.length > 0
@@ -54,11 +54,11 @@ async function fetchCapsulaData(supabase: ReturnType<typeof createClient>, tipo:
 
     const moduloMap = new Map<string, string>();
     for (const mod of modulos ?? []) {
-        const cat = categorias?.find((c: any) => c.id === mod.categoria_id);
+        const cat = categorias?.find((c: { id: string; nombre: string }) => c.id === mod.categoria_id);
         moduloMap.set(mod.id, cat?.nombre ?? "");
     }
 
-    let result = capsulas.map((item: any) => ({
+    let result = capsulas.map((item: { id: string; titulo: string; imagen: string | null; creado: string | null; duracion: string | null; modulo_id: string | null; descripcion: string | null; bunny_video_id: string | null }) => ({
         id: item.id,
         titulo: item.titulo,
         imagen: item.imagen || "",

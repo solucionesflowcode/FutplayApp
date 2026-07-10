@@ -44,7 +44,7 @@ export default function ProfileForm() {
   }, []);
 
   const formatRut = (value: string) => {
-    let clean = value.replace(/[^0-9kK]/g, "").slice(0, 10);
+    const clean = value.replace(/[^0-9kK]/g, "").slice(0, 10);
     if (clean.length <= 1) return clean;
     const dv = clean.slice(-1);
     const nums = clean.slice(0, -1);

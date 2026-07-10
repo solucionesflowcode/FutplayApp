@@ -1,10 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getChileMonthBounds } from "@/lib/fechas";
 
-async function consumirToken(supabase: any, userId: string): Promise<boolean> {
+async function consumirToken(supabase: SupabaseClient, userId: string): Promise<boolean> {
     const { data: membresia } = await supabase
         .from("membresia")
         .select("id, tokens_usados")

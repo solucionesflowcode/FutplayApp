@@ -79,7 +79,6 @@ export default function Sidebar() {
             </Link>
             <div className="flex flex-col">
               <h2 className="text-lg font-bold leading-tight flex items-center gap-1.5"><img src="/futplay-logo-original.svg" alt="" className="h-4 w-auto" /> FutPlay</h2>
-              <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
             </div>
           </div>
           <button

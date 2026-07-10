@@ -6,6 +6,15 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { ahoraChile } from "@/lib/fechas";
 
+type MembresiaRow = {
+    id: string;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
+    tokens_totales: number;
+    tokens_usados: number;
+    plan?: { nombre: string; precio: number } | null;
+};
+
 type MembresiaData = {
     id: string;
     plan_nombre: string;
@@ -46,10 +55,11 @@ export default function ProximaRenovacion() {
                 return;
             }
 
+            const m = membresiaRes as MembresiaRow;
             setMembresia({
-                id: membresiaRes.id,
-                plan_nombre: (membresiaRes as any).plan?.nombre || "Sin plan",
-                precio: (membresiaRes as any).plan?.precio || 0,
+                id: m.id,
+                plan_nombre: m.plan?.nombre || "Sin plan",
+                precio: m.plan?.precio || 0,
                 fecha_inicio: membresiaRes.fecha_inicio,
                 fecha_vencimiento: membresiaRes.fecha_vencimiento,
                 tokens_totales: membresiaRes.tokens_totales,

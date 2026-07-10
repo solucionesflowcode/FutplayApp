@@ -14,7 +14,6 @@ export type Student = {
   tokens: number;
   status: string;
   medicalFileUrl?: string;
-  children?: any[];
 };
 
 type FichaModalState = {

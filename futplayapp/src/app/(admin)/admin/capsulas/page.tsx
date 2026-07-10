@@ -330,9 +330,10 @@ export default function CapsulasPage() {
       setUploadProgress(100);
       startPollingVideoStatus(videoId);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error inesperado al subir el video";
       console.error(err);
-      setError(err.message || "Error inesperado al subir el video");
+      setError(message);
       setUploadStatus("Fallo en la subida");
     } finally {
       setUploading(false);
@@ -425,9 +426,10 @@ export default function CapsulasPage() {
 
       setMiniaturaStatus("¡Miniatura subida!");
       setMiniaturaProgress(100);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error al subir miniatura";
       console.error(err);
-      setError(err.message || "Error al subir miniatura");
+      setError(message);
       setMiniaturaStatus("Fallo en la subida");
     } finally {
       setMiniaturaUploading(false);
@@ -532,9 +534,10 @@ export default function CapsulasPage() {
 
       setDocumentoStatus("¡Documento subido!");
       setDocumentoProgress(100);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error al subir documento";
       console.error(err);
-      setError(err.message || "Error al subir documento");
+      setError(message);
       setDocumentoStatus("Fallo en la subida");
     } finally {
       setDocumentoUploading(false);
@@ -641,7 +644,17 @@ export default function CapsulasPage() {
     const finalImagen = form.imagen || (libraryId && form.bunny_video_id ? `https://vz-${libraryId}.b-cdn.net/${form.bunny_video_id}/thumbnail.jpg` : "");
     const bunnyVideoId = extractBunnyVideoId(form.bunny_video_id) || form.bunny_video_id || undefined;
 
-    const payload: any = {
+    const payload: {
+      titulo: string;
+      imagen?: string;
+      creado?: string;
+      duracion?: string;
+      modulo_id?: string;
+      profesor_id?: string;
+      bunny_video_id?: string;
+      order_index?: number;
+      descripcion?: string;
+    } = {
       titulo: form.titulo,
       imagen: finalImagen || undefined,
       creado: form.creado || undefined,
