@@ -51,13 +51,15 @@ export async function signInWithGoogle(): Promise<{ error: string | null }> {
         const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!;
         const redirectUri = `${window.location.origin}/auth/callback`;
 
+        const state = crypto.randomUUID();
+        sessionStorage.setItem("oauth_state", state);
+
         const params = new URLSearchParams({
             client_id: clientId,
             redirect_uri: redirectUri,
             response_type: "code",
             scope: "openid email profile",
-            access_type: "offline",
-            prompt: "consent",
+            state,
         });
 
         window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;

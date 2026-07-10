@@ -13,9 +13,17 @@ export default function AuthCallback() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const error = params.get("error");
+      const state = params.get("state");
 
       if (error || !code) {
         router.replace("/login?error=auth");
+        return;
+      }
+
+      const savedState = sessionStorage.getItem("oauth_state");
+      sessionStorage.removeItem("oauth_state");
+      if (!savedState || state !== savedState) {
+        router.replace("/login?error=csrf");
         return;
       }
 
