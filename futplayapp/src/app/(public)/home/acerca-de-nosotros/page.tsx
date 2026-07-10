@@ -111,7 +111,7 @@ function TeamSection() {
       <div className="max-w-7xl mx-auto px-8 pb-24">
         <div className="relative">
           <div
-            className={`transition-all duration-700 ease-out overflow-hidden ${expanded ? "max-h-[500px] opacity-100 mb-8" : "max-h-0 opacity-0 mb-0"
+            className={`transition-all duration-700 ease-out ${expanded ? "max-h-[2000px] opacity-100 mb-8" : "max-h-0 opacity-0 mb-0 overflow-hidden"
               }`}
           >
             {expanded && (
