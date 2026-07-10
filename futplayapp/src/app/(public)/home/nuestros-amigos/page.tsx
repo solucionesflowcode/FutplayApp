@@ -13,7 +13,7 @@ const friends = [
 
 export default function FriendsPage() {
   return (
-    <main className="bg-white min-h-screen font-sans pb-16">
+    <main className="bg-white min-h-screen font-sans pb-16 md:pb-0">
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-8 text-center">
           <span className="text-[#f59e0b] font-bold tracking-wider uppercase text-sm">

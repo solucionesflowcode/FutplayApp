@@ -3,11 +3,8 @@ import Link from "next/link";
 export default function Hero() {
     return (
         <section className="relative min-h-[90vh] flex items-center pt-20 bg-[#002a58] text-white overflow-hidden">
-            <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#002a58] to-transparent z-10"></div>
-                <img src="https://images.unsplash.com/photo-1543326117-91f165aabf2d?q=80&w=2564&auto=format&fit=crop" className="w-full h-full object-cover" alt="" />
-            </div>
-            <div className="max-w-4xl mx-auto px-8 relative z-10 py-12">
+
+            <div className="max-w-7xl mx-auto px-8 grid md:grid-cols-2 gap-12 items-center relative z-10 py-12">
                 <div className="flex flex-col gap-6">
                     <span className="uppercase text-sm tracking-widest text-[#f59e0b] font-bold">Sedés en Quilpué y Reñaca</span>
                     <h1 className="text-5xl md:text-7xl font-black leading-tight">
@@ -23,7 +20,14 @@ export default function Hero() {
                     </div>
                 </div>
 
-
+                <div className="hidden md:block relative">
+                   <div className="absolute inset-0 bg-gradient-to-tr from-[#f59e0b] to-transparent blur-2xl opacity-30 animate-pulse pointer-events-none"></div>
+                    <img
+                        src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1500&auto=format&fit=crop"
+                        className="border-t-2 border-t-[#f59e0b] relative z-10 border-4 border-white/10 shadow-2xl object-cover w-full md:h-[450px]"
+                        alt=""
+                    />
+                </div>
             </div>
         </section>
     );
