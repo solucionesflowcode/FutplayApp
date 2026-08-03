@@ -10,6 +10,9 @@ export type FichaMedicaData = {
     alergias: string;
     medicamentos: string;
     observaciones: string;
+    perfil: string;
+    historial_lesiones: string;
+    afecciones_cardiacas: string;
 };
 
 export function calcularEdad(fechaNacimiento: string): number {

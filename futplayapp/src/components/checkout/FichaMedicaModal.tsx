@@ -56,6 +56,9 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
     const [alergias, setAlergias] = useState("");
     const [medicamentos, setMedicamentos] = useState("");
     const [observaciones, setObservaciones] = useState("");
+    const [perfil, setPerfil] = useState("");
+    const [historialLesiones, setHistorialLesiones] = useState("");
+    const [afeccionesCardiacas, setAfeccionesCardiacas] = useState("");
     const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -84,6 +87,9 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
         setAlergias("");
         setMedicamentos("");
         setObservaciones("");
+        setPerfil("");
+        setHistorialLesiones("");
+        setAfeccionesCardiacas("");
         setStep(1);
         setError(null);
     };
@@ -147,6 +153,9 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
             alergias: alergias.trim(),
             medicamentos: medicamentos.trim(),
             observaciones: observaciones.trim(),
+            perfil: perfil.trim(),
+            historial_lesiones: historialLesiones.trim(),
+            afecciones_cardiacas: afeccionesCardiacas.trim(),
         });
 
         if (!fichaSuccess) {
@@ -292,6 +301,15 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                 </div>
                             </div>
 
+                            {/* Grupo: Perfil */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <User size={16} className="text-[#00305B]" />
+                                    <h3 className="text-sm font-bold text-[#00305B] uppercase tracking-wider">Perfil</h3>
+                                </div>
+                                <InputField label="Perfil" placeholder="Describe tu perfil (posición, experiencia, objetivo...)" value={perfil} onChange={setPerfil} icon={<User size={14} />} />
+                            </div>
+
                             {/* Grupo: Datos Físicos */}
                             <div>
                                 <div className="flex items-center gap-2 mb-3">
@@ -363,6 +381,8 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                 </div>
                                 <div className="space-y-3">
                                     <InputField label="Enfermedades Crónicas" placeholder="Si no tienes, escribe 'Ninguna'" value={enfermedades} onChange={setEnfermedades} />
+                                    <InputField label="Historial de Lesiones" placeholder="Si no tienes, escribe 'Ninguna'" value={historialLesiones} onChange={setHistorialLesiones} icon={<Activity size={14} />} />
+                                    <InputField label="Afecciones Cardíacas" placeholder="Si no tienes, escribe 'Ninguna'" value={afeccionesCardiacas} onChange={setAfeccionesCardiacas} icon={<HeartPulse size={14} />} />
                                     <InputField label="Alergias" placeholder="Si no tienes, escribe 'Ninguna'" value={alergias} onChange={setAlergias} />
                                     <InputField label="Medicamentos Habituales" placeholder="Si no tomas, escribe 'Ninguno'" value={medicamentos} onChange={setMedicamentos} icon={<Pill size={14} />} />
                                 </div>
