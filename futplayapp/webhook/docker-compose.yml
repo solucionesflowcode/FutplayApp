@@ -1,0 +1,22 @@
+services:
+  whatsapp-bot:
+    build: .
+    container_name: futplay-whatsapp-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SCHEDULER_ENABLED: "true"
+      TZ: America/Santiago
+      RECORDATORIOS_PATH: /data/recordatorios.json
+    ports:
+      - "3001:3001"
+    volumes:
+      - bot-session:/app/whatsapp-session
+      - bot-cache:/app/.wwebjs_cache
+      - bot-data:/data
+
+volumes:
+  bot-session:
+  bot-cache:
+  bot-data:

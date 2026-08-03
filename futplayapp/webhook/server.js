@@ -5,11 +5,13 @@ const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
+// En el servidor (Docker) el archivo de entorno es webhook/.env
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const db = require('./data');
 const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp } = require('./handlers');
 
-const RECORDATORIOS_PATH = path.join(__dirname, '.recordatorios.json');
+const RECORDATORIOS_PATH = process.env.RECORDATORIOS_PATH || path.join(__dirname, '.recordatorios.json');
 let recordatoriosEnviados = new Set();
 try {
   if (fs.existsSync(RECORDATORIOS_PATH)) {
@@ -38,13 +40,22 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) console.warn('AVISO: Sin SUPABASE_SE
 db.init(supabaseUrl, supabaseKey);
 
 // ─── WhatsApp Client ───
+const puppeteerConfig = {
+  headless: true,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run']
+};
+
+if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+  puppeteerConfig.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+} else if (process.platform === 'win32') {
+  // Dev local en Windows: usa el Chrome instalado del sistema.
+  puppeteerConfig.executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+}
+// En Linux sin PUPPETEER_EXECUTABLE_PATH, puppeteer usa su Chrome for Testing cacheado (imagen Docker).
+
 const whatsapp = new Client({
   authStrategy: new LocalAuth({ dataPath: './whatsapp-session' }),
-  puppeteer: {
-    headless: true,
-    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run']
-  }
+  puppeteer: puppeteerConfig
 });
 
 let whatsappReady = false;

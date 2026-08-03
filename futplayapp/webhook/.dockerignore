@@ -1,0 +1,8 @@
+node_modules
+whatsapp-session
+.wwebjs_cache
+.recordatorios.json
+.env
+Dockerfile
+docker-compose.yml
+.dockerignore
