@@ -122,7 +122,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
     };
 
     const validateStep1 = () => {
-        return rut.trim() !== "" && !rutError && telefono.length === 12 && !telefonoError && fechaNacimiento.trim() !== "" && peso.trim() !== "" && estatura.trim() !== "" && grupoSanguineo.trim() !== "";
+        return rut.trim() !== "" && !rutError && telefono.length === 12 && !telefonoError && fechaNacimiento.trim() !== "" && peso.trim() !== "" && estatura.trim() !== "" && grupoSanguineo.trim() !== "" && perfil.trim() !== "";
     };
 
     const validateStep2 = () => {
@@ -307,7 +307,18 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                     <User size={16} className="text-[#00305B]" />
                                     <h3 className="text-sm font-bold text-[#00305B] uppercase tracking-wider">Perfil</h3>
                                 </div>
-                                <InputField label="Perfil" placeholder="Describe tu perfil (posición, experiencia, objetivo...)" value={perfil} onChange={setPerfil} icon={<User size={14} />} />
+                                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                                    Perfil (pierna hábil) <span className="text-red-400">*</span>
+                                </label>
+                                <select
+                                    value={perfil}
+                                    onChange={(e) => setPerfil(e.target.value)}
+                                    className="w-full px-4 py-3 rounded border-2 border-slate-100 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
+                                >
+                                    <option value="">Seleccionar</option>
+                                    <option value="Izquierdo">Izquierdo</option>
+                                    <option value="Derecho">Derecho</option>
+                                </select>
                             </div>
 
                             {/* Grupo: Datos Físicos */}
