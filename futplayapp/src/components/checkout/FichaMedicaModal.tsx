@@ -133,20 +133,28 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
         setError(null);
         setSaving(true);
 
-        const imcValue = calculateIMC(parseFloat(peso), parseFloat(estatura));
-
-        const cleanedRut = rut.replace(/[^0-9kK\-]/g, "").toUpperCase();
-        const success = await updateUserProfile(userId, { rut: cleanedRut, telefono: telefono.trim() });
-        if (!success) {
-            setError("Error al guardar datos personales. Intenta nuevamente.");
+        const pesoNum = parseFloat(peso);
+        const estaturaNum = parseInt(estatura);
+        if (!Number.isFinite(pesoNum) || !Number.isFinite(estaturaNum) || pesoNum <= 0 || estaturaNum <= 0) {
+            setError("Ingresa un peso y estatura válidos (mayores a 0).");
             setSaving(false);
             return;
         }
 
-        const fichaSuccess = await createFichaMedica(userId, {
+        const imcValue = calculateIMC(pesoNum, estaturaNum);
+
+        const cleanedRut = rut.replace(/[^0-9kK\-]/g, "").toUpperCase();
+        const perfilResult = await updateUserProfile(userId, { rut: cleanedRut, telefono: telefono.trim() });
+        if (!perfilResult.ok) {
+            setError(perfilResult.error ? `Error al guardar datos personales: ${perfilResult.error}` : "Error al guardar datos personales. Intenta nuevamente.");
+            setSaving(false);
+            return;
+        }
+
+        const fichaResult = await createFichaMedica(userId, {
             fecha_nacimiento: fechaNacimiento.trim(),
-            peso_kg: parseFloat(peso),
-            estatura_cm: parseInt(estatura),
+            peso_kg: pesoNum,
+            estatura_cm: estaturaNum,
             imc: imcValue,
             grupo_sanguineo: grupoSanguineo.trim(),
             enfermedades: enfermedades.trim(),
@@ -158,8 +166,8 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
             afecciones_cardiacas: afeccionesCardiacas.trim(),
         });
 
-        if (!fichaSuccess) {
-            setError("Error al guardar la ficha médica. Intenta nuevamente.");
+        if (!fichaResult.ok) {
+            setError(fichaResult.error ? `Error al guardar la ficha médica: ${fichaResult.error}` : "Error al guardar la ficha médica. Intenta nuevamente.");
             setSaving(false);
             return;
         }

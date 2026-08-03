@@ -15,6 +15,11 @@ export type FichaMedicaData = {
     afecciones_cardiacas: string;
 };
 
+export type ResultadoEscritura = {
+    ok: boolean;
+    error: string | null;
+};
+
 export function calcularEdad(fechaNacimiento: string): number {
     const hoy = new Date();
     const nac = new Date(fechaNacimiento);
@@ -27,7 +32,7 @@ export function calcularEdad(fechaNacimiento: string): number {
 export async function updateUserProfile(
     userId: string,
     { rut, telefono }: { rut: string; telefono: string }
-): Promise<boolean> {
+): Promise<ResultadoEscritura> {
     const supabase = createClient();
 
     const { error } = await supabase
@@ -37,28 +42,28 @@ export async function updateUserProfile(
 
     if (error) {
         console.error("Error updating user profile:", error.message);
-        return false;
+        return { ok: false, error: error.message };
     }
 
-    return true;
+    return { ok: true, error: null };
 }
 
 export async function createFichaMedica(
     userId: string,
     data: FichaMedicaData
-): Promise<boolean> {
+): Promise<ResultadoEscritura> {
     const supabase = createClient();
 
     const { error } = await supabase
         .from("ficha_medica")
-        .insert({ usuario_id: userId, ...data });
+        .upsert({ usuario_id: userId, ...data });
 
     if (error) {
         console.error("Error creating ficha medica:", error.message);
-        return false;
+        return { ok: false, error: error.message };
     }
 
-    return true;
+    return { ok: true, error: null };
 }
 
 export async function userHasFichaMedica(userId: string): Promise<boolean> {
@@ -96,8 +101,13 @@ export async function getFichaMedicaByUser(userId: string): Promise<FichaMedicaD
 }
 
 export function calculateIMC(pesoKg: number, estaturaCm: number): number {
+    if (!Number.isFinite(pesoKg) || !Number.isFinite(estaturaCm) || pesoKg <= 0 || estaturaCm <= 0) {
+        return 0;
+    }
     const estaturaM = estaturaCm / 100;
-    return parseFloat((pesoKg / (estaturaM * estaturaM)).toFixed(1));
+    const imc = pesoKg / (estaturaM * estaturaM);
+    if (!Number.isFinite(imc)) return 0;
+    return parseFloat(imc.toFixed(1));
 }
 
 export function getIMCStatus(imc: number): { label: string; color: string } {

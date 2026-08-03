@@ -9,6 +9,7 @@ import { createClient } from "@/utils/supabase/client";
 import {
     userHasFichaMedica,
     createFichaMedica,
+    updateUserProfile,
     calculateIMC,
     getIMCStatus,
 } from "@/data/fichaMedica";
@@ -29,6 +30,14 @@ describe("calculateIMC", () => {
 
     it("returns 0 para valores extremos", () => {
         expect(calculateIMC(0, 175)).toBe(0);
+        expect(calculateIMC(70, 0)).toBe(0);
+        expect(calculateIMC(0, 0)).toBe(0);
+    });
+
+    it("returns 0 para valores no numéricos", () => {
+        expect(calculateIMC(NaN, 175)).toBe(0);
+        expect(calculateIMC(70, NaN)).toBe(0);
+        expect(calculateIMC(Infinity, 175)).toBe(0);
     });
 
     it("redondea a 1 decimal (imc exacto 22.9)", () => {
@@ -88,6 +97,26 @@ describe("userHasFichaMedica", () => {
     });
 });
 
+// ── updateUserProfile ──────────────────────────────
+
+describe("updateUserProfile", () => {
+    it("retorna ok:true cuando la actualización es exitosa", async () => {
+        __setTableData("usuario", { id: USER_ID });
+
+        const result = await updateUserProfile(USER_ID, { rut: "12.345.678-9", telefono: "56912345678" });
+
+        expect(result).toEqual({ ok: true, error: null });
+    });
+
+    it("retorna ok:false y el mensaje de error real cuando falla", async () => {
+        __setTableData("usuario", null, { message: "new row violates row-level security policy" });
+
+        const result = await updateUserProfile(USER_ID, { rut: "12.345.678-9", telefono: "56912345678" });
+
+        expect(result).toEqual({ ok: false, error: "new row violates row-level security policy" });
+    });
+});
+
 // ── createFichaMedica ─────────────────────────────
 
 describe("createFichaMedica", () => {
@@ -101,21 +130,24 @@ describe("createFichaMedica", () => {
         alergias: "Ninguna",
         medicamentos: "Ninguno",
         observaciones: "",
+        perfil: "Izquierdo",
+        historial_lesiones: "Ninguna",
+        afecciones_cardiacas: "Ninguna",
     };
 
-    it("retorna true cuando la inserción es exitosa", async () => {
+    it("retorna ok:true cuando la inserción es exitosa", async () => {
         __setTableData("ficha_medica", { usuario_id: USER_ID, ...FICHA_DATA });
 
         const result = await createFichaMedica(USER_ID, FICHA_DATA);
 
-        expect(result).toBe(true);
+        expect(result).toEqual({ ok: true, error: null });
     });
 
-    it("retorna false cuando hay error en la inserción", async () => {
-        __setTableData("ficha_medica", null, { message: "Insert failed" });
+    it("retorna ok:false y el mensaje de error real cuando falla", async () => {
+        __setTableData("ficha_medica", null, { message: 'column "perfil" of relation "ficha_medica" does not exist' });
 
         const result = await createFichaMedica(USER_ID, FICHA_DATA);
 
-        expect(result).toBe(false);
+        expect(result).toEqual({ ok: false, error: 'column "perfil" of relation "ficha_medica" does not exist' });
     });
 });

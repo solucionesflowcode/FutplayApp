@@ -205,6 +205,7 @@ export function makeChain(table: string) {
             return terminal;
         }),
         insert: vi.fn(() => terminal),
+        upsert: vi.fn(() => terminal),
         update: vi.fn(() => terminal),
         delete: vi.fn(() => terminal),
         eq: vi.fn((col: string, val: any) => { filters.push({ method: "eq", args: [col, val] }); return terminal; }),
