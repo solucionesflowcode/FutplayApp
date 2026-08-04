@@ -19,6 +19,7 @@ import {
 import { getUsers, getPlanes, type Plan } from "@/data/plans";
 import type { Student } from "@/components/admin/StudentsTable";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { ahoraChile } from "@/lib/fechas";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -112,33 +113,38 @@ export default function MembresiasPage() {
       setError("Usuario y plan son obligatorios");
       return;
     }
-    if (!form.fecha_inicio || !form.fecha_vencimiento) {
-      setError("Fecha de inicio y vencimiento son obligatorias");
-      return;
-    }
-    if (form.fecha_vencimiento < form.fecha_inicio) {
-      setError("La fecha de vencimiento no puede ser anterior a la de inicio");
-      return;
-    }
-    if (form.tokens_usados > form.tokens_totales) {
-      setError("Los tokens usados no pueden superar los tokens totales");
-      return;
+    if (modal === "edit") {
+      if (!form.fecha_inicio || !form.fecha_vencimiento) {
+        setError("Fecha de inicio y vencimiento son obligatorias");
+        return;
+      }
+      if (form.fecha_vencimiento < form.fecha_inicio) {
+        setError("La fecha de vencimiento no puede ser anterior a la de inicio");
+        return;
+      }
     }
     setSaving(true);
     setError(null);
+
+    const isCreate = modal === "create";
+    const ahora = ahoraChile();
+    const fecha_inicio = isCreate ? ahora.toISOString() : dateToIso(form.fecha_inicio);
+    const fecha_vencimiento = isCreate
+      ? new Date(ahora.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      : dateToIso(form.fecha_vencimiento);
 
     const payload = {
       usuario_id: form.usuario_id,
       plan_id: form.plan_id,
       boleta_id: form.boleta_id.trim() || null,
       tokens_totales: form.tokens_totales,
-      tokens_usados: form.tokens_usados,
-      fecha_inicio: dateToIso(form.fecha_inicio),
-      fecha_vencimiento: dateToIso(form.fecha_vencimiento),
+      tokens_usados: isCreate ? 0 : form.tokens_usados,
+      fecha_inicio,
+      fecha_vencimiento,
       estado: form.estado,
     };
 
-    const res = modal === "create"
+    const res = isCreate
       ? await createMembresiaGestion(payload)
       : await updateMembresiaGestion({ ...payload, id: form.id! });
 
@@ -336,7 +342,14 @@ export default function MembresiasPage() {
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Plan *</label>
                   <select
                     value={form.plan_id}
-                    onChange={(e) => setForm((p) => ({ ...p, plan_id: e.target.value }))}
+                    onChange={(e) => {
+                      const plan = planes.find((pl) => pl.id === e.target.value);
+                      setForm((p) => ({
+                        ...p,
+                        plan_id: e.target.value,
+                        tokens_totales: plan?.tokens_mensuales || 0,
+                      }));
+                    }}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                   >
                     <option value="">Seleccionar plan</option>
@@ -356,39 +369,39 @@ export default function MembresiasPage() {
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                       min={0}
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens Usados</label>
-                    <input
-                      type="number"
-                      value={form.tokens_usados || ""}
-                      onChange={(e) => setForm((p) => ({ ...p, tokens_usados: parseInt(e.target.value) || 0 }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                      min={0}
-                    />
+                    <p className="text-[11px] text-gray-400 mt-1">Se autocompleta según el plan seleccionado</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {modal === "create" ? (
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha Inicio *</label>
-                    <input
-                      type="date"
-                      value={form.fecha_inicio}
-                      onChange={(e) => setForm((p) => ({ ...p, fecha_inicio: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    />
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Vigencia</label>
+                    <p className="px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-600">
+                      Inicia hoy y vence en 30 días exactos
+                    </p>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha Vencimiento *</label>
-                    <input
-                      type="date"
-                      value={form.fecha_vencimiento}
-                      onChange={(e) => setForm((p) => ({ ...p, fecha_vencimiento: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    />
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha Inicio *</label>
+                      <input
+                        type="date"
+                        value={form.fecha_inicio}
+                        onChange={(e) => setForm((p) => ({ ...p, fecha_inicio: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha Vencimiento *</label>
+                      <input
+                        type="date"
+                        value={form.fecha_vencimiento}
+                        onChange={(e) => setForm((p) => ({ ...p, fecha_vencimiento: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Boleta */}
                 <div>
