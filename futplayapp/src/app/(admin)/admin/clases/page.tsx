@@ -564,14 +564,17 @@ export default function ClasesPage() {
                 {form.tipo_evento === "entrenamiento" && (
                   <>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Título *</label>
-                      <input
-                        type="text"
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Título (tipo de entrenamiento) *</label>
+                      <select
                         value={form.titulo}
                         onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                        placeholder="Ej: Entrenamiento Técnico"
-                      />
+                      >
+                        <option value="">Seleccionar tipo</option>
+                        <option value="Tecnico">Técnico</option>
+                        <option value="Tacticos">Tácticos</option>
+                        <option value="Fisico">Físico</option>
+                      </select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
