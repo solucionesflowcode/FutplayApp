@@ -13,6 +13,7 @@ import {
   Video,
   PersonStanding,
   CreditCard,
+  ShieldCheck,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -28,6 +29,7 @@ const menuItems = [
   { name: "Gestión de cápsulas", href: "/admin/capsulas", icon: Video },
   { name: "Gestión de profesores", href: "/admin/profesores", icon: PersonStanding },
   { name: "Gestión de planes", href: "/admin/planes", icon: CreditCard },
+  { name: "Gestión de membresías", href: "/admin/membresias", icon: ShieldCheck },
   { name: "Mi Perfil", href: "/admin/perfil", icon: User },
 ];
 
