@@ -127,10 +127,12 @@ export default function MembresiasPage() {
     setError(null);
 
     const isCreate = modal === "create";
+    const planSel = planes.find((pl) => pl.id === form.plan_id);
+    const diasVigencia = planSel?.dias_vigencia ?? 30;
     const ahora = ahoraChile();
     const fecha_inicio = isCreate ? ahora.toISOString() : dateToIso(form.fecha_inicio);
     const fecha_vencimiento = isCreate
-      ? new Date(ahora.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      ? new Date(ahora.getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString()
       : dateToIso(form.fecha_vencimiento);
 
     const payload = {
@@ -377,7 +379,7 @@ export default function MembresiasPage() {
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1">Vigencia</label>
                     <p className="px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-600">
-                      Inicia hoy y vence en 30 días exactos
+                      Inicia hoy y vence en {planes.find((pl) => pl.id === form.plan_id)?.dias_vigencia ?? 30} días exactos
                     </p>
                   </div>
                 ) : (

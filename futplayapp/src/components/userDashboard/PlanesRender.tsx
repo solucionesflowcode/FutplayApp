@@ -88,7 +88,7 @@ export default function PlanesRender() {
                             <h3 className="text-xl font-bold text-white mb-2 capitalize">{plan.nombre}</h3>
                             <div className="text-3xl font-black text-[#F28C28] mb-4">
                                 ${plan.precio ? plan.precio.toLocaleString("es-CL") : "0"}
-                                <span className="text-sm font-normal text-white/60">/mes</span>
+                                <span className="text-sm font-normal text-white/60">{(plan.dias_vigencia ?? 30) >= 90 ? "/trimestre" : "/mes"}</span>
                             </div>
 
                             <ul className="space-y-3 mb-6 flex-1">

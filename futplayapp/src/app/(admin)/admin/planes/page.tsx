@@ -25,16 +25,22 @@ type PlanForm = {
   nombre: string;
   precio: number;
   tokens_mensuales: number;
+  dias_vigencia: number;
 };
 
 const emptyForm: PlanForm = {
   nombre: "",
   precio: 0,
   tokens_mensuales: 1,
+  dias_vigencia: 30,
 };
 
 function formatPrice(n: number) {
   return "$" + n.toLocaleString("es-CL");
+}
+
+function duracionLabel(dias: number): string {
+  return dias >= 90 ? "Trimestral" : "Mensual";
 }
 
 export default function PlanesPage() {
@@ -73,6 +79,7 @@ export default function PlanesPage() {
       nombre: p.nombre,
       precio: p.precio,
       tokens_mensuales: p.tokens_mensuales,
+      dias_vigencia: p.dias_vigencia ?? 30,
     });
     setModal("edit");
   };
@@ -89,6 +96,7 @@ export default function PlanesPage() {
       nombre: form.nombre,
       precio: form.precio,
       tokens_mensuales: form.tokens_mensuales,
+      dias_vigencia: form.dias_vigencia,
     };
 
     const res = modal === "create"
@@ -109,7 +117,7 @@ export default function PlanesPage() {
     } else {
       setPlanes((prev) =>
         prev.map((p) =>
-          p.id === form.id ? { ...p, nombre: form.nombre, precio: form.precio, tokens_mensuales: form.tokens_mensuales } : p
+          p.id === form.id ? { ...p, nombre: form.nombre, precio: form.precio, tokens_mensuales: form.tokens_mensuales, dias_vigencia: form.dias_vigencia } : p
         )
       );
     }
@@ -178,13 +186,14 @@ export default function PlanesPage() {
                     <th className="p-3 font-semibold">Nombre</th>
                     <th className="p-3 font-semibold">Precio</th>
                     <th className="p-3 font-semibold">Tokens Mensuales</th>
+                    <th className="p-3 font-semibold">Duración</th>
                     <th className="p-3 font-semibold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-gray-400">
+                      <td colSpan={5} className="p-8 text-center text-gray-400">
                         {search ? "No se encontraron planes" : "No hay planes creados aún"}
                       </td>
                     </tr>
@@ -193,12 +202,13 @@ export default function PlanesPage() {
                       <Fragment key={p.id}>
                         {/* MOBILE CARD */}
                         <tr className="md:hidden border-b border-gray-100">
-                          <td colSpan={4} className="p-0">
+                          <td colSpan={5} className="p-0">
                             <div className="p-3 space-y-1.5">
                               <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
                               <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
                                 <div><span className="text-gray-400">Precio: </span><span className="font-semibold text-gray-900">{formatPrice(p.precio)}</span></div>
                                 <div><span className="text-gray-400">Tokens: </span><span className="font-semibold text-gray-700">{p.tokens_mensuales}</span><span className="text-gray-400"> sesiones</span></div>
+                                <div><span className="text-gray-400">Duración: </span><span className="font-semibold text-gray-700">{duracionLabel(p.dias_vigencia ?? 30)}</span></div>
                               </div>
                               <div className="flex gap-2 pt-1 border-t border-gray-50">
                                 <button onClick={() => openEdit(p)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
@@ -214,6 +224,11 @@ export default function PlanesPage() {
                           <td className="p-3 text-gray-600">
                             <span className="font-semibold">{p.tokens_mensuales}</span>
                             <span className="text-gray-400"> sesiones</span>
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${(p.dias_vigencia ?? 30) >= 90 ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                              {duracionLabel(p.dias_vigencia ?? 30)}
+                            </span>
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2">
@@ -298,6 +313,20 @@ export default function PlanesPage() {
                       min={1}
                     />
                   </div>
+                </div>
+
+                {/* Duración */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Duración</label>
+                  <select
+                    value={form.dias_vigencia}
+                    onChange={(e) => setForm((p) => ({ ...p, dias_vigencia: parseInt(e.target.value) || 30 }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  >
+                    <option value={30}>Mensual (30 días)</option>
+                    <option value={90}>Trimestral (90 días)</option>
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1">El precio se cobra por el período completo seleccionado</p>
                 </div>
 
                 {error && (

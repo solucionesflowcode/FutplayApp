@@ -180,12 +180,13 @@ export async function createMembresia(
     userId: string,
     planId: string,
     tokensMensuales: number,
-    boletaId?: string
+    boletaId?: string,
+    diasVigencia = 30
 ): Promise<boolean> {
     const supabase = createClient();
 
     const fecha_inicio = ahoraChile().toISOString();
-    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
 
     const { error } = await supabase
         .from("membresia")

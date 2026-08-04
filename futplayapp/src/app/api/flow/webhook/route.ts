@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         if (recurrencia?.activa) {
           const { data: plan } = await adminClient
             .from("plan")
-            .select("precio, tokens_mensuales")
+            .select("precio, tokens_mensuales, dias_vigencia")
             .eq("id", recurrencia.plan_id)
             .single();
 
@@ -139,7 +139,8 @@ export async function POST(request: Request) {
               try {
                 if (plan.tokens_mensuales) {
                   const fecha_inicio = ahoraChile().toISOString();
-                  const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                  const diasVigencia = plan.dias_vigencia ?? 30;
+                  const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
                   const { error: membresiaError } = await adminClient
                     .from("membresia")
                     .insert({
@@ -200,7 +201,7 @@ export async function POST(request: Request) {
         if (boletaItem) {
           const { data: plan } = await adminClient
             .from("plan")
-            .select("tokens_mensuales")
+            .select("tokens_mensuales, dias_vigencia")
             .eq("id", boletaItem.plan_id)
             .maybeSingle();
 
@@ -213,7 +214,8 @@ export async function POST(request: Request) {
 
                   if (!existingForBoleta) {
                     const fecha_inicio = ahoraChile().toISOString();
-                    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                    const diasVigencia = plan.dias_vigencia ?? 30;
+                    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
                     const { error: membresiaError } = await adminClient
                       .from("membresia")
                       .insert({

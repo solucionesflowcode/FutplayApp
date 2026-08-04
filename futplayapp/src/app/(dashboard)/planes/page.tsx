@@ -144,7 +144,7 @@ export default function PlanesPage() {
                                                 ${plan.precio ? plan.precio.toLocaleString("es-CL") : "0"}
                                             </span>
                                             <span className={`ml-1 text-lg font-medium ${isDestacado ? 'text-white/70' : 'text-gray-500'}`}>
-                                                /mes
+                                                {(plan.dias_vigencia ?? 30) >= 90 ? "/trimestre" : "/mes"}
                                             </span>
                                         </div>
                                     </div>

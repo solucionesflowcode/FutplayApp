@@ -706,7 +706,6 @@ function CheckoutView({
     const [checkoutState, setCheckoutState] = useState<CheckoutState>("idle");
     const [aceptaTerminos, setAceptaTerminos] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
-    const [pagoAutomatico, setPagoAutomatico] = useState(false);
 
     const handlePagar = useCallback(async () => {
         setCheckoutState("processing");
@@ -717,7 +716,7 @@ function CheckoutView({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     planId: plan.id,
-                    recurrencia: pagoAutomatico,
+                    recurrencia: false,
                 }),
             });
             const data = await res.json();
@@ -728,7 +727,7 @@ function CheckoutView({
             setErrorMsg(err instanceof Error ? err.message : "Error al conectar con Flow");
             setCheckoutState("error");
         }
-    }, [plan.id, pagoAutomatico]);
+    }, [plan.id]);
 
     const resetCheckout = useCallback(() => {
         setCheckoutState("idle");
@@ -769,14 +768,14 @@ function CheckoutView({
                                             {plan.nombre}
                                         </h2>
                                         <span className="px-2.5 py-0.5 bg-[#F28C28]/10 text-[#F28C28] text-[10px] font-bold uppercase tracking-wider rounded-full border border-[#F28C28]/20">
-                                            Mensual
+                                            {(plan.dias_vigencia ?? 30) >= 90 ? "Trimestral" : "Mensual"}
                                         </span>
                                     </div>
                                     <div className="flex items-baseline gap-1 mt-3">
                                         <span className="text-4xl md:text-5xl font-black text-[#00305B]">
                                             {formatCLP(plan.precio ?? 0)}
                                         </span>
-                                        <span className="text-gray-400 font-medium">/mes</span>
+                                        <span className="text-gray-400 font-medium">{(plan.dias_vigencia ?? 30) >= 90 ? "/trimestre" : "/mes"}</span>
                                     </div>
                                     <p className="text-gray-500 mt-2 text-sm">
                                         <span className="font-bold text-[#F28C28]">
@@ -792,7 +791,8 @@ function CheckoutView({
                             <h3 className="text-sm font-black uppercase tracking-wider text-gray-400 mb-5">
                                 Beneficios incluidos
                             </h3>
-                            <div className="space-y-4">
+
+                        <div className="space-y-4">
                                 <div className="flex items-start gap-3">
                                     <div className="w-7 h-7 rounded-full bg-[#00A86B]/10 flex items-center justify-center shrink-0 mt-0.5">
                                         <CheckCircle2 className="w-4 h-4 text-[#00A86B]" />
@@ -847,14 +847,14 @@ function CheckoutView({
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-400">Tokens mensuales</span>
+                                    <span className="text-gray-400">Tokens {(plan.dias_vigencia ?? 30) >= 90 ? "del período" : "mensuales"}</span>
                                     <span className="text-gray-700 font-semibold">
                                         {plan.tokens_mensuales}
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-400">Duración</span>
-                                    <span className="text-gray-700 font-semibold">1 mes</span>
+                                    <span className="text-gray-700 font-semibold">{(plan.dias_vigencia ?? 30) >= 90 ? "1 trimestre" : "1 mes"}</span>
                                 </div>
                             </div>
                             <div className="border-t border-gray-100 mt-5 pt-5">
@@ -866,31 +866,6 @@ function CheckoutView({
                                 </div>
                                 <p className="text-[11px] text-gray-400 mt-1">
                                     IVA incluido. Factura electrónica disponible.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Toggle pago automático */}
-                        <div className="bg-white border border-[#edeef0] p-4 flex items-start gap-3 border-t-2 border-t-[#00305B]">
-                            <button
-                                onClick={() => setPagoAutomatico(!pagoAutomatico)}
-                                className={`relative shrink-0 mt-0.5 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                    pagoAutomatico ? "bg-[#00A86B]" : "bg-gray-200"
-                                }`}
-                            >
-                                <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                                        pagoAutomatico ? "translate-x-6" : "translate-x-1"
-                                    }`}
-                                />
-                            </button>
-                            <div>
-                                <p className="text-sm font-bold text-[#00305B]">
-                                    Pago automático mensual
-                                </p>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                    Activa esta opción para que Flow cobre tu plan automáticamente
-                                    cada mes. No necesitarás volver a pagar manualmente.
                                 </p>
                             </div>
                         </div>

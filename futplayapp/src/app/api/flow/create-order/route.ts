@@ -167,7 +167,7 @@ export async function POST(request: Request) {
       urlReturn: `${publicUrl}/api/flow/return`,
       timeout: 1800,
       paymentMethod: 1, // solo tarjetas crédito + débito
-      ...(conRecurrencia ? { recurrence: { period: 30 } } : {}),
+      ...(conRecurrencia ? { recurrence: { period: plan.dias_vigencia ?? 30 } } : {}),
     });
 
     await adminClient

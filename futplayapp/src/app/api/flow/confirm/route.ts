@@ -24,7 +24,7 @@ async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServe
 
     const { data: plan } = await adminClient
       .from("plan")
-      .select("tokens_mensuales")
+      .select("tokens_mensuales, dias_vigencia")
       .eq("id", boletaItem.plan_id)
       .maybeSingle();
 
@@ -39,7 +39,8 @@ async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServe
     if (existing) return;
 
     const fecha_inicio = ahoraChile().toISOString();
-    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const diasVigencia = plan.dias_vigencia ?? 30;
+    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
     const { error } = await adminClient.from("membresia").insert({
       usuario_id: boletaInfo.usuario_id,
       plan_id: boletaItem.plan_id,

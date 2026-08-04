@@ -134,7 +134,7 @@ export default function ProximaRenovacion() {
         new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(n);
 
     // Percentages for rings
-    const pctDiasRestantes = Math.min(100, Math.max(0, (diasRestantes / 30) * 100));
+    const pctDiasRestantes = Math.min(100, Math.max(0, (diasRestantes / diasDuracion) * 100));
     
     // SVG Dash offset calculations (Circumference = 282.7)
     const offsetPrecio = 0; // 100% full circle
