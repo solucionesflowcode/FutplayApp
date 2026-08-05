@@ -94,7 +94,7 @@ export default function PlanesRender() {
                             <ul className="space-y-3 mb-6 flex-1">
                                 <li className="flex items-center gap-2 text-sm text-white/80">
                                     <CheckCircle2 size={16} className="text-[#F28C28]" />
-                                    {plan.tokens_mensuales} Tokens Mensuales
+                                    {plan.tokens_mensuales} Tokens {(plan.dias_vigencia ?? 30) >= 90 ? "Trimestrales" : "Mensuales"}
                                 </li>
                                 <li className="flex items-center gap-2 text-sm text-white/80">
                                     <CheckCircle2 size={16} className="text-[#F28C28]" />

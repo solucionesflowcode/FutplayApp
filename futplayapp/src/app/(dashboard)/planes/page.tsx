@@ -153,7 +153,7 @@ export default function PlanesPage() {
                                         <div className="flex items-start gap-3">
                                             <CheckCircle2 className={`w-6 h-6 shrink-0 ${isDestacado ? 'text-[#F28C28]' : 'text-[#F28C28]'}`} />
                                             <p className={isDestacado ? 'text-white/90' : 'text-gray-600'}>
-                                                <span className="font-bold">{plan.tokens_mensuales} Tokens</span> mensuales para canjear por clases y eventos.
+                                                <span className="font-bold">{plan.tokens_mensuales} Tokens</span> {(plan.dias_vigencia ?? 30) >= 90 ? "trimestrales" : "mensuales"} para canjear por clases y eventos.
                                             </p>
                                         </div>
                                         <div className="flex items-start gap-3">

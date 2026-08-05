@@ -185,7 +185,7 @@ export default function PlanesPage() {
                   <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                     <th className="p-3 font-semibold">Nombre</th>
                     <th className="p-3 font-semibold">Precio</th>
-                    <th className="p-3 font-semibold">Tokens Mensuales</th>
+                    <th className="p-3 font-semibold">Tokens</th>
                     <th className="p-3 font-semibold">Duración</th>
                     <th className="p-3 font-semibold">Acciones</th>
                   </tr>
@@ -304,7 +304,7 @@ export default function PlanesPage() {
 
                   {/* Tokens */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens Mensuales</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens {form.dias_vigencia >= 90 ? "Trimestrales" : "Mensuales"}</label>
                     <input
                       type="number"
                       value={form.tokens_mensuales || ""}
