@@ -135,7 +135,7 @@ describe("getProximaClase", () => {
         expect(result[0].sede).toBe("");
     });
 
-    it("DATA-CLASES-GPC-007: filtra clases sin título (null) si es entrenamiento", async () => {
+    it("DATA-CLASES-GPC-007: retorna entrenamiento con titulo null como 'Entrenamiento'", async () => {
         const futureFecha = new Date(Date.now() + 86400000).toISOString();
         __setTableData("clase_usuario", [
             {
@@ -152,7 +152,9 @@ describe("getProximaClase", () => {
 
         const result = await getProximaClase(USER_ID);
 
-        expect(result.length).toBe(0);
+        expect(result.length).toBe(1);
+        expect(result[0].titulo).toBe("Entrenamiento");
+        expect(result[0].tipo_evento).toBe("entrenamiento");
     });
 
     it("DATA-CLASES-GPC-008: retorna partido con titulo null como 'Partido'", async () => {

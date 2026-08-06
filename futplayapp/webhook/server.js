@@ -9,7 +9,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const db = require('./data');
-const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp } = require('./handlers');
+const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, buildReminderMessage, sendMessageWithRetry } = require('./handlers');
 
 const RECORDATORIOS_PATH = process.env.RECORDATORIOS_PATH || path.join(__dirname, '.recordatorios.json');
 let recordatoriosEnviados = new Set();
@@ -60,23 +60,16 @@ const whatsapp = new Client({
 
 let whatsappReady = false;
 
-async function sendMessageWithRetry(chatId, message, maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      await whatsapp.sendMessage(chatId, message);
-      return;
-    } catch (err) {
-      if (err.message?.includes('detached Frame') && i < maxRetries - 1) {
-        console.log(`[WARN] Frame detached, reintento ${i + 1}/${maxRetries}...`);
-        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
-        continue;
-      }
-      throw err;
-    }
-  }
-}
-
 whatsapp.on('qr', qr => { qrcode.generate(qr, { small: true }); console.log('Escanea el QR.'); });
+
+if (process.env.QR_TO_FILE) {
+  const qrImg = require('qrcode');
+  whatsapp.on('qr', qr => {
+    qrImg.toFile(process.env.QR_TO_FILE, qr, { width: 400, margin: 2 })
+      .then(() => console.log(`QR guardado en ${process.env.QR_TO_FILE}`))
+      .catch(err => console.error('Error guardando QR:', err.message));
+  });
+}
 whatsapp.on('ready', () => { console.log('WhatsApp conectado!'); whatsappReady = true; });
 whatsapp.on('disconnected', (reason) => { console.error('WhatsApp desconectado:', reason); whatsappReady = false; });
 
@@ -124,13 +117,12 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
         if (!usuario?.telefono) { console.log(`[DEBUG SERVER] Scheduler: usuario ${insc.usuario_id} sin telefono`); continue; }
 
         const fecha = new Date(h.fecha_hora);
-        const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
         const telefono = usuario.telefono.replace('+', '');
-        const mensaje = `Hola ${usuario.nombre}! Recuerda que mañana a las ${hora} tienes "${clase?.titulo || 'tu clase'}". Responde *1* para confirmar o *2* para cancelar.`;
+        const mensaje = buildReminderMessage(usuario, clase, fecha);
 
         console.log(`[DEBUG SERVER] Scheduler: enviando a ${usuario.nombre} (${telefono}): "${mensaje}"`);
         try {
-          await sendMessageWithRetry(`${telefono}@c.us`, mensaje);
+          await sendMessageWithRetry(whatsapp, `${telefono}@c.us`, mensaje);
           await db.setPendiente(insc.id);
           recordatoriosEnviados.add(insc.id);
           guardarRecordatorios();
@@ -186,18 +178,16 @@ app.get('/test-reminder/:claseId', async (req, res) => {
     const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
     if (!inscripciones.length) return res.send('Sin alumnos sin confirmar');
 
-    const clase = await db.getClase(h.clase_id);
-    for (const insc of inscripciones) {
-      const usuario = await db.getUsuario(insc.usuario_id);
-      if (!usuario?.telefono) continue;
-      const fecha = new Date(h.fecha_hora);
-      const hora = fecha.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
-      const telefono = usuario.telefono.replace('+', '');
-      const mensaje = `Hola ${usuario.nombre}! Recordá que mañana a las ${hora} tenés "${clase?.titulo || 'tu clase'}". Respondé *1* para confirmar o *2* para cancelar.`;
-      await sendMessageWithRetry(`${telefono}@c.us`, mensaje);
-      await db.setPendiente(insc.id);
-      res.send(`✅ Recordatorio enviado a ${usuario.nombre} (${telefono})`);
-    }
+      const clase = await db.getClase(h.clase_id);
+      for (const insc of inscripciones) {
+        const usuario = await db.getUsuario(insc.usuario_id);
+        if (!usuario?.telefono) continue;
+        const telefono = usuario.telefono.replace('+', '');
+        const mensaje = buildReminderMessage(usuario, clase, new Date(h.fecha_hora));
+        await sendMessageWithRetry(whatsapp, `${telefono}@c.us`, mensaje);
+        await db.setPendiente(insc.id);
+        res.send(`✅ Recordatorio enviado a ${usuario.nombre} (${telefono})`);
+      }
   } catch (err) {
     res.status(500).send('Error: ' + err.message);
   }

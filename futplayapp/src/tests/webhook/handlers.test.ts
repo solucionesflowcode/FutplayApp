@@ -4,6 +4,8 @@ import {
   cancelarAsistencia,
   procesarMensajeWhatsApp,
   horasHasta,
+  buildReminderMessage,
+  sendMessageWithRetry,
 } from "../../../webhook/handlers";
 
 type MockDb = {
@@ -140,7 +142,7 @@ describe("cancelarAsistencia", () => {
   it("retorna mensaje si no hay próximas clases", async () => {
     db.getProximaClaseUsuario.mockResolvedValue(null);
     const res = await cancelarAsistencia("user-1", db);
-    expect(res).toBe("No tenés clases próximas agendadas.");
+    expect(res).toBe("No tienes clases próximas agendadas.");
     expect(db.updateAsistencia).not.toHaveBeenCalled();
   });
 
@@ -376,5 +378,85 @@ describe("procesarMensajeWhatsApp", () => {
     const res = await procesarMensajeWhatsApp("56912345678", "1", db);
     expect(res).toContain("Asistencia confirmada");
     expect(db.getProximaClaseUsuarioActioned).not.toHaveBeenCalled();
+  });
+});
+
+// ─── buildReminderMessage ───────────────────────────────────────────────
+
+describe("buildReminderMessage", () => {
+  it("BOT-REMINDER-001: arma el recordatorio con nombre y título de la clase", () => {
+    const msg = buildReminderMessage(
+      { nombre: "Pedro" },
+      { titulo: "Yoga" },
+      new Date("2026-08-06T21:00:00Z")
+    );
+    expect(msg).toContain("Hola Pedro!");
+    expect(msg).toContain("mañana a las");
+    expect(msg).toContain("Yoga");
+    expect(msg).toContain("Responde *1* para confirmar o *2* para cancelar.");
+  });
+
+  it("BOT-REMINDER-002: usa 'tu clase' si el título falta", () => {
+    const msg = buildReminderMessage(
+      { nombre: "Ana" },
+      {},
+      new Date("2026-08-06T21:00:00Z")
+    );
+    expect(msg).toContain('"tu clase"');
+  });
+
+  it("BOT-REMINDER-003: incluye la hora formateada en America/Santiago", () => {
+    const msg = buildReminderMessage(
+      { nombre: "Pedro" },
+      { titulo: "Yoga" },
+      new Date("2026-08-06T21:00:00Z")
+    );
+    expect(msg).toMatch(/a las \d{1,2}:\d{2}( ?(a\.? ?m\.?|p\.? ?m\.?))?/);
+  });
+});
+
+// ─── sendMessageWithRetry ───────────────────────────────────────────────
+
+describe("sendMessageWithRetry", () => {
+  afterEach(unfreezeTime);
+
+  it("BOT-RETRY-001: envía en el primer intento", async () => {
+    const whatsapp = { sendMessage: vi.fn().mockResolvedValue(undefined) };
+    await sendMessageWithRetry(whatsapp as any, "56912345678@c.us", "hola");
+    expect(whatsapp.sendMessage).toHaveBeenCalledTimes(1);
+    expect(whatsapp.sendMessage).toHaveBeenCalledWith("56912345678@c.us", "hola");
+  });
+
+  it("BOT-RETRY-002: reintenta en 'detached Frame' y luego tiene éxito", async () => {
+    freezeTime("2026-08-01T12:00:00Z");
+    const whatsapp = {
+      sendMessage: vi
+        .fn()
+        .mockRejectedValueOnce(
+          new Error("Failed to execute 'evaluate' on 'Page': target closed; detached Frame")
+        )
+        .mockResolvedValueOnce(undefined),
+    };
+    const promise = sendMessageWithRetry(whatsapp as any, "id", "msg");
+    await vi.advanceTimersByTimeAsync(2000);
+    await promise;
+    expect(whatsapp.sendMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it("BOT-RETRY-003: relanza errores que no son 'detached Frame'", async () => {
+    const whatsapp = { sendMessage: vi.fn().mockRejectedValue(new Error("boom")) };
+    await expect(sendMessageWithRetry(whatsapp as any, "id", "msg")).rejects.toThrow("boom");
+    expect(whatsapp.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("BOT-RETRY-004: lanza tras agotar intentos si siempre falla con 'detached Frame'", async () => {
+    freezeTime("2026-08-01T12:00:00Z");
+    const whatsapp = { sendMessage: vi.fn().mockRejectedValue(new Error("detached Frame")) };
+    const promise = sendMessageWithRetry(whatsapp as any, "id", "msg", 3);
+    const assertion = expect(promise).rejects.toThrow("detached Frame");
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(4000);
+    await assertion;
+    expect(whatsapp.sendMessage).toHaveBeenCalledTimes(3);
   });
 });
