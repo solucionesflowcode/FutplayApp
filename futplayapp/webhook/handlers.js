@@ -1,5 +1,30 @@
+// clase.fecha_hora es timestamp sin zona horaria (hora local de Chile).
+// Convierte el wall-clock de Chile a instante absoluto; si ya trae Z/offset, se usa tal cual.
+function parseFechaHoraChile(fechaHora) {
+  if (fechaHora instanceof Date) return new Date(fechaHora.getTime());
+  const s = String(fechaHora);
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s);
+
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})/.exec(s);
+  if (!m) return new Date(s);
+
+  const y = +m[1], mo = +m[2], d = +m[3], h = +m[4], mi = +m[5];
+  const probe = new Date(Date.UTC(y, mo - 1, d, h, mi));
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  }).formatToParts(probe);
+  const get = (t) => parseInt(parts.find((p) => p.type === t).value, 10);
+  const santiagoWall = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+  const offsetMs = santiagoWall - probe.getTime();
+
+  return new Date(Date.UTC(y, mo - 1, d, h, mi) - offsetMs);
+}
+
 function horasHasta(fecha_hora) {
-  return (new Date(fecha_hora) - new Date()) / (1000 * 60 * 60);
+  return (parseFechaHoraChile(fecha_hora) - new Date()) / (1000 * 60 * 60);
 }
 
 function buildReminderMessage(usuario, clase, fechaHora) {
@@ -9,15 +34,33 @@ function buildReminderMessage(usuario, clase, fechaHora) {
   return `Hola ${usuario.nombre}! Confirma tu asistencia a "${titulo}" el ${fecha} a las ${hora}. Responde *1* para confirmar o *2* para cancelar.`;
 }
 
+async function recargarPagina(whatsapp) {
+  try {
+    if (!whatsapp?.puppeteer?.page) return;
+    await whatsapp.puppeteer.page.reload({ waitUntil: 'load' }).catch(() => {});
+    await whatsapp.puppeteer.page
+      .waitForSelector('div#side, div#pane-side', { timeout: 30000 })
+      .catch(() => {});
+    await new Promise((r) => setTimeout(r, 3000));
+    console.log('[WARN] Página de WhatsApp recargada tras Frame detached.');
+  } catch (err) {
+    console.error('[WARN] Error recargando página:', err.message);
+  }
+}
+
+function esFrameDetached(err) {
+  return !!(err && (err.message?.includes('detached Frame') || err.name === 'DetachedFrameError'));
+}
+
 async function sendMessageWithRetry(whatsapp, chatId, message, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       await whatsapp.sendMessage(chatId, message);
       return;
     } catch (err) {
-      if (err.message?.includes('detached Frame') && i < maxRetries - 1) {
-        console.log(`[WARN] Frame detached, reintento ${i + 1}/${maxRetries}...`);
-        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+      if (esFrameDetached(err) && i < maxRetries - 1) {
+        console.log(`[WARN] Frame detached, recargando página y reintentando ${i + 1}/${maxRetries}...`);
+        await recargarPagina(whatsapp);
         continue;
       }
       throw err;
@@ -81,4 +124,4 @@ async function procesarMensajeWhatsApp(telefono, texto, db) {
   return null;
 }
 
-module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, horasHasta, buildReminderMessage, sendMessageWithRetry };
+module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, horasHasta, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };

@@ -70,6 +70,18 @@ describe("horasHasta", () => {
     freezeTime("2026-06-04T12:00:00Z");
     expect(horasHasta("2026-06-04T12:30:00Z")).toBe(0.5);
   });
+
+  it("interpreta hora naive (sin Z) como hora local de Chile", () => {
+    freezeTime("2026-06-04T12:00:00Z");
+    // "2026-06-04T14:00:00" = 14:00 Santiago = 18:00Z → 6h desde las 12:00Z
+    expect(horasHasta("2026-06-04T14:00:00")).toBe(6);
+  });
+
+  it("no confunde hora naive de Chile con UTC", () => {
+    freezeTime("2026-06-04T12:00:00Z");
+    // Si se parseara como UTC daría 2h; como Santiago (UTC-4) son 6h.
+    expect(horasHasta("2026-06-04T14:00:00")).not.toBe(2);
+  });
 });
 
 // ─── confirmarAsistencia ────────────────────────────────────────────────

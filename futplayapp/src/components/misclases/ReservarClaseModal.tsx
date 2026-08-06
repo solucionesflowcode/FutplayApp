@@ -8,6 +8,7 @@ import {
     Loader2,
     MapPin,
     Ticket,
+    Users,
     X,
 } from "lucide-react";
 import { getMembresiaByUser, type MembresiaConPlan } from "@/data/membresia";
@@ -20,6 +21,8 @@ type ClaseInfo = {
     fecha_hora: string;
     sede: string;
     tipo_evento?: "entrenamiento" | "partido";
+    cupo_maximo: number | null;
+    inscritos: number;
 };
 
 type Props = {
@@ -105,7 +108,8 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                         const isSuccess = successId === clase.claseId;
                         const isLoading = loadingId === clase.claseId;
                         const esPartido = clase.tipo_evento === "partido";
-                        const puedeAgendar = (esPartido || tokensRestantes > 0) && !isSuccess;
+                        const estaLlena = clase.cupo_maximo != null && clase.inscritos >= clase.cupo_maximo;
+                        const puedeAgendar = (esPartido || tokensRestantes > 0) && !isSuccess && !estaLlena;
 
                         return (
                             <div
@@ -128,12 +132,30 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                                         <MapPin className="w-4 h-4 text-[#fc9910] shrink-0" />
                                         <span>{clase.sede || "Sin sede"}</span>
                                     </div>
+                                    <div className="flex items-center gap-2">
+                                        <Users className="w-4 h-4 text-[#fc9910] shrink-0" />
+                                        <span className={estaLlena ? "font-semibold text-[#ba1a1a]" : ""}>
+                                            {clase.cupo_maximo != null
+                                                ? `${clase.inscritos}/${clase.cupo_maximo} cupos`
+                                                : `${clase.inscritos} inscritos`}
+                                        </span>
+                                        {estaLlena && (
+                                            <span className="text-[10px] font-bold uppercase tracking-wide text-[#ba1a1a] bg-[#ba1a1a]/10 px-2 py-0.5 rounded">
+                                                Llena
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {isSuccess ? (
                                     <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 rounded px-4 py-3 text-sm font-medium">
                                         <CheckCircle2 className="w-4 h-4 shrink-0" />
                                         ¡Agendada!
+                                    </div>
+                                ) : estaLlena ? (
+                                    <div className="flex items-center gap-2 text-[#ba1a1a] bg-[#ba1a1a]/5 rounded px-4 py-3 text-sm font-medium">
+                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                        Esta clase ya está llena
                                     </div>
                                 ) : (
                                     <button

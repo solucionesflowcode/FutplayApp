@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Clock, Loader2, MapPin, Trash2, X } from "lucide-react";
+import { parseClaseFechaHora } from "@/lib/fechas";
 
 type Props = {
     isOpen: boolean;
@@ -11,10 +12,6 @@ type Props = {
     fecha_hora: string;
     sede: string;
 };
-
-function horasHasta(fechaHora: string): number {
-    return (new Date(fechaHora).getTime() - Date.now()) / (1000 * 60 * 60);
-}
 
 export default function CancelarClaseModal({
     isOpen,
@@ -27,7 +24,7 @@ export default function CancelarClaseModal({
 }: Props) {
     if (!isOpen) return null;
 
-    const date = new Date(fecha_hora);
+    const date = parseClaseFechaHora(fecha_hora);
     const formattedDate = date.toLocaleDateString("es-CL", {
         weekday: "long",
         day: "numeric",
@@ -38,7 +35,7 @@ export default function CancelarClaseModal({
         minute: "2-digit",
     });
 
-    const horas = horasHasta(fecha_hora);
+    const horas = (date.getTime() - Date.now()) / (1000 * 60 * 60);
     const devuelveToken = horas >= 3;
 
     return (

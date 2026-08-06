@@ -9,7 +9,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const db = require('./data');
-const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, buildReminderMessage, sendMessageWithRetry } = require('./handlers');
+const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached } = require('./handlers');
 
 const RECORDATORIOS_PATH = process.env.RECORDATORIOS_PATH || path.join(__dirname, '.recordatorios.json');
 let recordatoriosEnviados = new Set();
@@ -103,7 +103,21 @@ function crearCliente() {
     }
 
     const respuesta = await procesarMensajeWhatsApp(telefono, msg.body, db);
-    if (respuesta) await msg.reply(respuesta);
+    if (respuesta) {
+      for (let i = 0; i < 3; i++) {
+        try {
+          await msg.reply(respuesta);
+          break;
+        } catch (err) {
+          if (esFrameDetached(err) && i < 2) {
+            console.log(`[WARN] Frame detached al responder, recargando página...`);
+            await recargarPagina(whatsapp);
+            continue;
+          }
+          throw err;
+        }
+      }
+    }
   });
 
   return c;

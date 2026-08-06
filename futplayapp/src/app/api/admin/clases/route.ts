@@ -51,7 +51,8 @@ export async function GET(request: Request) {
       const { data: inscripciones } = await admin
         .from("clase_usuario")
         .select("id, usuario_id, asistencia")
-        .eq("clase_id", claseId);
+        .eq("clase_id", claseId)
+        .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
 
       const userIds = [...new Set((inscripciones || []).map((i) => i.usuario_id))];
       const { data: usuarios } = await admin.from("usuario").select("id, nombre").in("id", userIds);
@@ -87,7 +88,8 @@ export async function GET(request: Request) {
     const { data: counts } = await admin
       .from("clase_usuario")
       .select("clase_id, asistencia")
-      .in("clase_id", claseIds);
+      .in("clase_id", claseIds)
+      .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
 
     type AsistenciaStats = { inscritos: number; presentes: number; ausentes: number; pendientes: number };
     const statsPorClase = new Map<string, AsistenciaStats>();
@@ -142,7 +144,7 @@ export async function POST(request: Request) {
     } else {
       insertData.titulo = null;
       insertData.sede_id = body.sede_id || null;
-      insertData.cupo_maximo = null;
+      insertData.cupo_maximo = body.cupo_maximo || 15;
       insertData.profesor_id = null;
       insertData.descripcion = body.descripcion || "";
       if (body.fecha_hora) insertData.fecha_hora = body.fecha_hora;
@@ -177,7 +179,7 @@ export async function PUT(request: Request) {
     if (body.tipo_evento === "partido") {
       updateData.titulo = null;
       updateData.sede_id = body.sede_id || null;
-      updateData.cupo_maximo = null;
+      if (body.cupo_maximo !== undefined) updateData.cupo_maximo = body.cupo_maximo;
       updateData.profesor_id = null;
     } else {
       if (body.titulo !== undefined) updateData.titulo = body.titulo;

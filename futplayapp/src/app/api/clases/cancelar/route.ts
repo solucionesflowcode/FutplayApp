@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { parseClaseFechaHora } from "@/lib/fechas";
 
 export async function POST(request: Request) {
     const cookieStore = await cookies();
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
         esPartido = clase?.tipo_evento === "partido";
     }
 
-    const horas = (new Date(fechaHora).getTime() - Date.now()) / (1000 * 60 * 60);
+    const horas = (parseClaseFechaHora(fechaHora).getTime() - Date.now()) / (1000 * 60 * 60);
 
     if (horas < 0) {
         return NextResponse.json({ success: false, message: "La clase ya ha pasado." });

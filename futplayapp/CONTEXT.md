@@ -219,7 +219,11 @@ futplayapp/
 | `titulo` | TEXT |
 | `descripcion` | TEXT |
 | `sede_id` | UUID FK → `sede.id` |
-| `cupo_maximo` | INTEGER |
+| `cupo_maximo` | INTEGER | Admin lo define (default 15) también para partidos; registros legacy con `null` se tratan como 15 en `POST /api/clases/inscribir`. Conteo de inscritos excluye `cancelado`/`cancelado_sin_reembolso` |
+
+**Nota `fecha_hora`:** `clase.fecha_hora` es `timestamp without time zone` (hora local de Chile). Para cálculos de reembolso usar `parseClaseFechaHora()` (`src/lib/fechas.ts` / `webhook/handlers.js`), NO `new Date(fechaHora)` a secas (falla en servidores UTC). Fix 2026-08-06 en `POST /api/clases/cancelar`, `CancelarClaseModal` y `horasHasta` del bot.
+
+**Cupos frontend jugador:** `GET /api/clases/cupos` (service role, sesión requerida) entrega `cupo_maximo` + `inscritos` por clase; `getAllClasesConInscripcion()` los mergea en `ClaseConInscripcion` y el calendario de mis clases los propaga a `ReservarClaseModal`, que muestra `inscritos/cupo` y deshabilita la reserva cuando `inscritos >= cupo_maximo`. Control último: `POST /api/clases/inscribir` + trigger `limitar_15_alumnos()`.
 
 #### `horario`
 | Columna | Tipo |
@@ -303,8 +307,8 @@ futplayapp/
 | `get_proxima_clase(p_usuario_id)` | SQL | Retorna próxima clase del usuario |
 | `handle_new_user()` | TRIGGER (SECURITY DEFINER) | Crea registro en `usuario` al registrarse en Auth |
 | `inscribir_usuario_clase()` | SQL | Inscribe usuario en clase |
-| `limitar_15_alumnos()` | TRIGGER | Controla cupo máximo |
-| `manejar_inscripcion_clase()` | TRIGGER | Valida membresía + consume token al inscribir |
+| `limitar_15_alumnos()` | TRIGGER | Controla cupo máximo (lee `clase.cupo_maximo`; `null` → 15) — creado 2026-08-06 |
+| `manejar_inscripcion_clase()` | TRIGGER | Valida membresía al inscribir (NO consume tokens) |
 | `procesar_boleta_pagada()` | TRIGGER | Crea membresía y asigna tokens al pagar boleta |
 
 ### 3.5 Triggers

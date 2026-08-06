@@ -166,11 +166,11 @@ export default function ClasesPage() {
     if (form.tipo_evento !== "partido") {
       base.titulo = form.titulo;
       base.sede_id = form.sede_id;
-      base.cupo_maximo = form.cupo_maximo;
       base.profesor_id = form.profesor_id;
     } else if (form.sede_id) {
       base.sede_id = form.sede_id;
     }
+    base.cupo_maximo = form.cupo_maximo;
     if (fecha_hora) base.fecha_hora = fecha_hora;
 
     const res = modal === "create"
@@ -198,7 +198,7 @@ export default function ClasesPage() {
               descripcion: form.descripcion,
               sede_id: form.tipo_evento !== "partido" ? form.sede_id : form.sede_id || null,
               sede_nombre: form.sede_id ? (sedes.find(s => s.id === form.sede_id)?.nombre || "") : "",
-              cupo_maximo: form.tipo_evento !== "partido" ? form.cupo_maximo : null,
+              cupo_maximo: form.cupo_maximo,
               profesor_id: form.tipo_evento !== "partido" ? (form.profesor_id || null) : null,
               profesor_nombre: form.tipo_evento !== "partido" ? (profesores.find(p => p.id === form.profesor_id)?.nombre || "") : "",
               tipo_evento: form.tipo_evento,
@@ -577,19 +577,6 @@ export default function ClasesPage() {
                       </select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Cupo Máximo</label>
-                        <input
-                          type="number"
-                          value={form.cupo_maximo}
-                          onChange={(e) => setForm((p) => ({ ...p, cupo_maximo: parseInt(e.target.value) || 1 }))}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                          min={1}
-                        />
-                      </div>
-                    </div>
-
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 mb-1">Profesor</label>
                       <select
@@ -605,6 +592,19 @@ export default function ClasesPage() {
                     </div>
                   </>
                 )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Cupo Máximo</label>
+                    <input
+                      type="number"
+                      value={form.cupo_maximo}
+                      onChange={(e) => setForm((p) => ({ ...p, cupo_maximo: parseInt(e.target.value) || 1 }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                      min={1}
+                    />
+                  </div>
+                </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">

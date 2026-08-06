@@ -325,7 +325,55 @@ describe("POST /api/clases/cancelar", () => {
         expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
     });
 
-    it("API-CLASES-CAN-017: rechaza cancelar si ya no_asistio", async () => {
+    it("API-CLASES-CAN-018: cancela con hora naive de Chile (sin Z) con >= 3h reales y devuelve token", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-01T11:00:00Z"));
+
+        __resetMocks();
+        __setAuthUser({ id: USER_ID, email: "test@test.cl" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+
+        // "2026-07-01T13:00:00" = 13:00 hora local Chile = 17:00Z. Faltan 6h.
+        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: "2026-07-01T13:00:00" }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+        expect(json.message).toContain("Te devolvimos el token");
+
+        vi.useRealTimers();
+    });
+
+    it("API-CLASES-CAN-019: cancela con hora naive de Chile (sin Z) con < 3h reales (sin reembolso)", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-01T11:00:00Z"));
+
+        __resetMocks();
+        __setAuthUser({ id: USER_ID, email: "test@test.cl" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+
+        // "2026-07-01T09:30:00" = 09:30 hora local Chile = 13:30Z. Faltan 2.5h.
+        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: "2026-07-01T09:30:00" }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+        expect(json.message).toContain("no se devuelve el token");
+
+        vi.useRealTimers();
+    });
+
+    it("API-CLASES-CAN-020: rechaza cancelar si ya no_asistio", async () => {
         __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "no_asistio" });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 

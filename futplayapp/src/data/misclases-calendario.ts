@@ -1,5 +1,11 @@
 import { createClient } from "@/utils/supabase/client";
 
+export type CupoClase = {
+    clase_id: string;
+    cupo_maximo: number | null;
+    inscritos: number;
+};
+
 export type ClaseConInscripcion = {
     id: string;
     titulo: string;
@@ -9,7 +15,20 @@ export type ClaseConInscripcion = {
     inscripcionId: string | null;
     asistencia: string | boolean | null;
     tipo_evento: "entrenamiento" | "partido";
+    cupo_maximo: number | null;
+    inscritos: number;
 };
+
+export async function getCuposClases(): Promise<Record<string, CupoClase>> {
+    try {
+        const res = await fetch("/api/clases/cupos", { cache: "no-store" });
+        if (!res.ok) return {};
+        const data = (await res.json()) as CupoClase[];
+        return Object.fromEntries(data.map((c) => [c.clase_id, c]));
+    } catch {
+        return {};
+    }
+}
 
 export async function getAllClasesConInscripcion(
     userId: string,
@@ -36,9 +55,12 @@ export async function getAllClasesConInscripcion(
         inscMap.set(ins.clase_id, { id: ins.id, asistencia: ins.asistencia });
     }
 
+    const cupos = await getCuposClases();
+
     type ClaseRaw = { id: string; titulo: string; descripcion: string | null; fecha_hora: string | null; sede: { nombre: string }[] | { nombre: string } | null; tipo_evento: "entrenamiento" | "partido" };
     return (clases ?? []).map((clase: ClaseRaw) => {
         const ins = inscMap.get(clase.id);
+        const cupo = cupos[clase.id];
         return {
             id: clase.id,
             titulo: clase.titulo,
@@ -48,6 +70,8 @@ export async function getAllClasesConInscripcion(
             inscripcionId: ins?.id ?? null,
             asistencia: ins?.asistencia ?? null,
             tipo_evento: clase.tipo_evento,
+            cupo_maximo: cupo?.cupo_maximo ?? null,
+            inscritos: cupo?.inscritos ?? 0,
         };
     });
 }

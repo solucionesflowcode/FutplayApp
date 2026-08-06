@@ -115,6 +115,42 @@ describe("GET /api/admin/clases", () => {
         expect(json).toHaveProperty("clase");
         expect(json).toHaveProperty("inscripciones");
     });
+
+    it("API-ADM-CLASES-GET-006: ?tipo=asistencia excluye inscripciones canceladas", async () => {
+        __setTableData("clase", { id: "c1", titulo: "Clase A", fecha_hora: "2026-06-15T10:00:00Z" });
+        __setTableData("clase_usuario", [
+            { id: "cu1", clase_id: "c1", usuario_id: "u1", asistencia: "asistio" },
+            { id: "cu2", clase_id: "c1", usuario_id: "u2", asistencia: "cancelado" },
+            { id: "cu3", clase_id: "c1", usuario_id: "u3", asistencia: "cancelado_sin_reembolso" },
+        ]);
+        __setTableData("usuario", [{ id: "u1", nombre: "Juan" }]);
+
+        const res = await GET(makeRequest("http://localhost:3000/api/admin/clases?tipo=asistencia&clase_id=c1"));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.inscripciones).toHaveLength(1);
+        expect(json.inscripciones[0].id).toBe("cu1");
+    });
+
+    it("API-ADM-CLASES-GET-007: el conteo inscritos excluye inscripciones canceladas", async () => {
+        __setTableData("clase", TEST_CLASES);
+        __setTableData("sede", TEST_SEDES);
+        __setTableData("usuario", [{ id: "p1", nombre: "Profesor" }]);
+        __setTableData("clase_usuario", [
+            { clase_id: "c1", asistencia: "asistio" },
+            { clase_id: "c1", asistencia: "pendiente" },
+            { clase_id: "c1", asistencia: "cancelado" },
+            { clase_id: "c1", asistencia: "cancelado_sin_reembolso" },
+        ]);
+
+        const res = await GET(makeRequest("http://localhost:3000/api/admin/clases"));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        const c1 = json.find((c: any) => c.id === "c1");
+        expect(c1.inscritos).toBe(2);
+    });
 });
 
 describe("POST /api/admin/clases", () => {
@@ -159,6 +195,20 @@ describe("POST /api/admin/clases", () => {
 
         expect(res.status).toBe(200);
     });
+
+    it("API-ADM-CLASES-POST-004: crea partido con cupo_maximo definido", async () => {
+        __setTableData("clase", { id: "c-partido" });
+
+        const res = await POST(makeRequest("http://localhost:3000/api/admin/clases", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tipo_evento: "partido", sede_id: "s1", cupo_maximo: 22 }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.id).toBe("c-partido");
+    });
 });
 
 describe("PUT /api/admin/clases", () => {
@@ -183,6 +233,20 @@ describe("PUT /api/admin/clases", () => {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: "c1", titulo: "Título actualizado", cupo_maximo: 25 }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+    });
+
+    it("API-ADM-CLASES-PUT-003: actualiza cupo de un partido", async () => {
+        __setTableData("clase", { id: "c1" });
+
+        const res = await PUT(makeRequest("http://localhost:3000/api/admin/clases", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: "c1", tipo_evento: "partido", cupo_maximo: 18 }),
         }));
 
         expect(res.status).toBe(200);

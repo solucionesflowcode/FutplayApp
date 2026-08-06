@@ -286,6 +286,12 @@ futplayapp/
 
 **Nota histórica:** La tabla `horario` fue eliminada. `fecha_hora` se movió a `clase`. `clase_usuario` ahora referencia `clase` directamente vía `clase_id`.
 
+**Nota fecha_hora:** `clase.fecha_hora` es `timestamp without time zone` (hora local de Chile). NO parsear con `new Date(fechaHora)` a secas (depende de la TZ del servidor/browser; en servidores UTC rompe el cálculo de reembolso). Usar `parseClaseFechaHora()` (`src/lib/fechas.ts`, y su gemelo `parseFechaHoraChile` en `webhook/handlers.js`), que interpreta strings sin zona como wall-clock de `America/Santiago` y respeta strings con `Z`/offset. Aplicado en `POST /api/clases/cancelar`, `CancelarClaseModal` y `horasHasta` del bot.
+
+**Nota cupo:** `clase.cupo_maximo` lo define el admin (default 15) también para partidos. Registros legacy con `null` se tratan como 15 en `POST /api/clases/inscribir`; `POST/PUT /api/admin/clases` ya no lo fuerzan a `null` para partidos. El conteo de inscritos (admin y jugador) excluye `cancelado`/`cancelado_sin_reembolso`.
+
+**Nota cupos frontend jugador:** `GET /api/clases/cupos` (service role, sesión requerida) devuelve `cupo_maximo` + `inscritos` por clase. `getAllClasesConInscripcion()` lo mergea en `ClaseConInscripcion` (`cupo_maximo`, `inscritos`). El calendario de mis clases lo propaga a `ReservarClaseModal`, que muestra `inscritos/cupo` y deshabilita la reserva (botón → mensaje "Clase llena") cuando `inscritos >= cupo_maximo`. La validación de servidor (`POST /api/clases/inscribir` + trigger `limitar_15_alumnos()`) sigue siendo el control último.
+
 ### Funciones SQL
 
 | Función | Tipo | Propósito |
@@ -295,8 +301,8 @@ futplayapp/
 | `get_proxima_clase(p_usuario_id)` | SQL | Retorna próxima clase del usuario |
 | `handle_new_user()` | TRIGGER (SECURITY DEFINER) | Crea registro en `usuario` al registrarse en Auth |
 | `inscribir_usuario_clase()` | SQL | Inscribe usuario en clase |
-| `limitar_15_alumnos()` | TRIGGER | Controla cupo máximo (15) |
-| `manejar_inscripcion_clase()` | TRIGGER | Valida membresía al inscribir |
+| `limitar_15_alumnos()` | TRIGGER | Controla cupo máximo (lee `clase.cupo_maximo`; `null` → 15) |
+| `manejar_inscripcion_clase()` | TRIGGER | Valida membresía al inscribir (NO consume tokens) |
 | `procesar_boleta_pagada()` | TRIGGER | Crea membresía y asigna tokens al pagar boleta |
 | `devolver_token(p_usuario_id)` | RPC | Devuelve un token a la membresía |
 
