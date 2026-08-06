@@ -151,7 +151,7 @@ export default function Sidebar() {
         {/* Header */}
         <div className="mb-10 px-2">
           <h2 className="text-xl font-bold flex items-center gap-1.5"><img src="/futplay-logo-original.svg" alt="" className="h-5 w-auto" /> FutPlay</h2>
-          <p className="text-[10px] text-gray-500 tracking-widest uppercase">Admin Panel</p>
+          <p className="text-[10px] text-gray-500 tracking-widest uppercase">Panel Jugador</p>
         </div>
 
         {/* Navegación */}

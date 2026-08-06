@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   CalendarDays,
+  LogOut,
   Menu,
   X,
 } from "lucide-react";
+import { useAuthUser } from "@/context";
 
 const menuItems = [
   { name: "Clases", href: "/profesor", icon: CalendarDays },
@@ -16,6 +18,13 @@ const menuItems = [
 export default function SidebarProfesor() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuthUser();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/login");
+  };
 
   return (
     <>
@@ -69,6 +78,13 @@ export default function SidebarProfesor() {
                 </Link>
               );
             })}
+
+            <div className="border-t border-gray-800 mt-4 pt-4 space-y-1">
+              <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded transition-all cursor-pointer">
+                <LogOut size={20} />
+                <span className="text-sm">Cerrar Sesión</span>
+              </button>
+            </div>
           </nav>
         </div>
       </div>
@@ -105,6 +121,13 @@ export default function SidebarProfesor() {
             );
           })}
         </nav>
+
+        <div className="border-t border-gray-800 pt-4">
+          <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-500 rounded transition-all cursor-pointer">
+            <LogOut size={20} />
+            <span className="text-sm">Cerrar Sesión</span>
+          </button>
+        </div>
       </aside>
     </>
   );
