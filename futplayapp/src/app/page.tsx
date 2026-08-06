@@ -9,7 +9,7 @@ import { createClient } from "@/utils/supabase/server";
  * Redirecciones:
  * - Sin usuario → /home
  * - administrador → /admin
- * - profesor → /dashboard
+ * - profesor → /profesor
  * - jugador → /dashboard
  */
 export default async function Home() {
@@ -36,7 +36,7 @@ export default async function Home() {
     case "administrador":
       redirect("/admin");
     case "profesor":
-      redirect("/dashboard");
+      redirect("/profesor");
     case "jugador":
       redirect("/dashboard");
     default:

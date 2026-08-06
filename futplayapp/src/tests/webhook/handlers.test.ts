@@ -391,7 +391,8 @@ describe("buildReminderMessage", () => {
       new Date("2026-08-06T21:00:00Z")
     );
     expect(msg).toContain("Hola Pedro!");
-    expect(msg).toContain("mañana a las");
+    expect(msg).toMatch(/Confirma tu asistencia a ".+" el \w+ \d{1,2} de \w+ a las/);
+    expect(msg).not.toContain("Recuerda que");
     expect(msg).toContain("Yoga");
     expect(msg).toContain("Responde *1* para confirmar o *2* para cancelar.");
   });

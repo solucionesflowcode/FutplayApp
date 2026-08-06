@@ -40,6 +40,10 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) console.warn('AVISO: Sin SUPABASE_SE
 db.init(supabaseUrl, supabaseKey);
 
 // ─── WhatsApp Client ───
+const SESSION_PATH = process.env.WHATSAPP_SESSION_PATH
+  ? path.resolve(process.env.WHATSAPP_SESSION_PATH)
+  : path.join(__dirname, 'whatsapp-session');
+
 const puppeteerConfig = {
   headless: true,
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run']
@@ -53,43 +57,110 @@ if (process.env.PUPPETEER_EXECUTABLE_PATH) {
 }
 // En Linux sin PUPPETEER_EXECUTABLE_PATH, puppeteer usa su Chrome for Testing cacheado (imagen Docker).
 
-const whatsapp = new Client({
-  authStrategy: new LocalAuth({ dataPath: './whatsapp-session' }),
-  puppeteer: puppeteerConfig
-});
-
+let whatsapp = null;
 let whatsappReady = false;
+let inicializando = false;
+let apagando = false;
+let ultimoIntento = 0;
 
-whatsapp.on('qr', qr => { qrcode.generate(qr, { small: true }); console.log('Escanea el QR.'); });
-
-if (process.env.QR_TO_FILE) {
-  const qrImg = require('qrcode');
-  whatsapp.on('qr', qr => {
-    qrImg.toFile(process.env.QR_TO_FILE, qr, { width: 400, margin: 2 })
-      .then(() => console.log(`QR guardado en ${process.env.QR_TO_FILE}`))
-      .catch(err => console.error('Error guardando QR:', err.message));
+function crearCliente() {
+  const c = new Client({
+    authStrategy: new LocalAuth({ dataPath: SESSION_PATH }),
+    puppeteer: puppeteerConfig
   });
-}
-whatsapp.on('ready', () => { console.log('WhatsApp conectado!'); whatsappReady = true; });
-whatsapp.on('disconnected', (reason) => { console.error('WhatsApp desconectado:', reason); whatsappReady = false; });
 
-whatsapp.on('message', async msg => {
-  if (msg.from.endsWith('@g.us') || msg.from.endsWith('@broadcast')) return;
+  c.on('qr', qr => { qrcode.generate(qr, { small: true }); console.log('Escanea el QR.'); });
 
-  let telefono;
-  if (msg.from.endsWith('@lid')) {
-    const contact = await msg.getContact();
-    const rawId = contact.id?.user || contact.id?._serialized || contact.id || contact.number;
-    telefono = rawId.replace(/@\w+/g, '').replace(/\D/g, '');
-  } else {
-    telefono = msg.from.replace('@c.us', '');
+  if (process.env.QR_TO_FILE) {
+    const qrImg = require('qrcode');
+    c.on('qr', qr => {
+      qrImg.toFile(process.env.QR_TO_FILE, qr, { width: 400, margin: 2 })
+        .then(() => console.log(`QR guardado en ${process.env.QR_TO_FILE}`))
+        .catch(err => console.error('Error guardando QR:', err.message));
+    });
   }
 
-  const respuesta = await procesarMensajeWhatsApp(telefono, msg.body, db);
-  if (respuesta) await msg.reply(respuesta);
-});
+  c.on('ready', () => { console.log('WhatsApp conectado!'); whatsappReady = true; });
 
-whatsapp.initialize().catch(err => console.error('Error al iniciar WhatsApp:', err.message));
+  c.on('disconnected', (reason) => {
+    console.error('WhatsApp desconectado:', reason);
+    whatsappReady = false;
+    if (apagando || reason === 'LOGOUT') return;
+    console.log('Programando reconexión en 15s...');
+    setTimeout(() => iniciarWhatsApp(), 15000);
+  });
+
+  c.on('message', async msg => {
+    if (msg.from.endsWith('@g.us') || msg.from.endsWith('@broadcast')) return;
+
+    let telefono;
+    if (msg.from.endsWith('@lid')) {
+      const contact = await msg.getContact();
+      const rawId = contact.id?.user || contact.id?._serialized || contact.id || contact.number;
+      telefono = rawId.replace(/@\w+/g, '').replace(/\D/g, '');
+    } else {
+      telefono = msg.from.replace('@c.us', '');
+    }
+
+    const respuesta = await procesarMensajeWhatsApp(telefono, msg.body, db);
+    if (respuesta) await msg.reply(respuesta);
+  });
+
+  return c;
+}
+
+async function iniciarWhatsApp() {
+  if (apagando || inicializando) return;
+  inicializando = true;
+  ultimoIntento = Date.now();
+  try {
+    if (whatsapp) await whatsapp.destroy().catch(() => {});
+  } catch (err) {
+    console.error('Error cerrando cliente anterior:', err.message);
+  }
+  whatsapp = crearCliente();
+  try {
+    await whatsapp.initialize();
+  } catch (err) {
+    console.error(`Error al iniciar WhatsApp: ${err.message}`);
+    if (!apagando) {
+      console.log('Reintentando en 15s...');
+      setTimeout(() => { inicializando = false; iniciarWhatsApp(); }, 15000);
+    }
+  } finally {
+    inicializando = false;
+  }
+}
+
+// Watchdog: si WhatsApp queda sin conectar y sin reintento pendiente, recarga el cliente
+setInterval(() => {
+  if (apagando || inicializando || whatsappReady) return;
+  if (Date.now() - ultimoIntento > 180000) {
+    console.log('[Watchdog] WhatsApp sin conectar por mucho tiempo, reiniciando cliente...');
+    iniciarWhatsApp();
+  }
+}, 60000);
+
+// Cierre limpio: cierra Chrome para que la sesión se flushee y sobreviva a reinicios
+async function apagar() {
+  if (apagando) return;
+  apagando = true;
+  console.log('Deteniendo bot y guardando sesión...');
+  try {
+    if (whatsapp) await whatsapp.destroy();
+  } catch (err) {
+    console.error('Error al detener el cliente:', err.message);
+  }
+  console.log('Sesión guardada. Hasta luego.');
+  process.exit(0);
+}
+
+process.on('SIGINT', apagar);
+process.on('SIGTERM', apagar);
+process.on('uncaughtException', (err) => console.error('Excepción no capturada:', err.message));
+process.on('unhandledRejection', (err) => console.error('Rechazo no manejado:', err));
+
+iniciarWhatsApp();
 
 // ─── Scheduler ───
 if (process.env.SCHEDULER_ENABLED === 'true') {

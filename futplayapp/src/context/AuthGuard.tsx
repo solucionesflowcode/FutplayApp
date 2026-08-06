@@ -11,6 +11,19 @@ interface AuthGuardProps {
   fallback?: ReactNode;
 }
 
+function rutaPorRol(rol: Rol | undefined): string {
+  switch (rol) {
+    case "administrador":
+      return "/admin";
+    case "profesor":
+      return "/profesor";
+    case "jugador":
+      return "/dashboard";
+    default:
+      return "/login";
+  }
+}
+
 function AuthOverlay({
   icon,
   title,
@@ -62,7 +75,7 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
     if (loading) return;
     if (!error && !user) return;
     if (allowedRoles && usuario && !allowedRoles.includes(usuario.rol)) {
-      router.push("/dashboard");
+      router.push(rutaPorRol(usuario.rol));
     }
   }, [loading, error, user, usuario, allowedRoles, router]);
 
@@ -95,7 +108,7 @@ export function AuthGuard({ children, allowedRoles, fallback }: AuthGuardProps) 
         title="Acceso restringido"
         description={`No tienes los permisos necesarios para acceder a esta sección.`}
         buttonText="Ir al inicio"
-        buttonAction={() => router.push("/dashboard")}
+        buttonAction={() => router.push(rutaPorRol(usuario?.rol))}
       />
     );
   }

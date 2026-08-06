@@ -12,7 +12,7 @@ export default function DashboardLayout({
 }) {
     return (
         <AuthProvider>
-            <AuthGuard allowedRoles={["jugador", "profesor"]}>
+            <AuthGuard allowedRoles={["jugador"]}>
                 <div className="flex flex-col md:flex-row h-screen">
                     <SidebarUsuarioNuevo />
                     <main className="flex-1 overflow-y-auto">

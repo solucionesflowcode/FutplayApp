@@ -327,6 +327,19 @@ La forma más barata y sin límites: el bot corre en un equipo que ya tengas (PC
 - **Re-vincular WhatsApp** (se perdió el celular o se desvinculó): borrar `webhook/whatsapp-session` → `nssm restart futplay-bot` → el servicio regenera el QR como imagen en la ruta de la variable `QR_TO_FILE` (configurada con `nssm set futplay-bot AppEnvironmentExtra QR_TO_FILE=C:\...\qr.png`) → abrir ese PNG y escanear. El QR expira en ~30-60 s, se regenera solo mientras no se escanee.
 - **Logs**: viven en el archivo que configuraste en `AppStdout`/`AppStderr`.
 
+### Reinicio automático y persistencia de sesión (server.js)
+
+- **Reintento al iniciar**: si `whatsapp.initialize()` falla (p. ej. la red aún no está lista al prender la PC, o el Chrome anterior no liberó el perfil), reintenta solo cada 15 s hasta conectar. No hace falta reiniciar el servicio.
+- **Reconexión**: si WhatsApp se desconecta (motivos `NAVIGATION`, `NON_LOGGED_IN`, etc.) reconecta solo a los 15 s. Solo un `LOGOUT` (desvinculación real) exige re-escanear.
+- **Watchdog**: si el bot queda sin conectar > 3 min, recarga el cliente y el QR se regenera solo.
+- **Cierre limpio**: al detener el servicio (`nssm stop/restart` o apagado de la PC) cierra Chrome con `whatsapp.destroy()`, lo que flushea la sesión guardada en `webhook/whatsapp-session`. Por eso la sesión **sobrevive reinicios y apagados sin re-escanear**.
+- **Dar tiempo al cierre limpio** (importante al apagar la PC): el `AppStopMethodConsole` debe ser suficiente para que node cierre Chrome antes de que NSSM lo mate:
+  ```powershell
+  nssm set futplay-bot AppStopMethodConsole 8000
+  nssm set futplay-bot AppStopMethodWindow 2000
+  ```
+- **Sesión**: se guarda siempre en `webhook/whatsapp-session` (ruta absoluta calculada por `server.js`, ya no depende del directorio de trabajo).
+
 ## Pasos (Raspberry Pi / Linux — con Docker)
 
 ```bash

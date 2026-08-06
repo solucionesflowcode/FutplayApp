@@ -97,7 +97,7 @@ Exporta: `AuthProvider`, `useAuthUser`, `AuthGuard`, `Rol`, `Usuario`
 |-----|----------|
 | Sin usuario | → `/login` |
 | administrador | → `/admin` |
-| profesor | → `/dashboard` |
+| profesor | → `/profesor` |
 | jugador | → `/dashboard` |
 
 ### 6. `src/app/api/auth/callback/route.ts`

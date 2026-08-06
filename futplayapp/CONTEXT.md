@@ -360,7 +360,7 @@ futplayapp/
 6. AuthContext carga datos de usuario desde tabla `usuario` via getUsuario(userId)
 7. Root page.tsx redirige según rol:
    - administrador → /admin
-   - profesor → /dashboard
+   - profesor → /profesor
    - jugador → /dashboard
    - No autenticado → /home
 ```

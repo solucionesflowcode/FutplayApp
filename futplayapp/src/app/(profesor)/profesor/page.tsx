@@ -3,7 +3,7 @@ import { AuthGuard } from "@/context";
 
 export default function ProfesorPage() {
   return (
-    <AuthGuard allowedRoles={["profesor", "administrador"]}>
+    <AuthGuard allowedRoles={["profesor"]}>
       <ProfesorClient />
     </AuthGuard>
   );

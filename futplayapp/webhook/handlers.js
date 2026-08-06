@@ -3,9 +3,10 @@ function horasHasta(fecha_hora) {
 }
 
 function buildReminderMessage(usuario, clase, fechaHora) {
-  const hora = new Date(fechaHora).toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
+  const fecha = new Date(fechaHora).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Santiago' }).replace(',', '');
+  const hora = new Date(fechaHora).toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago' });
   const titulo = clase?.titulo || 'tu clase';
-  return `Hola ${usuario.nombre}! Recuerda que mañana a las ${hora} tienes "${titulo}". Responde *1* para confirmar o *2* para cancelar.`;
+  return `Hola ${usuario.nombre}! Confirma tu asistencia a "${titulo}" el ${fecha} a las ${hora}. Responde *1* para confirmar o *2* para cancelar.`;
 }
 
 async function sendMessageWithRetry(whatsapp, chatId, message, maxRetries = 3) {

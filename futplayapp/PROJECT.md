@@ -65,7 +65,7 @@ futplayapp/
 │   │   │   └── login/
 │   │   │       └── page.tsx       # Login con Google OAuth
 │   │   │
-│   │   ├── (dashboard)/           # Grupo de rutas dashboard (jugador/profesor)
+│   │   ├── (dashboard)/           # Grupo de rutas dashboard (jugador)
 │   │   │   ├── layout.tsx         # AuthGuard + SidebarUsuarioNuevo
 │   │   │   ├── dashboard/
 │   │   │   │   ├── page.tsx       # Server component → DashboardClient
@@ -335,7 +335,7 @@ futplayapp/
 6. AuthContext carga datos de usuario desde tabla usuario via getUsuario(userId)
 7. Root page.tsx redirige según rol:
    - administrador → /admin
-   - profesor → /dashboard
+   - profesor → /profesor
    - jugador → /dashboard
    - No autenticado → /home
 ```
@@ -399,7 +399,6 @@ type Rol = "jugador" | "profesor" | "administrador";
 
 - Layout: `AuthGuard` (profesor) + `SidebarProfesor`
 - `/profesor` — Calendario de clases + control de asistencia
-- `/profesor/elearning` — E-learning del profesor
 
 ---
 

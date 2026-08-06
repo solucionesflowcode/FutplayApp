@@ -105,7 +105,9 @@ export default function AuthCallback() {
         const role = usuario?.rol;
         if (role === "administrador") {
           window.location.href = "/admin";
-        } else if (role === "profesor" || role === "jugador") {
+        } else if (role === "profesor") {
+          window.location.href = "/profesor";
+        } else if (role === "jugador") {
           window.location.href = "/dashboard";
         } else {
           window.location.href = "/home";

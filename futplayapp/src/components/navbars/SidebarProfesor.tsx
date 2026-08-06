@@ -5,17 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   CalendarDays,
-  ArrowLeftFromLine,
-  GraduationCap,
   Menu,
   X,
-  User,
 } from "lucide-react";
 
 const menuItems = [
   { name: "Clases", href: "/profesor", icon: CalendarDays },
-  { name: "E-learning", href: "/profesor/elearning", icon: GraduationCap },
-  { name: "Mi Perfil", href: "/profesor/perfil", icon: User },
 ];
 
 export default function SidebarProfesor() {
@@ -74,15 +69,6 @@ export default function SidebarProfesor() {
                 </Link>
               );
             })}
-
-            <div className="border-t border-gray-800 mt-4 pt-4 space-y-1">
-              <Link href="/dashboard" onClick={() => setOpen(false)}>
-                <div className="flex items-center gap-3 px-4 py-3 rounded text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-                  <ArrowLeftFromLine size={20} />
-                  <span className="text-sm">Vista Usuario</span>
-                </div>
-              </Link>
-            </div>
           </nav>
         </div>
       </div>
@@ -119,15 +105,6 @@ export default function SidebarProfesor() {
             );
           })}
         </nav>
-
-        <div className="border-t border-gray-800 pt-4">
-          <Link href="/dashboard">
-            <div className="flex items-center gap-3 px-4 py-3 rounded text-gray-400 hover:bg-white/5 hover:text-white transition-all group">
-              <ArrowLeftFromLine size={20} className="text-gray-500 group-hover:text-white" />
-              <span className="text-sm">Vista Usuario</span>
-            </div>
-          </Link>
-        </div>
       </aside>
     </>
   );
