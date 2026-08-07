@@ -124,4 +124,4 @@ async function procesarMensajeWhatsApp(telefono, texto, db) {
   return null;
 }
 
-module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, horasHasta, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };
+module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, horasHasta, parseFechaHoraChile, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };

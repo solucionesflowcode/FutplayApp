@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, XCircle, X, Loader2 } from "lucide-react";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import ProximoEntrenamiento from "../../../components/userDashboard/ProximoEntrenamiento";
 import AvisoReagendar from "../../../components/userDashboard/AvisoReagendar";
@@ -23,28 +23,61 @@ export default function DashboardClient() {
     const [tieneFicha, setTieneFicha] = useState(false);
     const [planChecked, setPlanChecked] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showFailure, setShowFailure] = useState(false);
+    const [confirmingPayment, setConfirmingPayment] = useState(false);
 
     useEffect(() => {
-        if (searchParams.get("flowSuccess") === "1") {
-            setShowSuccess(true);
-            const token = searchParams.get("token");
-            const boletaId = typeof window !== "undefined" ? sessionStorage.getItem("flowBoletaId") : null;
-            if (boletaId) {
-                const url = new URL("/api/flow/confirm", window.location.origin);
-                url.searchParams.set("boletaId", boletaId);
-                if (token && token !== "{token}") {
-                    url.searchParams.set("token", token);
-                }
-                fetch(url.toString()).catch(console.error);
-            }
-            const params = new URLSearchParams(window.location.search);
-            params.delete("flowSuccess");
-            params.delete("token");
-            const newUrl = params.toString()
-                ? `${window.location.pathname}?${params.toString()}`
-                : window.location.pathname;
-            window.history.replaceState({}, "", newUrl);
+        if (searchParams.get("flowSuccess") !== "1") return;
+
+        const token = searchParams.get("token");
+        const params = new URLSearchParams(window.location.search);
+        params.delete("flowSuccess");
+        params.delete("token");
+        const newUrl = params.toString()
+            ? `${window.location.pathname}?${params.toString()}`
+            : window.location.pathname;
+        window.history.replaceState({}, "", newUrl);
+
+        const boletaId = typeof window !== "undefined" ? sessionStorage.getItem("flowBoletaId") : null;
+        if (!boletaId) return;
+        sessionStorage.removeItem("flowBoletaId");
+
+        let cancelled = false;
+        setConfirmingPayment(true);
+
+        const url = new URL("/api/flow/confirm", window.location.origin);
+        url.searchParams.set("boletaId", boletaId);
+        if (token && token !== "{token}") {
+            url.searchParams.set("token", token);
         }
+
+        const poll = async (attempts: number): Promise<void> => {
+            if (cancelled) return;
+            try {
+                const res = await fetch(url.toString());
+                const data = await res.json();
+                if (res.ok && data.estado === "pagado") {
+                    setShowSuccess(true);
+                    return;
+                }
+                if (data.estado === "rechazado" || data.estado === "anulado") {
+                    setShowFailure(true);
+                    return;
+                }
+                if (data.estado === "pendiente" && attempts < 10) {
+                    await new Promise((r) => setTimeout(r, 3000));
+                    return poll(attempts + 1);
+                }
+                setShowFailure(true);
+            } catch {
+                setShowFailure(true);
+            }
+        };
+        poll(0).finally(() => {
+            if (!cancelled) setConfirmingPayment(false);
+        });
+
+        return () => { cancelled = true; };
     }, [searchParams]);
 
     useEffect(() => {
@@ -136,6 +169,50 @@ export default function DashboardClient() {
                     </div>
                 </div>
             </div>
+
+            {confirmingPayment && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#001220]/60 backdrop-blur-sm" />
+                    <div className="relative bg-white border-t-2 border-t-[#F28C28] shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
+                        <Loader2 className="w-12 h-12 text-[#F28C28] animate-spin mx-auto" />
+                        <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
+                            Confirmando pago
+                        </h3>
+                        <p className="text-gray-500 text-sm">
+                            Estamos verificando el pago con Flow. Un momento por favor...
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {showFailure && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#001220]/60 backdrop-blur-sm" onClick={() => setShowFailure(false)} />
+                    <div className="relative bg-white border-t-2 border-t-[#DC2626] shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
+                        <button
+                            onClick={() => setShowFailure(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <div className="w-20 h-20 rounded-full bg-[#DC2626]/10 flex items-center justify-center mx-auto">
+                            <XCircle className="w-10 h-10 text-[#DC2626]" />
+                        </div>
+                        <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
+                            El pago no se pudo completar
+                        </h3>
+                        <p className="text-gray-500 text-sm">
+                            La transacción fue rechazada o cancelada, por lo que tu plan no fue activado. Puedes intentarlo nuevamente desde la sección de planes.
+                        </p>
+                        <button
+                            onClick={() => setShowFailure(false)}
+                            className="mt-8 w-full py-3.5 rounded bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold shadow-lg shadow-[#F28C28]/30 hover:shadow-xl hover:shadow-[#F28C28]/40 transition-all"
+                        >
+                            Volver al Dashboard
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {showSuccess && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

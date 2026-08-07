@@ -9,7 +9,8 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const db = require('./data');
-const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached } = require('./handlers');
+const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached, parseFechaHoraChile } = require('./handlers');
+const { esErrorPerfilOcupado, matarChromeStale } = require('./limpieza');
 
 const RECORDATORIOS_PATH = process.env.RECORDATORIOS_PATH || path.join(__dirname, '.recordatorios.json');
 let recordatoriosEnviados = new Set();
@@ -85,9 +86,18 @@ function crearCliente() {
   c.on('disconnected', (reason) => {
     console.error('WhatsApp desconectado:', reason);
     whatsappReady = false;
-    if (apagando || reason === 'LOGOUT') return;
+    if (apagando) return;
+    if (reason === 'LOGOUT') {
+      console.log('La sesión fue desvinculada. Vuelve a escanear el QR para reconectar.');
+      return;
+    }
     console.log('Programando reconexión en 15s...');
     setTimeout(() => iniciarWhatsApp(), 15000);
+  });
+
+  c.on('auth_failure', (msg) => {
+    console.error('auth_failure:', msg);
+    whatsappReady = false;
   });
 
   c.on('message', async msg => {
@@ -132,39 +142,63 @@ async function iniciarWhatsApp() {
   } catch (err) {
     console.error('Error cerrando cliente anterior:', err.message);
   }
+  // Si un reinicio anterior dejó un Chrome huérfano usando el perfil, lo eliminamos
+  // antes de abrir uno nuevo. Sin esto, initialize() falla para siempre con
+  // "browser is already running" y el bot queda atascado en un loop de 15s.
+  await matarChromeStale(SESSION_PATH);
   whatsapp = crearCliente();
   try {
     await whatsapp.initialize();
+    inicializando = false;
   } catch (err) {
     console.error(`Error al iniciar WhatsApp: ${err.message}`);
-    if (!apagando) {
-      console.log('Reintentando en 15s...');
-      setTimeout(() => { inicializando = false; iniciarWhatsApp(); }, 15000);
+    if (apagando) { inicializando = false; return; }
+    const perfilOcupado = esErrorPerfilOcupado(err);
+    if (perfilOcupado) {
+      console.log('Perfil de sesión bloqueado por un Chrome anterior. Eliminándolo...');
+      await matarChromeStale(SESSION_PATH);
     }
-  } finally {
-    inicializando = false;
+    const esperaMs = perfilOcupado ? 3000 : 15000;
+    console.log(`Reintentando en ${esperaMs / 1000}s...`);
+    // inicializando sigue en true hasta que dispare el reintento, así no se pisan
+    // el watchdog, el evento disconnected y el propio reintento.
+    setTimeout(() => { inicializando = false; iniciarWhatsApp(); }, esperaMs);
   }
 }
 
-// Watchdog: si WhatsApp queda sin conectar y sin reintento pendiente, recarga el cliente
+// Watchdog: si WhatsApp queda sin conectar y sin reintento pendiente, recarga el cliente.
+// También detecta una initialize() que se quedó colgada (QR sin escanear o página trabada).
 setInterval(() => {
-  if (apagando || inicializando || whatsappReady) return;
-  if (Date.now() - ultimoIntento > 180000) {
+  if (apagando) return;
+  if (whatsappReady) return;
+  const sinProgreso = Date.now() - ultimoIntento;
+  if (!inicializando && sinProgreso > 180000) {
     console.log('[Watchdog] WhatsApp sin conectar por mucho tiempo, reiniciando cliente...');
     iniciarWhatsApp();
+  } else if (inicializando && sinProgreso > 300000) {
+    console.log('[Watchdog] La inicialización lleva más de 5 min, forzando reinicio limpio...');
+    matarChromeStale(SESSION_PATH).then(() => {
+      inicializando = false;
+      iniciarWhatsApp();
+    });
   }
 }, 60000);
 
-// Cierre limpio: cierra Chrome para que la sesión se flushee y sobreviva a reinicios
+// Cierre limpio: cierra Chrome para que la sesión se flushee y sobreviva a reinicios.
 async function apagar() {
   if (apagando) return;
   apagando = true;
   console.log('Deteniendo bot y guardando sesión...');
-  try {
+  const cierre = (async () => {
     if (whatsapp) await whatsapp.destroy();
-  } catch (err) {
-    console.error('Error al detener el cliente:', err.message);
-  }
+  })();
+  const timeout = new Promise((r) => setTimeout(r, 8000));
+  await Promise.race([cierre, timeout]).catch((err) =>
+    console.error('Error al detener el cliente:', err.message)
+  );
+  // Si destroy() se colgó o el proceso va a ser matado, no dejar Chrome huérfano
+  // con el perfil bloqueado: el próximo arranque arrancaría en modo "already running".
+  await matarChromeStale(SESSION_PATH);
   console.log('Sesión guardada. Hasta luego.');
   process.exit(0);
 }
@@ -183,7 +217,7 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
     const ahora = new Date();
 
     let horarios = await db.getHorarios24h();
-    horarios.sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+    horarios.sort((a, b) => parseFechaHoraChile(a.fecha_hora) - parseFechaHoraChile(b.fecha_hora));
     console.log(`[DEBUG SERVER] Scheduler: horarios en 24h=${horarios.length}`);
     for (const h of horarios) {
       const hayBloqueo = await db.hayPendientesAnteriores(h.fecha_hora);
@@ -201,7 +235,7 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
         const usuario = await db.getUsuario(insc.usuario_id);
         if (!usuario?.telefono) { console.log(`[DEBUG SERVER] Scheduler: usuario ${insc.usuario_id} sin telefono`); continue; }
 
-        const fecha = new Date(h.fecha_hora);
+        const fecha = parseFechaHoraChile(h.fecha_hora);
         const telefono = usuario.telefono.replace('+', '');
         const mensaje = buildReminderMessage(usuario, clase, fecha);
 
@@ -268,7 +302,7 @@ app.get('/test-reminder/:claseId', async (req, res) => {
         const usuario = await db.getUsuario(insc.usuario_id);
         if (!usuario?.telefono) continue;
         const telefono = usuario.telefono.replace('+', '');
-        const mensaje = buildReminderMessage(usuario, clase, new Date(h.fecha_hora));
+        const mensaje = buildReminderMessage(usuario, clase, parseFechaHoraChile(h.fecha_hora));
         await sendMessageWithRetry(whatsapp, `${telefono}@c.us`, mensaje);
         await db.setPendiente(insc.id);
         res.send(`✅ Recordatorio enviado a ${usuario.nombre} (${telefono})`);
