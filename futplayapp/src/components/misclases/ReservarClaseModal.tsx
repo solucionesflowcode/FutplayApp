@@ -13,6 +13,21 @@ import {
 } from "lucide-react";
 import { getMembresiaByUser, type MembresiaConPlan } from "@/data/membresia";
 import { useAuthUser } from "@/context";
+import { ahoraChile, parseClaseFechaHora } from "@/lib/fechas";
+
+function esSemanaActual(fechaHora: string): boolean {
+    const ahora = ahoraChile();
+    const dayOfWeek = ahora.getUTCDay();
+    const mondayOffset = (dayOfWeek + 6) % 7;
+    const monday = new Date(ahora);
+    monday.setUTCDate(ahora.getUTCDate() - mondayOffset);
+    monday.setUTCHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setUTCDate(monday.getUTCDate() + 6);
+    sunday.setUTCHours(23, 59, 59, 999);
+    const clase = parseClaseFechaHora(fechaHora);
+    return clase >= monday && clase <= sunday;
+}
 
 type ClaseInfo = {
     claseId: string;
@@ -109,7 +124,8 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                         const isLoading = loadingId === clase.claseId;
                         const esPartido = clase.tipo_evento === "partido";
                         const estaLlena = clase.cupo_maximo != null && clase.inscritos >= clase.cupo_maximo;
-                        const puedeAgendar = (esPartido || tokensRestantes > 0) && !isSuccess && !estaLlena;
+                        const enSemanaActual = esSemanaActual(clase.fecha_hora);
+                        const puedeAgendar = (esPartido || tokensRestantes > 0) && !isSuccess && !estaLlena && enSemanaActual;
 
                         return (
                             <div
@@ -156,6 +172,11 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                                     <div className="flex items-center gap-2 text-[#ba1a1a] bg-[#ba1a1a]/5 rounded px-4 py-3 text-sm font-medium">
                                         <AlertCircle className="w-4 h-4 shrink-0" />
                                         Esta clase ya está llena
+                                    </div>
+                                ) : !enSemanaActual ? (
+                                    <div className="flex items-center gap-2 text-[#15477a] bg-[#d3e3ff]/50 rounded px-4 py-3 text-sm font-medium">
+                                        <Clock className="w-4 h-4 shrink-0 text-[#15477a]" />
+                                        Esta clase no está disponible aún, espera a la semana en la que esta clase se realiza para inscribirte.
                                     </div>
                                 ) : (
                                     <button
