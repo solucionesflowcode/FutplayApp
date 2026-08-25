@@ -6,6 +6,7 @@ type PlanRow = {
     nombre: string;
     tokens_mensuales: number;
     precio: number;
+    tipo_plan: "normal" | "familiar";
 };
 
 type MembresiaRow = {
@@ -32,6 +33,7 @@ export type MembresiaConPlan = {
     tokens_restantes: number;
     fecha_inicio: string;
     fecha_vencimiento: string;
+    tipo_plan: "normal" | "familiar";
 };
 
 export async function userHasMembresia(userId: string): Promise<boolean> {
@@ -82,6 +84,7 @@ function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): Membresia
         tokens_restantes: restantes,
         fecha_inicio: m.fecha_inicio,
         fecha_vencimiento: m.fecha_vencimiento,
+        tipo_plan: plan?.tipo_plan || "normal",
     };
 }
 

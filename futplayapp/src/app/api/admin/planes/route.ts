@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       precio: body.precio,
       tokens_mensuales: body.tokens_mensuales || 1,
       dias_vigencia: body.dias_vigencia ?? 30,
+      tipo_plan: body.tipo_plan || "normal",
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -65,6 +66,7 @@ export async function PUT(request: Request) {
     if (body.precio !== undefined) updateData.precio = body.precio;
     if (body.tokens_mensuales !== undefined) updateData.tokens_mensuales = body.tokens_mensuales;
     if (body.dias_vigencia !== undefined) updateData.dias_vigencia = body.dias_vigencia;
+    if (body.tipo_plan !== undefined) updateData.tipo_plan = body.tipo_plan;
 
     const { error } = await admin.from("plan").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
