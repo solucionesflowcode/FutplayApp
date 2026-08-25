@@ -16,6 +16,7 @@ export type PagosBoleta = {
     total: number;
     created_at: string;
     transaccion_id: string | null;
+    cuotas: number | null;
     items: PagosBoletaItem[];
 };
 
@@ -55,6 +56,7 @@ export async function getMisBoletas(userId: string): Promise<PagosBoleta[]> {
         total: b.total,
         created_at: b.created_at,
         transaccion_id: b.transaccion_id,
+        cuotas: b.cuotas ?? null,
         items: (b.boleta_item || []).map((item: { id: string; plan_id: string | null; plan: { nombre: string } | null; cantidad: number; precio: number; total: number }) => ({
             id: item.id,
             plan_id: item.plan_id,

@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     }
 
     const orderId = statusData.commerceOrder;
+    const cuotas = statusData.paymentData?.installments ?? null;
 
     if (statusData.status === 2) {
       const { data: boleta, error: findError } = await adminClient
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
 
               const { error: recurrenteUpdateError } = await adminClient
                 .from("boleta")
-                .update({ estado: "pagado" })
+                .update({ estado: "pagado", cuotas: cuotas })
                 .eq("id", newBoleta.id)
                 .eq("estado", "pendiente");
 
@@ -172,7 +173,7 @@ export async function POST(request: Request) {
       // ── Update atómico: solo si sigue pendiente ──
       const { data: updated, error: updateError } = await adminClient
         .from("boleta")
-        .update({ estado: "pagado" })
+        .update({ estado: "pagado", cuotas })
         .eq("id", boleta.id)
         .eq("estado", "pendiente")
         .select("id")

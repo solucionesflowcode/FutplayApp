@@ -102,6 +102,16 @@ export type PaymentStatus = {
   pending_info?: unknown;
   merchant_id?: string;
   optional?: Record<string, string>;
+  paymentData?: {
+    media?: string;
+    mediaType?: string;
+    installments?: number;
+    cardLast4Numbers?: string;
+    cardNumber?: string;
+    authorizationCode?: string;
+    fee?: number;
+    taxes?: number;
+  };
 };
 
 // ──────────────────────────────────────────────

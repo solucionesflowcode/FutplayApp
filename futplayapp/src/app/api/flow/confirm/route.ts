@@ -86,7 +86,7 @@ export async function GET(request: Request) {
     // First check if the boleta exists
     const { data: boleta } = await adminClient
         .from("boleta")
-        .select("id, estado")
+        .select("id, estado, cuotas")
         .eq("id", boletaId)
         .single();
 
@@ -108,9 +108,10 @@ export async function GET(request: Request) {
                 return NextResponse.json({ error: "Boleta no coincide con el pago" }, { status: 403 });
             }
             if (boleta.estado !== "pagado") {
+                const cuotas = statusData.paymentData?.installments ?? null;
                 const { data: updated } = await adminClient
                     .from("boleta")
-                    .update({ estado: "pagado" })
+                    .update({ estado: "pagado", cuotas })
                     .eq("id", boletaId)
                     .eq("estado", "pendiente")
                     .select("id")
@@ -128,7 +129,8 @@ export async function GET(request: Request) {
                 // Si llegamos aquí, el UPDATE funcionó (cambiamos pendiente → pagado)
                 await crearMembresiaSiAplica(adminClient, boletaId);
             }
-            return NextResponse.json({ estado: "pagado" });
+            const cuotasResp = statusData.paymentData?.installments ?? boleta.cuotas ?? null;
+            return NextResponse.json({ estado: "pagado", cuotas: cuotasResp });
         } catch {
             // Sandbox: si getStatus falla, asumimos éxito
             const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
@@ -167,7 +169,7 @@ export async function GET(request: Request) {
 
     if (boleta.estado === "pagado") {
         await crearMembresiaSiAplica(adminClient, boletaId);
-        return NextResponse.json({ estado: "pagado" });
+        return NextResponse.json({ estado: "pagado", cuotas: boleta.cuotas ?? null });
     }
 
     if (boleta.estado === "rechazado" || boleta.estado === "anulado") {

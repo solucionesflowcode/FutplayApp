@@ -51,6 +51,7 @@ type PaymentRecord = {
     monto: number;
     estado: "aprobado" | "rechazado" | "pendiente" | "anulado";
     metodo: "tarjeta" | "transferencia" | "wallet";
+    cuotas: number | null;
     factura_url?: string;
 };
 
@@ -221,6 +222,7 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                 monto: b.total,
                 estado: estadoMap[b.estado] || "pendiente",
                 metodo: "tarjeta",
+                cuotas: b.cuotas ?? null,
             };
         });
     }, [rawBoletas]);
@@ -618,6 +620,11 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
                                                 <span className="text-sm font-bold text-[#00305B]">
                                                     {formatCLP(pago.monto)}
                                                 </span>
+                                                {pago.cuotas && pago.cuotas > 1 && (
+                                                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                                                        {pago.cuotas} cuotas de {formatCLP(Math.round(pago.monto / pago.cuotas))}
+                                                    </p>
+                                                )}
                                             </td>
                                             <td className="px-6 md:px-8 py-4">
                                                 <span
@@ -1017,6 +1024,7 @@ export default function PagosClient() {
     const [confirmingPayment, setConfirmingPayment] = useState(true);
     const [confirmError, setConfirmError] = useState("");
     const [confirmPending, setConfirmPending] = useState(false);
+    const [confirmCuotas, setConfirmCuotas] = useState<number | null>(null);
     const [tienePlanActivo, setTienePlanActivo] = useState(false);
 
     const flowBoletaId = useMemo(() => {
@@ -1088,6 +1096,7 @@ export default function PagosClient() {
                         return;
                     }
                     if (data.estado === "pagado") {
+                        setConfirmCuotas(data.cuotas ?? null);
                         return;
                     }
                     if (data.estado !== "pendiente") {
@@ -1260,6 +1269,11 @@ export default function PagosClient() {
                                 Tu pago ha sido procesado correctamente. Ya puedes disfrutar de todos
                                 los beneficios de tu plan.
                             </p>
+                            {confirmCuotas && confirmCuotas > 1 && (
+                                <p className="text-sm text-[#00305B] font-bold mt-3">
+                                    Pagado en {confirmCuotas} cuotas
+                                </p>
+                            )}
                             <button
                                 onClick={handleFlowReturn}
                                 className="mt-8 w-full py-3.5 rounded bg-gradient-to-r from-[#00A86B] to-[#009960] text-white font-bold shadow-lg shadow-[#00A86B]/30 hover:shadow-xl hover:shadow-[#00A86B]/40 transition-all"
