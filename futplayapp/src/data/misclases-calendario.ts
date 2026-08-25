@@ -14,7 +14,7 @@ export type ClaseConInscripcion = {
     sede: { nombre: string } | null;
     inscripcionId: string | null;
     asistencia: string | boolean | null;
-    tipo_evento: "entrenamiento" | "partido";
+    tipo_evento: "entrenamiento" | "partido" | "kids";
     cupo_maximo: number | null;
     inscritos: number;
 };
@@ -57,7 +57,7 @@ export async function getAllClasesConInscripcion(
 
     const cupos = await getCuposClases();
 
-    type ClaseRaw = { id: string; titulo: string; descripcion: string | null; fecha_hora: string | null; sede: { nombre: string }[] | { nombre: string } | null; tipo_evento: "entrenamiento" | "partido" };
+    type ClaseRaw = { id: string; titulo: string; descripcion: string | null; fecha_hora: string | null; sede: { nombre: string }[] | { nombre: string } | null; tipo_evento: "entrenamiento" | "partido" | "kids" };
     return (clases ?? []).map((clase: ClaseRaw) => {
         const ins = inscMap.get(clase.id);
         const cupo = cupos[clase.id];

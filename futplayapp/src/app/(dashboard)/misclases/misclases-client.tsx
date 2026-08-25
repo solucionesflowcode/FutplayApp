@@ -33,7 +33,7 @@ type SessionItem = {
     descripcion: string | null;
     sede: string;
     claseId: string;
-    tipo_evento: "entrenamiento" | "partido";
+    tipo_evento: "entrenamiento" | "partido" | "kids";
     cupo_maximo: number | null;
     inscritos: number;
 };
@@ -129,7 +129,7 @@ export default function MisClasesClient() {
         descripcion: string | null;
         fecha_hora: string;
         sede: string;
-        tipo_evento?: "entrenamiento" | "partido";
+        tipo_evento?: "entrenamiento" | "partido" | "kids";
         cupo_maximo: number | null;
         inscritos: number;
     }[] | null>(null);

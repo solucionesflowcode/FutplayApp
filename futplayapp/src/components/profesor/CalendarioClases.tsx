@@ -178,6 +178,12 @@ export default function CalendarioClases({
               Partido
             </span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-pink-500 shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Kids
+            </span>
+          </div>
         </div>
       </div>
 
@@ -201,6 +207,7 @@ export default function CalendarioClases({
           const hasOthers = dayClases.some((c) => !c.isMine);
           const hasPartido = dayClases.some((c) => c.tipo_evento === "partido");
           const hasEntrenamiento = dayClases.some((c) => c.tipo_evento === "entrenamiento");
+          const hasKids = dayClases.some((c) => c.tipo_evento === "kids");
 
           let cellTone: "empty" | "mine" | "other" | "mixed" = "empty";
           if (dayClases.length > 0) {
@@ -270,6 +277,7 @@ export default function CalendarioClases({
                 <div className="flex items-center gap-0.5 mt-0.5">
                   {hasEntrenamiento && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />}
                   {hasPartido && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block ml-0.5" />}
+                  {hasKids && <span className="w-1.5 h-1.5 rounded-full bg-pink-500 inline-block ml-0.5" />}
                   <span className="text-[8px] font-semibold text-slate-500">
                     {dayClases.length} clase{dayClases.length > 1 ? "s" : ""}
                   </span>
@@ -317,7 +325,7 @@ export default function CalendarioClases({
                   <Calendar size={16} className={isSelected ? "text-white" : "text-slate-400"} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-semibold truncate block">
-                      {clase.tipo_evento === "partido" ? "Partido" : (clase.titulo || "Entrenamiento")}
+                      {clase.tipo_evento === "partido" ? "Partido" : clase.tipo_evento === "kids" ? "Kids" : (clase.titulo || "Entrenamiento")}
                     </span>
                     <span className="text-[10px] opacity-70">
                       {d.toLocaleDateString("es-CL", {

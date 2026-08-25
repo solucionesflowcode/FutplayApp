@@ -8,7 +8,7 @@ export type ClaseRow = {
   cupo_maximo: number | null;
   profesor_id: string | null;
   fecha_hora: string | null;
-  tipo_evento: "entrenamiento" | "partido";
+  tipo_evento: "entrenamiento" | "partido" | "kids";
   created_at: string;
 };
 
@@ -42,7 +42,7 @@ export async function getProximaClase(userId: string): Promise<Array<{
   descripcion: string;
   fecha_hora: string;
   sede: string;
-  tipo_evento: "entrenamiento" | "partido";
+  tipo_evento: "entrenamiento" | "partido" | "kids";
 }>> {
   const supabase = createClient();
 
@@ -64,18 +64,18 @@ export async function getProximaClase(userId: string): Promise<Array<{
   if (error || !data?.length) return [];
 
   const excluded = new Set(["cancelado", "cancelado_sin_reembolso", "presente", "ausente"]);
-  const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string; tipo_evento: "entrenamiento" | "partido" }> = [];
+  const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string; tipo_evento: "entrenamiento" | "partido" | "kids" }> = [];
   for (const item of data) {
     if (excluded.has((item as { asistencia: string | null }).asistencia ?? "")) continue;
     const raw = item.clase;
     const c = (Array.isArray(raw) ? (raw as Record<string, unknown>[])[0] : raw) as Record<string, unknown>;
     if (!c) continue;
     rows.push({
-      titulo: (c.titulo as string) || (c.tipo_evento === "partido" ? "Partido" : "Entrenamiento"),
+      titulo: (c.titulo as string) || (c.tipo_evento === "partido" ? "Partido" : c.tipo_evento === "kids" ? "Kids" : "Entrenamiento"),
       descripcion: c.descripcion as string,
       fecha_hora: c.fecha_hora as string,
       sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
-      tipo_evento: c.tipo_evento as "entrenamiento" | "partido",
+      tipo_evento: c.tipo_evento as "entrenamiento" | "partido" | "kids",
     });
   }
 
@@ -111,7 +111,7 @@ export async function createClase(data: {
   cupo_maximo?: number;
   profesor_id?: string;
   fecha_hora?: string;
-  tipo_evento?: "entrenamiento" | "partido";
+  tipo_evento?: "entrenamiento" | "partido" | "kids";
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/clases", {
     method: "POST",
@@ -133,7 +133,7 @@ export async function updateClase(data: {
   cupo_maximo?: number;
   profesor_id?: string | null;
   fecha_hora?: string | null;
-  tipo_evento?: "entrenamiento" | "partido";
+  tipo_evento?: "entrenamiento" | "partido" | "kids";
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/clases", {
     method: "PUT",

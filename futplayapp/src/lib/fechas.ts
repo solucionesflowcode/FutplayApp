@@ -66,6 +66,37 @@ export function parseClaseFechaHora(fechaHora: string | Date): Date {
   return new Date(Date.UTC(y, mo - 1, d, h, mi) - offsetMs);
 }
 
+function toChileISO(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const h = String(d.getUTCHours()).padStart(2, "0");
+  const min = String(d.getUTCMinutes()).padStart(2, "0");
+  const s = String(d.getUTCSeconds()).padStart(2, "0");
+  return `${y}-${m}-${day}T${h}:${min}:${s}`;
+}
+
+export function esSemanaActual(fechaHora: string | Date): boolean {
+  const ahora = ahoraChile();
+  const dayOfWeek = ahora.getUTCDay();
+  const mondayOffset = (dayOfWeek + 6) % 7;
+
+  const mondayLocal = new Date(ahora);
+  mondayLocal.setUTCDate(ahora.getUTCDate() - mondayOffset);
+  mondayLocal.setUTCHours(0, 0, 0, 0);
+
+  const sundayLocal = new Date(mondayLocal);
+  sundayLocal.setUTCDate(mondayLocal.getUTCDate() + 6);
+  sundayLocal.setUTCHours(23, 59, 59, 999);
+
+  // Convertir boundaries a instantes absolutos (mismo dominio que parseClaseFechaHora)
+  const monday = parseClaseFechaHora(toChileISO(mondayLocal));
+  const sunday = parseClaseFechaHora(toChileISO(sundayLocal));
+  const clase = parseClaseFechaHora(fechaHora);
+
+  return clase >= monday && clase <= sunday;
+}
+
 export function getChileMonthBounds(): { startISO: string; endISO: string } {
   const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit" });
   const [y, m] = fmt.format(new Date()).split("-").map(Number);

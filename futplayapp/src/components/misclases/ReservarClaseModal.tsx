@@ -13,21 +13,7 @@ import {
 } from "lucide-react";
 import { getMembresiaByUser, type MembresiaConPlan } from "@/data/membresia";
 import { useAuthUser } from "@/context";
-import { ahoraChile, parseClaseFechaHora } from "@/lib/fechas";
-
-function esSemanaActual(fechaHora: string): boolean {
-    const ahora = ahoraChile();
-    const dayOfWeek = ahora.getUTCDay();
-    const mondayOffset = (dayOfWeek + 6) % 7;
-    const monday = new Date(ahora);
-    monday.setUTCDate(ahora.getUTCDate() - mondayOffset);
-    monday.setUTCHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setUTCDate(monday.getUTCDate() + 6);
-    sunday.setUTCHours(23, 59, 59, 999);
-    const clase = parseClaseFechaHora(fechaHora);
-    return clase >= monday && clase <= sunday;
-}
+import { esSemanaActual } from "@/lib/fechas";
 
 type ClaseInfo = {
     claseId: string;
@@ -35,7 +21,7 @@ type ClaseInfo = {
     descripcion: string | null;
     fecha_hora: string;
     sede: string;
-    tipo_evento?: "entrenamiento" | "partido";
+    tipo_evento?: "entrenamiento" | "partido" | "kids";
     cupo_maximo: number | null;
     inscritos: number;
 };

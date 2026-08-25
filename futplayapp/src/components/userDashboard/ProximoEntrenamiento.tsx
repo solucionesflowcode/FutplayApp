@@ -12,7 +12,7 @@ interface Clase {
     descripcion: string;
     fecha_hora: string;
     sede: string;
-    tipo_evento: "entrenamiento" | "partido";
+    tipo_evento: "entrenamiento" | "partido" | "kids";
 }
 
 export default function ProximoEntrenamiento() {

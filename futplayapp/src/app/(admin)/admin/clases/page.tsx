@@ -43,7 +43,7 @@ type ClaseForm = {
   sede_id: string;
   cupo_maximo: number;
   profesor_id: string;
-  tipo_evento: "entrenamiento" | "partido";
+  tipo_evento: "entrenamiento" | "partido" | "kids";
   fecha: string;
   hora: string;
 };
@@ -397,7 +397,7 @@ export default function ClasesPage() {
                                   <div className="min-w-0 flex-1">
                                     <p className="font-semibold text-gray-900 truncate text-sm">{c.titulo || "Partido"}</p>
                                     {c.tipo_evento && (
-                                      <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">{c.tipo_evento === "partido" ? "Partido" : "Entrenamiento"}</span>
+                                      <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">{c.tipo_evento === "partido" ? "Partido" : c.tipo_evento === "kids" ? "Kids" : "Entrenamiento"}</span>
                                     )}
                                   </div>
                                   <span className="text-[10px] text-gray-500 shrink-0 ml-2 text-right leading-tight">
@@ -441,7 +441,7 @@ export default function ClasesPage() {
                               )}
                               {c.tipo_evento && (
                                 <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
-                                  {c.tipo_evento === "partido" ? "Partido" : "Entrenamiento"}
+                                  {c.tipo_evento === "partido" ? "Partido" : c.tipo_evento === "kids" ? "Kids" : "Entrenamiento"}
                                 </span>
                               )}
                             </td>
@@ -552,16 +552,17 @@ export default function ClasesPage() {
                     <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo</label>
                     <select
                       value={form.tipo_evento}
-                      onChange={(e) => setForm((p) => ({ ...p, tipo_evento: e.target.value as "entrenamiento" | "partido" }))}
+                      onChange={(e) => setForm((p) => ({ ...p, tipo_evento: e.target.value as "entrenamiento" | "partido" | "kids" }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                     >
                       <option value="entrenamiento">Entrenamiento</option>
                       <option value="partido">Partido</option>
+                      <option value="kids">Kids</option>
                     </select>
                   </div>
                 </div>
 
-                {form.tipo_evento === "entrenamiento" && (
+                {form.tipo_evento !== "partido" && (
                   <>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 mb-1">Título (tipo de entrenamiento) *</label>
@@ -608,7 +609,7 @@ export default function ClasesPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">
-                    Sede {form.tipo_evento === "entrenamiento" ? "*" : ""}
+                    Sede {form.tipo_evento !== "partido" ? "*" : ""}
                   </label>
                   <select
                     value={form.sede_id}

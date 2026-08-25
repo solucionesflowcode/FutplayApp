@@ -7,7 +7,7 @@ export type ClaseEvent = {
   fecha_hora: string;
   sede: string;
   isMine: boolean;
-  tipo_evento: "entrenamiento" | "partido";
+  tipo_evento: "entrenamiento" | "partido" | "kids";
 };
 
 export type AlumnoAsistencia = {
@@ -23,7 +23,7 @@ type ClaseRow = {
   descripcion: string | null;
   fecha_hora: string | null;
   sede: { nombre: string } | null;
-  tipo_evento: "entrenamiento" | "partido";
+  tipo_evento: "entrenamiento" | "partido" | "kids";
 };
 
 type ClaseUsuarioRow = {
