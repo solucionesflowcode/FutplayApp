@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthUser } from "@/context";
 import Link from "next/link";
 import { Crown, CheckCircle2 } from "lucide-react";
-import { getPlanesLimit, type Plan } from "@/data/plans";
+import { getPlanesByTokens, type Plan } from "@/data/plans";
 import { userHasMembresia } from "@/data/membresia";
 import { userHasFichaMedica } from "@/data/fichaMedica";
 import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
@@ -30,7 +30,7 @@ export default function PlanesRender() {
                 setHasPlan(hasMembership);
 
                 if (!hasMembership) {
-                    const data = await getPlanesLimit(3);
+                    const data = await getPlanesByTokens([4, 8, 12]);
                     setPlanes(data);
                 }
             } catch (err) {

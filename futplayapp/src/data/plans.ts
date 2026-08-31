@@ -44,6 +44,23 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
     return data as Plan[];
 }
 
+export async function getPlanesByTokens(tokens: number[]): Promise<Plan[]> {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from("plan")
+        .select("*")
+        .in("tokens_mensuales", tokens)
+        .order("tokens_mensuales", { ascending: true });
+
+    if (error) {
+        console.error("Error fetching planes by tokens:", error.message);
+        return [];
+    }
+
+    return data as Plan[];
+}
+
 export async function getPlanesAdmin(): Promise<{ planes: Plan[]; error?: string }> {
     const res = await fetch("/api/admin/planes");
     if (!res.ok) {
