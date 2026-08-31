@@ -8,12 +8,20 @@ import {
   Loader2,
   X,
   Search,
+  QrCode,
+  Copy,
+  Download,
+  RefreshCw,
+  Share2,
+  Check,
 } from "lucide-react";
+import QRCode from "qrcode";
 import {
   getPlanesAdmin,
   createPlanAdmin,
   updatePlanAdmin,
   deletePlanAdmin,
+  generarLinkPlanAdmin,
   type Plan,
 } from "@/data/plans";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
@@ -54,6 +62,69 @@ export default function PlanesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // ── Link de acceso (planes familiares) ──
+  const [linkModal, setLinkModal] = useState<Plan | null>(null);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const openLinkModal = (p: Plan) => {
+    setLinkModal(p);
+    setLinkError(null);
+    setCopied(false);
+    setLinkUrl(
+      p.codigo_acceso
+        ? `${window.location.origin}/planes/familiar/${p.codigo_acceso}`
+        : null
+    );
+  };
+
+  // Genera el QR cada vez que cambia el link
+  useEffect(() => {
+    if (!linkUrl) {
+      setQrDataUrl(null);
+      return;
+    }
+    QRCode.toDataURL(linkUrl, { width: 300, margin: 2 })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(null));
+  }, [linkUrl]);
+
+  const handleGenerarLink = async () => {
+    if (!linkModal) return;
+    setLinkLoading(true);
+    setLinkError(null);
+    const { url, error: genError } = await generarLinkPlanAdmin(linkModal.id);
+    setLinkLoading(false);
+    if (genError || !url) {
+      setLinkError(genError || "Error al generar el link");
+      return;
+    }
+    setLinkUrl(url);
+    fetchPlanes(); // refresca codigo_acceso en la lista
+  };
+
+  const handleCopiarLink = async () => {
+    if (!linkUrl) return;
+    try {
+      await navigator.clipboard.writeText(linkUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setLinkError("No se pudo copiar el link");
+    }
+  };
+
+  const handleDescargarQR = () => {
+    if (!qrDataUrl || !linkModal) return;
+    const a = document.createElement("a");
+    a.href = qrDataUrl;
+    a.download = `qr-${linkModal.nombre.toLowerCase().replace(/\s+/g, "-")}.png`;
+    a.click();
+  };
 
   const fetchPlanes = useCallback(async () => {
     const { planes, error } = await getPlanesAdmin();
@@ -243,6 +314,15 @@ export default function PlanesPage() {
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2">
+                              {p.tipo_plan === "familiar" && (
+                                <button
+                                  onClick={() => openLinkModal(p)}
+                                  className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"
+                                  title="Link de acceso (QR)"
+                                >
+                                  <QrCode size={16} />
+                                </button>
+                              )}
                               <button
                                 onClick={() => openEdit(p)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
@@ -379,6 +459,93 @@ export default function PlanesPage() {
           </div>
         )}
       </div>
+
+      {/* MODAL LINK DE ACCESO (planes familiares) */}
+      {linkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-md p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Link de acceso</h2>
+              <button onClick={() => setLinkModal(null)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-4">
+              Plan <span className="font-bold text-gray-900">{linkModal.nombre}</span> — solo las
+              personas con este link o QR pueden ver y comprar el plan.
+            </p>
+
+            {linkUrl ? (
+              <>
+                <div className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg mb-4">
+                  <code className="text-xs text-gray-700 break-all flex-1">{linkUrl}</code>
+                  <button
+                    onClick={handleCopiarLink}
+                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg shrink-0"
+                    title="Copiar link"
+                  >
+                    {copied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
+                  </button>
+                </div>
+
+                {qrDataUrl && (
+                  <div className="flex flex-col items-center mb-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qrDataUrl} alt="QR de acceso al plan" className="border border-gray-200 rounded-lg" />
+                    <button
+                      onClick={handleDescargarQR}
+                      className="mt-2 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-semibold"
+                    >
+                      <Download size={14} />
+                      Descargar QR (PNG)
+                    </button>
+                  </div>
+                )}
+
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`🔥 Accede a tu plan ${linkModal.nombre} en FutPlay: ${linkUrl}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 mb-4 border border-green-500 text-green-600 rounded-lg text-sm font-bold hover:bg-green-50 transition-all"
+                >
+                  <Share2 size={15} />
+                  Compartir por WhatsApp
+                </a>
+
+                <button
+                  onClick={handleGenerarLink}
+                  disabled={linkLoading}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {linkLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                  Regenerar link (invalida el anterior)
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 mb-4">
+                  Este plan aún no tiene un link de acceso. Genéralo para poder compartirlo.
+                </p>
+                <button
+                  onClick={handleGenerarLink}
+                  disabled={linkLoading}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {linkLoading ? <Loader2 size={14} className="animate-spin" /> : <QrCode size={14} />}
+                  Generar link de acceso
+                </button>
+              </>
+            )}
+
+            {linkError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                {linkError}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={deleteId !== null}

@@ -43,6 +43,26 @@ describe("getPlanes", () => {
         expect(result[0].nombre).toBe("básico");
     });
 
+    it("excluye los planes familiares del catálogo público", async () => {
+        __setTableData("plan", [
+            ...MOCK_PLANS.map((p) => ({ ...p, tipo_plan: "normal" })),
+            {
+                id: "p4",
+                nombre: "familiar",
+                tokens_mensuales: 40,
+                precio: 35000,
+                dias_vigencia: 30,
+                tipo_plan: "familiar",
+                codigo_acceso: "tok-familiar",
+            },
+        ]);
+
+        const result = await getPlanes();
+
+        expect(result).toHaveLength(3);
+        expect(result.some((p) => p.tipo_plan === "familiar")).toBe(false);
+    });
+
     it("retorna array vacío si hay error", async () => {
         __setTableData("plan", null, { message: "Connection error" });
 

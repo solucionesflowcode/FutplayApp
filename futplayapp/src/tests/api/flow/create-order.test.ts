@@ -329,4 +329,46 @@ describe("POST /api/flow/create-order", () => {
             expect(json.error).toContain("Flow timeout");
         });
     });
+
+    describe("planes familiares (acceso por link)", () => {
+        const FAMILIAR_PLAN = {
+            id: "plan-fam",
+            nombre: "Familiar",
+            precio: 35000,
+            tokens_mensuales: 40,
+            tipo_plan: "familiar",
+            codigo_acceso: "tok-familiar-123",
+        };
+
+        beforeEach(() => {
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", [FAMILIAR_PLAN]);
+            __setTableData("membresia", null);
+            __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 35000, recurrencia_id: null });
+            __setTableData("boleta_item", { id: "item-1" });
+        });
+
+        it("retorna 403 si no se envía el código de acceso", async () => {
+            const res = await POST(makeRequest({ planId: "plan-fam" }));
+
+            expect(res.status).toBe(403);
+            const json = await res.json();
+            expect(json.error).toContain("link de acceso");
+        });
+
+        it("retorna 403 si el código de acceso es incorrecto", async () => {
+            const res = await POST(makeRequest({ planId: "plan-fam", acceso: "tok-falso" }));
+
+            expect(res.status).toBe(403);
+        });
+
+        it("retorna 200 cuando el código de acceso es válido", async () => {
+            const res = await POST(makeRequest({ planId: "plan-fam", acceso: "tok-familiar-123" }));
+
+            expect(res.status).toBe(200);
+            const json = await res.json();
+            expect(json).toHaveProperty("boletaId");
+        });
+    });
 });

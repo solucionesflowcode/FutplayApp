@@ -24,6 +24,8 @@ declare module "lucide-react" {
   export const ClipboardCheck: Icon;
   export const ClipboardPlus: Icon;
   export const Clock: Icon;
+  export const Copy: Icon;
+
   export const CreditCard: Icon;
   export const Crown: Icon;
   export const Download: Icon;
@@ -44,6 +46,8 @@ declare module "lucide-react" {
   export const Menu: Icon;
   export const Pencil: Icon;
   export const Phone: Icon;
+  export const QrCode: Icon;
+
   export const Pill: Icon;
   export const Play: Icon;
   export const Receipt: Icon;
@@ -82,6 +86,8 @@ declare module "lucide-react" {
   export const Lightbulb: Icon;
   export const ListChecks: Icon;
   export const MapPin: Icon;
+  export const Share2: Icon;
+
   export const PersonStanding: Icon;
   export const Plus: Icon;
   export const Send: Icon;

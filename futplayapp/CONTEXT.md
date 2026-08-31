@@ -66,6 +66,9 @@ futplayapp/
 │   │   │   │       └── page.tsx     # Reproductor de video + progreso + comentarios
 │   │   │   └── planes/
 │   │   │       └── page.tsx         # Planes de membresía + compra + ficha médica
+│   │   ├── planes/                          # PÚBLICO (fuera de (dashboard), sin AuthGuard)
+│   │   │   └── familiar/[token]/page.tsx    # Landing plan familiar: valida link/QR → muestra plan → compra
+
 │   │   │
 │   │   ├── (admin)/
 │   │   │   └── admin/
@@ -97,7 +100,12 @@ futplayapp/
 │       │           ├── capsulas/route.ts    # CRUD Cápsulas (service_role)
 │       │           ├── profesores/route.ts  # CRUD Profesores (service_role, crea usuario auth + perfil)
 │       │           ├── membresias/route.ts  # GET - Membresías (bypass RLS con service_role)
-│       │           └── students/route.ts    # POST - Crear alumno/profesor manualmente
+│       │           ├── students/route.ts    # POST - Crear alumno/profesor manualmente
+│       │           ├── planes/route.ts      # CRUD Planes (service_role, incluye familiares + codigo_acceso)
+│       │           └── planes/link/route.ts # POST - Generar/regenerar link de acceso (solo familiares)
+│       ├── planes/
+│       │   └── familiar/route.ts    # GET público ?token= → valida codigo_acceso y retorna el plan (sin sesión)
+
 │   │
 │   ├── components/
 │   │   ├── admin/
@@ -194,12 +202,15 @@ futplayapp/
 | `rut` | TEXT | |
 
 #### `plan`
-| Columna | Tipo |
-|---|---|
-| `id` | UUID PK |
-| `nombre` | TEXT |
-| `tokens_mensuales` | INTEGER |
-| `precio` | NUMERIC/INTEGER |
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | UUID PK | |
+| `nombre` | TEXT | |
+| `tokens_mensuales` | INTEGER | |
+| `precio` | NUMERIC/INTEGER | |
+| `dias_vigencia` | INTEGER | 30 (mensual) o 90 (trimestral) |
+| `tipo_plan` | TEXT | `'normal'` \| `'familiar'` |
+| `codigo_acceso` | TEXT (nullable, único) | Solo planes familiares. Link de acceso: `/planes/familiar/{codigo_acceso}`. `NULL` = plan normal visible en catálogo |
 
 #### `membresia`
 | Columna | Tipo | Notas |
@@ -329,7 +340,7 @@ futplayapp/
 | `usuario` | Actualizar propio perfil | `auth.uid() = id` |
 | `membresia` | Ver mis membresias | `auth.uid() = usuario_id` (SOLO PROPIAS — **no hay policy para admin**) |
 | `membresia` | Insert | Solo propia |
-| `plan` | Lectura de catálogo | `authenticated` → true |
+| `plan` | Lectura de catálogo | `authenticated` → true. **Ojo:** incluye familiares; el frontend los oculta vía `getPlanes()` (filtro `.neq("tipo_plan","familiar")`). Para ocultarlos también de la API cliente existe policy restrictiva opcional en `docs/migrations/plan_codigo_acceso.sql` |
 | `plan` | Solo admin gestiona | check `rol = 'administrador'` |
 | `capsula` | Lectura de contenido | `authenticated` → true |
 | `capsula` | Solo admins gestionan | check `rol = 'administrador'` |
@@ -489,9 +500,19 @@ type Student = {
 - `CapsulasClient` / `CapsulasRender` / `CapsulaCard` — últimas 4 cápsulas
 
 ### Planes Page (`(dashboard)/planes/page.tsx`)
-- Fetch de planes desde `plan` table
+- Fetch de planes desde `plan` table vía `getPlanes()` (excluye `tipo_plan='familiar'`)
 - 3 cards: Básico (Zap), Popular (Shield, destacado), Premium (Crown)
 - Flujo compra: click → verificar ficha médica → si no tiene: abrir `FichaMedicaModal` → al completar: crear membresía → redirect a /dashboard
+
+### Planes Familiares (acceso solo por link/QR)
+- Los planes `tipo_plan='familiar'` están **ocultos de todo catálogo público** y solo se pueden comprar con un link exclusivo que el admin comparte
+- **Link:** `/planes/familiar/{codigo_acceso}` — el QR codifica ese mismo link
+- **Página pública** (`app/planes/familiar/[token]/page.tsx`, fuera de `(dashboard)` para no chocar con `AuthGuard`): valida el token vía `GET /api/planes/familiar?token=`, muestra la card del plan y redirige a `/pagos?id={planId}&acceso={token}`
+- **Doble verificación server-side:** la página valida el token para VER el plan, y `POST /api/flow/create-order` re-valida (`plan.tipo_plan === 'familiar'` → exige `acceso === plan.codigo_acceso`, si no → 403). Ocultarlo en el frontend no es la barrera; el create-order sí lo es
+- **Panel admin** (`admin/planes/page.tsx`): filas familiares tienen botón QR → modal con link copiable, QR PNG descargable (`qrcode` lib), compartir por WhatsApp (`wa.me`) y regenerar link (invalida el anterior)
+- **Reglas actuales:** un link activo por plan, sin expiración ni límite de usos; regenerar mata el link anterior
+- **Parámetro `acceso`:** en `/pagos` el query param `token` está reservado para el token de Flow, por eso el acceso familiar viaja como `acceso`
+- Migración SQL: `docs/migrations/plan_codigo_acceso.sql` (columna + índice único + policy RLS opcional)
 
 ### FichaMedicaModal (`checkout/FichaMedicaModal.tsx`)
 - 2 pasos: PERSONAL (RUT, teléfono, edad, peso, estatura, grupo sanguíneo) → MÉDICA (enfermedades, alergias, medicamentos, observaciones)
@@ -575,6 +596,23 @@ type Student = {
   - `PUT` — Actualizar clase + reemplazar horarios
   - `DELETE ?id=xxx` — Eliminar clase + horarios + clase_usuario asociados
   - `PATCH { accion: "registrar-asistencia", clase_id, usuario_id, asistencia }` — Marcar asistencia
+- `GET|POST|PUT|DELETE /api/admin/planes` — CRUD Planes
+  - Verifica sesión y rol admin (`verifyAdmin()` + service_role)
+  - `GET` — Lista todos los planes (incluye familiares, con `codigo_acceso`)
+  - `POST` — Crear plan (nombre, precio, tokens_mensuales, dias_vigencia, tipo_plan)
+  - `PUT` — Actualizar plan
+  - `DELETE ?id=xxx` — Eliminar plan
+- `POST /api/admin/planes/link` — Generar link de acceso (plan familiar)
+  - Body `{ id }` → genera `codigo_acceso` (UUID) y retorna `{ token, url }`
+  - Solo planes `tipo_plan='familiar'` (400 si es normal)
+  - Regenerar invalida el link anterior
+
+### Planes Familiares (acceso por link)
+- `GET /api/planes/familiar?token=xxx` — Endpoint PÚBLICO (sin sesión)
+  - Valida `codigo_acceso` con service_role y retorna datos del plan (`id, nombre, precio, tokens_mensuales, dias_vigencia, tipo_plan`)
+  - Nunca retorna `codigo_acceso`; 404 si el token no corresponde a un plan familiar
+  - Rate limit: 30 req/min por IP
+- `POST /api/flow/create-order` — para planes familiares exige `acceso` en el body igual a `plan.codigo_acceso` (403 si falta o es incorrecto). En `/pagos` el acceso viaja como query param `acceso` (`token` está reservado para Flow)
 
 ---
 
@@ -837,6 +875,10 @@ Generado: 2026-06-12. Basado en auditoría completa del código fuente (todos lo
 ## ✅ REALIZADOS
 
 - [x] Flow: `{token}` en `urlReturn` eliminado, reemplazado por `flowReturn=1`
+- [x] Planes familiares ocultos del catálogo público (`getPlanes()`/`getPlanesByTokens()` filtran `tipo_plan='familiar'`; admin usa `getPlanesAdmin()`)
+- [x] Acceso a planes familiares por link/QR: `codigo_acceso` en `plan`, página pública `/planes/familiar/[token]`, API `GET /api/planes/familiar` y `POST /api/admin/planes/link` (generar/regenerar, QR descargable, share WhatsApp)
+- [x] create-order valida `acceso` server-side para planes familiares (403 sin link válido)
+- [x] `turbopack.root` fijado en `next.config.ts` (evita inferencia de workspace root por `bun.lock` en home)
 - [x] Flow confirm: token opcional, fallback a estado Supabase
 - [x] Frontend pagos: detecta `flowReturn`, polling 15 intentos, cleanup orphaned
 - [x] Token consumption en inscripción a clases (antes del INSERT, rollback en fallo)

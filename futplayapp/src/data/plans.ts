@@ -9,14 +9,21 @@ export type Plan = {
     tokens_mensuales: number;
     dias_vigencia: number;
     tipo_plan: "normal" | "familiar";
+    codigo_acceso?: string | null;
 };
+
+// Los planes familiares están ocultos del catálogo público:
+// solo se pueden ver/comprar a través de su link con codigo_acceso.
+const CATALOGO_FILTER = (q: any) => q.neq("tipo_plan", "familiar");
 
 export async function getPlanes(): Promise<Plan[]> {
     const supabase = createClient();
 
-    const { data, error } = await supabase
-        .from("plan")
-        .select("*")
+    const { data, error } = await CATALOGO_FILTER(
+        supabase
+            .from("plan")
+            .select("*")
+    )
         .order("precio", { ascending: true });
 
     if (error) {
@@ -30,9 +37,11 @@ export async function getPlanes(): Promise<Plan[]> {
 export async function getPlanesLimit(limit: number): Promise<Plan[]> {
     const supabase = createClient();
 
-    const { data, error } = await supabase
-        .from("plan")
-        .select("*")
+    const { data, error } = await CATALOGO_FILTER(
+        supabase
+            .from("plan")
+            .select("*")
+    )
         .order("precio", { ascending: true })
         .limit(limit);
 
@@ -47,9 +56,11 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
 export async function getPlanesByTokens(tokens: number[]): Promise<Plan[]> {
     const supabase = createClient();
 
-    const { data, error } = await supabase
-        .from("plan")
-        .select("*")
+    const { data, error } = await CATALOGO_FILTER(
+        supabase
+            .from("plan")
+            .select("*")
+    )
         .in("tokens_mensuales", tokens)
         .order("tokens_mensuales", { ascending: true });
 
@@ -116,6 +127,24 @@ export async function deletePlanAdmin(id: string): Promise<{ success: boolean; e
         return { success: false, error: body.error };
     }
     return { success: true };
+}
+
+// Genera (o regenera) el link de acceso de un plan familiar.
+// Regenerar invalida el link anterior.
+export async function generarLinkPlanAdmin(
+    id: string
+): Promise<{ url?: string; error?: string }> {
+    const res = await fetch("/api/admin/planes/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: "Error de conexión" }));
+        return { error: body.error || `Error ${res.status}` };
+    }
+    const body = await res.json();
+    return { url: body.url };
 }
 
 type UsuarioRow = {

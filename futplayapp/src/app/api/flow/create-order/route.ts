@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { planId, recurrencia: conRecurrencia } = body;
+  const { planId, recurrencia: conRecurrencia, acceso: tokenAcceso } = body;
 
   if (!planId) {
     return NextResponse.json({ error: "planId es requerido" }, { status: 400 });
@@ -76,6 +76,17 @@ export async function POST(request: Request) {
 
   if (planError || !plan) {
     return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
+  }
+
+  // Los planes familiares solo se pueden comprar con el link del admin:
+  // exigir el codigo_acceso correcto (verificación server-side).
+  if (plan.tipo_plan === "familiar") {
+    if (!tokenAcceso || tokenAcceso !== plan.codigo_acceso) {
+      return NextResponse.json(
+        { error: "Este plan solo puede comprarse con un link de acceso válido." },
+        { status: 403 }
+      );
+    }
   }
 
   const { data: existingMembresia } = await adminClient

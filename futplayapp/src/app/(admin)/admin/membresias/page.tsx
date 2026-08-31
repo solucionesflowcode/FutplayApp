@@ -16,7 +16,7 @@ import {
   deleteMembresiaGestion,
   type MembresiaGestion,
 } from "@/data/membresia";
-import { getUsers, getPlanes, type Plan } from "@/data/plans";
+import { getUsers, getPlanesAdmin, type Plan } from "@/data/plans";
 import type { Student } from "@/components/admin/StudentsTable";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { ahoraChile } from "@/lib/fechas";
@@ -72,10 +72,14 @@ export default function MembresiasPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    const [m, u, p] = await Promise.all([getMembresiasGestion(), getUsers(), getPlanes()]);
+    const [m, u, planesResult] = await Promise.all([
+      getMembresiasGestion(),
+      getUsers(),
+      getPlanesAdmin(),
+    ]);
     setMembresias(m);
     setUsuarios(u.filter((user) => user.role !== "Admin"));
-    setPlanes(p);
+    setPlanes(planesResult.planes);
     setLoading(false);
   }, []);
 

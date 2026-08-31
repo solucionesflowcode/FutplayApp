@@ -705,9 +705,11 @@ function PagosDashboard({ onNavigateCompra, userId }: { onNavigateCompra: () => 
 function CheckoutView({
     plan,
     onBack,
+    accesoFamiliar,
 }: {
     plan: Plan;
     onBack: () => void;
+    accesoFamiliar?: string | null;
 }) {
     const router = useRouter();
     const [checkoutState, setCheckoutState] = useState<CheckoutState>("idle");
@@ -724,6 +726,8 @@ function CheckoutView({
                 body: JSON.stringify({
                     planId: plan.id,
                     recurrencia: false,
+                    // Requerido por create-order si el plan es familiar
+                    ...(accesoFamiliar ? { acceso: accesoFamiliar } : {}),
                 }),
             });
             const data = await res.json();
@@ -734,7 +738,7 @@ function CheckoutView({
             setErrorMsg(err instanceof Error ? err.message : "Error al conectar con Flow");
             setCheckoutState("error");
         }
-    }, [plan.id]);
+    }, [plan.id, accesoFamiliar]);
 
     const resetCheckout = useCallback(() => {
         setCheckoutState("idle");
@@ -1017,6 +1021,9 @@ export default function PagosClient() {
     const flowToken = searchParams.get("token");
     const flowPayment = searchParams.get("flowPayment");
     const flowReturn = searchParams.get("flowReturn");
+    // "acceso" = codigo_acceso de un plan familiar (link del admin).
+    // OJO: "token" está reservado para el token de Flow.
+    const accesoFamiliar = searchParams.get("acceso");
 
     // ── All hooks FIRST (before any early return) ──
     const [planes, setPlanes] = useState<Plan[]>([]);
@@ -1040,12 +1047,19 @@ export default function PagosClient() {
         let cancelled = false;
         const fetchPlanes = async () => {
             try {
-                const [planesData, membresia] = await Promise.all([
+                // Con "acceso" (plan familiar), el plan no viene en getPlanes()
+                // porque está oculto del catálogo: se obtiene por su token.
+                const [planesData, membresia, planFamiliar] = await Promise.all([
                     getPlanes(),
                     getMiMembresia(usuario.id),
+                    accesoFamiliar
+                        ? fetch(`/api/planes/familiar?token=${encodeURIComponent(accesoFamiliar)}`)
+                              .then((r) => (r.ok ? r.json() : null))
+                              .catch(() => null)
+                        : Promise.resolve(null),
                 ]);
                 if (cancelled) return;
-                setPlanes(planesData);
+                setPlanes(planFamiliar ? [...planesData, planFamiliar] : planesData);
                 if (membresia) {
                     setTienePlanActivo(membresiaActiva(membresia.fecha_vencimiento));
                 }
@@ -1063,7 +1077,7 @@ export default function PagosClient() {
             cancelled = true;
             clearTimeout(timeout);
         };
-    }, [planId, usuario]);
+    }, [planId, usuario, accesoFamiliar]);
 
     useEffect(() => {
         const shouldConfirm = flowToken || flowReturn;
@@ -1379,7 +1393,7 @@ export default function PagosClient() {
     return (
         <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
             <TopNavBarUser />
-            <CheckoutView plan={plan} onBack={handleBackToDashboard} />
+            <CheckoutView plan={plan} onBack={handleBackToDashboard} accesoFamiliar={accesoFamiliar} />
         </main>
     );
 }

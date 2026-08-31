@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { getAdminMembresias, type MembresiaConPlan } from "@/data/membresia";
-import { getPlanes, type Plan } from "@/data/plans";
+import { getPlanesAdmin, type Plan } from "@/data/plans";
 import { getChileMonthBounds } from "@/lib/fechas";
 
 type Resumen = {
@@ -92,14 +92,14 @@ export default function AnaliticasPage() {
 
         const { data: usuarios } = await supabase.from("usuario").select("id, rol");
 
-        const [membresiasData, planesData, ingresosData] = await Promise.all([
+        const [membresiasData, planesResult, ingresosData] = await Promise.all([
           getAdminMembresias(),
-          getPlanes(),
+          getPlanesAdmin(),
           getIngresosMensuales(),
         ]);
 
         setMembresias(membresiasData);
-        setPlanes(planesData);
+        setPlanes(planesResult.planes);
         setIngresosMensuales(ingresosData);
 
         const jugadores = (usuarios || []).filter((u) => u.rol === "jugador");
