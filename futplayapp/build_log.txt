@@ -2,15 +2,15 @@
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 16.3s
+✓ Compiled successfully in 21.6s
   Running TypeScript ...
-  Finished TypeScript in 16.6s ...
+  Finished TypeScript in 45s ...
   Collecting page data using 11 workers ...
-  Generating static pages using 11 workers (0/61) ...
-  Generating static pages using 11 workers (15/61) 
-  Generating static pages using 11 workers (30/61) 
-  Generating static pages using 11 workers (45/61) 
-✓ Generating static pages using 11 workers (61/61) in 2.3s
+  Generating static pages using 11 workers (0/62) ...
+  Generating static pages using 11 workers (15/62) 
+  Generating static pages using 11 workers (30/62) 
+  Generating static pages using 11 workers (46/62) 
+✓ Generating static pages using 11 workers (62/62) in 1488ms
   Finalizing page optimization ...
 
 Route (app)
@@ -62,6 +62,7 @@ Route (app)
 ├ ƒ /api/flow/cancel-recurrence
 ├ ƒ /api/flow/confirm
 ├ ƒ /api/flow/create-order
+├ ƒ /api/flow/diagnose
 ├ ƒ /api/flow/return
 ├ ƒ /api/flow/webhook
 ├ ƒ /api/perfil

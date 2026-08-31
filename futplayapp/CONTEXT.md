@@ -880,6 +880,7 @@ Generado: 2026-06-12. Basado en auditoría completa del código fuente (todos lo
 - [x] Acceso a planes familiares por link/QR: `codigo_acceso` en `plan`, página pública `/planes/familiar/[token]`, API `GET /api/planes/familiar` y `POST /api/admin/planes/link` (generar/regenerar, QR descargable, share WhatsApp)
 - [x] create-order valida `acceso` server-side para planes familiares (403 sin link válido)
 - [x] `turbopack.root` fijado en `next.config.ts` (evita inferencia de workspace root por `bun.lock` en home)
+- [x] Bug perfil: teléfono se llenaba de "9" al escribir. Ahora `normalizeTelefono()` (`src/components/perfil/ProfileForm.tsx`) fija el prefijo `+569` y solo guarda el teléfono cuando hay 8 dígitos (mismo patrón que `FichaMedicaModal`)
 - [x] Dominio canónico: `getBaseUrl()` (`src/lib/base-url.ts`) en links de planes familiares y callbacks de Flow — ignora `NEXT_PUBLIC_BASE_URL` localhost/`.vercel.app` y cae al origen real de la request, garantizando `futplay.cl` en producción
 - [x] Flow confirm: token opcional, fallback a estado Supabase
 - [x] Frontend pagos: detecta `flowReturn`, polling 15 intentos, cleanup orphaned

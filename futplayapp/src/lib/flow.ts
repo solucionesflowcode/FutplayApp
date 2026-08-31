@@ -179,6 +179,16 @@ export async function createFlowOrder(
 
   if (!res.ok) {
     const error = await res.text();
+    // Log detallado para diagnóstico en los logs de Vercel.
+    const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
+    console.error("[Flow] createFlowOrder falló", {
+      endpoint: `${apiUrl}/payment/create`,
+      sandbox: isSandbox,
+      apiKeyPrefijo: apiKey.slice(0, 4),
+      status: res.status,
+      respuesta: error,
+      hint: "Si el status es 401/501 'apiKey not found', las keys NO coinciden con el entorno: usas keys de sandbox contra producción o viceversa.",
+    });
     throw new Error(`Flow createOrder failed: ${res.status} ${error}`);
   }
 

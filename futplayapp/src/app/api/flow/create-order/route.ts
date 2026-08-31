@@ -202,6 +202,17 @@ export async function POST(request: Request) {
       await adminClient.from("recurrencia").delete().eq("id", recurrenciaId);
     }
 
+    // Log de diagnóstico para Vercel: captura el endpoint y config de Flow.
+    console.error("[create-order] Error al crear orden Flow:", {
+      planId: plan?.id,
+      planNombre: plan?.nombre,
+      sandbox: process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true",
+      apiKeyConfigurada: Boolean(process.env.FLOW_API_KEY),
+      secretConfigurado: Boolean(process.env.FLOW_SECRET_KEY),
+      urlBase: publicUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
     const message = error instanceof Error ? error.message : "Error al conectar con Flow";
     return NextResponse.json({ error: message }, { status: 502 });
   }

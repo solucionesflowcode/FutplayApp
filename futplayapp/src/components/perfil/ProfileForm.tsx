@@ -12,6 +12,16 @@ type UsuarioData = {
   telefono: string | null;
 };
 
+// Prefijo fijo +569: el usuario solo escribe los 8 dígitos del móvil.
+// Normaliza cualquier formato existente (56, +56, 9, espacios, guiones)
+// a +569XXXXXXXX sin repetir el 9 del prefijo.
+export function normalizeTelefono(value: string): string {
+  let digits = value.replace(/[^0-9]/g, "");
+  if (digits.startsWith("56")) digits = digits.slice(2); // +569 → 9...
+  if (digits.startsWith("9")) digits = digits.slice(1);  // quita el 9 del prefijo
+  return `+569${digits.slice(0, 8)}`;
+}
+
 export default function ProfileForm() {
   const [usuario, setUsuario] = useState<UsuarioData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,7 +32,7 @@ export default function ProfileForm() {
 
   const [nombre, setNombre] = useState("");
   const [rut, setRut] = useState("");
-  const [telefono, setTelefono] = useState("");
+  const [telefono, setTelefono] = useState("+569");
 
   const [rutError, setRutError] = useState<string | null>(null);
   const [telError, setTelError] = useState<string | null>(null);
@@ -35,7 +45,7 @@ export default function ProfileForm() {
         setUsuario(data);
         setNombre(data.nombre);
         setRut(data.rut || "");
-        setTelefono(data.telefono || "");
+        setTelefono(data.telefono ? normalizeTelefono(data.telefono) : "+569");
         setEmail(data.email);
       }
       setLoading(false);
@@ -61,21 +71,10 @@ export default function ProfileForm() {
     }
   };
 
-  const formatPhone = (value: string) => {
-    let clean = value.replace(/[^0-9]/g, "");
-    if (clean.startsWith("56")) clean = clean.slice(2);
-    if (clean.length > 9) clean = clean.slice(0, 9);
-    if (!clean) return "";
-    if (clean.length <= 3) return `+56 9 ${clean}`;
-    if (clean.length <= 6) return `+56 9 ${clean.slice(0, 3)} ${clean.slice(3)}`;
-    return `+56 9 ${clean.slice(0, 3)} ${clean.slice(3, 6)} ${clean.slice(6)}`;
-  };
-
   const validatePhone = (value: string) => {
-    if (!value) { setTelError(null); return; }
-    const clean = value.replace(/\s/g, "");
-    if (!/^(\+56)?9\d{8}$/.test(clean)) {
-      setTelError("Formato inválido. Use +56 9 XXXX XXXX");
+    const rest = value.slice(4); // después de "+569"
+    if (rest.length > 0 && rest.length < 8) {
+      setTelError("Deben ser 8 dígitos después del prefijo +569");
     } else {
       setTelError(null);
     }
@@ -88,7 +87,7 @@ export default function ProfileForm() {
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value);
+    const formatted = normalizeTelefono(e.target.value);
     setTelefono(formatted);
     validatePhone(formatted);
   };
@@ -108,7 +107,8 @@ export default function ProfileForm() {
         body: JSON.stringify({
           nombre: nombre.trim(),
           rut: rut || null,
-          telefono: telefono || null,
+          // Solo guarda si el teléfono está completo (+569 + 8 dígitos)
+          telefono: telefono.length === 12 ? telefono : null,
         }),
       });
       const data = await res.json();
@@ -212,15 +212,15 @@ export default function ProfileForm() {
                 Teléfono
               </label>
               <input
-                type="text"
+                type="tel"
                 value={telefono}
                 onChange={handlePhoneChange}
-                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-[#001220] focus:outline-none focus:ring-1 transition ${
+                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-[#001220] focus:outline-none focus:ring-1 transition font-mono tracking-wider ${
                   telError
                     ? "border-red-400 focus:border-red-500 focus:ring-red-500/30"
                     : "border-gray-200 focus:border-[#F39200] focus:ring-[#F39200]/30"
                 }`}
-                placeholder="+56 9 XXXX XXXX"
+                placeholder="+56912345678"
               />
               {telError && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
