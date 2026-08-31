@@ -82,8 +82,19 @@ describe("GET /api/flow/confirm", () => {
         expect(json.estado).toBe("pagado");
     });
 
-    it("retorna estado rechazado si Flow no aprueba (status !== 2)", async () => {
+    it("retorna estado pendiente si Flow aún no aprueba (status === 1)", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 1, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.estado).toBe("pendiente");
+    });
+
+    it("retorna estado rechazado si Flow rechaza (status === 3)", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 3, commerceOrder: BOLETA_ID }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
 
         const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));

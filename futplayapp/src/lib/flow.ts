@@ -208,16 +208,17 @@ export async function getFlowPaymentStatus(
 ): Promise<PaymentStatus> {
   const { apiKey, secretKey, apiUrl } = getConfig();
 
-  const body: Record<string, string | number> = {
+  // según la documentación de Flow, payment/getStatus es un GET
+  // con los parámetros en la query string (apiKey, token, s)
+  const params: Record<string, string | number> = {
     apiKey,
     token,
   };
-  body.s = generateSignature(body, secretKey);
+  params.s = generateSignature(params, secretKey);
 
-  const res = await fetch(`${apiUrl}/payment/getStatus`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: toUrlEncoded(body),
+  const query = toUrlEncoded(params);
+  const res = await fetch(`${apiUrl}/payment/getStatus?${query}`, {
+    method: "GET",
   });
 
   if (!res.ok) {

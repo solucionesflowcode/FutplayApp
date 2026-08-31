@@ -45,10 +45,11 @@ export async function POST(request: Request) {
     let statusData;
     try {
       statusData = await getFlowPaymentStatus(token);
-    } catch {
+    } catch (getStatusErr) {
       const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
       if (!isSandbox) {
-        console.error(`[Flow Webhook] getStatus falló en producción — devolviendo 502 para reintento`);
+        const errMsg = getStatusErr instanceof Error ? getStatusErr.message : String(getStatusErr);
+        console.error(`[Flow Webhook] getStatus falló en producción — devolviendo 502 para reintento: ${errMsg}`);
         return NextResponse.json({ error: "Error al verificar pago con Flow" }, { status: 502 });
       }
       if (!boletaId) {

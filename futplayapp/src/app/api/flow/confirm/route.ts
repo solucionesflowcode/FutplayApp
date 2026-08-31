@@ -100,8 +100,12 @@ export async function GET(request: Request) {
     if (token && token !== "{token}") {
         try {
             const statusData = await getFlowPaymentStatus(token);
-            if (statusData.status !== 2) {
+            // status: 1=pendiente, 2=aprobado, 3=rechazado, 4=cancelado
+            if (statusData.status === 3 || statusData.status === 4) {
                 return NextResponse.json({ estado: "rechazado" });
+            }
+            if (statusData.status === 1) {
+                return NextResponse.json({ estado: "pendiente", message: "El pago está pendiente de confirmación." });
             }
             if (statusData.commerceOrder && String(statusData.commerceOrder) !== boletaId) {
                 console.error(`[Flow Confirm] Mismatch: boletaId=${boletaId} !== commerceOrder=${statusData.commerceOrder}`);
