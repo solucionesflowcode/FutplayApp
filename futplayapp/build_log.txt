@@ -1,0 +1,88 @@
+▲ Next.js 16.2.2 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 16.3s
+  Running TypeScript ...
+  Finished TypeScript in 16.6s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/61) ...
+  Generating static pages using 11 workers (15/61) 
+  Generating static pages using 11 workers (30/61) 
+  Generating static pages using 11 workers (45/61) 
+✓ Generating static pages using 11 workers (61/61) in 2.3s
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /admin
+├ ○ /admin/analiticas
+├ ○ /admin/capsulas
+├ ○ /admin/clases
+├ ○ /admin/membresias
+├ ○ /admin/modulos
+├ ○ /admin/perfil
+├ ○ /admin/planes
+├ ○ /admin/profesores
+├ ƒ /api/admin/analiticas/detalle
+├ ƒ /api/admin/analiticas/mensual
+├ ƒ /api/admin/capsulas
+├ ƒ /api/admin/capsulas/destacada
+├ ƒ /api/admin/clases
+├ ƒ /api/admin/documentos
+├ ƒ /api/admin/membresias
+├ ƒ /api/admin/membresias/gestion
+├ ƒ /api/admin/modulos
+├ ƒ /api/admin/perfil
+├ ƒ /api/admin/perfil/avatar
+├ ƒ /api/admin/planes
+├ ƒ /api/admin/planes/link
+├ ƒ /api/admin/profesores
+├ ƒ /api/admin/students
+├ ƒ /api/admin/students/status
+├ ƒ /api/admin/upload
+├ ƒ /api/admin/upload-capsula
+├ ƒ /api/admin/upload-documento
+├ ƒ /api/admin/upload-miniatura
+├ ƒ /api/auth/callback
+├ ƒ /api/auth/google/exchange
+├ ƒ /api/auth/link-usuario
+├ ƒ /api/bunny/create
+├ ƒ /api/bunny/delete
+├ ƒ /api/bunny/get-video
+├ ƒ /api/bunny/get-videos
+├ ƒ /api/bunny/thumbnail
+├ ƒ /api/bunny/upload
+├ ƒ /api/clases/cancelar
+├ ƒ /api/clases/cupos
+├ ƒ /api/clases/inscribir
+├ ƒ /api/download-documento
+├ ƒ /api/flow/cancel
+├ ƒ /api/flow/cancel-recurrence
+├ ƒ /api/flow/confirm
+├ ƒ /api/flow/create-order
+├ ƒ /api/flow/return
+├ ƒ /api/flow/webhook
+├ ƒ /api/perfil
+├ ƒ /api/planes/familiar
+├ ○ /auth/callback
+├ ƒ /capsules
+├ ƒ /capsules/[id]
+├ ○ /configuracion
+├ ○ /dashboard
+├ ○ /home
+├ ○ /home/acerca-de-nosotros
+├ ○ /home/nuestros-amigos
+├ ○ /login
+├ ○ /misclases
+├ ○ /pagos
+├ ○ /perfil
+├ ○ /planes
+├ ƒ /planes/familiar/[token]
+└ ○ /profesor
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { createFlowOrder } from "@/lib/flow";
 import { membresiaActiva } from "@/lib/fechas";
 import { rateLimit } from "@/lib/rate-limit";
+import { getBaseUrl } from "@/lib/base-url";
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
@@ -166,7 +167,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const publicUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  // Base canónica para callbacks de Flow (webhook + retorno):
+  // futplay.cl si NEXT_PUBLIC_BASE_URL está bien configurada,
+  // o el dominio real por el que el usuario está navegando.
+  const publicUrl = getBaseUrl(request);
 
   try {
     const flowOrder = await createFlowOrder({

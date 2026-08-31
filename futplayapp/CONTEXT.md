@@ -511,6 +511,7 @@ type Student = {
 - **Doble verificación server-side:** la página valida el token para VER el plan, y `POST /api/flow/create-order` re-valida (`plan.tipo_plan === 'familiar'` → exige `acceso === plan.codigo_acceso`, si no → 403). Ocultarlo en el frontend no es la barrera; el create-order sí lo es
 - **Panel admin** (`admin/planes/page.tsx`): filas familiares tienen botón QR → modal con link copiable, QR PNG descargable (`qrcode` lib), compartir por WhatsApp (`wa.me`) y regenerar link (invalida el anterior)
 - **Reglas actuales:** un link activo por plan, sin expiración ni límite de usos; regenerar mata el link anterior
+- **Dominio (futplay.cl):** los links/QR y los callbacks de Flow usan `getBaseUrl()` (`src/lib/base-url.ts`) — prioriza `NEXT_PUBLIC_BASE_URL` **si no** es localhost ni `.vercel.app`, y si no usa el origen real de la request. Así en producción siempre apuntan a `https://futplay.cl` aunque la env var de Vercel esté obsoleta (ej. `futplay-vercel.vercel.app`)
 - **Parámetro `acceso`:** en `/pagos` el query param `token` está reservado para el token de Flow, por eso el acceso familiar viaja como `acceso`
 - Migración SQL: `docs/migrations/plan_codigo_acceso.sql` (columna + índice único + policy RLS opcional)
 
@@ -879,6 +880,7 @@ Generado: 2026-06-12. Basado en auditoría completa del código fuente (todos lo
 - [x] Acceso a planes familiares por link/QR: `codigo_acceso` en `plan`, página pública `/planes/familiar/[token]`, API `GET /api/planes/familiar` y `POST /api/admin/planes/link` (generar/regenerar, QR descargable, share WhatsApp)
 - [x] create-order valida `acceso` server-side para planes familiares (403 sin link válido)
 - [x] `turbopack.root` fijado en `next.config.ts` (evita inferencia de workspace root por `bun.lock` en home)
+- [x] Dominio canónico: `getBaseUrl()` (`src/lib/base-url.ts`) en links de planes familiares y callbacks de Flow — ignora `NEXT_PUBLIC_BASE_URL` localhost/`.vercel.app` y cae al origen real de la request, garantizando `futplay.cl` en producción
 - [x] Flow confirm: token opcional, fallback a estado Supabase
 - [x] Frontend pagos: detecta `flowReturn`, polling 15 intentos, cleanup orphaned
 - [x] Token consumption en inscripción a clases (antes del INSERT, rollback en fallo)

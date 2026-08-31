@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
+import { getBaseUrl } from "@/lib/base-url";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    // Link canónico: futplay.cl si NEXT_PUBLIC_BASE_URL está bien configurada,
+    // o el dominio real por el que el admin está navegando.
+    const baseUrl = getBaseUrl(request);
     const url = `${baseUrl}/planes/familiar/${token}`;
 
     return NextResponse.json({ token, url });
