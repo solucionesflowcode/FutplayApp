@@ -8,7 +8,7 @@ export type Plan = {
     precio: number;
     tokens_mensuales: number;
     dias_vigencia: number;
-    tipo_plan: "normal" | "familiar";
+    tipo_plan: "normal" | "familiar" | "kids";
     codigo_acceso?: string | null;
 };
 
@@ -86,7 +86,7 @@ export async function createPlanAdmin(data: {
     precio: number;
     tokens_mensuales: number;
     dias_vigencia?: number;
-    tipo_plan?: "normal" | "familiar";
+    tipo_plan?: "normal" | "familiar" | "kids";
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "POST",
@@ -106,7 +106,7 @@ export async function updatePlanAdmin(data: {
     precio?: number;
     tokens_mensuales?: number;
     dias_vigencia?: number;
-    tipo_plan?: "normal" | "familiar";
+    tipo_plan?: "normal" | "familiar" | "kids";
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "PUT",

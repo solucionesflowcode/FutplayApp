@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
+import { traducirError } from "@/lib/errores";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,11 @@ export async function GET() {
       .select("*")
       .order("precio", { ascending: true });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
     return NextResponse.json(data || []);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 
@@ -42,12 +43,12 @@ export async function POST(request: Request) {
       tipo_plan: body.tipo_plan || "normal",
     });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 
@@ -69,12 +70,12 @@ export async function PUT(request: Request) {
     if (body.tipo_plan !== undefined) updateData.tipo_plan = body.tipo_plan;
 
     const { error } = await admin.from("plan").update(updateData).eq("id", body.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 
@@ -90,11 +91,11 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
     const { error } = await admin.from("plan").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }

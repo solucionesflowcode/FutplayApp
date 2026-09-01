@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
+import { traducirError } from "@/lib/errores";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,11 @@ export async function PUT(request: Request) {
       .update({ nombre: body.nombre })
       .eq("id", user.id);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json({ success: true, nombre: body.nombre });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }

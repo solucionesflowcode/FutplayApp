@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { getCapsulaDestacadaId } from "@/lib/capsula-destacada";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { traducirError } from "@/lib/errores";
 
 
 export async function GET(request: Request) {

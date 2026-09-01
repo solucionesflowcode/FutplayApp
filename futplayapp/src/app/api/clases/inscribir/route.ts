@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getChileMonthBounds } from "@/lib/fechas";
+import { traducirError } from "@/lib/errores";
 
 async function consumirToken(supabase: SupabaseClient, userId: string): Promise<boolean> {
     const { data: membresia } = await supabase
@@ -78,6 +79,31 @@ export async function POST(request: Request) {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         serviceKey
     );
+
+    // Validar compatibilidad del plan del usuario con el tipo de clase
+    const { data: tipoPlanRow } = await supabase
+        .from("membresia")
+        .select("plan!inner(tipo_plan)")
+        .eq("usuario_id", user.id)
+        .eq("estado", true)
+        .order("fecha_inicio", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    const tipoPlan = (tipoPlanRow as unknown as { plan: { tipo_plan: "normal" | "familiar" | "kids" } } | null)?.plan?.tipo_plan ?? "normal";
+
+    if (tipoPlan === "kids" && clase.tipo_evento !== "kids") {
+        return NextResponse.json(
+            { error: "Tu plan Kids solo permite reservar clases Kids" },
+            { status: 403 },
+        );
+    }
+    if (tipoPlan === "normal" && clase.tipo_evento === "kids") {
+        return NextResponse.json(
+            { error: "Esa clase es exclusiva para el plan Kids" },
+            { status: 403 },
+        );
+    }
 
     // Check if user already has a cancelled record for this class (re-inscription)
     const { data: existing } = await supabase

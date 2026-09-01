@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
+import { traducirError } from "@/lib/errores";
 
 export const dynamic = "force-dynamic";
 

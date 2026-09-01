@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
+import { traducirError } from "@/lib/errores";
 
 export async function GET(request: Request) {
   const user = await verifyAdmin();
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
       .eq("rol", "profesor")
       .order("nombre");
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     const profesorIds = (profesores || []).map((p) => p.id);
 
@@ -83,7 +84,7 @@ export async function GET(request: Request) {
     })));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
         );
       }
       return NextResponse.json(
-        { error: `Error al crear usuario de auth: ${authError?.message}` },
+        { error: traducirError(authError?.message) },
         { status: 500 }
       );
     }
@@ -184,7 +185,7 @@ export async function POST(request: Request) {
         console.error("Error al limpiar auth user huérfano:", deleteError.message);
       }
       return NextResponse.json(
-        { error: `Error al crear profesor: ${usuarioError.message}` },
+        { error: traducirError(usuarioError.message) },
         { status: 500 }
       );
     }
@@ -197,7 +198,7 @@ export async function POST(request: Request) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 
@@ -242,12 +243,12 @@ export async function PUT(request: Request) {
     }
 
     const { error } = await admin.from("usuario").update(updateData).eq("id", body.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 
@@ -282,11 +283,11 @@ export async function DELETE(request: Request) {
     await admin.auth.admin.deleteUser(id);
 
     const { error } = await admin.from("usuario").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }

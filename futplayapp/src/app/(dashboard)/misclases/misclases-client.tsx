@@ -123,7 +123,7 @@ export default function MisClasesClient() {
         return new Date(n.getFullYear(), n.getMonth(), 1);
     });
     const [tokensRestantes, setTokensRestantes] = useState<number | null>(null);
-    const [tipoPlan, setTipoPlan] = useState<"normal" | "familiar">("normal");
+    const [tipoPlan, setTipoPlan] = useState<"normal" | "familiar" | "kids">("normal");
     const [selectedClases, setSelectedClases] = useState<{
         claseId: string;
         titulo: string;
@@ -186,6 +186,7 @@ export default function MisClasesClient() {
     const sessionsByDay = useMemo(() => {
         const map = new Map<string, SessionItem[]>();
         for (const s of sessions) {
+            if (tipoPlan === "kids" && s.tipo_evento !== "kids") continue;
             if (tipoPlan === "normal" && s.tipo_evento === "kids") continue;
             const d = parseFechaLocal(s.fecha_hora);
             const k = dateKeyLocal(d);
@@ -211,6 +212,7 @@ export default function MisClasesClient() {
 
     const sessionsInViewMonth = useMemo(() => {
         return sessions.filter((s) => {
+            if (tipoPlan === "kids" && s.tipo_evento !== "kids") return false;
             if (tipoPlan === "normal" && s.tipo_evento === "kids") return false;
             const d = parseFechaLocal(s.fecha_hora);
             return d >= monthBounds.start && d <= monthBounds.end;
@@ -237,6 +239,7 @@ export default function MisClasesClient() {
     const recentRows = useMemo(() => {
         return [...sessions]
             .filter((s) => {
+                if (tipoPlan === "kids" && s.tipo_evento !== "kids") return false;
                 if (tipoPlan === "normal" && s.tipo_evento === "kids") return false;
                 return s.inscripcionId !== null;
             })

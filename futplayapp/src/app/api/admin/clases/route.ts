@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
+import { traducirError } from "@/lib/errores";
 
 
 export async function GET(request: Request) {
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     const claseIds = (clases || []).map((c) => c.id);
 
@@ -115,7 +116,7 @@ export async function GET(request: Request) {
     })));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 
@@ -156,12 +157,12 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json(clase);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 

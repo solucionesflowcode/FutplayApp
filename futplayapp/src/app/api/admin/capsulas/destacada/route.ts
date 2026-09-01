@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin } from "@/utils/supabase/admin";
 import { setCapsulaDestacadaId } from "@/lib/capsula-destacada";
+import { traducirError } from "@/lib/errores";
 
 export async function PUT(request: Request) {
   const user = await verifyAdmin();

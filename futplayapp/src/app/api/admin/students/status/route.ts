@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { ahoraChile } from "@/lib/fechas";
+import { traducirError } from "@/lib/errores";
 
 export async function POST(request: Request) {
   const user = await verifyAdmin();
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
         .eq("id", current.id);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
       }
     } else {
       const { data: planes } = await adminClient
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
       });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
       }
     }
   } else if (status === "Vencido") {
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
         .eq("id", current.id);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
       }
     }
   } else if (status === "Inactivo") {
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
         .eq("usuario_id", userId);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
       }
     }
   }

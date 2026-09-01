@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { traducirError } from "@/lib/errores";
 
 /** POST /api/auth/link-usuario
  *  Busca al usuario en la tabla `usuario` por su email usando service role.

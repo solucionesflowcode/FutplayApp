@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { ahoraChile } from "@/lib/fechas";
+import { traducirError } from "@/lib/errores";
 
 
 export async function POST(request: Request) {
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
 
   if (authError || !authData.user) {
     return NextResponse.json(
-      { error: `Error al crear usuario de auth: ${authError?.message}` },
+      { error: traducirError(authError?.message) },
       { status: 500 }
     );
   }
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
   if (usuarioError) {
     await adminClient.auth.admin.deleteUser(userId);
     return NextResponse.json(
-      { error: `Error al crear usuario: ${usuarioError.message}` },
+      { error: traducirError(usuarioError.message) },
       { status: 500 }
     );
   }
@@ -130,12 +131,12 @@ export async function PUT(request: Request) {
     }
 
     const { error } = await admin.from("usuario").update(updateData).eq("id", body.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
 
@@ -159,7 +160,7 @@ export async function DELETE(request: Request) {
 
     // 2) Eliminar de usuario
     const { error: usuarioError } = await admin.from("usuario").delete().eq("id", id);
-    if (usuarioError) return NextResponse.json({ error: usuarioError.message }, { status: 500 });
+    if (usuarioError) return NextResponse.json({ error: traducirError(usuarioError.message) }, { status: 500 });
 
     // 3) Eliminar de auth.users
     await admin.auth.admin.deleteUser(id);
@@ -167,6 +168,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }

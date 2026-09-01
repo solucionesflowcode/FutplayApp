@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuthUser } from "@/context";
 import Link from "next/link";
 import { Lock, CalendarPlus, Sparkles, ArrowRight, Calendar, MapPin, Clock, GraduationCap } from "lucide-react";
-import { userHasMembresia } from "@/data/membresia";
+import { userHasMembresia, getMembresiaByUser } from "@/data/membresia";
 import { getProximaClase } from "@/data/clases";
 
 interface Clase {
@@ -29,7 +29,9 @@ export default function ProximoEntrenamiento() {
             setLoading(true);
 
             try {
-                const data = await getProximaClase(usuario.id);
+                const membresia = await getMembresiaByUser(usuario.id);
+                const tipoPlan = membresia?.tipo_plan;
+                const data = await getProximaClase(usuario.id, tipoPlan);
 
                 if (data.length > 0) {
                     const c = data[0];

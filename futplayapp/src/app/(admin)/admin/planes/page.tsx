@@ -34,7 +34,7 @@ type PlanForm = {
   precio: number;
   tokens_mensuales: number;
   dias_vigencia: number;
-  tipo_plan: "normal" | "familiar";
+  tipo_plan: "normal" | "familiar" | "kids";
 };
 
 const emptyForm: PlanForm = {
@@ -282,7 +282,7 @@ export default function PlanesPage() {
                             <div className="p-3 space-y-1.5">
                               <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
                               <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
-                                <div><span className="text-gray-400">Tipo: </span><span className={`font-semibold ${p.tipo_plan === "familiar" ? "text-purple-700" : "text-blue-700"}`}>{p.tipo_plan === "familiar" ? "Familiar" : "Normal"}</span></div>
+                                <div><span className="text-gray-400">Tipo: </span><span className={`font-semibold ${p.tipo_plan === "familiar" ? "text-purple-700" : p.tipo_plan === "kids" ? "text-green-700" : "text-blue-700"}`}>{p.tipo_plan === "familiar" ? "Familiar" : p.tipo_plan === "kids" ? "Kids" : "Normal"}</span></div>
                                 <div><span className="text-gray-400">Precio: </span><span className="font-semibold text-gray-900">{formatPrice(p.precio)}</span></div>
                                 <div><span className="text-gray-400">Tokens: </span><span className="font-semibold text-gray-700">{p.tokens_mensuales}</span><span className="text-gray-400"> sesiones</span></div>
                                 <div><span className="text-gray-400">Duración: </span><span className="font-semibold text-gray-700">{duracionLabel(p.dias_vigencia ?? 30)}</span></div>
@@ -298,8 +298,8 @@ export default function PlanesPage() {
                         <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
                           <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{p.nombre}</td>
                           <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.tipo_plan === "familiar" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
-                              {p.tipo_plan === "familiar" ? "Familiar" : "Normal"}
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.tipo_plan === "familiar" ? "bg-purple-100 text-purple-700" : p.tipo_plan === "kids" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                              {p.tipo_plan === "familiar" ? "Familiar" : p.tipo_plan === "kids" ? "Kids" : "Normal"}
                             </span>
                           </td>
                           <td className="p-3 font-semibold text-gray-900 whitespace-nowrap">{formatPrice(p.precio)}</td>
@@ -381,11 +381,12 @@ export default function PlanesPage() {
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo de Plan *</label>
                   <select
                     value={form.tipo_plan}
-                    onChange={(e) => setForm((p) => ({ ...p, tipo_plan: e.target.value as "normal" | "familiar" }))}
+                    onChange={(e) => setForm((p) => ({ ...p, tipo_plan: e.target.value as "normal" | "familiar" | "kids" }))}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                   >
                     <option value="normal">Normal</option>
                     <option value="familiar">Familiar</option>
+                    <option value="kids">Kids</option>
                   </select>
                 </div>
 

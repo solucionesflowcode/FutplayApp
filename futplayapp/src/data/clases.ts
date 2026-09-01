@@ -37,7 +37,7 @@ function localISONow(): string {
   return new Date().toISOString();
 }
 
-export async function getProximaClase(userId: string): Promise<Array<{
+export async function getProximaClase(userId: string, tipoPlan?: "normal" | "familiar" | "kids"): Promise<Array<{
   titulo: string;
   descripcion: string;
   fecha_hora: string;
@@ -77,6 +77,17 @@ export async function getProximaClase(userId: string): Promise<Array<{
       sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
       tipo_evento: c.tipo_evento as "entrenamiento" | "partido" | "kids",
     });
+  }
+
+  if (tipoPlan === "kids") {
+    const filtered = rows.filter(r => r.tipo_evento === "kids");
+    filtered.sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime());
+    return filtered.slice(0, 1);
+  }
+  if (tipoPlan === "normal") {
+    const filtered = rows.filter(r => r.tipo_evento !== "kids");
+    filtered.sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime());
+    return filtered.slice(0, 1);
   }
 
   rows.sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime());

@@ -24,6 +24,7 @@ export default function DashboardClient() {
     const [planChecked, setPlanChecked] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showFailure, setShowFailure] = useState(false);
+    const [confirmIndeterminate, setConfirmIndeterminate] = useState(false);
     const [confirmingPayment, setConfirmingPayment] = useState(false);
 
     useEffect(() => {
@@ -54,7 +55,9 @@ export default function DashboardClient() {
         const poll = async (attempts: number): Promise<void> => {
             if (cancelled) return;
             try {
-                const res = await fetch(url.toString());
+                const res = await fetch(url.toString(), {
+                    signal: AbortSignal.timeout(8000),
+                });
                 const data = await res.json();
                 if (res.ok && data.estado === "pagado") {
                     setShowSuccess(true);
@@ -64,13 +67,17 @@ export default function DashboardClient() {
                     setShowFailure(true);
                     return;
                 }
-                if (data.estado === "pendiente" && attempts < 10) {
-                    await new Promise((r) => setTimeout(r, 3000));
+                if (data.estado === "pendiente" && attempts < 6) {
+                    await new Promise((r) => setTimeout(r, 2500));
                     return poll(attempts + 1);
                 }
-                setShowFailure(true);
+                // No se pudo confirmar automáticamente en el poll. En lugar de bloquear
+                // con "carga eterna", mostramos un aviso neutro: el pago pudo completarse
+                // (el webhook termina de sincronizar en segundo plano). El usuario puede
+                // recargar para ver el estado final.
+                if (!cancelled) setConfirmIndeterminate(true);
             } catch {
-                setShowFailure(true);
+                if (!cancelled) setConfirmIndeterminate(true);
             }
         };
         poll(0).finally(() => {
@@ -181,6 +188,26 @@ export default function DashboardClient() {
                         <p className="text-gray-500 text-sm">
                             Estamos verificando el pago con Flow. Un momento por favor...
                         </p>
+                    </div>
+                </div>
+            )}
+
+            {confirmIndeterminate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#001220]/60 backdrop-blur-sm" />
+                    <div className="relative bg-white border-t-2 border-t-[#F28C28] shadow-2xl ring-1 ring-inset ring-black/[0.03] p-10 md:p-14 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-300">
+                        <h3 className="text-xl font-black text-[#00305B] mt-6 mb-2">
+                            Verificando pago
+                        </h3>
+                        <p className="text-gray-500 text-sm">
+                            No pudimos confirmar tu pago automáticamente. Si lo completaste, quedará activo en unos segundos.
+                        </p>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="mt-8 w-full py-3.5 rounded bg-[#F28C28] hover:bg-[#e07d1f] text-white font-bold shadow-lg shadow-[#F28C28]/30 hover:shadow-xl hover:shadow-[#F28C28]/40 transition-all"
+                        >
+                            Recargar y ver mi estado
+                        </button>
                     </div>
                 </div>
             )}

@@ -5,6 +5,7 @@ import { createFlowOrder } from "@/lib/flow";
 import { membresiaActiva } from "@/lib/fechas";
 import { rateLimit } from "@/lib/rate-limit";
 import { getBaseUrl } from "@/lib/base-url";
+import { traducirError } from "@/lib/errores";
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();

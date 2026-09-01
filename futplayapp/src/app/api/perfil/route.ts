@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { traducirError } from "@/lib/errores";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -33,7 +34,7 @@ export async function GET() {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
   }
 
   return NextResponse.json(usuario);
@@ -99,7 +100,7 @@ export async function PUT(request: Request) {
     .eq("id", user.id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

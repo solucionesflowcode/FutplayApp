@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { traducirError } from "@/lib/errores";
 
 export async function POST(request: Request) {
     const { boletaId } = await request.json();

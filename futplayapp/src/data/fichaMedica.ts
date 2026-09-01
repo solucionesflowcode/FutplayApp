@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { traducirError } from "@/lib/errores";
 
 export type FichaMedicaData = {
     fecha_nacimiento: string;
@@ -42,7 +43,7 @@ export async function updateUserProfile(
 
     if (error) {
         console.error("Error updating user profile:", error.message);
-        return { ok: false, error: error.message };
+        return { ok: false, error: traducirError(error.message) };
     }
 
     return { ok: true, error: null };
@@ -60,7 +61,7 @@ export async function createFichaMedica(
 
     if (error) {
         console.error("Error creating ficha medica:", error.message);
-        return { ok: false, error: error.message };
+        return { ok: false, error: traducirError(error.message) };
     }
 
     return { ok: true, error: null };

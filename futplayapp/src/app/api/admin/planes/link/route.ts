@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { getBaseUrl } from "@/lib/base-url";
+import { traducirError } from "@/lib/errores";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
       .eq("id", plan.id);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return NextResponse.json({ error: traducirError(updateError.message) }, { status: 500 });
     }
 
     // Link canónico: futplay.cl si NEXT_PUBLIC_BASE_URL está bien configurada,
@@ -56,6 +57,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ token, url });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
   }
 }
