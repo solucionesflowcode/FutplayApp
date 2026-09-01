@@ -22,6 +22,21 @@ function normalizeEstado(e: string | boolean | null): string {
   return "pendiente";
 }
 
+function infoEstado(e: string | boolean | null): { label: string; cls: string } {
+  const s = String(e ?? "").toLowerCase().replace(/\s+/g, "_");
+  if (s === "asistio" || s === "true" || s === "presente")
+    return { label: "Presente", cls: "bg-emerald-100 text-emerald-700" };
+  if (s === "no_asistio" || s === "false" || s === "ausente")
+    return { label: "Ausente", cls: "bg-red-100 text-red-700" };
+  if (s === "confirmado_whatsapp")
+    return { label: "Confirmado", cls: "bg-sky-100 text-sky-700" };
+  if (s === "cancelado" || s === "cancelado_sin_reembolso")
+    return { label: "Cancelada", cls: "bg-slate-200 text-slate-600" };
+  if (s === "pendiente")
+    return { label: "Pendiente", cls: "bg-amber-100 text-amber-700" };
+  return { label: "Sin confirmar", cls: "bg-slate-100 text-slate-500" };
+}
+
 export default function ControlAsistencia({ claseId, fecha_hora, isMine }: ControlAsistenciaProps) {
   const [alumnos, setAlumnos] = useState<AlumnoAsistencia[]>([]);
   const [estadoUI, setEstadoUI] = useState<"loading" | "ready" | "saving">("loading");
@@ -127,11 +142,16 @@ export default function ControlAsistencia({ claseId, fecha_hora, isMine }: Contr
                   esAsistio ? "bg-emerald-50" : "bg-red-50"
                 }`}
               >
-                <span className={`text-sm font-semibold ${esAsistio ? "text-emerald-800" : "text-red-800"}`}>
-                  {alumno.nombre}
-                </span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`text-sm font-semibold truncate ${esAsistio ? "text-emerald-800" : "text-red-800"}`}>
+                    {alumno.nombre}
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase whitespace-nowrap ${infoEstado(alumno.estado).cls}`}>
+                    {infoEstado(alumno.estado).label}
+                  </span>
+                </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <span className={`text-[10px] font-bold uppercase ${esAsistio ? "text-emerald-600" : "text-red-600"}`}>
                     {esAsistio ? "Asistió" : "No asistió"}
                   </span>
