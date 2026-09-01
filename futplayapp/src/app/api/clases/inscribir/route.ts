@@ -129,14 +129,16 @@ export async function POST(request: Request) {
         }
 
         // Re-inscription a entrenamiento: validar membresía manualmente (trigger no se dispara en DELETE)
-        const { startISO } = getChileMonthBounds();
+        // Membresía "activa este mes" = su validez solapa el mes actual (independiente de la fecha de compra)
+        const { startISO, endISO } = getChileMonthBounds();
 
         const { data: membresia } = await supabase
             .from("membresia")
             .select("tokens_totales, tokens_usados")
             .eq("usuario_id", user.id)
             .eq("estado", true)
-            .gte("fecha_inicio", startISO)
+            .lt("fecha_inicio", endISO)
+            .gte("fecha_vencimiento", startISO)
             .order("fecha_inicio", { ascending: false })
             .limit(1)
             .maybeSingle();
