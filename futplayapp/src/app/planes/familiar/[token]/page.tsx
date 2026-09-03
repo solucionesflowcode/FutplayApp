@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2, AlertCircle, Users, Zap, Shield, Crown, LogIn } from "lucide-react";
 
 type PlanFamiliar = {
@@ -93,12 +94,12 @@ export default function PlanFamiliarPage() {
                             Este enlace no es válido o fue regenerado por el administrador.
                             Solicita un nuevo link para acceder a este plan.
                         </p>
-                        <a
+                        <Link
                             href="/"
                             className="inline-flex items-center gap-2 bg-[#F28C28] hover:bg-[#e07d1f] text-white px-8 py-3 rounded font-bold transition-all"
                         >
                             Ir al inicio
-                        </a>
+                        </Link>
                     </div>
                 )}
 

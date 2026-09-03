@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { AlertCircle, Clock, Loader2, MapPin, Trash2, X } from "lucide-react";
 import { parseClaseFechaHora } from "@/lib/fechas";
 
@@ -22,6 +23,12 @@ export default function CancelarClaseModal({
     fecha_hora,
     sede,
 }: Props) {
+    const ahora = useSyncExternalStore(
+        () => () => {},
+        () => Date.now(),
+        () => Date.now()
+    );
+
     if (!isOpen) return null;
 
     const date = parseClaseFechaHora(fecha_hora);
@@ -35,7 +42,7 @@ export default function CancelarClaseModal({
         minute: "2-digit",
     });
 
-    const horas = (date.getTime() - Date.now()) / (1000 * 60 * 60);
+    const horas = (date.getTime() - ahora) / (1000 * 60 * 60);
     const devuelveToken = horas >= 3;
 
     return (

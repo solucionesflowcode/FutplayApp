@@ -14,16 +14,13 @@ export type Plan = {
 
 // Los planes familiares están ocultos del catálogo público:
 // solo se pueden ver/comprar a través de su link con codigo_acceso.
-const CATALOGO_FILTER = (q: any) => q.neq("tipo_plan", "familiar");
-
 export async function getPlanes(): Promise<Plan[]> {
     const supabase = createClient();
 
-    const { data, error } = await CATALOGO_FILTER(
-        supabase
-            .from("plan")
-            .select("*")
-    )
+    const { data, error } = await supabase
+        .from("plan")
+        .select("*")
+        .neq("tipo_plan", "familiar")
         .order("precio", { ascending: true });
 
     if (error) {
@@ -37,11 +34,10 @@ export async function getPlanes(): Promise<Plan[]> {
 export async function getPlanesLimit(limit: number): Promise<Plan[]> {
     const supabase = createClient();
 
-    const { data, error } = await CATALOGO_FILTER(
-        supabase
-            .from("plan")
-            .select("*")
-    )
+    const { data, error } = await supabase
+        .from("plan")
+        .select("*")
+        .neq("tipo_plan", "familiar")
         .order("precio", { ascending: true })
         .limit(limit);
 
@@ -56,11 +52,10 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
 export async function getPlanesByTokens(tokens: number[]): Promise<Plan[]> {
     const supabase = createClient();
 
-    const { data, error } = await CATALOGO_FILTER(
-        supabase
-            .from("plan")
-            .select("*")
-    )
+    const { data, error } = await supabase
+        .from("plan")
+        .select("*")
+        .neq("tipo_plan", "familiar")
         .in("tokens_mensuales", tokens)
         .order("tokens_mensuales", { ascending: true });
 
