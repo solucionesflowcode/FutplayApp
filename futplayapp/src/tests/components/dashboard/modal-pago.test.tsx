@@ -135,5 +135,8 @@ describe("Modal de confirmación de pago (DashboardClient)", () => {
         expect(screen.queryByText("Confirmando pago")).toBeNull();
         // Debe mostrar el aviso neutro con salida
         expect(screen.getByText("Verificando pago")).toBeTruthy();
+        // Debe ofrecer una salida real (botón de recarga), nunca quedar bloqueado
+        const salida = screen.getByRole("button", { name: /recargar y ver mi estado/i });
+        expect(salida).toBeTruthy();
     });
 });
