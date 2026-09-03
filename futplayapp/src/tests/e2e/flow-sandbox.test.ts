@@ -16,9 +16,15 @@ import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser } f
 import { resetRateLimit } from "@/lib/rate-limit";
 
 // ── Conditional execution ─────────────────────────────────────────
-// Los tests se saltan si no hay credenciales de Flow en el entorno
+// Los tests E2E llaman al sandbox REAL de Flow y solo deben correr cuando:
+//   1. Existen credenciales de Flow en el entorno, Y
+//   2. El entorno está en modo sandbox (NEXT_PUBLIC_FLOW_SANDBOX=true).
+// En producción (FLOW_SANDBOX=false o ausente) estos tests se saltan:
+// la URL de pago devuelta es www.flow.cl (producción) y no deben crearse
+// órdenes reales en el gateway de pago desde una suite de tests.
 const hasCredentials = Boolean(process.env.FLOW_API_KEY && process.env.FLOW_SECRET_KEY);
-const describeIf = hasCredentials ? describe : describe.skip;
+const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
+const describeIf = hasCredentials && isSandbox ? describe : describe.skip;
 
 // ── Constants ─────────────────────────────────────────────────────
 // Email registrado en Flow sandbox para crear órdenes de pago

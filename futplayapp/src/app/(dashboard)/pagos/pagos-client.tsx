@@ -1101,8 +1101,25 @@ export default function PagosClient() {
                 let attempts = 0;
                 const maxAttempts = 15;
 
+                // Límite de seguridad: nunca dejar "Confirmando pago" por siempre si
+                // el fetch o la API remota de Flow se cuelgan. Pasado el plazo, pasamos
+                // al estado "pendiente" (el webhook sincroniza en 2º plano).
+                let aborted = false;
+                const hardTimeout = setTimeout(() => {
+                    aborted = true;
+                    setConfirmingPayment(false);
+                    setConfirmPending(true);
+                }, 55000);
+
                 const poll = async (): Promise<void> => {
-                    const res = await fetch(url.toString());
+                    if (aborted) return;
+                    let res: Response;
+                    try {
+                        res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
+                    } catch {
+                        setConfirmPending(true);
+                        return;
+                    }
                     const data = await res.json();
 
                     if (!res.ok || data.error) {
@@ -1126,6 +1143,7 @@ export default function PagosClient() {
                 };
 
                 await poll();
+                clearTimeout(hardTimeout);
             } catch {
                 setConfirmError("Error de conexión al confirmar pago");
             } finally {

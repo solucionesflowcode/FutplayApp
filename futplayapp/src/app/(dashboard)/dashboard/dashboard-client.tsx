@@ -52,6 +52,15 @@ export default function DashboardClient() {
             url.searchParams.set("token", token);
         }
 
+        // Límite de seguridad: nunca dejar el modal "Confirmando pago" por siempre.
+        // Si el poll no resolvió nada dentro de este plazo, cerramos confirmando y
+        // mostramos el aviso neutro (el pago puede completarse vía webhook en 2º plano).
+        const hardTimeout = setTimeout(() => {
+            if (cancelled) return;
+            setConfirmingPayment(false);
+            setConfirmIndeterminate(true);
+        }, 25000);
+
         const poll = async (attempts: number): Promise<void> => {
             if (cancelled) return;
             try {
@@ -84,7 +93,11 @@ export default function DashboardClient() {
             if (!cancelled) setConfirmingPayment(false);
         });
 
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+            clearTimeout(hardTimeout);
+            setShowSuccess(false);
+        };
     }, [searchParams]);
 
     useEffect(() => {

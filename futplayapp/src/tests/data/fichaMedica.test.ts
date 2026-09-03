@@ -108,12 +108,13 @@ describe("updateUserProfile", () => {
         expect(result).toEqual({ ok: true, error: null });
     });
 
-    it("retorna ok:false y el mensaje de error real cuando falla", async () => {
+    it("retorna ok:false y un mensaje amigable (sin filtrar el error técnico) cuando falla", async () => {
         __setTableData("usuario", null, { message: "new row violates row-level security policy" });
 
         const result = await updateUserProfile(USER_ID, { rut: "12.345.678-9", telefono: "56912345678" });
 
-        expect(result).toEqual({ ok: false, error: "new row violates row-level security policy" });
+        expect(result.ok).toBe(false);
+        expect(result.error).toBe("Ocurrió un error inesperado. Inténtalo nuevamente.");
     });
 });
 

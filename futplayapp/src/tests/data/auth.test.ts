@@ -25,8 +25,21 @@ beforeEach(() => {
     vi.mocked(createClient).mockReturnValue(client as any);
 });
 
-// signInWithGoogle uses window.location.origin
-vi.stubGlobal("window", { location: { origin: "http://localhost:3000" } });
+// signInWithGoogle uses window.location.origin, window.location.href y localStorage.
+// En environment "node" no existen por defecto, así que los proveemos aquí.
+vi.stubGlobal("window", {
+    location: {
+        origin: "http://localhost:3000",
+        href: "",
+    },
+});
+vi.stubGlobal("localStorage", {
+    _store: {} as Record<string, string>,
+    getItem(key: string) { return this._store[key] ?? null; },
+    setItem(key: string, value: string) { this._store[key] = value; },
+    removeItem(key: string) { delete this._store[key]; },
+    clear() { this._store = {}; },
+});
 
 describe("getCurrentUser", () => {
     it("DATA-AUTH-GCU-001: retorna usuario si está autenticado", async () => {
@@ -107,32 +120,45 @@ describe("getUsuario", () => {
 });
 
 describe("signInWithGoogle", () => {
+    beforeEach(() => {
+        vi.stubEnv("NEXT_PUBLIC_GOOGLE_CLIENT_ID", "google-client-id-test");
+        (globalThis.window as any).location.href = "";
+        (globalThis.localStorage as any)._store = {};
+    });
+
     it("DATA-AUTH-SIG-001: inicia sesión correctamente", async () => {
         const { error } = await signInWithGoogle();
 
         expect(error).toBeNull();
+        // Redirige a Google OAuth
+        expect((globalThis.window as any).location.href).toContain("accounts.google.com/o/oauth2/v2/auth");
+        // Guarda el estado anti-CSRF en localStorage
+        expect((globalThis.localStorage as any)._store.oauth_state).toBeTruthy();
     });
 
-    it("DATA-AUTH-SIG-002: maneja error de OAuth", async () => {
-        const mockClient = createMockServerClient();
-        mockClient.auth.signInWithOAuth = vi.fn(() =>
-            Promise.resolve({ error: { message: "OAuth error" } })
-        );
-        vi.mocked(createClient).mockReturnValue(mockClient as any);
+    it("DATA-AUTH-SIG-002: construye la URL de Google con client_id, redirect_uri y scope", async () => {
+        await signInWithGoogle();
 
-        const result = await signInWithGoogle();
-
-        expect(result.error).toBe("OAuth error");
+        const href = (globalThis.window as any).location.href as string;
+        const url = new URL(href);
+        expect(url.searchParams.get("client_id")).toBe("google-client-id-test");
+        expect(url.searchParams.get("redirect_uri")).toBe("http://localhost:3000/auth/callback");
+        expect(url.searchParams.get("response_type")).toBe("code");
+        expect(url.searchParams.get("scope")).toContain("openid");
+        expect(url.searchParams.get("state")).toBeTruthy();
     });
 
-    it("DATA-AUTH-SIG-003: maneja excepción", async () => {
-        const mockClient = createMockServerClient();
-        mockClient.auth.signInWithOAuth = vi.fn(() => Promise.reject(new Error("fail")));
-        vi.mocked(createClient).mockReturnValue(mockClient as any);
+    it("DATA-AUTH-SIG-003: maneja excepción devolviendo mensaje amigable", async () => {
+        const originalSetItem = (globalThis.localStorage as any).setItem;
+        (globalThis.localStorage as any).setItem = vi.fn(() => {
+            throw new Error("QuotaExceededError");
+        });
 
         const result = await signInWithGoogle();
 
         expect(result.error).toBe("Error al iniciar sesión con Google");
+
+        (globalThis.localStorage as any).setItem = originalSetItem;
     });
 });
 

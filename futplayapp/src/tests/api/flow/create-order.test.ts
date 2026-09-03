@@ -222,11 +222,11 @@ describe("POST /api/flow/create-order", () => {
             __setTableData("boleta_item", { id: "item-1" });
         });
 
-        it("urlReturn apunta a http://localhost:3000/dashboard?flowSuccess=1", async () => {
+        it("urlReturn apunta al route de retorno /api/flow/return (que redirige al dashboard)", async () => {
             await POST(makeRequest({ planId: "plan-1" }));
 
             const params = vi.mocked(createFlowOrder).mock.calls[0][0];
-            expect(params.urlReturn).toBe("http://localhost:3000/dashboard?flowSuccess=1");
+            expect(params.urlReturn).toBe("http://localhost:3000/api/flow/return");
         });
 
         it("urlConfirmation incluye NEXT_PUBLIC_BASE_URL y boletaId", async () => {

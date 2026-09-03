@@ -155,7 +155,7 @@ describe("getFlowPaymentStatus", () => {
         vi.restoreAllMocks();
     });
 
-    it("llama a Flow sandbox /payment/getStatus con token y apiKey", async () => {
+    it("llama a Flow sandbox /payment/getStatus con token y apiKey en la query string", async () => {
         const fetchSpy = mockFetch({
             flowOrder: 42, commerceOrder: "ord-001", requestDate: new Date().toISOString(),
             status: 2, subject: "Test", amount: 19990, currency: "CLP",
@@ -166,12 +166,12 @@ describe("getFlowPaymentStatus", () => {
 
         expect(fetchSpy).toHaveBeenCalledOnce();
         const [url, opts] = fetchSpy.mock.calls[0];
-        expect(url).toBe("https://sandbox.flow.cl/api/payment/getStatus");
-        expect(opts?.method).toBe("POST");
-        const body = opts?.body as string;
-        expect(body).toContain("apiKey=");
-        expect(body).toContain("token=tkn_test_123");
-        expect(body).toContain("s=");
+        expect(opts?.method).toBe("GET");
+        const urlObj = new URL(String(url));
+        expect(urlObj.origin + urlObj.pathname).toBe("https://sandbox.flow.cl/api/payment/getStatus");
+        expect(urlObj.searchParams.get("apiKey")).toBe(TEST_API_KEY);
+        expect(urlObj.searchParams.get("token")).toBe("tkn_test_123");
+        expect(urlObj.searchParams.has("s")).toBe(true);
     });
 
     it("retorna el estado del pago", async () => {
