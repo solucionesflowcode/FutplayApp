@@ -139,27 +139,29 @@ export default function MembresiasPage() {
       ? new Date(ahora.getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString()
       : dateToIso(form.fecha_vencimiento);
 
-    const payload = {
-      usuario_id: form.usuario_id,
-      plan_id: form.plan_id,
-      boleta_id: form.boleta_id.trim() || null,
-      tokens_totales: form.tokens_totales,
-      dias: diasVigencia,
-    };
+    const boleta_id = form.boleta_id.trim() || null;
 
-    const res = isCreate
-      tokens_usados: isCreate ? 0 : form.tokens_usados,
-      fecha_inicio,
-      fecha_vencimiento,
-      estado: form.estado,
-    };
+    const ok = isCreate
+      ? await createMembresiaGestion({
+          usuario_id: form.usuario_id,
+          plan_id: form.plan_id,
+          boleta_id,
+          tokens_totales: form.tokens_totales,
+          dias: diasVigencia,
+        })
+      : await updateMembresiaGestion(form.id!, {
+          usuario_id: form.usuario_id,
+          plan_id: form.plan_id,
+          boleta_id,
+          tokens_totales: form.tokens_totales,
+          tokens_usados: form.tokens_usados,
+          fecha_inicio,
+          fecha_vencimiento,
+          estado: form.estado,
+        });
 
-    const res = isCreate
-      ? await createMembresiaGestion(payload)
-      : await updateMembresiaGestion({ ...payload, id: form.id! });
-
-    if (!res.success) {
-      setError(res.error || "Error al guardar");
+    if (!ok) {
+      setError("Error al guardar");
       setSaving(false);
       return;
     }
@@ -172,9 +174,9 @@ export default function MembresiasPage() {
 
   const handleDelete = async (id: string) => {
     setMembresias((prev) => prev.filter((m) => m.id !== id));
-    const res = await deleteMembresiaGestion(id);
-    if (!res.success) {
-      setError(res.error || "Error al eliminar");
+    const ok = await deleteMembresiaGestion(id);
+    if (!ok) {
+      setError("Error al eliminar");
       fetchData();
     }
   };

@@ -288,7 +288,7 @@ export async function getMembresiasGestion(): Promise<MembresiaGestion[]> {
 export async function createMembresiaGestion(data: {
   usuario_id: string;
   plan_id: string;
-  boleta_id?: string;
+  boleta_id?: string | null;
   tokens_totales: number;
   dias: number;
 }): Promise<boolean> {
@@ -306,7 +306,7 @@ export async function updateMembresiaGestion(
   data: Partial<{
     usuario_id: string;
     plan_id: string;
-    boleta_id: string;
+    boleta_id: string | null;
     tokens_totales: number;
     tokens_usados: number;
     fecha_inicio: string;
