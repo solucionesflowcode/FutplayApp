@@ -232,6 +232,7 @@ export async function devolverToken(userId: string): Promise<boolean> {
         .eq("id", membresia.id);
 
     return !error;
+}
 
 // Type for admin gestion view
 export type MembresiaGestion = {
@@ -326,6 +327,4 @@ export async function deleteMembresiaGestion(id: string): Promise<boolean> {
     .delete()
     .eq("id", id);
   return !error;
-}
-
 }
