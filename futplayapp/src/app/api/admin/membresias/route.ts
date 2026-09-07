@@ -76,6 +76,7 @@ export async function GET() {
     plan_nombre: string;
     tokens_mensuales: number;
     precio: number;
+    dias?: number | null;
     tokens_totales: number;
     tokens_usados: number;
     tokens_restantes: number;

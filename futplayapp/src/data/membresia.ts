@@ -7,6 +7,7 @@ type PlanRow = {
     tokens_mensuales: number;
     precio: number;
     dias: number;
+    tipo_plan?: "normal" | "familiar" | "kids";
 };
 
 type MembresiaRow = {
@@ -29,6 +30,7 @@ export type MembresiaConPlan = {
     tokens_mensuales: number;
     precio: number;
     dias?: number;
+    tipo_plan?: "normal" | "familiar" | "kids";
     tokens_totales: number;
     tokens_usados: number;
     tokens_restantes: number;
@@ -80,6 +82,7 @@ function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): Membresia
         tokens_mensuales: plan?.tokens_mensuales || 0,
         precio: plan?.precio || 0,
         dias: plan?.dias,
+        tipo_plan: plan?.tipo_plan,
         tokens_totales: m.tokens_totales,
         tokens_usados: m.tokens_usados,
         tokens_restantes: restantes,
@@ -297,7 +300,7 @@ export async function createMembresiaGestion(data: {
     data.plan_id,
     data.tokens_totales,
     data.dias,
-    data.boleta_id
+    data.boleta_id ?? undefined
   );
 }
 

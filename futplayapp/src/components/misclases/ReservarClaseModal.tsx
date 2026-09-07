@@ -22,8 +22,8 @@ type ClaseInfo = {
     fecha_hora: string;
     sede: string;
     tipo_evento?: "entrenamiento" | "partido" | "kids";
-    cupo_maximo: number | null;
-    inscritos: number;
+    cupo_maximo?: number | null;
+    inscritos?: number;
 };
 
 type Props = {
@@ -109,7 +109,9 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                         const isSuccess = successId === clase.claseId;
                         const isLoading = loadingId === clase.claseId;
                         const esPartido = clase.tipo_evento === "partido";
-                        const estaLlena = clase.cupo_maximo != null && clase.inscritos >= clase.cupo_maximo;
+                        const cupo = clase.cupo_maximo ?? null;
+                        const inscritos = clase.inscritos ?? 0;
+                        const estaLlena = cupo != null && inscritos >= cupo;
                         const enSemanaActual = esSemanaActual(clase.fecha_hora);
                         const puedeAgendar = (esPartido || tokensRestantes > 0) && !isSuccess && !estaLlena && enSemanaActual;
 
@@ -137,9 +139,9 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                                     <div className="flex items-center gap-2">
                                         <Users className="w-4 h-4 text-[#fc9910] shrink-0" />
                                         <span className={estaLlena ? "font-semibold text-[#ba1a1a]" : ""}>
-                                            {clase.cupo_maximo != null
-                                                ? `${clase.inscritos}/${clase.cupo_maximo} cupos`
-                                                : `${clase.inscritos} inscritos`}
+                                            {cupo != null
+                                                ? `${inscritos}/${cupo} cupos`
+                                                : `${inscritos} inscritos`}
                                         </span>
                                         {estaLlena && (
                                             <span className="text-[10px] font-bold uppercase tracking-wide text-[#ba1a1a] bg-[#ba1a1a]/10 px-2 py-0.5 rounded">
