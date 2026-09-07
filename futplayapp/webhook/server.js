@@ -253,6 +253,14 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
       }
     }
 
+    // La confirmación se cierra 1 hora antes de la clase: sin_confirmar y
+    // pendiente que no confirmaron quedan cancelados sin reembolso.
+    const cerrando = await db.getHorariosProximos1h();
+    for (const h of cerrando) {
+      await db.actualizarPorClaseYEstado(h.id, 'sin_confirmar', 'cancelado_sin_reembolso');
+      await db.actualizarPorClaseYEstado(h.id, 'pendiente', 'cancelado_sin_reembolso');
+    }
+
     const pasados = await db.getHorariosPasados();
     for (const h of pasados) {
       await db.actualizarPorClaseYEstado(h.id, 'pendiente', 'cancelado_sin_reembolso');

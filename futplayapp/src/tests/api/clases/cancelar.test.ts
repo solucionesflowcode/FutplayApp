@@ -80,7 +80,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-004: retorna success false si la clase ya pasó", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const pastDate = new Date(Date.now() - 3600000).toISOString();
@@ -98,7 +98,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-005: cancela con >= 3h de antelación y devuelve token (entrenamiento)", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
@@ -116,7 +116,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-006: cancela con >= 3h de antelación (partido, no devuelve token)", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
         __setTableData("clase", { id: "c1", tipo_evento: "partido" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
@@ -134,7 +134,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-007: cancela con >= 3h pero RPC falla (mensaje informativo)", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
         __setTableData("membresia", { id: "m1", tokens_usados: 3 });
 
@@ -157,7 +157,7 @@ describe("POST /api/clases/cancelar", () => {
 
         __resetMocks();
         __setAuthUser({ id: USER_ID, email: "test@test.cl" });
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const nearFutureDate = "2026-07-01T09:30:00Z";
@@ -182,7 +182,7 @@ describe("POST /api/clases/cancelar", () => {
 
         __resetMocks();
         __setAuthUser({ id: USER_ID, email: "test@test.cl" });
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
         __setTableData("clase", { id: "c1", tipo_evento: "partido" });
 
         const nearFutureDate = "2026-07-01T09:30:00Z";
@@ -202,7 +202,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-010: rechaza cancelar si ya está cancelado", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "cancelado" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "cancelado" });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
@@ -220,7 +220,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-011: rechaza cancelar si ya está presente", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "presente" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "presente" });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
@@ -238,7 +238,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-012: rechaza cancelar si ya está ausente", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "ausente" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "ausente" });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
@@ -271,8 +271,24 @@ describe("POST /api/clases/cancelar", () => {
         expect(json.error).toBe("Inscripción no encontrada");
     });
 
+    it("API-CLASES-CAN-013B: retorna 404 si la inscripción pertenece a otro usuario", async () => {
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: "otro-user" });
+
+        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+
+        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
+        }));
+
+        expect(res.status).toBe(404);
+        const json = await res.json();
+        expect(json.error).toBe("Inscripción no encontrada");
+    });
+
     it("API-CLASES-CAN-014: error al actualizar la inscripción retorna error", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: null });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: null });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
@@ -290,7 +306,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-015: rechaza cancelar si ya está cancelado_sin_reembolso", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "cancelado_sin_reembolso" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "cancelado_sin_reembolso" });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
@@ -308,7 +324,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-016: rechaza cancelar si ya asistio", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "asistio" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "asistio" });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
@@ -331,7 +347,7 @@ describe("POST /api/clases/cancelar", () => {
 
         __resetMocks();
         __setAuthUser({ id: USER_ID, email: "test@test.cl" });
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         // "2026-07-01T13:00:00" = 13:00 hora local Chile = 17:00Z. Faltan 6h.
@@ -355,7 +371,7 @@ describe("POST /api/clases/cancelar", () => {
 
         __resetMocks();
         __setAuthUser({ id: USER_ID, email: "test@test.cl" });
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         // "2026-07-01T09:30:00" = 09:30 hora local Chile = 13:30Z. Faltan 2.5h.
@@ -374,7 +390,7 @@ describe("POST /api/clases/cancelar", () => {
     });
 
     it("API-CLASES-CAN-020: rechaza cancelar si ya no_asistio", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "no_asistio" });
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "no_asistio" });
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
 
         const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();

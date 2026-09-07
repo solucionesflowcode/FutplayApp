@@ -47,6 +47,26 @@ describe("webhook/data.js — scheduler data functions", () => {
         });
     });
 
+    // ── getHorariosProximos1h ────────────────────────
+
+    describe("getHorariosProximos1h", () => {
+        it("SCH-DATA-003B: devuelve clases que comienzan dentro de la próxima hora", async () => {
+            const c1 = { id: "c1", fecha_hora: hourOffset(0.5) };
+            const c2 = { id: "c2", fecha_hora: hourOffset(10) };
+            __setTableData("clase", [c1, c2]);
+
+            const result = await data.getHorariosProximos1h();
+
+            expect(result).toEqual([{ id: "c1", clase_id: "c1" }]);
+        });
+
+        it("SCH-DATA-003C: devuelve [] si no hay clases comenzando en 1h", async () => {
+            __setTableData("clase", []);
+            const result = await data.getHorariosProximos1h();
+            expect(result).toEqual([]);
+        });
+    });
+
     // ── getHorariosPasados ───────────────────────────
 
     describe("getHorariosPasados", () => {

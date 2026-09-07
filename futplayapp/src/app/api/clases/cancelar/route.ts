@@ -39,11 +39,14 @@ export async function POST(request: Request) {
         serviceKey
     );
 
-    // Fetch inscription and check current state
+    // Fetch inscription and check current state.
+    // El servicio usa service_role (bypasa RLS), así que validamos SIEMPRE que
+    // la inscripción pertenezca al usuario autenticado: si no, es "no encontrada".
     const { data: claseInfo } = await admin
         .from("clase_usuario")
         .select("clase_id, asistencia")
         .eq("id", inscripcionId)
+        .eq("usuario_id", user.id)
         .maybeSingle();
 
     if (!claseInfo) {

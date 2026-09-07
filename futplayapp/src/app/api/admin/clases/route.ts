@@ -215,6 +215,10 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
+    // Los partidos no descuentan tokens: no debe devolverse nada.
+    const { data: clase } = await admin.from("clase").select("tipo_evento").eq("id", id).maybeSingle();
+    const esPartido = clase?.tipo_evento === "partido";
+
     // Only return tokens to active enrollments (not cancelled)
     const { data: inscripciones } = await admin
       .from("clase_usuario")
@@ -222,11 +226,14 @@ export async function DELETE(request: Request) {
       .eq("clase_id", id)
       .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
 
-    // Return 1 token to each registered student via devolver_token() RPC
-    if (inscripciones && inscripciones.length > 0) {
+    // Return 1 token to each registered student via devolver_token() RPC,
+    // contando SOLO los reembolsos que el RPC confirmó (data === true).
+    let tokensDevueltos = 0;
+    if (!esPartido && inscripciones && inscripciones.length > 0) {
       const userIds = [...new Set(inscripciones.map((i) => i.usuario_id))];
       for (const uid of userIds) {
-        await admin.rpc("devolver_token", { p_usuario_id: uid });
+        const { data: ok, error } = await admin.rpc("devolver_token", { p_usuario_id: uid });
+        if (!error && ok === true) tokensDevueltos++;
       }
     }
 
@@ -234,7 +241,7 @@ export async function DELETE(request: Request) {
     const { error } = await admin.from("clase").delete().eq("id", id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true, tokens_devueltos: inscripciones?.length || 0 });
+    return NextResponse.json({ success: true, tokens_devueltos: tokensDevueltos });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
     return NextResponse.json({ error: message }, { status: 500 });

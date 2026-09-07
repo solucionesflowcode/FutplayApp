@@ -124,6 +124,19 @@ async function getHorarios24h() {
   return (data ?? []).map(c => ({ id: c.id, fecha_hora: c.fecha_hora, clase_id: c.id }));
 }
 
+async function getHorariosProximos1h() {
+  const ahora = new Date();
+  const hasta = new Date(ahora.getTime() + 60 * 60 * 1000);
+
+  const { data } = await supabase
+    .from('clase')
+    .select('id')
+    .gte('fecha_hora', ahora.toISOString())
+    .lte('fecha_hora', hasta.toISOString());
+
+  return (data ?? []).map(c => ({ id: c.id, clase_id: c.id }));
+}
+
 async function getHorariosPasados() {
   const { data } = await supabase
     .from('clase')
@@ -271,6 +284,7 @@ module.exports = {
   getHorariosProximos,
   getHorariosFuturos,
   getHorarios24h,
+  getHorariosProximos1h,
   getHorariosPasados,
   getHorariosPasados1h,
   getInscripcionesSinConfirmar,

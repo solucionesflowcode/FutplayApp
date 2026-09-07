@@ -24,7 +24,7 @@ vi.mock("@/utils/supabase/admin", () => ({
     getAdminClient: vi.fn(() => Promise.resolve(createMockServerClient())),
 }));
 
-import { verifyAdmin } from "@/utils/supabase/admin";
+import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { GET, POST, PUT, DELETE, PATCH } from "@/app/api/admin/clases/route";
 
 const TEST_CLASES = [
@@ -261,8 +261,8 @@ describe("DELETE /api/admin/clases", () => {
     });
 
     it("API-ADM-CLASES-DEL-001: elimina clase y retorna tokens devueltos", async () => {
-        __setTableData("clase", { id: "c1" });
-        __setTableData("clase_usuario", [{ usuario_id: "u1", clase_id: "c1" }, { usuario_id: "u1", clase_id: "c1" }]);
+        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+        __setTableData("clase_usuario", [{ usuario_id: "u1", clase_id: "c1" }, { usuario_id: "u2", clase_id: "c1" }]);
 
         const res = await DELETE(makeRequest("http://localhost:3000/api/admin/clases?id=c1"));
 
@@ -270,6 +270,34 @@ describe("DELETE /api/admin/clases", () => {
         const json = await res.json();
         expect(json.success).toBe(true);
         expect(json.tokens_devueltos).toBe(2);
+    });
+
+    it("API-ADM-CLASES-DEL-002: no devuelve tokens al eliminar un partido", async () => {
+        __setTableData("clase", { id: "c1", tipo_evento: "partido" });
+        __setTableData("clase_usuario", [{ usuario_id: "u1", clase_id: "c1" }, { usuario_id: "u2", clase_id: "c1" }]);
+
+        const res = await DELETE(makeRequest("http://localhost:3000/api/admin/clases?id=c1"));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+        expect(json.tokens_devueltos).toBe(0);
+    });
+
+    it("API-ADM-CLASES-DEL-003: cuenta solo los reembolsos confirmados por el RPC", async () => {
+        const client = createMockServerClient();
+        (client.rpc as any).mockImplementation(async () => ({ data: false, error: null }));
+        vi.mocked(getAdminClient).mockResolvedValueOnce(client);
+
+        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+        __setTableData("clase_usuario", [{ usuario_id: "u1", clase_id: "c1" }, { usuario_id: "u2", clase_id: "c1" }]);
+
+        const res = await DELETE(makeRequest("http://localhost:3000/api/admin/clases?id=c1"));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+        expect(json.tokens_devueltos).toBe(0);
     });
 });
 

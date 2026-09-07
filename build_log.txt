@@ -1,0 +1,20 @@
+▲ Next.js 16.2.2 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 15.0s
+  Running TypeScript ...
+Failed to type check.
+
+./src/app/(dashboard)/misclases/misclases-client.tsx:51:13
+Type error: Type '"partido" | "entrenamiento" | "kids"' is not assignable to type '"partido" | "entrenamiento"'.
+  Type '"kids"' is not assignable to type '"partido" | "entrenamiento"'.
+
+  [90m49 |[0m             sede: row.sede?.nombre ?? [32m""[0m,
+  [90m50 |[0m             claseId: row.id,
+[31m[1m>[0m [90m51 |[0m             tipo_evento: row.tipo_evento,
+  [90m   |[0m             [31m[1m^[0m
+  [90m52 |[0m         });
+  [90m53 |[0m     }
+  [90m54 |[0m     [36mreturn[0m out;
+Next.js build worker exited with code: 1 and signal: null
