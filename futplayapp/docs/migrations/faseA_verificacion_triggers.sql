@@ -14,10 +14,11 @@
 --   T8  Re-inscripción (delete + insert del flujo JS) descuenta token
 --
 -- Limpieza idempotente de intentos anteriores (por patrón de nombre)
+-- NOTA: titulo es tipo_clase (enum) en DB real; se castea a text para el LIKE.
 DELETE FROM clase_usuario
-WHERE clase_id IN (SELECT id FROM clase WHERE titulo LIKE 'TEST_AUDIT%')
+WHERE clase_id IN (SELECT id FROM clase WHERE titulo::text LIKE 'TEST_AUDIT%')
    OR usuario_id IN (SELECT id FROM usuario WHERE nombre LIKE 'TEST_AUDIT%');
-DELETE FROM clase WHERE titulo LIKE 'TEST_AUDIT%';
+DELETE FROM clase WHERE titulo::text LIKE 'TEST_AUDIT%';
 DELETE FROM membresia WHERE usuario_id IN (SELECT id FROM usuario WHERE nombre LIKE 'TEST_AUDIT%');
 DELETE FROM plan WHERE nombre LIKE 'TEST_AUDIT%';
 DELETE FROM usuario WHERE nombre LIKE 'TEST_AUDIT%';

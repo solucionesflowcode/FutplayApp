@@ -131,20 +131,21 @@ export default function MisClasesClient() {
     const [cancelMsg, setCancelMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [cancelTarget, setCancelTarget] = useState<SessionItem | null>(null);
 
+    const usuarioId = usuario?.id;
     const load = useCallback(async () => {
-        if (!usuario?.id) {
+        if (!usuarioId) {
             setLoading(false);
             return;
         }
         setLoading(true);
         const [rows, membresia] = await Promise.all([
-            getAllClasesConInscripcion(usuario.id),
-            getMembresiaByUser(usuario.id),
+            getAllClasesConInscripcion(usuarioId),
+            getMembresiaByUser(usuarioId),
         ]);
         setSessions(flattenClases(rows));
         setTokensRestantes(membresia?.tokens_restantes ?? null);
         setLoading(false);
-    }, [usuario?.id]);
+    }, [usuarioId]);
 
     useEffect(() => {
         void load();
