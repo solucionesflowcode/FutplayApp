@@ -79,6 +79,8 @@ describe("confirmarAsistencia", () => {
     db = createMockDb();
   });
 
+  afterEach(unfreezeTime);
+
   it("retorna mensaje si no hay próximas clases", async () => {
     db.getProximaClaseUsuario.mockResolvedValue(null);
     const res = await confirmarAsistencia("user-1", db);
@@ -96,6 +98,7 @@ describe("confirmarAsistencia", () => {
   });
 
   it("permite confirmar con exactamente 1 hora (borde)", async () => {
+    freezeTime("2026-06-04T12:00:00Z");
     db.getProximaClaseUsuario.mockResolvedValue(classeFutura(1));
     db.confirmarAsistencia.mockResolvedValue(true);
     const res = await confirmarAsistencia("user-1", db);
@@ -137,6 +140,8 @@ describe("cancelarAsistencia", () => {
     db = createMockDb();
   });
 
+  afterEach(unfreezeTime);
+
   it("retorna mensaje si no hay próximas clases", async () => {
     db.getProximaClaseUsuario.mockResolvedValue(null);
     const res = await cancelarAsistencia("user-1", db);
@@ -155,6 +160,7 @@ describe("cancelarAsistencia", () => {
   });
 
   it("cancela con reembolso si faltan exactamente 3 horas (borde)", async () => {
+    freezeTime("2026-06-04T12:00:00Z");
     db.getProximaClaseUsuario.mockResolvedValue(classeFutura(3));
     db.updateAsistencia.mockResolvedValue(true);
     db.devolverToken.mockResolvedValue(true);

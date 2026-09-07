@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Esta clase ya está llena" }, { status: 400 });
     }
 
-    // Validar compatibilidad del plan del usuario con el tipo de clase.
+// Validar compatibilidad del plan del usuario con el tipo de clase.
     // Se usa la membresía ACTIVA por vigencia (misma regla del trigger
     // manejar_inscripcion_clase(): estado=true y fechas vigentes).
     const ahoraIso = new Date().toISOString();

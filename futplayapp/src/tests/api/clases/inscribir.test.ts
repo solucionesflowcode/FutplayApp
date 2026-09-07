@@ -174,7 +174,7 @@ describe("POST /api/clases/inscribir", () => {
 
     it("API-CLASES-INS-010: re-inscripción a partido cancelado exitosa", async () => {
         __setTableData("clase", CLASE_PARTIDO);
-        __setTableData("clase_usuario", { id: "new-cu", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
+__setTableData("clase_usuario", { id: "new-cu", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",

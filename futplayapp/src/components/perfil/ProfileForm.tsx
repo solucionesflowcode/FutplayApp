@@ -62,7 +62,7 @@ export default function ProfileForm() {
   };
 
   const formatPhone = (value: string) => {
-    const clean = value.replace(/[^0-9]/g, "");
+    let clean = value.replace(/[^0-9]/g, "");
     if (clean.startsWith("56")) clean = clean.slice(2);
     if (clean.length > 9) clean = clean.slice(0, 9);
     if (!clean) return "";
