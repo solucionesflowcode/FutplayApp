@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthUser } from "@/context";
 import Link from "next/link";
 import { Crown, CheckCircle2 } from "lucide-react";
-import { getPlanesByTokens, type Plan } from "@/data/plans";
+import { getPlanes, type Plan } from "@/data/plans";
 import { userHasMembresia } from "@/data/membresia";
 import { userHasFichaMedica } from "@/data/fichaMedica";
 import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
@@ -30,8 +30,8 @@ export default function PlanesRender() {
                 setHasPlan(hasMembership);
 
                 if (!hasMembership) {
-                    const data = await getPlanesByTokens([4, 8, 12]);
-                    setPlanes(data);
+                    const data = await getPlanes();
+                    setPlanes(data.slice(0, 3));
                 }
             } catch (err) {
                 console.error("Error inesperado:", err);

@@ -17,9 +17,6 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (student) {
       setName(student.name);

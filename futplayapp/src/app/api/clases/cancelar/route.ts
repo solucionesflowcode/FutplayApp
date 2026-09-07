@@ -67,10 +67,17 @@ export async function POST(request: Request) {
 
     const horas = (parseClaseFechaHora(fechaHora).getTime() - Date.now()) / (1000 * 60 * 60);
 
+    // No se puede cancelar si la clase ya pasó
     if (horas < 0) {
         return NextResponse.json({ success: false, message: "La clase ya ha pasado." });
     }
 
+    // No se puede cancelar si faltan menos de 1 hora (confirmación se cierra 1 hora antes)
+    if (horas < 1) {
+        return NextResponse.json({ success: false, message: "La confirmación/cancelación se cerró. Faltan menos de 1 hora para la clase." });
+    }
+
+    // Cancelación con 3+ horas: devuelve token
     if (horas >= 3) {
         const { error: updateError } = await admin
             .from("clase_usuario")
@@ -82,6 +89,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: "Error al cancelar la clase." });
         }
 
+        // Partidos no descuentan token, así que no se devuelve
         if (esPartido) {
             return NextResponse.json({ success: true, message: "Partido cancelado." });
         }
@@ -101,6 +109,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, message: "Clase cancelada. No se pudo devolver el token." });
     }
 
+    // Cancelación con menos de 3 horas (pero más de 1): no devuelve token
     const { error: updateError } = await admin
         .from("clase_usuario")
         .update({ asistencia: "cancelado_sin_reembolso" })

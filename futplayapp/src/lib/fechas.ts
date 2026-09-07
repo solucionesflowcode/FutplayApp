@@ -75,3 +75,19 @@ export function getChileMonthBounds(): { startISO: string; endISO: string } {
     endISO: new Date(Date.UTC(nextY, nextM - 1, 1)).toISOString(),
   };
 }
+
+export function parseClaseFechaHora(iso: string): Date {
+  return new Date(iso);
+}
+
+export function esSemanaActual(fecha: string): boolean {
+  const fechaDate = new Date(fecha);
+  const ahora = new Date();
+  const inicioSemana = new Date(ahora);
+  inicioSemana.setDate(ahora.getDate() - ahora.getDay());
+  inicioSemana.setHours(0, 0, 0, 0);
+  const finSemana = new Date(inicioSemana);
+  finSemana.setDate(inicioSemana.getDate() + 7);
+  return fechaDate >= inicioSemana && fechaDate < finSemana;
+}
+

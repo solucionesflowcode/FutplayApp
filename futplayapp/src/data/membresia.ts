@@ -232,4 +232,100 @@ export async function devolverToken(userId: string): Promise<boolean> {
         .eq("id", membresia.id);
 
     return !error;
+
+// Type for admin gestion view
+export type MembresiaGestion = {
+  id: string;
+  usuario_id: string;
+  usuario_nombre: string;
+  plan_id: string;
+  plan_nombre: string;
+  tokens_totales: number;
+  tokens_usados: number;
+  fecha_inicio: string;
+  fecha_vencimiento: string;
+  estado: boolean;
+};
+
+export async function getMembresiasGestion(): Promise<MembresiaGestion[]> {
+  const supabase = createClient();
+
+  const { data: membresias, error } = await supabase
+    .from("membresia")
+    .select("*")
+    .order("fecha_inicio", { ascending: false });
+
+  if (error || !membresias) return [];
+
+  const usuarioIds = [...new Set(membresias.map(m => m.usuario_id))];
+  const planIds = [...new Set(membresias.map(m => m.plan_id))];
+
+  const [{ data: usuarios }, { data: planes }] = await Promise.all([
+    supabase.from("usuario").select("id, nombre").in("id", usuarioIds),
+    supabase.from("plan").select("id, nombre").in("id", planIds),
+  ]);
+
+  const usuarioMap = new Map((usuarios || []).map(u => [u.id, u.nombre]));
+  const planMap = new Map((planes || []).map(p => [p.id, p.nombre]));
+
+  return membresias.map(m => ({
+    id: m.id,
+    usuario_id: m.usuario_id,
+    usuario_nombre: usuarioMap.get(m.usuario_id) || "Sin nombre",
+    plan_id: m.plan_id,
+    plan_nombre: planMap.get(m.plan_id) || "Sin plan",
+    tokens_totales: m.tokens_totales,
+    tokens_usados: m.tokens_usados,
+    fecha_inicio: m.fecha_inicio,
+    fecha_vencimiento: m.fecha_vencimiento,
+    estado: m.estado,
+  }));
+}
+
+export async function createMembresiaGestion(data: {
+  usuario_id: string;
+  plan_id: string;
+  boleta_id?: string;
+  tokens_totales: number;
+  dias: number;
+}): Promise<boolean> {
+  return createMembresia(
+    data.usuario_id,
+    data.plan_id,
+    data.tokens_totales,
+    data.dias,
+    data.boleta_id
+  );
+}
+
+export async function updateMembresiaGestion(
+  id: string,
+  data: Partial<{
+    usuario_id: string;
+    plan_id: string;
+    boleta_id: string;
+    tokens_totales: number;
+    tokens_usados: number;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
+    estado: boolean;
+  }>
+): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("membresia")
+    .update(data)
+    .eq("id", id);
+  return !error;
+}
+
+export async function deleteMembresiaGestion(id: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("membresia")
+    .delete()
+    .eq("id", id);
+  return !error;
+}
+
 }
