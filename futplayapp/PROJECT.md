@@ -268,8 +268,8 @@ futplayapp/
 | Tabla | Columnas principales |
 |---|---|
 | `usuario` | `id` (UUID PK, FK auth.users), `nombre`, `email`, `telefono`, `rol` (rol_usuario), `rut` |
-| `plan` | `id`, `nombre`, `tokens_mensuales`, `precio`, `descripcion`, `tipo`, `tokens`, `dias_semana`, `duracion_semanas`, `activo` |
-| `membresia` | `id`, `usuario_id` (FK), `plan_id` (FK), `tokens_totales`, `tokens_usados`, `estado` (bool?), `mes` (timestamp) |
+| `plan` | `id`, `nombre`, `tokens_mensuales`, `precio`, `descripcion`, `tipo`, `tokens`, `dias_semana`, `duracion_semanas`, `dias` (30/90), `activo` |
+| `membresia` | `id`, `usuario_id` (FK), `plan_id` (FK), `tokens_totales`, `tokens_usados`, `estado` (bool?), `fecha_inicio` (timestamptz), `fecha_vencimiento` (timestamptz) |
 | `clase` | `id`, `titulo`, `descripcion`, `sede_id` (FK), `cupo_maximo`, `profesor_id` (FK), `fecha_hora` |
 | `clase_usuario` | `id`, `usuario_id` (FK), `clase_id` (FK), `asistencia` (string: sin_confirmar, pendiente, confirmado_whatsapp, asistio, no_asistio, cancelado, cancelado_sin_reembolso) |
 | `ficha_medica` | `id`, `usuario_id` (FK), `fecha_nacimiento`, `peso_kg`, `estatura_cm`, `imc`, `grupo_sanguineo`, `enfermedades`, `alergias`, `medicamentos`, `observaciones` |
@@ -291,7 +291,7 @@ futplayapp/
 | Función | Tipo | Propósito |
 |---|---|---|
 | `check_is_staff()` | SECURITY DEFINER | Retorna true si usuario es admin o profesor |
-| `check_membresia_activa()` | TRIGGER | Previene membresías duplicadas en el mismo mes |
+| `check_membresia_activa()` | TRIGGER | Previene membresías duplicadas en el mismo período |
 | `get_proxima_clase(p_usuario_id)` | SQL | Retorna próxima clase del usuario |
 | `handle_new_user()` | TRIGGER (SECURITY DEFINER) | Crea registro en `usuario` al registrarse en Auth |
 | `inscribir_usuario_clase()` | SQL | Inscribe usuario en clase |
@@ -612,8 +612,8 @@ NEXT_PUBLIC_BASE_URL=https://98d4094820344f.lhr.life
 
 - [ ] **`horario.ts` usa tabla eliminada**: Queries a tabla `horario` que no existe. Rompe funcionalidad del profesor.
 - [ ] **Race condition en inscripción a clases**: Entre check de inscripción existente y INSERT, dos requests concurrentes pueden crear duplicados.
-- [ ] **`membresia.ts` guarda fecha completa en columna `mes`**: Guarda "2026-06-12" en vez de "2026-06-01". Queries con gte/lte fallan en bordes del mes.
-- [ ] **Membresía en cápsulas no filtra por mes actual**: Cualquier membresía pasada da acceso a contenido.
+- [x] **`membresia.ts` guarda fecha completa en columna `mes`** — **RESUELTO (Fase A)**: la membresía ahora usa `fecha_inicio`/`fecha_vencimiento` (migración `faseA_membresia_dias_plan.sql`).
+- [x] **Membresía en cápsulas no filtra por mes actual** — **RESUELTO (Fase A)**: la vigencia se calcula con `fecha_vencimiento >= now()` (helper `fechaVencimientoDesde()`), sin lógica de mes.
 - [ ] **create-order route hardcodea `localhost:3000` en urlReturn**: Ignora `NEXT_PUBLIC_BASE_URL`.
 - [ ] **Flow confirm: type coercion bug**: `commerceOrder` puede ser número, se compara con string sin convertir.
 - [ ] **Profesor/clases excluye alumnos sin confirmar**: Filtro excluye "sin_confirmar" y "pendiente".

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
 import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser } from "@/tests/mocks/supabase";
-import { getChileMonthBounds } from "@/lib/fechas";
 
 beforeAll(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
@@ -112,7 +111,7 @@ describe("POST /api/clases/inscribir", () => {
 
         expect(res.status).toBe(400);
         const json = await res.json();
-        expect(json.error).toBe("Clase llena");
+        expect(json.error).toBe("Esta clase ya está llena");
     });
 
     it("API-CLASES-INS-006: inscribe a partido correctamente (no requiere token)", async () => {
@@ -175,7 +174,7 @@ describe("POST /api/clases/inscribir", () => {
 
     it("API-CLASES-INS-010: re-inscripción a partido cancelado exitosa", async () => {
         __setTableData("clase", CLASE_PARTIDO);
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "cancelado" });
+        __setTableData("clase_usuario", { id: "new-cu", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",
@@ -185,12 +184,12 @@ describe("POST /api/clases/inscribir", () => {
 
         expect(res.status).toBe(200);
         const json = await res.json();
-        expect(json.inscripcionId).toBe("cu1");
+        expect(json.inscripcionId).toBe("new-cu");
     });
 
     it("API-CLASES-INS-011: re-inscripción a partido cancelado_sin_reembolso exitosa", async () => {
         __setTableData("clase", CLASE_PARTIDO);
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", asistencia: "cancelado_sin_reembolso" });
+        __setTableData("clase_usuario", { id: "new-cu", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado_sin_reembolso" });
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",
@@ -200,14 +199,12 @@ describe("POST /api/clases/inscribir", () => {
 
         expect(res.status).toBe(200);
         const json = await res.json();
-        expect(json.inscripcionId).toBe("cu1");
+        expect(json.inscripcionId).toBe("new-cu");
     });
 
-    it("API-CLASES-INS-012: re-inscripción a entrenamiento con membresía válida", async () => {
+    it("API-CLASES-INS-012: inscripción de entrenamiento exitosa (INSERT ok simulado; la membresía/tokens los valida el trigger en DB)", async () => {
         __setTableData("clase", CLASE_BASE);
-        __setTableData("clase_usuario", { id: "cu1", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
-        const { startISO } = getChileMonthBounds();
-        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, estado: true, fecha_inicio: startISO, fecha_vencimiento: new Date(new Date(startISO).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(), tokens_totales: 10, tokens_usados: 3 });
+        __setTableData("clase_usuario", { id: "new-ins", usuario_id: USER_ID });
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",
@@ -217,13 +214,12 @@ describe("POST /api/clases/inscribir", () => {
 
         expect(res.status).toBe(200);
         const json = await res.json();
-        expect(json.inscripcionId).toBe("cu1");
+        expect(json.inscripcionId).toBe("new-ins");
     });
 
-    it("API-CLASES-INS-013: re-inscripción a entrenamiento sin membresía activa", async () => {
+    it("API-CLASES-INS-013: trigger rechaza inscripción sin membresía activa (mensaje traducido)", async () => {
         __setTableData("clase", CLASE_BASE);
-        __setTableData("clase_usuario", { id: "cu1", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
-        __setTableData("membresia", null);
+        __setTableData("clase_usuario", null, { message: "No tienes membresía activa", code: "P0001" });
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",
@@ -233,14 +229,12 @@ describe("POST /api/clases/inscribir", () => {
 
         expect(res.status).toBe(400);
         const json = await res.json();
-        expect(json.error).toBe("No tienes membresía activa este mes");
+        expect(json.error).toBe("No tienes una membresía activa para agendar esta clase");
     });
 
-    it("API-CLASES-INS-014: re-inscripción a entrenamiento sin tokens disponibles", async () => {
+    it("API-CLASES-INS-014: trigger rechaza inscripción sin tokens disponibles (mensaje traducido)", async () => {
         __setTableData("clase", CLASE_BASE);
-        __setTableData("clase_usuario", { id: "cu1", usuario_id: USER_ID, clase_id: "c1", asistencia: "cancelado" });
-        const { startISO } = getChileMonthBounds();
-        __setTableData("membresia", { id: "m1", usuario_id: USER_ID, estado: true, fecha_inicio: startISO, fecha_vencimiento: new Date(new Date(startISO).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(), tokens_totales: 5, tokens_usados: 5 });
+        __setTableData("clase_usuario", null, { message: "No tienes tokens disponibles", code: "P0001" });
 
         const res = await POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
             method: "POST",
@@ -250,6 +244,6 @@ describe("POST /api/clases/inscribir", () => {
 
         expect(res.status).toBe(400);
         const json = await res.json();
-        expect(json.error).toBe("No tienes tokens disponibles");
+        expect(json.error).toBe("No tienes tokens disponibles para agendar esta clase");
     });
 });

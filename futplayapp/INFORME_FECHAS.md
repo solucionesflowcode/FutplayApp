@@ -227,4 +227,19 @@ CHECK (mes ~ '^\d{4}-\d{2}-01$');
 
 ---
 
+## Estado actual (post-Fase A/B)
+
+Los problemas documentados arriba fueron resueltos en la **Fase A / Fase B**:
+
+1. **`membresia.mes` (texto, 3 formatos) fue reemplazado** por `fecha_inicio` y `fecha_vencimiento` (`timestamptz`). La vigencia ya no depende del mes calendario: vence en `fecha_inicio + plan.dias` (30 por defecto; 90 para planes largos). Migración: `docs/migrations/faseA_membresia_dias_plan.sql` (`ALTER TABLE plan ADD COLUMN dias integer NOT NULL DEFAULT 30`).
+2. **Los consumos de token ya no se miden por mes**: se controlan con `tokens_totales` vs `tokens_usados`, y el descuento depende del tipo de clase (`tipo_evento <> 'partido'` descuenta 1 token; los partidos NO descuentan).
+3. **`clase.fecha_hora` fue normalizada a `timestamptz`** (`docs/migrations/faseB_clase_fecha_hora_timestamptz.sql`); el código compara con hora de Chile (`America/Santiago`) usando `fechaHoraChileDesdeIso()` en `src/lib/fechas.ts`.
+4. La función `formatearMes()` ya no es necesaria: `createMembresia()` usa `fechaVencimientoDesde()`.
+
+Pendientes de la DB real para completar la implementación:
+- Ejecutar `docs/migrations/faseA_membresia_dias_plan.sql`.
+- Ejecutar `docs/migrations/faseA_verificacion_triggers.sql` (smoke tests T1–T8).
+
+---
+
 *Informe generado el 29 de junio de 2026 — basado en análisis de código fuente y consulta directa a Supabase.*

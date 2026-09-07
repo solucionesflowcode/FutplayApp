@@ -27,6 +27,7 @@ import {
 } from "@/data/clases";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { fechaHoraChileAIso, fechaHoraChileDesdeIso } from "@/lib/fechas";
 
 type ViewMode = "list" | "asistencia-detalle";
 
@@ -115,8 +116,9 @@ export default function ClasesPage() {
   };
 
   const openEdit = (c: ClaseConRelaciones) => {
-    const dt = c.fecha_hora?.slice(0, 16) || "";
-    const [fecha, hora] = dt.split("T");
+    const chile = c.fecha_hora ? fechaHoraChileDesdeIso(c.fecha_hora) : null;
+    const fecha = chile?.fecha || "";
+    const hora = chile?.hora || "";
     setForm({
       id: c.id,
       titulo: c.titulo || "",
@@ -125,8 +127,8 @@ export default function ClasesPage() {
       cupo_maximo: c.cupo_maximo ?? 15,
       profesor_id: c.profesor_id || "",
       tipo_evento: c.tipo_evento,
-      fecha: fecha || "",
-      hora: hora || "",
+      fecha: fecha,
+      hora: hora,
     });
     setModal("edit");
   };
@@ -155,7 +157,7 @@ export default function ClasesPage() {
     setSaving(true);
     setError(null);
 
-    const fecha_hora = form.fecha && form.hora ? `${form.fecha}T${form.hora}` : undefined;
+    const fecha_hora = form.fecha && form.hora ? fechaHoraChileAIso(form.fecha, form.hora) : undefined;
     const fecha_hora_local: string | null = fecha_hora ?? null;
     const base: any = {
       tipo_evento: form.tipo_evento,
@@ -235,12 +237,12 @@ export default function ClasesPage() {
 
   const formatFecha = (f: string) => {
     const d = new Date(f);
-    return d.toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" });
+    return d.toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Santiago" });
   };
 
   const formatHora = (f: string) => {
     const d = new Date(f);
-    return d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago" });
   };
 
   if (loading && clases.length === 0 && view === "list") {
@@ -707,9 +709,9 @@ function AsistenciaDetalle({
           )}
           {clase.fecha_hora ? (
             <> · {new Date(clase.fecha_hora).toLocaleDateString("es-CL", {
-              day: "2-digit", month: "short", year: "numeric",
+              day: "2-digit", month: "short", year: "numeric", timeZone: "America/Santiago",
             })} {new Date(clase.fecha_hora).toLocaleTimeString("es-CL", {
-              hour: "2-digit", minute: "2-digit",
+              hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago",
             })}</>
           ) : (
             " · Sin horario"

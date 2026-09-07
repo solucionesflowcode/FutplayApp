@@ -2,25 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getChileMonthBounds } from "@/lib/fechas";
 
-async function consumirToken(supabase: any, userId: string): Promise<boolean> {
-    const { data: membresia } = await supabase
-        .from("membresia")
-        .select("id, tokens_usados")
-        .eq("usuario_id", userId)
-        .order("fecha_inicio", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+const TRIGGER_ERROR_MESSAGES: Record<string, string> = {
+    "No tienes membresía activa": "No tienes una membresía activa para agendar esta clase",
+    "No tienes tokens disponibles": "No tienes tokens disponibles para agendar esta clase",
+    "Clase llena": "Esta clase ya está llena",
+};
 
-    if (!membresia) return false;
-
-    const { error } = await supabase
-        .from("membresia")
-        .update({ tokens_usados: membresia.tokens_usados + 1 })
-        .eq("id", membresia.id);
-
-    return !error;
+function traducirErrorInscripcion(message: string): string {
+    return TRIGGER_ERROR_MESSAGES[message] ?? message;
 }
 
 export async function POST(request: Request) {
@@ -46,29 +36,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "claseId es requerido" }, { status: 400 });
     }
 
-    // Verificar cupo máximo y tipo de evento
-    const { data: clase } = await supabase
-        .from("clase")
-        .select("cupo_maximo, tipo_evento")
-        .eq("id", claseId)
-        .single();
-
-    if (!clase) {
-        return NextResponse.json({ error: "Clase no encontrada" }, { status: 404 });
-    }
-
-    const { count } = await supabase
-        .from("clase_usuario")
-        .select("*", { count: "exact", head: true })
-        .eq("clase_id", claseId)
-        .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
-
-    if (count != null && count >= (clase.cupo_maximo ?? 15)) {
-        return NextResponse.json({ error: "Clase llena" }, { status: 400 });
-    }
-
-    const esPartido = clase.tipo_evento === "partido";
-
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceKey) {
         return NextResponse.json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
@@ -79,8 +46,64 @@ export async function POST(request: Request) {
         serviceKey
     );
 
-    // Check if user already has a cancelled record for this class (re-inscription)
-    const { data: existing } = await supabase
+    // Verificar cupo máximo y tipo de evento (service_role evita el filtro RLS
+    // que solo dejaría ver al usuario sus propias inscripciones)
+    const { data: clase } = await admin
+        .from("clase")
+        .select("cupo_maximo, tipo_evento")
+        .eq("id", claseId)
+        .single();
+
+    if (!clase) {
+        return NextResponse.json({ error: "Clase no encontrada" }, { status: 404 });
+    }
+
+    const { count } = await admin
+        .from("clase_usuario")
+        .select("*", { count: "exact", head: true })
+        .eq("clase_id", claseId)
+        .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
+
+    if (count != null && count >= (clase.cupo_maximo ?? 15)) {
+        return NextResponse.json({ error: "Esta clase ya está llena" }, { status: 400 });
+    }
+
+    // Validar compatibilidad del plan del usuario con el tipo de clase.
+    // Se usa la membresía ACTIVA por vigencia (misma regla del trigger
+    // manejar_inscripcion_clase(): estado=true y fechas vigentes).
+    const ahoraIso = new Date().toISOString();
+    const { data: tipoPlanRow } = await supabase
+        .from("membresia")
+        .select("plan!inner(tipo_plan)")
+        .eq("usuario_id", user.id)
+        .eq("estado", true)
+        .lte("fecha_inicio", ahoraIso)
+        .gte("fecha_vencimiento", ahoraIso)
+        .order("fecha_vencimiento", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    const tipoPlan = (tipoPlanRow as unknown as { plan: { tipo_plan: "normal" | "familiar" | "kids" } } | null)?.plan?.tipo_plan ?? "normal";
+
+    if (tipoPlan === "kids" && clase.tipo_evento !== "kids") {
+        return NextResponse.json(
+            { error: "Tu plan Kids solo permite reservar clases Kids" },
+            { status: 403 },
+        );
+    }
+    if (tipoPlan === "normal" && clase.tipo_evento === "kids") {
+        return NextResponse.json(
+            { error: "Esa clase es exclusiva para el plan Kids" },
+            { status: 403 },
+        );
+    }
+
+    // Re-inscripción: si el usuario ya tenía una inscripción cancelada para esta
+    // clase, se elimina y se inserta una nueva (nuevo id) para que el scheduler
+    // re-envíe los recordatorios. El trigger manejar_inscripcion_clase() valida
+    // membresía vigente y descuenta token en el INSERT (kids/entrenamiento; el
+    // partido no descuenta).
+    const { data: existing } = await admin
         .from("clase_usuario")
         .select("id, asistencia")
         .eq("usuario_id", user.id)
@@ -88,58 +111,22 @@ export async function POST(request: Request) {
         .maybeSingle();
 
     if (existing && (existing.asistencia === "cancelado" || existing.asistencia === "cancelado_sin_reembolso")) {
-        if (esPartido) {
-            // DELETE + INSERT para obtener nuevo id (el scheduler no re-enviaría recordatorio con el id anterior)
-            await admin.from("clase_usuario").delete().eq("id", existing.id);
-            const { data, error: insertError } = await supabase
-                .from("clase_usuario")
-                .insert({ usuario_id: user.id, clase_id: claseId })
-                .select("id")
-                .single();
-            if (insertError) {
-                return NextResponse.json({ error: insertError.message }, { status: 400 });
-            }
-            return NextResponse.json({ inscripcionId: data.id });
-        }
-
-        // Re-inscription a entrenamiento: validar membresía manualmente (trigger no se dispara en DELETE)
-        const { startISO } = getChileMonthBounds();
-
-        const { data: membresia } = await supabase
-            .from("membresia")
-            .select("tokens_totales, tokens_usados")
-            .eq("usuario_id", user.id)
-            .eq("estado", true)
-            .gte("fecha_inicio", startISO)
-            .order("fecha_inicio", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-        if (!membresia) {
-            return NextResponse.json({ error: "No tienes membresía activa este mes" }, { status: 400 });
-        }
-
-        const tokensDisponibles = membresia.tokens_totales - membresia.tokens_usados;
-        if (tokensDisponibles <= 0) {
-            return NextResponse.json({ error: "No tienes tokens disponibles" }, { status: 400 });
-        }
-
-        // DELETE + INSERT para obtener nuevo id (el scheduler re-enviará el recordatorio)
         await admin.from("clase_usuario").delete().eq("id", existing.id);
-        const { data, error: insertError } = await supabase
+
+        const { data, error } = await supabase
             .from("clase_usuario")
             .insert({ usuario_id: user.id, clase_id: claseId })
             .select("id")
             .single();
 
-        if (insertError) {
-            return NextResponse.json({ error: insertError.message }, { status: 400 });
+        if (error) {
+            return NextResponse.json({ error: traducirErrorInscripcion(error.message) }, { status: 400 });
         }
 
         return NextResponse.json({ inscripcionId: data.id });
     }
 
-    // First-time inscription: INSERT (trigger will deduct token — compensate if partido)
+    // Primera inscripción: el trigger descontará el token (si no es partido)
     const { data, error } = await supabase
         .from("clase_usuario")
         .insert({ usuario_id: user.id, clase_id: claseId })
@@ -150,7 +137,7 @@ export async function POST(request: Request) {
         if (error.code === "23505") {
             return NextResponse.json({ error: "Ya estás inscrito en esta clase" }, { status: 409 });
         }
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        return NextResponse.json({ error: traducirErrorInscripcion(error.message) }, { status: 400 });
     }
 
     return NextResponse.json({ inscripcionId: data.id });

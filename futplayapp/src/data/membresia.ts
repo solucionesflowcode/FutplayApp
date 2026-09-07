@@ -1,11 +1,12 @@
 import { createClient } from "@/utils/supabase/client";
-import { ahoraChile, membresiaActiva } from "@/lib/fechas";
+import { ahoraChile, membresiaActiva, fechaVencimientoDesde } from "@/lib/fechas";
 
 type PlanRow = {
     id: string;
     nombre: string;
     tokens_mensuales: number;
     precio: number;
+    dias: number;
 };
 
 type MembresiaRow = {
@@ -27,6 +28,7 @@ export type MembresiaConPlan = {
     plan_nombre: string;
     tokens_mensuales: number;
     precio: number;
+    dias?: number;
     tokens_totales: number;
     tokens_usados: number;
     tokens_restantes: number;
@@ -77,6 +79,7 @@ function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): Membresia
         plan_nombre: plan?.nombre || "Sin plan",
         tokens_mensuales: plan?.tokens_mensuales || 0,
         precio: plan?.precio || 0,
+        dias: plan?.dias,
         tokens_totales: m.tokens_totales,
         tokens_usados: m.tokens_usados,
         tokens_restantes: restantes,
@@ -180,12 +183,13 @@ export async function createMembresia(
     userId: string,
     planId: string,
     tokensMensuales: number,
+    dias: number,
     boletaId?: string
 ): Promise<boolean> {
     const supabase = createClient();
 
     const fecha_inicio = ahoraChile().toISOString();
-    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, dias).toISOString();
 
     const { error } = await supabase
         .from("membresia")

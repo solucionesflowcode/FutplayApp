@@ -33,10 +33,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Faltan campos: nombre, precio" }, { status: 400 });
     }
 
+    if (body.dias !== undefined && (!Number.isInteger(Number(body.dias)) || Number(body.dias) <= 0)) {
+      return NextResponse.json({ error: "dias debe ser un entero positivo" }, { status: 400 });
+    }
+
     const { error } = await admin.from("plan").insert({
       nombre: body.nombre,
       precio: body.precio,
       tokens_mensuales: body.tokens_mensuales || 1,
+      dias: body.dias !== undefined ? Number(body.dias) : 30,
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -61,6 +66,12 @@ export async function PUT(request: Request) {
     if (body.nombre !== undefined) updateData.nombre = body.nombre;
     if (body.precio !== undefined) updateData.precio = body.precio;
     if (body.tokens_mensuales !== undefined) updateData.tokens_mensuales = body.tokens_mensuales;
+    if (body.dias !== undefined) {
+      if (!Number.isInteger(Number(body.dias)) || Number(body.dias) <= 0) {
+        return NextResponse.json({ error: "dias debe ser un entero positivo" }, { status: 400 });
+      }
+      updateData.dias = Number(body.dias);
+    }
 
     const { error } = await admin.from("plan").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

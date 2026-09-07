@@ -200,6 +200,7 @@ futplayapp/
 | `nombre` | TEXT |
 | `tokens_mensuales` | INTEGER |
 | `precio` | NUMERIC/INTEGER |
+| `dias` | INTEGER | Vigencia desde la compra (30 o 90), DEFAULT 30 |
 
 #### `membresia`
 | Columna | Tipo | Notas |
@@ -210,7 +211,8 @@ futplayapp/
 | `tokens_totales` | INTEGER | |
 | `tokens_usados` | INTEGER | DEFAULT 0 |
 | `estado` | BOOLEAN? | `true`=pagado, `null`=pendiente (según triggers) |
-| `mes` | DATE/TIMESTAMP | Primer día del mes |
+| `fecha_inicio` | TIMESTAMPTZ | Inicio de vigencia (compra/cobro) |
+| `fecha_vencimiento` | TIMESTAMPTZ | Vigencia hasta `fecha_inicio` + `plan.dias` (30/90) |
 
 #### `clase`
 | Columna | Tipo |
@@ -299,7 +301,7 @@ futplayapp/
 | Función | Tipo | Propósito |
 |---|---|---|
 | `check_is_staff()` | SECURITY DEFINER | Retorna true si usuario es admin o profesor |
-| `check_membresia_activa()` | TRIGGER | Previene membresías duplicadas en el mismo mes |
+| `check_membresia_activa()` | TRIGGER | Previene membresías duplicadas en el mismo período |
 | `get_proxima_clase(p_usuario_id)` | SQL | Retorna próxima clase del usuario |
 | `handle_new_user()` | TRIGGER (SECURITY DEFINER) | Crea registro en `usuario` al registrarse en Auth |
 | `inscribir_usuario_clase()` | SQL | Inscribe usuario en clase |
@@ -718,14 +720,9 @@ Generado: 2026-06-12. Basado en auditoría completa del código fuente (todos lo
   - `src/app/api/clases/inscribir/route.ts`: entre el check de inscripción existente y el INSERT, dos requests concurrentes pueden crear duplicados.
   - **Fix**: Agregar unique constraint `(usuario_id, clase_id)` + `ON CONFLICT DO NOTHING`.
 
-- [ ] **9. `membresia.ts` guarda fecha completa en columna `mes`**
-  - `src/data/membresia.ts:168`: `mes = "2026-06-12"` en vez de `"2026-06"`.
-  - Queries con `gte`/`lte` por mes fallan en los bordes del mes.
-  - **Fix**: `mes = now.toISOString().slice(0, 7)`.
+- [x] **9. `membresia.ts` guarda fecha completa en columna `mes`** — **RESUELTO (Fase A)**: la membresía se crea con `fecha_inicio` y `fecha_vencimiento` (`fecha_inicio` + `plan.dias` días) vía `fechaVencimientoDesde()`, y la vigencia se consulta con `fecha_vencimiento >= now()`.
 
-- [ ] **10. Membresía en cápsulas no filtra por mes actual**
-  - `src/app/(dashboard)/capsules/[id]/page.tsx:28-31`: query a membresía sin filtro de mes. Cualquier membresía pasada da acceso.
-  - **Fix**: Agregar filtro por mes actual (`.gte("mes", mesStart).lte("mes", mesEnd)`).
+- [x] **10. Membresía en cápsulas no filtra por mes actual** — **RESUELTO (Fase A)**: el filtro por mes fue reemplazado por vigencia basada en `fecha_vencimiento`.
 
 ### Webhook y WhatsApp
 

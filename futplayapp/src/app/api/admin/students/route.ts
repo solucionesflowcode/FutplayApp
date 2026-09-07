@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
-import { ahoraChile } from "@/lib/fechas";
+import { ahoraChile, fechaVencimientoDesde } from "@/lib/fechas";
 
 
 export async function POST(request: Request) {
@@ -66,13 +66,13 @@ export async function POST(request: Request) {
   if (plan_id) {
     const { data: plan } = await adminClient
       .from("plan")
-      .select("id, tokens_mensuales")
+      .select("id, tokens_mensuales, dias")
       .eq("id", plan_id)
       .single();
 
     if (plan) {
       const fecha_inicio = ahoraChile().toISOString();
-      const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
 
       const { data: memData, error: memError } = await adminClient
         .from("membresia")

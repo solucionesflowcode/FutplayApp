@@ -14,6 +14,8 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
   const [name, setName] = useState("");
   const [rut, setRut] = useState("");
   const [phone, setPhone] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (student) {
@@ -24,8 +26,6 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
       setSaving(false);
     }
   }, [student]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   if (!open || !student) return null;
 

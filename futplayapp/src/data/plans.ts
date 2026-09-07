@@ -7,6 +7,7 @@ export type Plan = {
     nombre: string;
     precio: number;
     tokens_mensuales: number;
+    dias: number;
 };
 
 export async function getPlanes(): Promise<Plan[]> {
@@ -54,7 +55,8 @@ export async function getPlanesAdmin(): Promise<{ planes: Plan[]; error?: string
 export async function createPlanAdmin(data: {
     nombre: string;
     precio: number;
-    tokens_mensuales: number;
+    tokens_mensuales?: number;
+    dias?: number;
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "POST",
@@ -73,6 +75,7 @@ export async function updatePlanAdmin(data: {
     nombre?: string;
     precio?: number;
     tokens_mensuales?: number;
+    dias?: number;
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "PUT",

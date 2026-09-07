@@ -91,7 +91,7 @@ describe("createMembresia", () => {
     it("retorna true si la inserción es exitosa", async () => {
         __setTableData("membresia", { id: "m-new" });
 
-        const result = await createMembresia(USER_ID, "p1", 25);
+        const result = await createMembresia(USER_ID, "p1", 25, 30);
 
         expect(result).toBe(true);
     });
@@ -99,7 +99,7 @@ describe("createMembresia", () => {
     it("retorna false si hay error", async () => {
         __setTableData("membresia", null, { message: "Insert failed" });
 
-        const result = await createMembresia(USER_ID, "p1", 25);
+        const result = await createMembresia(USER_ID, "p1", 25, 30);
 
         expect(result).toBe(false);
     });
@@ -111,7 +111,7 @@ describe("createMembresia", () => {
     ])("asigna $tokens tokens totales al crear membresía de $plan", async ({ tokens }) => {
         __setTableData("membresia", { id: "m-new" });
 
-        const result = await createMembresia(USER_ID, "p1", tokens);
+        const result = await createMembresia(USER_ID, "p1", tokens, 30);
 
         expect(result).toBe(true);
         const fromSpy = createClient().from as ReturnType<typeof vi.fn>;
@@ -122,6 +122,19 @@ describe("createMembresia", () => {
         expect(insertedData?.plan_id).toBe("p1");
         expect(insertedData?.usuario_id).toBe(USER_ID);
         expect(insertedData?.estado).toBe(true);
+    });
+
+    it("MB-011: fecha_vencimiento = fecha_inicio + dias del plan (ej 90 días)", async () => {
+        __setTableData("membresia", { id: "m-new" });
+
+        const result = await createMembresia(USER_ID, "p1", 10, 90);
+
+        expect(result).toBe(true);
+        const fromSpy = createClient().from as ReturnType<typeof vi.fn>;
+        const chain = fromSpy.mock.results[0]?.value;
+        const insertedData = chain.insert.mock.calls[0]?.[0];
+        const diffDays = (new Date(insertedData.fecha_vencimiento).getTime() - new Date(insertedData.fecha_inicio).getTime()) / (24 * 60 * 60 * 1000);
+        expect(diffDays).toBe(90);
     });
 });
 
@@ -190,7 +203,7 @@ describe("createMembresia — duplicados", () => {
     it("MB-010: crea membresía aunque exista una del mes pasado (no hay constraint único)", async () => {
         __setTableData("membresia", { id: "m1", usuario_id: USER_ID, plan_id: "p1", fecha_inicio: "2026-05-01T00:00:00.000Z", fecha_vencimiento: "2026-05-31T00:00:00.000Z", estado: true });
 
-        const result = await createMembresia(USER_ID, "p1", 30);
+        const result = await createMembresia(USER_ID, "p1", 30, 30);
 
         expect(result).toBe(true);
     });

@@ -44,7 +44,7 @@ export default function ProfileForm() {
   }, []);
 
   const formatRut = (value: string) => {
-    let clean = value.replace(/[^0-9kK]/g, "").slice(0, 10);
+    const clean = value.replace(/[^0-9kK]/g, "").slice(0, 10);
     if (clean.length <= 1) return clean;
     const dv = clean.slice(-1);
     const nums = clean.slice(0, -1);
@@ -62,7 +62,7 @@ export default function ProfileForm() {
   };
 
   const formatPhone = (value: string) => {
-    let clean = value.replace(/[^0-9]/g, "");
+    const clean = value.replace(/[^0-9]/g, "");
     if (clean.startsWith("56")) clean = clean.slice(2);
     if (clean.length > 9) clean = clean.slice(0, 9);
     if (!clean) return "";

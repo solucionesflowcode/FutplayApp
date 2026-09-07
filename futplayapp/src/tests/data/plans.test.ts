@@ -137,6 +137,16 @@ describe("createPlanAdmin", () => {
         expect(result.success).toBe(false);
         expect(result.error).toBe("Error de validación");
     });
+
+    it("DATA-PLANES-CREATE-003: envía dias en el body al crear", async () => {
+        mockFetch({ success: true });
+
+        await createPlanAdmin({ nombre: "Plan", precio: 20000, tokens_mensuales: 10, dias: 90 });
+
+        const fetchMock = vi.mocked(globalThis.fetch);
+        const body = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
+        expect(body.dias).toBe(90);
+    });
 });
 
 describe("updatePlanAdmin", () => {
