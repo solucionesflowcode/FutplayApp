@@ -253,39 +253,18 @@ export type MembresiaGestion = {
 };
 
 export async function getMembresiasGestion(): Promise<MembresiaGestion[]> {
-  const supabase = createClient();
-
-  const { data: membresias, error } = await supabase
-    .from("membresia")
-    .select("*")
-    .order("fecha_inicio", { ascending: false });
-
-  if (error || !membresias) return [];
-
-  const usuarioIds = [...new Set(membresias.map(m => m.usuario_id))];
-  const planIds = [...new Set(membresias.map(m => m.plan_id))];
-
-  const [{ data: usuarios }, { data: planes }] = await Promise.all([
-    supabase.from("usuario").select("id, nombre").in("id", usuarioIds),
-    supabase.from("plan").select("id, nombre").in("id", planIds),
-  ]);
-
-  const usuarioMap = new Map((usuarios || []).map(u => [u.id, u.nombre]));
-  const planMap = new Map((planes || []).map(p => [p.id, p.nombre]));
-
-  return membresias.map(m => ({
-    id: m.id,
-    usuario_id: m.usuario_id,
-    usuario_nombre: usuarioMap.get(m.usuario_id) || "Sin nombre",
-    plan_id: m.plan_id,
-    plan_nombre: planMap.get(m.plan_id) || "Sin plan",
-    boleta_id: m.boleta_id || undefined,
-    tokens_totales: m.tokens_totales,
-    tokens_usados: m.tokens_usados,
-    fecha_inicio: m.fecha_inicio,
-    fecha_vencimiento: m.fecha_vencimiento,
-    estado: m.estado,
-  }));
+  try {
+    const res = await fetch("/api/admin/membresias/gestion", { cache: "no-store" });
+    if (!res.ok) {
+      const body = await res.json();
+      console.error("Error fetching membresias gestion:", body.error);
+      return [];
+    }
+    return await res.json();
+  } catch (err) {
+    console.error("Error calling admin membresias gestion API:", err);
+    return [];
+  }
 }
 
 export async function createMembresiaGestion(data: {
@@ -295,13 +274,35 @@ export async function createMembresiaGestion(data: {
   tokens_totales: number;
   dias: number;
 }): Promise<boolean> {
-  return createMembresia(
-    data.usuario_id,
-    data.plan_id,
-    data.tokens_totales,
-    data.dias,
-    data.boleta_id ?? undefined
-  );
+  try {
+    const fecha_inicio = ahoraChile().toISOString();
+    const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, data.dias).toISOString();
+
+    const res = await fetch("/api/admin/membresias/gestion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        usuario_id: data.usuario_id,
+        plan_id: data.plan_id,
+        boleta_id: data.boleta_id ?? null,
+        tokens_totales: data.tokens_totales,
+        tokens_usados: 0,
+        fecha_inicio,
+        fecha_vencimiento,
+        estado: true,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json();
+      console.error("Error creating membresia gestion:", body.error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Error calling create membresia gestion API:", err);
+    return false;
+  }
 }
 
 export async function updateMembresiaGestion(
@@ -317,19 +318,35 @@ export async function updateMembresiaGestion(
     estado: boolean;
   }>
 ): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("membresia")
-    .update(data)
-    .eq("id", id);
-  return !error;
+  try {
+    const payload = { ...data, id };
+    if (payload.boleta_id !== undefined) {
+      payload.boleta_id = payload.boleta_id?.trim() ? payload.boleta_id : null;
+    }
+    const res = await fetch("/api/admin/membresias/gestion", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) return false;
+    return true;
+  } catch (err) {
+    console.error("Error calling update membresia gestion API:", err);
+    return false;
+  }
 }
 
 export async function deleteMembresiaGestion(id: string): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("membresia")
-    .delete()
-    .eq("id", id);
-  return !error;
+  try {
+    const res = await fetch(`/api/admin/membresias/gestion?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) return false;
+    return true;
+  } catch (err) {
+    console.error("Error calling delete membresia gestion API:", err);
+    return false;
+  }
 }
