@@ -8,6 +8,7 @@ export type Plan = {
     precio: number;
     tokens_mensuales: number;
     dias: number;
+    dias_vigencia?: number;
 };
 
 export async function getPlanes(): Promise<Plan[]> {
