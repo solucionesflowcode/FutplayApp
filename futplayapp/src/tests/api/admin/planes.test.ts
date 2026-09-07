@@ -159,6 +159,32 @@ describe("POST /api/admin/planes", () => {
         expect(res.status).toBe(200);
     });
 
+    it("API-ADM-PLANES-POST-007: usa dias=30 por defecto si no se envía", async () => {
+        __setTableData("plan", []);
+
+        const res = await POST(makeRequest("http://localhost:3000/api/admin/planes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre: "Plan", precio: 20000 }),
+        }));
+
+        expect(res.status).toBe(200);
+    });
+
+    it("API-ADM-PLANES-POST-008: retorna 400 si dias no es entero positivo", async () => {
+        __setTableData("plan", []);
+
+        const res = await POST(makeRequest("http://localhost:3000/api/admin/planes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre: "Plan", precio: 20000, dias: -5 }),
+        }));
+
+        expect(res.status).toBe(400);
+        const json = await jsonResponse(res);
+        expect(json.error).toContain("dias");
+    });
+
     it("API-ADM-PLANES-POST-006: retorna 403 si no es administrador", async () => {
         __setTableData("usuario", { id: "user-1", rol: "jugador" });
         __setAuthUser({ id: "user-1", email: "user@test.cl" });
@@ -241,6 +267,34 @@ describe("PUT /api/admin/planes", () => {
         }));
 
         expect(res.status).toBe(403);
+    });
+
+    it("API-ADM-PLANES-PUT-006: actualiza dias de un plan", async () => {
+        __setTableData("plan", [{ id: "p1" }]);
+
+        const res = await PUT(makeRequest("http://localhost:3000/api/admin/planes", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: "p1", dias: 90 }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await jsonResponse(res);
+        expect(json.success).toBe(true);
+    });
+
+    it("API-ADM-PLANES-PUT-007: retorna 400 si dias no es entero positivo", async () => {
+        __setTableData("plan", [{ id: "p1" }]);
+
+        const res = await PUT(makeRequest("http://localhost:3000/api/admin/planes", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: "p1", dias: 0 }),
+        }));
+
+        expect(res.status).toBe(400);
+        const json = await jsonResponse(res);
+        expect(json.error).toContain("dias");
     });
 });
 

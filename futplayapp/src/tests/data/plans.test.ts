@@ -14,9 +14,9 @@ import { getAdminMembresias } from "@/data/membresia";
 import { getPlanes, getPlanesLimit, getPlanesAdmin, createPlanAdmin, updatePlanAdmin, deletePlanAdmin, getUsers } from "@/data/plans";
 
 const MOCK_PLANS = [
-    { id: "p1", nombre: "básico", tokens_mensuales: 10, precio: 15000, dias_vigencia: 30 },
-    { id: "p2", nombre: "pro", tokens_mensuales: 25, precio: 25000, dias_vigencia: 30 },
-    { id: "p3", nombre: "premium", tokens_mensuales: 50, precio: 40000, dias_vigencia: 90 },
+    { id: "p1", nombre: "básico", tokens_mensuales: 10, precio: 15000 },
+    { id: "p2", nombre: "pro", tokens_mensuales: 25, precio: 25000 },
+    { id: "p3", nombre: "premium", tokens_mensuales: 50, precio: 40000 },
 ];
 
 function mockFetch(response: object, status = 200) {
@@ -41,26 +41,6 @@ describe("getPlanes", () => {
 
         expect(result).toHaveLength(3);
         expect(result[0].nombre).toBe("básico");
-    });
-
-    it("excluye los planes familiares del catálogo público", async () => {
-        __setTableData("plan", [
-            ...MOCK_PLANS.map((p) => ({ ...p, tipo_plan: "normal" })),
-            {
-                id: "p4",
-                nombre: "familiar",
-                tokens_mensuales: 40,
-                precio: 35000,
-                dias_vigencia: 30,
-                tipo_plan: "familiar",
-                codigo_acceso: "tok-familiar",
-            },
-        ]);
-
-        const result = await getPlanes();
-
-        expect(result).toHaveLength(3);
-        expect(result.some((p) => p.tipo_plan === "familiar")).toBe(false);
     });
 
     it("retorna array vacío si hay error", async () => {
@@ -143,7 +123,7 @@ describe("createPlanAdmin", () => {
     it("DATA-PLANES-CREATE-001: crea plan exitosamente", async () => {
         mockFetch({ success: true });
 
-        const result = await createPlanAdmin({ nombre: "Plan", precio: 20000, tokens_mensuales: 10, dias_vigencia: 90 });
+        const result = await createPlanAdmin({ nombre: "Plan", precio: 20000, tokens_mensuales: 10 });
 
         expect(result.success).toBe(true);
         expect(result.error).toBeUndefined();
@@ -158,12 +138,14 @@ describe("createPlanAdmin", () => {
         expect(result.error).toBe("Error de validación");
     });
 
-    it("DATA-PLANES-CREATE-003: crea plan sin dias_vigencia (usa default)", async () => {
+    it("DATA-PLANES-CREATE-003: envía dias en el body al crear", async () => {
         mockFetch({ success: true });
 
-        const result = await createPlanAdmin({ nombre: "Plan", precio: 15000, tokens_mensuales: 10 });
+        await createPlanAdmin({ nombre: "Plan", precio: 20000, tokens_mensuales: 10, dias: 90 });
 
-        expect(result.success).toBe(true);
+        const fetchMock = vi.mocked(globalThis.fetch);
+        const body = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
+        expect(body.dias).toBe(90);
     });
 });
 
@@ -175,7 +157,7 @@ describe("updatePlanAdmin", () => {
     it("DATA-PLANES-UPDATE-001: actualiza plan exitosamente", async () => {
         mockFetch({ success: true });
 
-        const result = await updatePlanAdmin({ id: "p1", nombre: "Actualizado", dias_vigencia: 90 });
+        const result = await updatePlanAdmin({ id: "p1", nombre: "Actualizado" });
 
         expect(result.success).toBe(true);
     });

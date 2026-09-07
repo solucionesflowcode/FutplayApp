@@ -1,12 +1,12 @@
 import { createClient } from "@/utils/supabase/client";
-import { ahoraChile, membresiaActiva } from "@/lib/fechas";
+import { ahoraChile, membresiaActiva, fechaVencimientoDesde } from "@/lib/fechas";
 
 type PlanRow = {
     id: string;
     nombre: string;
     tokens_mensuales: number;
     precio: number;
-    tipo_plan: "normal" | "familiar" | "kids";
+    dias: number;
 };
 
 type MembresiaRow = {
@@ -28,12 +28,12 @@ export type MembresiaConPlan = {
     plan_nombre: string;
     tokens_mensuales: number;
     precio: number;
+    dias?: number;
     tokens_totales: number;
     tokens_usados: number;
     tokens_restantes: number;
     fecha_inicio: string;
     fecha_vencimiento: string;
-    tipo_plan: "normal" | "familiar" | "kids";
 };
 
 export async function userHasMembresia(userId: string): Promise<boolean> {
@@ -79,12 +79,12 @@ function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): Membresia
         plan_nombre: plan?.nombre || "Sin plan",
         tokens_mensuales: plan?.tokens_mensuales || 0,
         precio: plan?.precio || 0,
+        dias: plan?.dias,
         tokens_totales: m.tokens_totales,
         tokens_usados: m.tokens_usados,
         tokens_restantes: restantes,
         fecha_inicio: m.fecha_inicio,
         fecha_vencimiento: m.fecha_vencimiento,
-        tipo_plan: plan?.tipo_plan || "normal",
     };
 }
 
@@ -183,13 +183,13 @@ export async function createMembresia(
     userId: string,
     planId: string,
     tokensMensuales: number,
-    boletaId?: string,
-    diasVigencia = 30
+    dias: number,
+    boletaId?: string
 ): Promise<boolean> {
     const supabase = createClient();
 
     const fecha_inicio = ahoraChile().toISOString();
-    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
+    const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, dias).toISOString();
 
     const { error } = await supabase
         .from("membresia")
@@ -232,75 +232,4 @@ export async function devolverToken(userId: string): Promise<boolean> {
         .eq("id", membresia.id);
 
     return !error;
-}
-
-export type MembresiaGestion = {
-    id: string;
-    usuario_id: string;
-    usuario_nombre: string;
-    plan_id: string;
-    plan_nombre: string;
-    boleta_id: string | null;
-    tokens_totales: number;
-    tokens_usados: number;
-    fecha_inicio: string;
-    fecha_vencimiento: string;
-    estado: boolean;
-    created_at: string | null;
-};
-
-export type MembresiaGestionInput = {
-    usuario_id: string;
-    plan_id: string;
-    boleta_id?: string | null;
-    tokens_totales?: number;
-    tokens_usados?: number;
-    fecha_inicio: string;
-    fecha_vencimiento: string;
-    estado?: boolean;
-};
-
-export async function getMembresiasGestion(): Promise<MembresiaGestion[]> {
-    const res = await fetch("/api/admin/membresias/gestion");
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Error de conexión" }));
-        console.error("Error fetching membresias gestion:", body.error);
-        return [];
-    }
-    return await res.json();
-}
-
-export async function createMembresiaGestion(data: MembresiaGestionInput): Promise<{ success: boolean; error?: string }> {
-    const res = await fetch("/api/admin/membresias/gestion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Error de conexión" }));
-        return { success: false, error: body.error };
-    }
-    return { success: true };
-}
-
-export async function updateMembresiaGestion(data: { id: string } & Partial<MembresiaGestionInput>): Promise<{ success: boolean; error?: string }> {
-    const res = await fetch("/api/admin/membresias/gestion", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Error de conexión" }));
-        return { success: false, error: body.error };
-    }
-    return { success: true };
-}
-
-export async function deleteMembresiaGestion(id: string): Promise<{ success: boolean; error?: string }> {
-    const res = await fetch(`/api/admin/membresias/gestion?id=${id}`, { method: "DELETE" });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Error de conexión" }));
-        return { success: false, error: body.error };
-    }
-    return { success: true };
 }

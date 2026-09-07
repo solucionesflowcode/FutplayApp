@@ -14,6 +14,8 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
   const [name, setName] = useState("");
   const [rut, setRut] = useState("");
   const [phone, setPhone] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

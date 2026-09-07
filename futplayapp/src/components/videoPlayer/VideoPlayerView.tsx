@@ -59,6 +59,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
   const [comment, setComment] = useState("");
   const [comentarios, setComentarios] = useState<Comentario[]>([]);
   const [sendingComment, setSendingComment] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     getComentariosByCapsulaId(capsula.id).then(setComentarios);
@@ -77,34 +78,34 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
   }, [comment, usuario, capsula.id]);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-gray-950 text-gray-100 font-sans selection:bg-blue-500/30 overflow-x-hidden">
       {/* Header de Navegación Interna */}
       <header className="border-b border-gray-800 bg-gray-950/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <Link
               href="/capsules"
-              className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white"
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white flex-shrink-0"
             >
               <ArrowLeft size={20} />
             </Link>
-            <div>
-              <h1 className="text-lg font-black tracking-tight">{capsula.titulo}</h1>
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-black tracking-tight truncate">{capsula.titulo}</h1>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold truncate">
                 {capsula.categoria} • {capsula.coach}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-800 hover:bg-gray-900 transition-all text-sm font-medium text-gray-400 hover:text-white">
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full border border-gray-800 hover:bg-gray-900 transition-all text-sm font-medium text-gray-400 hover:text-white">
               <Bookmark size={16} />
-              Guardar
+              <span className="hidden sm:inline">Guardar</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
           {/* Área Principal (3 Columnas) */}
@@ -113,27 +114,29 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
             {/* Reproductor de Video */}
             <div className="relative aspect-video border-t-2 border-t-blue-600 overflow-hidden bg-black border border-gray-800 shadow-2xl group">
               {!hasMembership ? (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-8 text-center">
-                  <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mb-6 border border-gray-800 shadow-[0_0_50px_rgba(37,99,235,0.1)]">
-                    <Lock size={32} className="text-blue-500" />
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8 text-center">
+                  <div className="w-14 h-14 sm:w-20 sm:h-20 bg-gray-900 rounded-full flex items-center justify-center mb-4 sm:mb-6 border border-gray-800 shadow-[0_0_50px_rgba(37,99,235,0.1)]">
+                    <Lock size={28} className="text-blue-500 sm:hidden" />
+                    <Lock size={32} className="text-blue-500 hidden sm:block" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-3">Contenido Exclusivo</h2>
-                  <p className="text-gray-400 max-w-md mb-8">
+                  <h2 className="text-lg sm:text-2xl font-bold mb-2 sm:mb-3">Contenido Exclusivo</h2>
+                  <p className="text-gray-400 text-sm sm:text-base max-w-md mb-6 sm:mb-8">
                     Esta cápsula está disponible únicamente para miembros. Desbloquea todo el catálogo con una suscripción activa.
                   </p>
                   <Link
                     href="/planes"
-                    className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded transition-all hover:scale-105 shadow-lg shadow-blue-600/20 active:scale-95"
+                    className="px-6 sm:px-8 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded transition-all hover:scale-105 shadow-lg shadow-blue-600/20 active:scale-95 text-sm sm:text-base"
                   >
                     Obtener Membresía
                   </Link>
                 </div>
               ) : !process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || !capsula.bunny_video_id ? (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900 p-8 text-center">
-                  <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
-                    <Play size={24} className="text-red-500 opacity-50" />
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900 p-4 sm:p-8 text-center">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-3 sm:mb-4 border border-red-500/20">
+                    <Play size={20} className="text-red-500 opacity-50 sm:hidden" />
+                    <Play size={24} className="text-red-500 opacity-50 hidden sm:block" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Video no disponible</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Video no disponible</h3>
                   <p className="text-gray-400 text-sm max-w-xs">
                     {!process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID 
                       ? "Falta configuración técnica (Library ID). Por favor, contacta a soporte."
@@ -159,9 +162,9 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
             </div>
 
             {/* Sección 'Acerca de' */}
-            <section className="bg-gray-900/50 border border-gray-800/50 border-t-2 border-t-blue-600 p-8 backdrop-blur-sm shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">Acerca de esta cápsula</h3>
+            <section className="bg-gray-900/50 border border-gray-800/50 border-t-2 border-t-blue-600 p-4 sm:p-8 backdrop-blur-sm shadow-xl">
+              <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+                <h3 className="text-lg sm:text-xl font-bold">Acerca de esta cápsula</h3>
                 <span className="px-3 py-1 bg-blue-600/10 text-blue-400 text-xs font-bold rounded-full border border-blue-400/20">
                   Nivel Intermedio
                 </span>
@@ -173,7 +176,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
                   <p className="text-gray-500 italic">Sin descripción disponible.</p>
                 )}
               </div>
-              <div className="flex items-center gap-6 mt-8 pt-8 border-t border-gray-800">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-gray-800">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
                     <Clock size={18} className="text-blue-500" />
@@ -205,7 +208,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
               <div className="space-y-6">
                 {/* Input Comentario */}
                 {usuario && (
-                  <div className="flex gap-4">
+                  <div className="flex gap-3 sm:gap-4">
                     <div className={`w-10 h-10 rounded-full ${getAvatarColor(usuario.nombre || usuario.email || "U")} flex-shrink-0 flex items-center justify-center font-bold text-sm`}>
                       {getInitials(usuario.nombre || usuario.email || "TÚ")}
                     </div>
@@ -263,12 +266,51 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
 
           </div>
 
-          {/* Barra Lateral (1 Columna) */}
-          <aside className="space-y-8">
+          {/* Barra Lateral - Mobile Accordion */}
+          <aside className="lg:hidden space-y-4">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="w-full flex items-center justify-between p-4 bg-gray-900 border border-gray-800 border-t-2 border-t-blue-600 rounded-lg"
+            >
+              <span className="text-sm font-bold uppercase tracking-widest text-gray-500">Material de apoyo</span>
+              <ChevronRight
+                size={16}
+                className={`text-gray-500 transition-transform duration-200 ${sidebarOpen ? "rotate-90" : ""}`}
+              />
+            </button>
+            {sidebarOpen && (
+              <div className="bg-gray-900 border border-gray-800 p-4 rounded-lg">
+                {documentos.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic">Sin documentos disponibles.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {documentos.map((doc) => {
+                      const ext = doc.nombre.split(".").pop()?.toUpperCase() || "FILE";
+                      const color = ext === "PDF" ? "red" : ext === "ZIP" ? "blue" : "gray";
+                      return (
+                        <a
+                          key={doc.id}
+                          href={`/api/download-documento?id=${doc.id}`}
+                          className="w-full flex items-center justify-between p-3 rounded bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition-all group"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-8 h-8 rounded-lg bg-${color}-500/10 flex items-center justify-center flex-shrink-0`}>
+                              <span className={`text-[10px] font-black text-${color}-500`}>{ext}</span>
+                            </div>
+                            <span className="text-xs font-semibold text-gray-300 truncate">{doc.nombre}</span>
+                          </div>
+                          <Download size={14} className="text-gray-500 group-hover:text-white transition-colors flex-shrink-0 ml-2" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </aside>
 
-  
-
-            {/* Recursos Descargables */}
+          {/* Barra Lateral - Desktop */}
+          <aside className="hidden lg:block space-y-8">
             <div className="bg-gray-900 border border-gray-800 border-t-2 border-t-blue-600 p-6 shadow-xl">
               <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4">Material de apoyo</h4>
               {documentos.length === 0 ? (
@@ -284,20 +326,19 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
                         href={`/api/download-documento?id=${doc.id}`}
                         className="w-full flex items-center justify-between p-3 rounded bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition-all group"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg bg-${color}-500/10 flex items-center justify-center`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-8 h-8 rounded-lg bg-${color}-500/10 flex items-center justify-center flex-shrink-0`}>
                             <span className={`text-[10px] font-black text-${color}-500`}>{ext}</span>
                           </div>
-                          <span className="text-xs font-semibold text-gray-300">{doc.nombre}</span>
+                          <span className="text-xs font-semibold text-gray-300 truncate">{doc.nombre}</span>
                         </div>
-                        <Download size={14} className="text-gray-500 group-hover:text-white transition-colors" />
+                        <Download size={14} className="text-gray-500 group-hover:text-white transition-colors flex-shrink-0" />
                       </a>
                     );
                   })}
                 </div>
               )}
             </div>
-
           </aside>
 
         </div>

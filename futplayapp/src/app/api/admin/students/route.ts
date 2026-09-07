@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
-import { ahoraChile } from "@/lib/fechas";
-import { traducirError } from "@/lib/errores";
+import { ahoraChile, fechaVencimientoDesde } from "@/lib/fechas";
 
 
 export async function POST(request: Request) {
@@ -37,7 +36,7 @@ export async function POST(request: Request) {
 
   if (authError || !authData.user) {
     return NextResponse.json(
-      { error: traducirError(authError?.message) },
+      { error: `Error al crear usuario de auth: ${authError?.message}` },
       { status: 500 }
     );
   }
@@ -58,7 +57,7 @@ export async function POST(request: Request) {
   if (usuarioError) {
     await adminClient.auth.admin.deleteUser(userId);
     return NextResponse.json(
-      { error: traducirError(usuarioError.message) },
+      { error: `Error al crear usuario: ${usuarioError.message}` },
       { status: 500 }
     );
   }
@@ -67,14 +66,13 @@ export async function POST(request: Request) {
   if (plan_id) {
     const { data: plan } = await adminClient
       .from("plan")
-      .select("id, tokens_mensuales, dias_vigencia")
+      .select("id, tokens_mensuales, dias")
       .eq("id", plan_id)
       .single();
 
     if (plan) {
       const fecha_inicio = ahoraChile().toISOString();
-      const diasVigencia = plan.dias_vigencia ?? 30;
-      const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
+      const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
 
       const { data: memData, error: memError } = await adminClient
         .from("membresia")
@@ -120,7 +118,7 @@ export async function PUT(request: Request) {
 
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: any = {};
     if (body.nombre !== undefined) updateData.nombre = body.nombre;
     if (body.email !== undefined) updateData.email = body.email;
     if (body.rut !== undefined) updateData.rut = body.rut;
@@ -131,12 +129,11 @@ export async function PUT(request: Request) {
     }
 
     const { error } = await admin.from("usuario").update(updateData).eq("id", body.id);
-    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ success: true });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -160,14 +157,13 @@ export async function DELETE(request: Request) {
 
     // 2) Eliminar de usuario
     const { error: usuarioError } = await admin.from("usuario").delete().eq("id", id);
-    if (usuarioError) return NextResponse.json({ error: traducirError(usuarioError.message) }, { status: 500 });
+    if (usuarioError) return NextResponse.json({ error: usuarioError.message }, { status: 500 });
 
     // 3) Eliminar de auth.users
     await admin.auth.admin.deleteUser(id);
 
     return NextResponse.json({ success: true });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

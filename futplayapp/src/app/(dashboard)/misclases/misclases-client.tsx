@@ -33,9 +33,7 @@ type SessionItem = {
     descripcion: string | null;
     sede: string;
     claseId: string;
-    tipo_evento: "entrenamiento" | "partido" | "kids";
-    cupo_maximo: number | null;
-    inscritos: number;
+    tipo_evento: "entrenamiento" | "partido";
 };
 
 function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
@@ -51,8 +49,6 @@ function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
             sede: row.sede?.nombre ?? "",
             claseId: row.id,
             tipo_evento: row.tipo_evento,
-            cupo_maximo: row.cupo_maximo,
-            inscritos: row.inscritos,
         });
     }
     return out;
@@ -123,38 +119,33 @@ export default function MisClasesClient() {
         return new Date(n.getFullYear(), n.getMonth(), 1);
     });
     const [tokensRestantes, setTokensRestantes] = useState<number | null>(null);
-    const [tipoPlan, setTipoPlan] = useState<"normal" | "familiar" | "kids">("normal");
     const [selectedClases, setSelectedClases] = useState<{
         claseId: string;
         titulo: string;
         descripcion: string | null;
         fecha_hora: string;
         sede: string;
-        tipo_evento?: "entrenamiento" | "partido" | "kids";
-        cupo_maximo: number | null;
-        inscritos: number;
     }[] | null>(null);
 
     const [cancelandoId, setCancelandoId] = useState<string | null>(null);
     const [cancelMsg, setCancelMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [cancelTarget, setCancelTarget] = useState<SessionItem | null>(null);
 
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+    const usuarioId = usuario?.id;
     const load = useCallback(async () => {
-        if (!usuario?.id) {
+        if (!usuarioId) {
             setLoading(false);
             return;
         }
         setLoading(true);
         const [rows, membresia] = await Promise.all([
-            getAllClasesConInscripcion(usuario.id),
-            getMembresiaByUser(usuario.id),
+            getAllClasesConInscripcion(usuarioId),
+            getMembresiaByUser(usuarioId),
         ]);
         setSessions(flattenClases(rows));
         setTokensRestantes(membresia?.tokens_restantes ?? null);
-        setTipoPlan(membresia?.tipo_plan || "normal");
         setLoading(false);
-    }, [usuario?.id]);
+    }, [usuarioId]);
 
     useEffect(() => {
         void load();
@@ -186,8 +177,6 @@ export default function MisClasesClient() {
     const sessionsByDay = useMemo(() => {
         const map = new Map<string, SessionItem[]>();
         for (const s of sessions) {
-            if (tipoPlan === "kids" && s.tipo_evento !== "kids") continue;
-            if (tipoPlan === "normal" && s.tipo_evento === "kids") continue;
             const d = parseFechaLocal(s.fecha_hora);
             const k = dateKeyLocal(d);
             const arr = map.get(k) ?? [];
@@ -202,7 +191,7 @@ export default function MisClasesClient() {
             );
         }
         return map;
-    }, [sessions, tipoPlan]);
+    }, [sessions]);
 
     const monthBounds = useMemo(() => {
         const start = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
@@ -212,12 +201,10 @@ export default function MisClasesClient() {
 
     const sessionsInViewMonth = useMemo(() => {
         return sessions.filter((s) => {
-            if (tipoPlan === "kids" && s.tipo_evento !== "kids") return false;
-            if (tipoPlan === "normal" && s.tipo_evento === "kids") return false;
             const d = parseFechaLocal(s.fecha_hora);
             return d >= monthBounds.start && d <= monthBounds.end;
         });
-    }, [sessions, monthBounds, tipoPlan]);
+    }, [sessions, monthBounds]);
 
     const stats = useMemo(() => {
         let presentes = 0;
@@ -238,18 +225,14 @@ export default function MisClasesClient() {
 
     const recentRows = useMemo(() => {
         return [...sessions]
-            .filter((s) => {
-                if (tipoPlan === "kids" && s.tipo_evento !== "kids") return false;
-                if (tipoPlan === "normal" && s.tipo_evento === "kids") return false;
-                return s.inscripcionId !== null;
-            })
+            .filter((s) => s.inscripcionId !== null)
             .sort(
                 (a, b) =>
                     parseFechaLocal(b.fecha_hora).getTime() -
                     parseFechaLocal(a.fecha_hora).getTime(),
             )
             .slice(0, 12);
-    }, [sessions, tipoPlan]);
+    }, [sessions]);
 
     const gridStart = useMemo(() => startOfCalendarGrid(viewMonth), [viewMonth]);
     const gridCells = useMemo(() => {
@@ -517,8 +500,6 @@ export default function MisClasesClient() {
                                                                 fecha_hora: s.fecha_hora,
                                                                 sede: s.sede,
                                                                 tipo_evento: s.tipo_evento,
-                                                                cupo_maximo: s.cupo_maximo,
-                                                                inscritos: s.inscritos,
                                                             })),
                                                         )
                                                     : undefined
@@ -602,7 +583,6 @@ export default function MisClasesClient() {
                                 ]);
                                 setSessions(flattenClases(rows));
                                 setTokensRestantes(membresia?.tokens_restantes ?? null);
-                                setTipoPlan(membresia?.tipo_plan || "normal");
                             }}
                         />
 

@@ -237,6 +237,33 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(200);
     });
 
+    it("WEB-023: usa plan.dias (90) para fecha_vencimiento al crear membresía", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10, dias: 90 });
+        __setTableData("membresia", null);
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(200);
+
+        const results = (createServerClient as ReturnType<typeof vi.fn>).mock.results;
+        const fromSpy = results[results.length - 1].value.from as ReturnType<typeof vi.fn>;
+        let inserted: { fecha_inicio: string; fecha_vencimiento: string } | undefined;
+        for (let i = 0; i < fromSpy.mock.calls.length; i++) {
+          if (fromSpy.mock.calls[i][0] !== "membresia") continue;
+          const chain = fromSpy.mock.results[i].value;
+          if (chain.insert.mock.calls.length > 0) {
+            inserted = chain.insert.mock.calls[0][0];
+            break;
+          }
+        }
+        expect(inserted).toBeDefined();
+        const diffDays = (new Date(inserted!.fecha_vencimiento).getTime() - new Date(inserted!.fecha_inicio).getTime()) / (24 * 60 * 60 * 1000);
+        expect(diffDays).toBe(90);
+    });
+
     // ── Idempotencia por boleta_id ────────────────────
 
     it("WEB-020: salta creación si ya existe membresía para esta boleta (pago normal)", async () => {

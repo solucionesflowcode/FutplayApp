@@ -46,7 +46,11 @@ export async function cancelarClase(
       body: JSON.stringify({ inscripcionId, fechaHora }),
     });
 
-    return await res.json();
+        const data = await res.json();
+        if (!res.ok) {
+            return { success: false, message: data?.error ?? data?.message ?? "Error al cancelar la clase" };
+        }
+        return data;
   } catch {
     return { success: false, message: "Error de conexión" };
   }

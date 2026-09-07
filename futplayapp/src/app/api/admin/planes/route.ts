@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
-import { traducirError } from "@/lib/errores";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +14,10 @@ export async function GET() {
       .select("*")
       .order("precio", { ascending: true });
 
-    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data || []);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -35,20 +33,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Faltan campos: nombre, precio" }, { status: 400 });
     }
 
+    if (body.dias !== undefined && (!Number.isInteger(Number(body.dias)) || Number(body.dias) <= 0)) {
+      return NextResponse.json({ error: "dias debe ser un entero positivo" }, { status: 400 });
+    }
+
     const { error } = await admin.from("plan").insert({
       nombre: body.nombre,
       precio: body.precio,
       tokens_mensuales: body.tokens_mensuales || 1,
-      dias_vigencia: body.dias_vigencia ?? 30,
-      tipo_plan: body.tipo_plan || "normal",
+      dias: body.dias !== undefined ? Number(body.dias) : 30,
     });
 
-    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ success: true });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -62,20 +62,23 @@ export async function PUT(request: Request) {
 
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: any = {};
     if (body.nombre !== undefined) updateData.nombre = body.nombre;
     if (body.precio !== undefined) updateData.precio = body.precio;
     if (body.tokens_mensuales !== undefined) updateData.tokens_mensuales = body.tokens_mensuales;
-    if (body.dias_vigencia !== undefined) updateData.dias_vigencia = body.dias_vigencia;
-    if (body.tipo_plan !== undefined) updateData.tipo_plan = body.tipo_plan;
+    if (body.dias !== undefined) {
+      if (!Number.isInteger(Number(body.dias)) || Number(body.dias) <= 0) {
+        return NextResponse.json({ error: "dias debe ser un entero positivo" }, { status: 400 });
+      }
+      updateData.dias = Number(body.dias);
+    }
 
     const { error } = await admin.from("plan").update(updateData).eq("id", body.id);
-    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ success: true });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -91,11 +94,10 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
     const { error } = await admin.from("plan").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ success: true });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ error: traducirError(message) }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
-import { ahoraChile } from "@/lib/fechas";
+import { ahoraChile, fechaVencimientoDesde } from "@/lib/fechas";
 
 async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServerClient>, boletaId: string) {
   try {
@@ -24,7 +24,7 @@ async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServe
 
     const { data: plan } = await adminClient
       .from("plan")
-      .select("tokens_mensuales, dias_vigencia")
+      .select("tokens_mensuales, dias")
       .eq("id", boletaItem.plan_id)
       .maybeSingle();
 
@@ -39,8 +39,7 @@ async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServe
     if (existing) return;
 
     const fecha_inicio = ahoraChile().toISOString();
-    const diasVigencia = plan.dias_vigencia ?? 30;
-    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
+    const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
     const { error } = await adminClient.from("membresia").insert({
       usuario_id: boletaInfo.usuario_id,
       plan_id: boletaItem.plan_id,
@@ -86,7 +85,7 @@ export async function GET(request: Request) {
     // First check if the boleta exists
     const { data: boleta } = await adminClient
         .from("boleta")
-        .select("id, estado, cuotas")
+        .select("id, estado")
         .eq("id", boletaId)
         .single();
 
@@ -100,22 +99,17 @@ export async function GET(request: Request) {
     if (token && token !== "{token}") {
         try {
             const statusData = await getFlowPaymentStatus(token);
-            // status: 1=pendiente, 2=aprobado, 3=rechazado, 4=cancelado
-            if (statusData.status === 3 || statusData.status === 4) {
+            if (statusData.status !== 2) {
                 return NextResponse.json({ estado: "rechazado" });
-            }
-            if (statusData.status === 1) {
-                return NextResponse.json({ estado: "pendiente", message: "El pago está pendiente de confirmación." });
             }
             if (statusData.commerceOrder && String(statusData.commerceOrder) !== boletaId) {
                 console.error(`[Flow Confirm] Mismatch: boletaId=${boletaId} !== commerceOrder=${statusData.commerceOrder}`);
                 return NextResponse.json({ error: "Boleta no coincide con el pago" }, { status: 403 });
             }
             if (boleta.estado !== "pagado") {
-                const cuotas = statusData.paymentData?.installments ?? null;
                 const { data: updated } = await adminClient
                     .from("boleta")
-                    .update({ estado: "pagado", cuotas })
+                    .update({ estado: "pagado" })
                     .eq("id", boletaId)
                     .eq("estado", "pendiente")
                     .select("id")
@@ -133,8 +127,7 @@ export async function GET(request: Request) {
                 // Si llegamos aquí, el UPDATE funcionó (cambiamos pendiente → pagado)
                 await crearMembresiaSiAplica(adminClient, boletaId);
             }
-            const cuotasResp = statusData.paymentData?.installments ?? boleta.cuotas ?? null;
-            return NextResponse.json({ estado: "pagado", cuotas: cuotasResp });
+            return NextResponse.json({ estado: "pagado" });
         } catch {
             // Sandbox: si getStatus falla, asumimos éxito
             const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
@@ -173,7 +166,7 @@ export async function GET(request: Request) {
 
     if (boleta.estado === "pagado") {
         await crearMembresiaSiAplica(adminClient, boletaId);
-        return NextResponse.json({ estado: "pagado", cuotas: boleta.cuotas ?? null });
+        return NextResponse.json({ estado: "pagado" });
     }
 
     if (boleta.estado === "rechazado" || boleta.estado === "anulado") {

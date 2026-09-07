@@ -8,20 +8,12 @@ import {
   Loader2,
   X,
   Search,
-  QrCode,
-  Copy,
-  Download,
-  RefreshCw,
-  Share2,
-  Check,
 } from "lucide-react";
-import QRCode from "qrcode";
 import {
   getPlanesAdmin,
   createPlanAdmin,
   updatePlanAdmin,
   deletePlanAdmin,
-  generarLinkPlanAdmin,
   type Plan,
 } from "@/data/plans";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
@@ -33,24 +25,18 @@ type PlanForm = {
   nombre: string;
   precio: number;
   tokens_mensuales: number;
-  dias_vigencia: number;
-  tipo_plan: "normal" | "familiar" | "kids";
+  dias: number;
 };
 
 const emptyForm: PlanForm = {
   nombre: "",
   precio: 0,
   tokens_mensuales: 1,
-  dias_vigencia: 30,
-  tipo_plan: "normal",
+  dias: 30,
 };
 
 function formatPrice(n: number) {
   return "$" + n.toLocaleString("es-CL");
-}
-
-function duracionLabel(dias: number): string {
-  return dias >= 90 ? "Trimestral" : "Mensual";
 }
 
 export default function PlanesPage() {
@@ -62,69 +48,6 @@ export default function PlanesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  // ── Link de acceso (planes familiares) ──
-  const [linkModal, setLinkModal] = useState<Plan | null>(null);
-  const [linkUrl, setLinkUrl] = useState<string | null>(null);
-  const [linkLoading, setLinkLoading] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const openLinkModal = (p: Plan) => {
-    setLinkModal(p);
-    setLinkError(null);
-    setCopied(false);
-    setLinkUrl(
-      p.codigo_acceso
-        ? `${window.location.origin}/planes/familiar/${p.codigo_acceso}`
-        : null
-    );
-  };
-
-  // Genera el QR cada vez que cambia el link
-  useEffect(() => {
-    if (!linkUrl) {
-      setQrDataUrl(null);
-      return;
-    }
-    QRCode.toDataURL(linkUrl, { width: 300, margin: 2 })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(null));
-  }, [linkUrl]);
-
-  const handleGenerarLink = async () => {
-    if (!linkModal) return;
-    setLinkLoading(true);
-    setLinkError(null);
-    const { url, error: genError } = await generarLinkPlanAdmin(linkModal.id);
-    setLinkLoading(false);
-    if (genError || !url) {
-      setLinkError(genError || "Error al generar el link");
-      return;
-    }
-    setLinkUrl(url);
-    fetchPlanes(); // refresca codigo_acceso en la lista
-  };
-
-  const handleCopiarLink = async () => {
-    if (!linkUrl) return;
-    try {
-      await navigator.clipboard.writeText(linkUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setLinkError("No se pudo copiar el link");
-    }
-  };
-
-  const handleDescargarQR = () => {
-    if (!qrDataUrl || !linkModal) return;
-    const a = document.createElement("a");
-    a.href = qrDataUrl;
-    a.download = `qr-${linkModal.nombre.toLowerCase().replace(/\s+/g, "-")}.png`;
-    a.click();
-  };
 
   const fetchPlanes = useCallback(async () => {
     const { planes, error } = await getPlanesAdmin();
@@ -152,15 +75,14 @@ export default function PlanesPage() {
       nombre: p.nombre,
       precio: p.precio,
       tokens_mensuales: p.tokens_mensuales,
-      dias_vigencia: p.dias_vigencia ?? 30,
-      tipo_plan: p.tipo_plan || "normal",
+      dias: p.dias ?? 30,
     });
     setModal("edit");
   };
 
   const handleSave = async () => {
-    if (!form.nombre || form.precio <= 0 || form.tokens_mensuales <= 0) {
-      setError("Nombre, precio y tokens son obligatorios");
+    if (!form.nombre || form.precio <= 0 || form.tokens_mensuales <= 0 || form.dias <= 0) {
+      setError("Nombre, precio, tokens y días son obligatorios");
       return;
     }
     setSaving(true);
@@ -170,8 +92,7 @@ export default function PlanesPage() {
       nombre: form.nombre,
       precio: form.precio,
       tokens_mensuales: form.tokens_mensuales,
-      dias_vigencia: form.dias_vigencia,
-      tipo_plan: form.tipo_plan,
+      dias: form.dias,
     };
 
     const res = modal === "create"
@@ -192,7 +113,7 @@ export default function PlanesPage() {
     } else {
       setPlanes((prev) =>
         prev.map((p) =>
-          p.id === form.id ? { ...p, nombre: form.nombre, precio: form.precio, tokens_mensuales: form.tokens_mensuales, dias_vigencia: form.dias_vigencia, tipo_plan: form.tipo_plan } : p
+          p.id === form.id ? { ...p, nombre: form.nombre, precio: form.precio, tokens_mensuales: form.tokens_mensuales, dias: form.dias } : p
         )
       );
     }
@@ -259,9 +180,8 @@ export default function PlanesPage() {
                 <thead className="hidden md:table-header-group">
                   <tr className="text-left text-gray-500 border-b bg-gray-50/50">
                     <th className="p-3 font-semibold">Nombre</th>
-                    <th className="p-3 font-semibold">Tipo</th>
                     <th className="p-3 font-semibold">Precio</th>
-                    <th className="p-3 font-semibold">Tokens</th>
+                    <th className="p-3 font-semibold">Tokens Mensuales</th>
                     <th className="p-3 font-semibold">Duración</th>
                     <th className="p-3 font-semibold">Acciones</th>
                   </tr>
@@ -269,7 +189,7 @@ export default function PlanesPage() {
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-gray-400">
+                      <td colSpan={5} className="p-8 text-center text-gray-400">
                         {search ? "No se encontraron planes" : "No hay planes creados aún"}
                       </td>
                     </tr>
@@ -278,14 +198,13 @@ export default function PlanesPage() {
                       <Fragment key={p.id}>
                         {/* MOBILE CARD */}
                         <tr className="md:hidden border-b border-gray-100">
-                          <td colSpan={6} className="p-0">
+                          <td colSpan={5} className="p-0">
                             <div className="p-3 space-y-1.5">
                               <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
                               <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
-                                <div><span className="text-gray-400">Tipo: </span><span className={`font-semibold ${p.tipo_plan === "familiar" ? "text-purple-700" : p.tipo_plan === "kids" ? "text-green-700" : "text-blue-700"}`}>{p.tipo_plan === "familiar" ? "Familiar" : p.tipo_plan === "kids" ? "Kids" : "Normal"}</span></div>
                                 <div><span className="text-gray-400">Precio: </span><span className="font-semibold text-gray-900">{formatPrice(p.precio)}</span></div>
                                 <div><span className="text-gray-400">Tokens: </span><span className="font-semibold text-gray-700">{p.tokens_mensuales}</span><span className="text-gray-400"> sesiones</span></div>
-                                <div><span className="text-gray-400">Duración: </span><span className="font-semibold text-gray-700">{duracionLabel(p.dias_vigencia ?? 30)}</span></div>
+                                <div><span className="text-gray-400">Duración: </span><span className="font-semibold text-gray-700">{p.dias ?? 30}</span><span className="text-gray-400"> días</span></div>
                               </div>
                               <div className="flex gap-2 pt-1 border-t border-gray-50">
                                 <button onClick={() => openEdit(p)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
@@ -297,32 +216,17 @@ export default function PlanesPage() {
                         {/* DESKTOP ROW */}
                         <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
                           <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{p.nombre}</td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.tipo_plan === "familiar" ? "bg-purple-100 text-purple-700" : p.tipo_plan === "kids" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                              {p.tipo_plan === "familiar" ? "Familiar" : p.tipo_plan === "kids" ? "Kids" : "Normal"}
-                            </span>
-                          </td>
                           <td className="p-3 font-semibold text-gray-900 whitespace-nowrap">{formatPrice(p.precio)}</td>
                           <td className="p-3 text-gray-600">
                             <span className="font-semibold">{p.tokens_mensuales}</span>
                             <span className="text-gray-400"> sesiones</span>
                           </td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${(p.dias_vigencia ?? 30) >= 90 ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
-                              {duracionLabel(p.dias_vigencia ?? 30)}
-                            </span>
+                          <td className="p-3 text-gray-600">
+                            <span className="font-semibold">{p.dias ?? 30}</span>
+                            <span className="text-gray-400"> días</span>
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2">
-                              {p.tipo_plan === "familiar" && (
-                                <button
-                                  onClick={() => openLinkModal(p)}
-                                  className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"
-                                  title="Link de acceso (QR)"
-                                >
-                                  <QrCode size={16} />
-                                </button>
-                              )}
                               <button
                                 onClick={() => openEdit(p)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
@@ -376,20 +280,6 @@ export default function PlanesPage() {
                   />
                 </div>
 
-                {/* Tipo Plan */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo de Plan *</label>
-                  <select
-                    value={form.tipo_plan}
-                    onChange={(e) => setForm((p) => ({ ...p, tipo_plan: e.target.value as "normal" | "familiar" | "kids" }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="familiar">Familiar</option>
-                    <option value="kids">Kids</option>
-                  </select>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   {/* Precio */}
                   <div>
@@ -409,7 +299,7 @@ export default function PlanesPage() {
 
                   {/* Tokens */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens {form.dias_vigencia >= 90 ? "Trimestrales" : "Mensuales"}</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens Mensuales</label>
                     <input
                       type="number"
                       value={form.tokens_mensuales || ""}
@@ -420,18 +310,17 @@ export default function PlanesPage() {
                   </div>
                 </div>
 
-                {/* Duración */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Duración</label>
-                  <select
-                    value={form.dias_vigencia}
-                    onChange={(e) => setForm((p) => ({ ...p, dias_vigencia: parseInt(e.target.value) || 30 }))}
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Duración (días)</label>
+                  <input
+                    type="number"
+                    value={form.dias || ""}
+                    onChange={(e) => setForm((p) => ({ ...p, dias: parseInt(e.target.value) || 30 }))}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  >
-                    <option value={30}>Mensual (30 días)</option>
-                    <option value={90}>Trimestral (90 días)</option>
-                  </select>
-                  <p className="text-[11px] text-gray-400 mt-1">El precio se cobra por el período completo seleccionado</p>
+                    min={1}
+                    max={365}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Vigencia de la membresía desde la compra (ej: 30 o 90).</p>
                 </div>
 
                 {error && (
@@ -460,93 +349,6 @@ export default function PlanesPage() {
           </div>
         )}
       </div>
-
-      {/* MODAL LINK DE ACCESO (planes familiares) */}
-      {linkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-md p-6 shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Link de acceso</h2>
-              <button onClick={() => setLinkModal(null)} className="p-1 hover:bg-gray-100 rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-
-            <p className="text-sm text-gray-500 mb-4">
-              Plan <span className="font-bold text-gray-900">{linkModal.nombre}</span> — solo las
-              personas con este link o QR pueden ver y comprar el plan.
-            </p>
-
-            {linkUrl ? (
-              <>
-                <div className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg mb-4">
-                  <code className="text-xs text-gray-700 break-all flex-1">{linkUrl}</code>
-                  <button
-                    onClick={handleCopiarLink}
-                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg shrink-0"
-                    title="Copiar link"
-                  >
-                    {copied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
-                  </button>
-                </div>
-
-                {qrDataUrl && (
-                  <div className="flex flex-col items-center mb-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrDataUrl} alt="QR de acceso al plan" className="border border-gray-200 rounded-lg" />
-                    <button
-                      onClick={handleDescargarQR}
-                      className="mt-2 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-semibold"
-                    >
-                      <Download size={14} />
-                      Descargar QR (PNG)
-                    </button>
-                  </div>
-                )}
-
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`🔥 Accede a tu plan ${linkModal.nombre} en FutPlay: ${linkUrl}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2.5 mb-4 border border-green-500 text-green-600 rounded-lg text-sm font-bold hover:bg-green-50 transition-all"
-                >
-                  <Share2 size={15} />
-                  Compartir por WhatsApp
-                </a>
-
-                <button
-                  onClick={handleGenerarLink}
-                  disabled={linkLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {linkLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                  Regenerar link (invalida el anterior)
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500 mb-4">
-                  Este plan aún no tiene un link de acceso. Genéralo para poder compartirlo.
-                </p>
-                <button
-                  onClick={handleGenerarLink}
-                  disabled={linkLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {linkLoading ? <Loader2 size={14} className="animate-spin" /> : <QrCode size={14} />}
-                  Generar link de acceso
-                </button>
-              </>
-            )}
-
-            {linkError && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                {linkError}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <ConfirmDialog
         open={deleteId !== null}

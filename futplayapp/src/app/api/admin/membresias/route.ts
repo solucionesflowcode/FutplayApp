@@ -97,6 +97,7 @@ export async function GET() {
         plan_nombre: plan?.nombre || "Sin plan",
         tokens_mensuales: plan?.tokens_mensuales || 0,
         precio: plan?.precio || 0,
+        dias: plan?.dias,
         tokens_totales: m.tokens_totales,
         tokens_usados: m.tokens_usados,
         tokens_restantes: restantes,

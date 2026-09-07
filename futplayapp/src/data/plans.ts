@@ -7,20 +7,15 @@ export type Plan = {
     nombre: string;
     precio: number;
     tokens_mensuales: number;
-    dias_vigencia: number;
-    tipo_plan: "normal" | "familiar" | "kids";
-    codigo_acceso?: string | null;
+    dias: number;
 };
 
-// Los planes familiares están ocultos del catálogo público:
-// solo se pueden ver/comprar a través de su link con codigo_acceso.
 export async function getPlanes(): Promise<Plan[]> {
     const supabase = createClient();
 
     const { data, error } = await supabase
         .from("plan")
         .select("*")
-        .neq("tipo_plan", "familiar")
         .order("precio", { ascending: true });
 
     if (error) {
@@ -37,30 +32,11 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
     const { data, error } = await supabase
         .from("plan")
         .select("*")
-        .neq("tipo_plan", "familiar")
         .order("precio", { ascending: true })
         .limit(limit);
 
     if (error) {
         console.error("Error fetching planes:", error.message);
-        return [];
-    }
-
-    return data as Plan[];
-}
-
-export async function getPlanesByTokens(tokens: number[]): Promise<Plan[]> {
-    const supabase = createClient();
-
-    const { data, error } = await supabase
-        .from("plan")
-        .select("*")
-        .neq("tipo_plan", "familiar")
-        .in("tokens_mensuales", tokens)
-        .order("tokens_mensuales", { ascending: true });
-
-    if (error) {
-        console.error("Error fetching planes by tokens:", error.message);
         return [];
     }
 
@@ -79,9 +55,8 @@ export async function getPlanesAdmin(): Promise<{ planes: Plan[]; error?: string
 export async function createPlanAdmin(data: {
     nombre: string;
     precio: number;
-    tokens_mensuales: number;
-    dias_vigencia?: number;
-    tipo_plan?: "normal" | "familiar" | "kids";
+    tokens_mensuales?: number;
+    dias?: number;
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "POST",
@@ -100,8 +75,7 @@ export async function updatePlanAdmin(data: {
     nombre?: string;
     precio?: number;
     tokens_mensuales?: number;
-    dias_vigencia?: number;
-    tipo_plan?: "normal" | "familiar" | "kids";
+    dias?: number;
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "PUT",
@@ -122,24 +96,6 @@ export async function deletePlanAdmin(id: string): Promise<{ success: boolean; e
         return { success: false, error: body.error };
     }
     return { success: true };
-}
-
-// Genera (o regenera) el link de acceso de un plan familiar.
-// Regenerar invalida el link anterior.
-export async function generarLinkPlanAdmin(
-    id: string
-): Promise<{ url?: string; error?: string }> {
-    const res = await fetch("/api/admin/planes/link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-    });
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Error de conexión" }));
-        return { error: body.error || `Error ${res.status}` };
-    }
-    const body = await res.json();
-    return { url: body.url };
 }
 
 type UsuarioRow = {

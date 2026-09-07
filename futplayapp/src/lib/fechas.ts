@@ -19,6 +19,10 @@ export function ahoraChile(): Date {
   return new Date(Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")));
 }
 
+export function fechaVencimientoDesde(inicio: Date | string, dias: number): Date {
+  return new Date(new Date(inicio).getTime() + dias * 24 * 60 * 60 * 1000);
+}
+
 export function formatearMes(iso: string): string {
   return new Date(iso).toLocaleDateString("es-CL", { year: "numeric", month: "long", timeZone: "America/Santiago" });
 }
@@ -31,70 +35,34 @@ export function formatearHora(iso: string): string {
   return new Date(iso).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago" });
 }
 
-// Convierte el valor de clase.fecha_hora (timestamp sin zona horaria, hora local de Chile)
-// a un instante absoluto. Si el string ya trae zona horaria (Z/offset), se usa tal cual.
-export function parseClaseFechaHora(fechaHora: string | Date): Date {
-  if (fechaHora instanceof Date) return new Date(fechaHora.getTime());
-  const s = String(fechaHora);
-  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s);
-
-  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})/.exec(s);
-  if (!m) return new Date(s);
-
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  const h = Number(m[4]);
-  const mi = Number(m[5]);
-
-  // Instante de prueba: como si el wall-clock fuera UTC.
-  const probe = new Date(Date.UTC(y, mo - 1, d, h, mi));
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Santiago",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(probe);
-  const get = (type: string) => parseInt(parts.find((p) => p.type === type)!.value, 10);
-  const santiagoWall = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
-  const offsetMs = santiagoWall - probe.getTime();
-
-  return new Date(Date.UTC(y, mo - 1, d, h, mi) - offsetMs);
+export function fechaHoraChileDesdeIso(iso: string): { fecha: string; hora: string } | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const fecha = d.toLocaleDateString("en-CA", { timeZone: "America/Santiago" });
+  const hora = d
+    .toLocaleTimeString("en-GB", { timeZone: "America/Santiago", hour: "2-digit", minute: "2-digit", hour12: false })
+    .replace(/^24:/, "00:");
+  return { fecha, hora };
 }
 
-function toChileISO(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const h = String(d.getUTCHours()).padStart(2, "0");
-  const min = String(d.getUTCMinutes()).padStart(2, "0");
-  const s = String(d.getUTCSeconds()).padStart(2, "0");
-  return `${y}-${m}-${day}T${h}:${min}:${s}`;
-}
-
-export function esSemanaActual(fechaHora: string | Date): boolean {
-  const ahora = ahoraChile();
-  const dayOfWeek = ahora.getUTCDay();
-  const mondayOffset = (dayOfWeek + 6) % 7;
-
-  const mondayLocal = new Date(ahora);
-  mondayLocal.setUTCDate(ahora.getUTCDate() - mondayOffset);
-  mondayLocal.setUTCHours(0, 0, 0, 0);
-
-  const sundayLocal = new Date(mondayLocal);
-  sundayLocal.setUTCDate(mondayLocal.getUTCDate() + 6);
-  sundayLocal.setUTCHours(23, 59, 59, 999);
-
-  // Convertir boundaries a instantes absolutos (mismo dominio que parseClaseFechaHora)
-  const monday = parseClaseFechaHora(toChileISO(mondayLocal));
-  const sunday = parseClaseFechaHora(toChileISO(sundayLocal));
-  const clase = parseClaseFechaHora(fechaHora);
-
-  return clase >= monday && clase <= sunday;
+export function fechaHoraChileAIso(fecha: string, hora: string): string {
+  const [y, m, d] = fecha.split("-").map(Number);
+  const [hh, mm] = hora.split(":").map(Number);
+  const fmtLocal = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  let guess = Date.UTC(y, m - 1, d, hh + 4, mm);
+  const desiredLocal = Date.UTC(y, m - 1, d, hh, mm);
+  for (let i = 0; i < 5; i++) {
+    const p = fmtLocal.formatToParts(new Date(guess));
+    const get = (t: string) => parseInt(p.find((x) => x.type === t)!.value, 10);
+    const actualLocal = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
+    const diff = desiredLocal - actualLocal;
+    if (diff === 0) break;
+    guess += diff;
+  }
+  return new Date(guess).toISOString();
 }
 
 export function getChileMonthBounds(): { startISO: string; endISO: string } {

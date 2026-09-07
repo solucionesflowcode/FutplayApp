@@ -66,9 +66,6 @@ futplayapp/
 │   │   │   │       └── page.tsx     # Reproductor de video + progreso + comentarios
 │   │   │   └── planes/
 │   │   │       └── page.tsx         # Planes de membresía + compra + ficha médica
-│   │   ├── planes/                          # PÚBLICO (fuera de (dashboard), sin AuthGuard)
-│   │   │   └── familiar/[token]/page.tsx    # Landing plan familiar: valida link/QR → muestra plan → compra
-
 │   │   │
 │   │   ├── (admin)/
 │   │   │   └── admin/
@@ -100,12 +97,7 @@ futplayapp/
 │       │           ├── capsulas/route.ts    # CRUD Cápsulas (service_role)
 │       │           ├── profesores/route.ts  # CRUD Profesores (service_role, crea usuario auth + perfil)
 │       │           ├── membresias/route.ts  # GET - Membresías (bypass RLS con service_role)
-│       │           ├── students/route.ts    # POST - Crear alumno/profesor manualmente
-│       │           ├── planes/route.ts      # CRUD Planes (service_role, incluye familiares + codigo_acceso)
-│       │           └── planes/link/route.ts # POST - Generar/regenerar link de acceso (solo familiares)
-│       ├── planes/
-│       │   └── familiar/route.ts    # GET público ?token= → valida codigo_acceso y retorna el plan (sin sesión)
-
+│       │           └── students/route.ts    # POST - Crear alumno/profesor manualmente
 │   │
 │   ├── components/
 │   │   ├── admin/
@@ -202,15 +194,13 @@ futplayapp/
 | `rut` | TEXT | |
 
 #### `plan`
-| Columna | Tipo | Notas |
-|---|---|---|
-| `id` | UUID PK | |
-| `nombre` | TEXT | |
-| `tokens_mensuales` | INTEGER | |
-| `precio` | NUMERIC/INTEGER | |
-| `dias_vigencia` | INTEGER | 30 (mensual) o 90 (trimestral) |
-| `tipo_plan` | TEXT | `'normal'` \| `'familiar'` |
-| `codigo_acceso` | TEXT (nullable, único) | Solo planes familiares. Link de acceso: `/planes/familiar/{codigo_acceso}`. `NULL` = plan normal visible en catálogo |
+| Columna | Tipo |
+|---|---|
+| `id` | UUID PK |
+| `nombre` | TEXT |
+| `tokens_mensuales` | INTEGER |
+| `precio` | NUMERIC/INTEGER |
+| `dias` | INTEGER | Vigencia desde la compra (30 o 90), DEFAULT 30 |
 
 #### `membresia`
 | Columna | Tipo | Notas |
@@ -221,7 +211,8 @@ futplayapp/
 | `tokens_totales` | INTEGER | |
 | `tokens_usados` | INTEGER | DEFAULT 0 |
 | `estado` | BOOLEAN? | `true`=pagado, `null`=pendiente (según triggers) |
-| `mes` | DATE/TIMESTAMP | Primer día del mes |
+| `fecha_inicio` | TIMESTAMPTZ | Inicio de vigencia (compra/cobro) |
+| `fecha_vencimiento` | TIMESTAMPTZ | Vigencia hasta `fecha_inicio` + `plan.dias` (30/90) |
 
 #### `clase`
 | Columna | Tipo |
@@ -230,11 +221,7 @@ futplayapp/
 | `titulo` | TEXT |
 | `descripcion` | TEXT |
 | `sede_id` | UUID FK → `sede.id` |
-| `cupo_maximo` | INTEGER | Admin lo define (default 15) también para partidos; registros legacy con `null` se tratan como 15 en `POST /api/clases/inscribir`. Conteo de inscritos excluye `cancelado`/`cancelado_sin_reembolso` |
-
-**Nota `fecha_hora`:** `clase.fecha_hora` es `timestamp without time zone` (hora local de Chile). Para cálculos de reembolso usar `parseClaseFechaHora()` (`src/lib/fechas.ts` / `webhook/handlers.js`), NO `new Date(fechaHora)` a secas (falla en servidores UTC). Fix 2026-08-06 en `POST /api/clases/cancelar`, `CancelarClaseModal` y `horasHasta` del bot.
-
-**Cupos frontend jugador:** `GET /api/clases/cupos` (service role, sesión requerida) entrega `cupo_maximo` + `inscritos` por clase; `getAllClasesConInscripcion()` los mergea en `ClaseConInscripcion` y el calendario de mis clases los propaga a `ReservarClaseModal`, que muestra `inscritos/cupo` y deshabilita la reserva cuando `inscritos >= cupo_maximo`. Control último: `POST /api/clases/inscribir` + trigger `limitar_15_alumnos()`.
+| `cupo_maximo` | INTEGER |
 
 #### `horario`
 | Columna | Tipo |
@@ -314,12 +301,12 @@ futplayapp/
 | Función | Tipo | Propósito |
 |---|---|---|
 | `check_is_staff()` | SECURITY DEFINER | Retorna true si usuario es admin o profesor |
-| `check_membresia_activa()` | TRIGGER | Previene membresías duplicadas en el mismo mes |
+| `check_membresia_activa()` | TRIGGER | Previene membresías duplicadas en el mismo período |
 | `get_proxima_clase(p_usuario_id)` | SQL | Retorna próxima clase del usuario |
 | `handle_new_user()` | TRIGGER (SECURITY DEFINER) | Crea registro en `usuario` al registrarse en Auth |
 | `inscribir_usuario_clase()` | SQL | Inscribe usuario en clase |
-| `limitar_15_alumnos()` | TRIGGER | Controla cupo máximo (lee `clase.cupo_maximo`; `null` → 15) — creado 2026-08-06 |
-| `manejar_inscripcion_clase()` | TRIGGER | Valida membresía al inscribir (NO consume tokens) |
+| `limitar_15_alumnos()` | TRIGGER | Controla cupo máximo |
+| `manejar_inscripcion_clase()` | TRIGGER | Valida membresía + consume token al inscribir |
 | `procesar_boleta_pagada()` | TRIGGER | Crea membresía y asigna tokens al pagar boleta |
 
 ### 3.5 Triggers
@@ -329,6 +316,7 @@ futplayapp/
 | `boleta` | `trigger_procesar_boleta` | AFTER UPDATE | `procesar_boleta_pagada()` |
 | `clase_usuario` | `trigger_limite_15` | BEFORE INSERT | `limitar_15_alumnos()` |
 | `clase_usuario` | `trigger_inscripcion` | BEFORE INSERT | `manejar_inscripcion_clase()` |
+| `clase_usuario` | `trigger_limitar_15_alumnos` | BEFORE INSERT | `limitar_15_alumnos()` |
 | `membresia` | `trigger_prevenir_doble_plan` | BEFORE INSERT | `check_membresia_activa()` |
 
 ### 3.6 Políticas RLS
@@ -339,7 +327,7 @@ futplayapp/
 | `usuario` | Actualizar propio perfil | `auth.uid() = id` |
 | `membresia` | Ver mis membresias | `auth.uid() = usuario_id` (SOLO PROPIAS — **no hay policy para admin**) |
 | `membresia` | Insert | Solo propia |
-| `plan` | Lectura de catálogo | `authenticated` → true. **Ojo:** incluye familiares; el frontend los oculta vía `getPlanes()` (filtro `.neq("tipo_plan","familiar")`). Para ocultarlos también de la API cliente existe policy restrictiva opcional en `docs/migrations/plan_codigo_acceso.sql` |
+| `plan` | Lectura de catálogo | `authenticated` → true |
 | `plan` | Solo admin gestiona | check `rol = 'administrador'` |
 | `capsula` | Lectura de contenido | `authenticated` → true |
 | `capsula` | Solo admins gestionan | check `rol = 'administrador'` |
@@ -374,7 +362,7 @@ futplayapp/
 6. AuthContext carga datos de usuario desde tabla `usuario` via getUsuario(userId)
 7. Root page.tsx redirige según rol:
    - administrador → /admin
-   - profesor → /profesor
+   - profesor → /dashboard
    - jugador → /dashboard
    - No autenticado → /home
 ```
@@ -499,20 +487,9 @@ type Student = {
 - `CapsulasClient` / `CapsulasRender` / `CapsulaCard` — últimas 4 cápsulas
 
 ### Planes Page (`(dashboard)/planes/page.tsx`)
-- Fetch de planes desde `plan` table vía `getPlanes()` (excluye `tipo_plan='familiar'`)
+- Fetch de planes desde `plan` table
 - 3 cards: Básico (Zap), Popular (Shield, destacado), Premium (Crown)
 - Flujo compra: click → verificar ficha médica → si no tiene: abrir `FichaMedicaModal` → al completar: crear membresía → redirect a /dashboard
-
-### Planes Familiares (acceso solo por link/QR)
-- Los planes `tipo_plan='familiar'` están **ocultos de todo catálogo público** y solo se pueden comprar con un link exclusivo que el admin comparte
-- **Link:** `/planes/familiar/{codigo_acceso}` — el QR codifica ese mismo link
-- **Página pública** (`app/planes/familiar/[token]/page.tsx`, fuera de `(dashboard)` para no chocar con `AuthGuard`): valida el token vía `GET /api/planes/familiar?token=`, muestra la card del plan y redirige a `/pagos?id={planId}&acceso={token}`
-- **Doble verificación server-side:** la página valida el token para VER el plan, y `POST /api/flow/create-order` re-valida (`plan.tipo_plan === 'familiar'` → exige `acceso === plan.codigo_acceso`, si no → 403). Ocultarlo en el frontend no es la barrera; el create-order sí lo es
-- **Panel admin** (`admin/planes/page.tsx`): filas familiares tienen botón QR → modal con link copiable, QR PNG descargable (`qrcode` lib), compartir por WhatsApp (`wa.me`) y regenerar link (invalida el anterior)
-- **Reglas actuales:** un link activo por plan, sin expiración ni límite de usos; regenerar mata el link anterior
-- **Dominio (futplay.cl):** los links/QR y los callbacks de Flow usan `getBaseUrl()` (`src/lib/base-url.ts`) — prioriza `NEXT_PUBLIC_BASE_URL` **si no** es localhost ni `.vercel.app`, y si no usa el origen real de la request. Así en producción siempre apuntan a `https://futplay.cl` aunque la env var de Vercel esté obsoleta (ej. `futplay-vercel.vercel.app`)
-- **Parámetro `acceso`:** en `/pagos` el query param `token` está reservado para el token de Flow, por eso el acceso familiar viaja como `acceso`
-- Migración SQL: `docs/migrations/plan_codigo_acceso.sql` (columna + índice único + policy RLS opcional)
 
 ### FichaMedicaModal (`checkout/FichaMedicaModal.tsx`)
 - 2 pasos: PERSONAL (RUT, teléfono, edad, peso, estatura, grupo sanguíneo) → MÉDICA (enfermedades, alergias, medicamentos, observaciones)
@@ -596,23 +573,6 @@ type Student = {
   - `PUT` — Actualizar clase + reemplazar horarios
   - `DELETE ?id=xxx` — Eliminar clase + horarios + clase_usuario asociados
   - `PATCH { accion: "registrar-asistencia", clase_id, usuario_id, asistencia }` — Marcar asistencia
-- `GET|POST|PUT|DELETE /api/admin/planes` — CRUD Planes
-  - Verifica sesión y rol admin (`verifyAdmin()` + service_role)
-  - `GET` — Lista todos los planes (incluye familiares, con `codigo_acceso`)
-  - `POST` — Crear plan (nombre, precio, tokens_mensuales, dias_vigencia, tipo_plan)
-  - `PUT` — Actualizar plan
-  - `DELETE ?id=xxx` — Eliminar plan
-- `POST /api/admin/planes/link` — Generar link de acceso (plan familiar)
-  - Body `{ id }` → genera `codigo_acceso` (UUID) y retorna `{ token, url }`
-  - Solo planes `tipo_plan='familiar'` (400 si es normal)
-  - Regenerar invalida el link anterior
-
-### Planes Familiares (acceso por link)
-- `GET /api/planes/familiar?token=xxx` — Endpoint PÚBLICO (sin sesión)
-  - Valida `codigo_acceso` con service_role y retorna datos del plan (`id, nombre, precio, tokens_mensuales, dias_vigencia, tipo_plan`)
-  - Nunca retorna `codigo_acceso`; 404 si el token no corresponde a un plan familiar
-  - Rate limit: 30 req/min por IP
-- `POST /api/flow/create-order` — para planes familiares exige `acceso` en el body igual a `plan.codigo_acceso` (403 si falta o es incorrecto). En `/pagos` el acceso viaja como query param `acceso` (`token` está reservado para Flow)
 
 ---
 
@@ -760,14 +720,9 @@ Generado: 2026-06-12. Basado en auditoría completa del código fuente (todos lo
   - `src/app/api/clases/inscribir/route.ts`: entre el check de inscripción existente y el INSERT, dos requests concurrentes pueden crear duplicados.
   - **Fix**: Agregar unique constraint `(usuario_id, clase_id)` + `ON CONFLICT DO NOTHING`.
 
-- [ ] **9. `membresia.ts` guarda fecha completa en columna `mes`**
-  - `src/data/membresia.ts:168`: `mes = "2026-06-12"` en vez de `"2026-06"`.
-  - Queries con `gte`/`lte` por mes fallan en los bordes del mes.
-  - **Fix**: `mes = now.toISOString().slice(0, 7)`.
+- [x] **9. `membresia.ts` guarda fecha completa en columna `mes`** — **RESUELTO (Fase A)**: la membresía se crea con `fecha_inicio` y `fecha_vencimiento` (`fecha_inicio` + `plan.dias` días) vía `fechaVencimientoDesde()`, y la vigencia se consulta con `fecha_vencimiento >= now()`.
 
-- [ ] **10. Membresía en cápsulas no filtra por mes actual**
-  - `src/app/(dashboard)/capsules/[id]/page.tsx:28-31`: query a membresía sin filtro de mes. Cualquier membresía pasada da acceso.
-  - **Fix**: Agregar filtro por mes actual (`.gte("mes", mesStart).lte("mes", mesEnd)`).
+- [x] **10. Membresía en cápsulas no filtra por mes actual** — **RESUELTO (Fase A)**: el filtro por mes fue reemplazado por vigencia basada en `fecha_vencimiento`.
 
 ### Webhook y WhatsApp
 
@@ -875,12 +830,6 @@ Generado: 2026-06-12. Basado en auditoría completa del código fuente (todos lo
 ## ✅ REALIZADOS
 
 - [x] Flow: `{token}` en `urlReturn` eliminado, reemplazado por `flowReturn=1`
-- [x] Planes familiares ocultos del catálogo público (`getPlanes()`/`getPlanesByTokens()` filtran `tipo_plan='familiar'`; admin usa `getPlanesAdmin()`)
-- [x] Acceso a planes familiares por link/QR: `codigo_acceso` en `plan`, página pública `/planes/familiar/[token]`, API `GET /api/planes/familiar` y `POST /api/admin/planes/link` (generar/regenerar, QR descargable, share WhatsApp)
-- [x] create-order valida `acceso` server-side para planes familiares (403 sin link válido)
-- [x] `turbopack.root` fijado en `next.config.ts` (evita inferencia de workspace root por `bun.lock` en home)
-- [x] Bug perfil: teléfono se llenaba de "9" al escribir. Ahora `normalizeTelefono()` (`src/components/perfil/ProfileForm.tsx`) fija el prefijo `+569` y solo guarda el teléfono cuando hay 8 dígitos (mismo patrón que `FichaMedicaModal`)
-- [x] Dominio canónico: `getBaseUrl()` (`src/lib/base-url.ts`) en links de planes familiares y callbacks de Flow — ignora `NEXT_PUBLIC_BASE_URL` localhost/`.vercel.app` y cae al origen real de la request, garantizando `futplay.cl` en producción
 - [x] Flow confirm: token opcional, fallback a estado Supabase
 - [x] Frontend pagos: detecta `flowReturn`, polling 15 intentos, cleanup orphaned
 - [x] Token consumption en inscripción a clases (antes del INSERT, rollback en fallo)

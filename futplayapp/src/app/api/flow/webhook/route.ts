@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
-import { ahoraChile } from "@/lib/fechas";
+import { ahoraChile, fechaVencimientoDesde } from "@/lib/fechas";
 
 export async function POST(request: Request) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -45,11 +45,10 @@ export async function POST(request: Request) {
     let statusData;
     try {
       statusData = await getFlowPaymentStatus(token);
-    } catch (getStatusErr) {
+    } catch {
       const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
       if (!isSandbox) {
-        const errMsg = getStatusErr instanceof Error ? getStatusErr.message : String(getStatusErr);
-        console.error(`[Flow Webhook] getStatus falló en producción — devolviendo 502 para reintento: ${errMsg}`);
+        console.error(`[Flow Webhook] getStatus falló en producción — devolviendo 502 para reintento`);
         return NextResponse.json({ error: "Error al verificar pago con Flow" }, { status: 502 });
       }
       if (!boletaId) {
@@ -61,7 +60,6 @@ export async function POST(request: Request) {
     }
 
     const orderId = statusData.commerceOrder;
-    const cuotas = statusData.paymentData?.installments ?? null;
 
     if (statusData.status === 2) {
       const { data: boleta, error: findError } = await adminClient
@@ -87,7 +85,7 @@ export async function POST(request: Request) {
         if (recurrencia?.activa) {
           const { data: plan } = await adminClient
             .from("plan")
-            .select("precio, tokens_mensuales, dias_vigencia")
+            .select("precio, tokens_mensuales, dias")
             .eq("id", recurrencia.plan_id)
             .single();
 
@@ -127,7 +125,7 @@ export async function POST(request: Request) {
 
               const { error: recurrenteUpdateError } = await adminClient
                 .from("boleta")
-                .update({ estado: "pagado", cuotas: cuotas })
+                .update({ estado: "pagado" })
                 .eq("id", newBoleta.id)
                 .eq("estado", "pendiente");
 
@@ -141,8 +139,7 @@ export async function POST(request: Request) {
               try {
                 if (plan.tokens_mensuales) {
                   const fecha_inicio = ahoraChile().toISOString();
-                  const diasVigencia = plan.dias_vigencia ?? 30;
-                  const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
+                  const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
                   const { error: membresiaError } = await adminClient
                     .from("membresia")
                     .insert({
@@ -174,7 +171,7 @@ export async function POST(request: Request) {
       // ── Update atómico: solo si sigue pendiente ──
       const { data: updated, error: updateError } = await adminClient
         .from("boleta")
-        .update({ estado: "pagado", cuotas })
+        .update({ estado: "pagado" })
         .eq("id", boleta.id)
         .eq("estado", "pendiente")
         .select("id")
@@ -192,7 +189,7 @@ export async function POST(request: Request) {
 
       console.log(`[Flow Webhook] Boleta ${boleta.id} marcada como pagada`);
 
-      // ── Crear membresía (30 días desde compra) ──
+      // ── Crear membresía (duración según plan.dias desde compra) ──
       try {
         const { data: boletaItem } = await adminClient
           .from("boleta_item")
@@ -203,7 +200,7 @@ export async function POST(request: Request) {
         if (boletaItem) {
           const { data: plan } = await adminClient
             .from("plan")
-            .select("tokens_mensuales, dias_vigencia")
+            .select("tokens_mensuales, dias")
             .eq("id", boletaItem.plan_id)
             .maybeSingle();
 
@@ -216,8 +213,7 @@ export async function POST(request: Request) {
 
                   if (!existingForBoleta) {
                     const fecha_inicio = ahoraChile().toISOString();
-                    const diasVigencia = plan.dias_vigencia ?? 30;
-                    const fecha_vencimiento = new Date(new Date(fecha_inicio).getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString();
+                    const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
                     const { error: membresiaError } = await adminClient
                       .from("membresia")
                       .insert({
