@@ -132,7 +132,7 @@ export default function MembresiasPage() {
 
     const isCreate = modal === "create";
     const planSel = planes.find((pl) => pl.id === form.plan_id);
-    const diasVigencia = planSel?.dias_vigencia ?? 30;
+    const diasVigencia = planSel?.dias_vigencia ?? planSel?.dias ?? 30;
     const ahora = ahoraChile();
     const fecha_inicio = isCreate ? ahora.toISOString() : dateToIso(form.fecha_inicio);
     const fecha_vencimiento = isCreate
@@ -144,6 +144,10 @@ export default function MembresiasPage() {
       plan_id: form.plan_id,
       boleta_id: form.boleta_id.trim() || null,
       tokens_totales: form.tokens_totales,
+      dias: diasVigencia,
+    };
+
+    const res = isCreate
       tokens_usados: isCreate ? 0 : form.tokens_usados,
       fecha_inicio,
       fecha_vencimiento,
