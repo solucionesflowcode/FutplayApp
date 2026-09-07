@@ -241,6 +241,7 @@ export type MembresiaGestion = {
   usuario_nombre: string;
   plan_id: string;
   plan_nombre: string;
+  boleta_id?: string;
   tokens_totales: number;
   tokens_usados: number;
   fecha_inicio: string;
@@ -275,6 +276,7 @@ export async function getMembresiasGestion(): Promise<MembresiaGestion[]> {
     usuario_nombre: usuarioMap.get(m.usuario_id) || "Sin nombre",
     plan_id: m.plan_id,
     plan_nombre: planMap.get(m.plan_id) || "Sin plan",
+    boleta_id: m.boleta_id || undefined,
     tokens_totales: m.tokens_totales,
     tokens_usados: m.tokens_usados,
     fecha_inicio: m.fecha_inicio,
