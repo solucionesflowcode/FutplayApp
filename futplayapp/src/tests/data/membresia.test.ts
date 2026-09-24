@@ -11,19 +11,72 @@ import { userHasMembresia, getMembresiaByUser, createMembresia, devolverToken, g
 const USER_ID = "user-test-001";
 
 beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"));
     __resetMocks();
     vi.mocked(createClient).mockReturnValue(createMockServerClient() as any);
 });
 
+afterEach(() => {
+    vi.useRealTimers();
+});
+
 describe("userHasMembresia", () => {
-    it("retorna true si hay membresías activas", async () => {
-        __setTableData("membresia", [{ id: "m1", usuario_id: USER_ID, estado: true }]);
+    it("retorna true si hay membresías activas por vigencia", async () => {
+        __setTableData("membresia", [{
+            id: "m1",
+            usuario_id: USER_ID,
+            estado: true,
+            fecha_inicio: "2026-06-01T00:00:00.000Z",
+            fecha_vencimiento: "2026-07-01T00:00:00.000Z",
+        }]);
 
         const result = await userHasMembresia(USER_ID);
 
         expect(result).toBe(true);
     });
 
+    it("retorna false si la membresía está VENCIDA aunque estado=true", async () => {
+        __setTableData("membresia", [{
+            id: "m1",
+            usuario_id: USER_ID,
+            estado: true,
+            fecha_inicio: "2026-05-01T00:00:00.000Z",
+            fecha_vencimiento: "2026-05-31T00:00:00.000Z",
+        }]);
+
+        const result = await userHasMembresia(USER_ID);
+
+        expect(result).toBe(false);
+    });
+
+    it("retorna false si la membresía aún no comienza aunque estado=true", async () => {
+        __setTableData("membresia", [{
+            id: "m1",
+            usuario_id: USER_ID,
+            estado: true,
+            fecha_inicio: "2026-07-01T00:00:00.000Z",
+            fecha_vencimiento: "2026-08-01T00:00:00.000Z",
+        }]);
+
+        const result = await userHasMembresia(USER_ID);
+
+        expect(result).toBe(false);
+    });
+
+    it("retorna false si el estado es false (inactiva)", async () => {
+        __setTableData("membresia", [{
+            id: "m1",
+            usuario_id: USER_ID,
+            estado: false,
+            fecha_inicio: "2026-06-01T00:00:00.000Z",
+            fecha_vencimiento: "2026-07-01T00:00:00.000Z",
+        }]);
+
+        const result = await userHasMembresia(USER_ID);
+
+        expect(result).toBe(false);
+    });
 
     it("retorna false si no hay membresías", async () => {
         __setTableData("membresia", []);
@@ -83,6 +136,30 @@ describe("getMembresiaByUser", () => {
         const result = await getMembresiaByUser(USER_ID);
 
         expect(result).toBeNull();
+    });
+
+it("MB-012: membresía vencida => tokens_restantes 0 y NO intenta actualizar estado en BD", async () => {
+        __setTableData("membresia", {
+            id: "m-vencida",
+            usuario_id: USER_ID,
+            plan_id: "p1",
+            tokens_totales: 30,
+            tokens_usados: 4,
+            fecha_inicio: "2026-05-01T00:00:00.000Z",
+            fecha_vencimiento: "2026-05-31T00:00:00.000Z",
+            estado: true,
+        });
+        __setTableData("plan", { id: "p1", nombre: "Premium", tokens_mensuales: 30, precio: 40000 });
+
+        const result = await getMembresiaByUser(USER_ID);
+
+        expect(result).not.toBeNull();
+        expect(result!.tokens_restantes).toBe(0);
+        expect(result!.tokens_usados).toBe(result!.tokens_totales);
+
+        const fromSpy = createClient().from as ReturnType<typeof vi.fn>;
+        const membresiaCalls = fromSpy.mock.calls.filter(([t]) => t === "membresia").length;
+        expect(membresiaCalls).toBe(1);
     });
 
 });
@@ -231,6 +308,21 @@ describe("getAllMembresiasConPlan", () => {
         expect(u1!.tokens_restantes).toBe(10);
         expect(u2!.membresia_id).toBe("m3");
         expect(u2!.tokens_restantes).toBe(5);
+    });
+
+    it("MB-013: ignora membresía vencida con más tokens y elige la activa", async () => {
+        __setTableData("membresia", [
+            { id: "m-activa", usuario_id: "u1", plan_id: "pa", tokens_totales: 6, tokens_usados: 3, fecha_inicio: "2026-06-01T00:00:00.000Z", fecha_vencimiento: "2026-07-01T00:00:00.000Z", estado: true },
+            { id: "m-vencida", usuario_id: "u1", plan_id: "pa", tokens_totales: 8, tokens_usados: 0, fecha_inicio: "2026-04-01T00:00:00.000Z", fecha_vencimiento: "2026-05-01T00:00:00.000Z", estado: true },
+        ]);
+        __setTableData("plan", [PLAN_A]);
+
+        const result = await getAllMembresiasConPlan();
+
+        const u1 = result.find((m) => m.usuario_id === "u1");
+        expect(u1).not.toBeUndefined();
+        expect(u1!.membresia_id).toBe("m-activa");
+        expect(u1!.tokens_restantes).toBe(3);
     });
 
     it("DATA-MEMB-TODAS-002: retorna array vacío si no hay membresías", async () => {

@@ -51,7 +51,6 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
     const [fechaNacimiento, setFechaNacimiento] = useState("");
     const [peso, setPeso] = useState("");
     const [estatura, setEstatura] = useState("");
-    const [grupoSanguineo, setGrupoSanguineo] = useState("");
     const [enfermedades, setEnfermedades] = useState("");
     const [alergias, setAlergias] = useState("");
     const [medicamentos, setMedicamentos] = useState("");
@@ -82,7 +81,6 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
         setFechaNacimiento("");
         setPeso("");
         setEstatura("");
-        setGrupoSanguineo("");
         setEnfermedades("");
         setAlergias("");
         setMedicamentos("");
@@ -122,7 +120,7 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
     };
 
     const validateStep1 = () => {
-        return rut.trim() !== "" && !rutError && telefono.length === 12 && !telefonoError && fechaNacimiento.trim() !== "" && peso.trim() !== "" && estatura.trim() !== "" && grupoSanguineo.trim() !== "" && perfil.trim() !== "";
+        return rut.trim() !== "" && !rutError && telefono.length === 12 && !telefonoError && fechaNacimiento.trim() !== "" && peso.trim() !== "" && estatura.trim() !== "" && perfil.trim() !== "";
     };
 
     const validateStep2 = () => {
@@ -156,7 +154,6 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
             peso_kg: pesoNum,
             estatura_cm: estaturaNum,
             imc: imcValue,
-            grupo_sanguineo: grupoSanguineo.trim(),
             enfermedades: enfermedades.trim(),
             alergias: alergias.trim(),
             medicamentos: medicamentos.trim(),
@@ -366,28 +363,6 @@ export default function FichaMedicaModal({ open, onClose, onSuccess, planId, pla
                                 </div>
                             </div>
 
-                            {/* Grupo Sanguíneo */}
-                            <div>
-                                <div className="flex items-center gap-2 mb-3">
-                                    <Droplets size={16} className="text-red-500" />
-                                    <h3 className="text-sm font-bold text-[#00305B] uppercase tracking-wider">Grupo Sanguíneo</h3>
-                                </div>
-                                <select
-                                    value={grupoSanguineo}
-                                    onChange={(e) => setGrupoSanguineo(e.target.value)}
-                                    className="w-full px-4 py-3 rounded border-2 border-slate-100 bg-slate-50/50 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-[#F28C28]/50 focus:bg-white focus:ring-4 focus:ring-[#F28C28]/10 transition-all"
-                                >
-                                    <option value="">Seleccionar tipo</option>
-                                    <option value="A+">A+</option>
-                                    <option value="A-">A-</option>
-                                    <option value="B+">B+</option>
-                                    <option value="B-">B-</option>
-                                    <option value="AB+">AB+</option>
-                                    <option value="AB-">AB-</option>
-                                    <option value="O+">O+</option>
-                                    <option value="O-">O-</option>
-                                </select>
-                            </div>
                         </div>
                     )}
 

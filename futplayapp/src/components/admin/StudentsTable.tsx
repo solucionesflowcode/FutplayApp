@@ -247,10 +247,6 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
                     <p className="text-xs text-gray-500">IMC</p>
                     <p className="font-semibold text-gray-900">{fichaModal.data.imc}</p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <p className="text-xs text-gray-500">Grupo Sanguíneo</p>
-                    <p className="font-semibold text-gray-900">{fichaModal.data.grupo_sanguineo || "—"}</p>
-                  </div>
                 </div>
 
                 <div className="p-3 bg-gray-50 rounded">

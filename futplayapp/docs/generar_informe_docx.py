@@ -680,7 +680,7 @@ BUNNY_API_KEY=...""")
         ("Token", "Unidad de consumo para inscribirse en una clase. Se obtienen vía plan"),
         ("Sede", "Lugar físico donde se imparten las clases"),
         ("ROL", "Jugador, Profesor o Administrador"),
-        ("Ficha médica", "Registro de salud del jugador (peso, altura, IMC, grupo sanguíneo, etc.)"),
+        ("Ficha médica", "Registro de salud del jugador (peso, altura, IMC, etc.)"),
     ])
 
     add_heading(doc, "9.6 Referencias", 2)

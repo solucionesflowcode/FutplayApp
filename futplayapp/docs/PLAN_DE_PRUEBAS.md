@@ -405,7 +405,7 @@ const { data } = await supabase.from("usuario").select("*").eq("id", userId).sin
 
 | Término | Definición |
 |---------|-----------|
-| **Bollo/Ficha médica** | Registro de salud del jugador (peso, altura, IMC, grupo sanguíneo, etc.) |
+| **Bollo/Ficha médica** | Registro de salud del jugador (peso, altura, IMC, etc.) |
 | **Boleta** | Comprobante de pago generado por Flow.cl |
 | **Cápsula** | Video educativo dentro del módulo e-learning, alojado en Bunny Stream |
 | **Membresía** | Asignación mensual de tokens a un usuario según su plan |

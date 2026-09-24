@@ -11,7 +11,6 @@ type Ficha = {
     peso_kg: number;
     estatura_cm: number;
     imc: number;
-    grupo_sanguineo: string;
     enfermedades: string;
     alergias: string;
     medicamentos: string;
@@ -110,11 +109,6 @@ export default function MetricasCorporales() {
                     <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
                         <span className="text-white/50 text-[9px] font-black uppercase tracking-wider leading-tight">Edad</span>
                         <p className="text-white text-sm font-black leading-tight mt-0.5">{calcularEdad(ficha.fecha_nacimiento)} <span className="text-xs font-normal text-white/50">años</span></p>
-                    </div>
-
-                    <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">
-                        <span className="text-white/50 text-[9px] font-black uppercase tracking-wider leading-tight">Grupo Sang.</span>
-                        <p className="text-white text-sm font-black leading-tight mt-0.5">{ficha.grupo_sanguineo}</p>
                     </div>
 
                     <div className="bg-white/5 border border-white/5 shadow-sm ring-1 ring-inset ring-white/[0.03] border-t-4 border-t-[#F39200] aspect-square rounded-full flex flex-col items-center justify-center text-center p-3">

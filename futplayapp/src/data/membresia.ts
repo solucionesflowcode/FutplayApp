@@ -41,18 +41,25 @@ export type MembresiaConPlan = {
 export async function userHasMembresia(userId: string): Promise<boolean> {
     const supabase = createClient();
 
+    const ahoraIso = ahoraChile().toISOString();
+
     const { data, error } = await supabase
         .from("membresia")
         .select("id")
         .eq("usuario_id", userId)
-        .eq("estado", true);
+        .eq("estado", true)
+        .lte("fecha_inicio", ahoraIso)
+        .gte("fecha_vencimiento", ahoraIso)
+        .order("fecha_vencimiento", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
     if (error) {
         console.error("Error fetching membresia:", error.message);
         return false;
     }
 
-    return (data?.length ?? 0) > 0;
+    return data != null;
 }
 
 async function getPlanById(planId: string): Promise<PlanRow | null> {
@@ -73,7 +80,9 @@ async function getPlanById(planId: string): Promise<PlanRow | null> {
 }
 
 function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): MembresiaConPlan {
-    const restantes = m.tokens_totales - m.tokens_usados;
+    const activa = m.estado === true && membresiaActiva(m.fecha_vencimiento);
+    const tokensUsados = activa ? m.tokens_usados : m.tokens_totales;
+    const restantes = activa ? m.tokens_totales - m.tokens_usados : 0;
     return {
         membresia_id: m.id,
         usuario_id: m.usuario_id,
@@ -84,7 +93,7 @@ function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): Membresia
         dias: plan?.dias,
         tipo_plan: plan?.tipo_plan,
         tokens_totales: m.tokens_totales,
-        tokens_usados: m.tokens_usados,
+        tokens_usados: tokensUsados,
         tokens_restantes: restantes,
         fecha_inicio: m.fecha_inicio,
         fecha_vencimiento: m.fecha_vencimiento,
@@ -111,14 +120,6 @@ export async function getMembresiaByUser(userId: string): Promise<MembresiaConPl
     if (!data) return null;
 
     const membresia = data as MembresiaRow;
-
-    if (membresia.estado && !membresiaActiva(membresia.fecha_vencimiento)) {
-        await supabase
-            .from("membresia")
-            .update({ estado: false })
-            .eq("id", membresia.id);
-        membresia.estado = false;
-    }
 
     const plan = await getPlanById(membresia.plan_id);
     return buildMembresiaConPlan(membresia, plan);
@@ -156,11 +157,11 @@ export async function getAllMembresiasConPlan(): Promise<MembresiaConPlan[]> {
     for (const item of membresias || []) {
         const m = item as MembresiaRow;
         const existing = resultMap.get(m.usuario_id);
-        const restantes = m.tokens_totales - m.tokens_usados;
+        const plan = planesMap.get(m.plan_id) || null;
+        const built = buildMembresiaConPlan(m, plan);
 
-        if (!existing || restantes > existing.tokens_restantes) {
-            const plan = planesMap.get(m.plan_id) || null;
-            resultMap.set(m.usuario_id, buildMembresiaConPlan(m, plan));
+        if (!existing || built.tokens_restantes > existing.tokens_restantes) {
+            resultMap.set(m.usuario_id, built);
         }
     }
 

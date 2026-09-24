@@ -17,6 +17,7 @@
 --   R10 Devolución funciona aunque la membresía vigente empezó en OTRO MES (el bug real)
 --   R11 Devolución a la membresía vigente que descontó (no a una más nueva vacía)
 --   R12 Trigger alumnos por clase: cupo_maximo NULL => default 15 (el 16o es rechazado)
+--   R13 Membresía VENCIDA => estado=false y tokens agotados (trigger + barrido diario)
 --
 -- Si algo falla aborta con EXCEPTION y mensaje claro. Todo se limpia al final.
 -- Los datos de prueba usan 'TEST_BIZ%' como marcador, en la columna descripcion (text, no enum).
@@ -338,6 +339,36 @@ BEGIN
         IF SQLERRM LIKE '%Clase llena%' THEN RAISE NOTICE 'R12 OK - cupo NULL = default 15 (16o rechazado)';
         ELSE RAISE; END IF;
     END;
+END $$;
+
+-- ── R13: Membresía VENCIDA => estado=false y tokens agotados ─────────────────
+-- (Requiere aplicar docs/migrations/fix_membresia_vencida.sql: trigger
+--  trg_membresia_sincronizar_estado + barrido diario)
+DO $$
+DECLARE
+    v_b uuid := (SELECT v FROM ctx WHERE k='user_b'); -- fixture: vencida (estado=true en setup)
+    est boolean; usados int; totales int;
+BEGIN
+    -- La membresía B nace vencida: el trigger ya debió normalizarla a estado=false/tokens agotados
+    SELECT estado INTO est FROM membresia WHERE usuario_id = v_b;
+    IF est <> false THEN RAISE EXCEPTION 'R13 FALLÓ: membresía vencida quedó estado=true (trigger al INSERT)'; END IF;
+
+    -- Intentar "reactivar" una vencida => el trigger la mantiene en false
+    UPDATE membresia SET estado = true WHERE usuario_id = v_b;
+    SELECT estado, tokens_usados, tokens_totales INTO est, usados, totales FROM membresia WHERE usuario_id = v_b;
+    IF est <> false THEN RAISE EXCEPTION 'R13 FALLÓ: UPDATE permitió estado=true en membresía vencida'; END IF;
+    IF usados <> totales THEN RAISE EXCEPTION 'R13 FALLÓ: tokens no agotados tras vencer (usados=% de %)', usados, totales; END IF;
+
+    -- Barrido diario (mismo UPDATE que el job pg_cron "futplay-expirar-membresias")
+    UPDATE membresia
+       SET estado = false,
+           tokens_usados = tokens_totales
+     WHERE fecha_vencimiento < now()
+       AND (estado = true OR tokens_usados < tokens_totales);
+    SELECT estado, tokens_usados, tokens_totales INTO est, usados, totales FROM membresia WHERE usuario_id = v_b;
+    IF est <> false OR usados <> totales THEN RAISE EXCEPTION 'R13 FALLÓ: barrido no normalizó membresía vencida'; END IF;
+
+    RAISE NOTICE 'R13 OK - membresía vencida => estado=false + tokens agotados (trigger al escribir y barrido diario)';
 END $$;
 
 -- ── CLEANUP ─────────────────────────────────────────────────────────────

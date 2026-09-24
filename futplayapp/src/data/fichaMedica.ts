@@ -6,7 +6,6 @@ export type FichaMedicaData = {
     peso_kg: number;
     estatura_cm: number;
     imc: number;
-    grupo_sanguineo: string;
     enfermedades: string;
     alergias: string;
     medicamentos: string;

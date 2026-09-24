@@ -272,7 +272,7 @@ futplayapp/
 | `membresia` | `id`, `usuario_id` (FK), `plan_id` (FK), `tokens_totales`, `tokens_usados`, `estado` (bool?), `fecha_inicio` (timestamptz), `fecha_vencimiento` (timestamptz) |
 | `clase` | `id`, `titulo`, `descripcion`, `sede_id` (FK), `cupo_maximo`, `profesor_id` (FK), `fecha_hora` |
 | `clase_usuario` | `id`, `usuario_id` (FK), `clase_id` (FK), `asistencia` (string: sin_confirmar, pendiente, confirmado_whatsapp, asistio, no_asistio, cancelado, cancelado_sin_reembolso) |
-| `ficha_medica` | `id`, `usuario_id` (FK), `fecha_nacimiento`, `peso_kg`, `estatura_cm`, `imc`, `grupo_sanguineo`, `enfermedades`, `alergias`, `medicamentos`, `observaciones` |
+| `ficha_medica` | `id`, `usuario_id` (FK), `fecha_nacimiento`, `peso_kg`, `estatura_cm`, `imc`, `enfermedades`, `alergias`, `medicamentos`, `observaciones` |
 | `capsula` | `id`, `titulo`, `imagen`, `creado`, `duracion`, `modulo_id` (FK), `profesor_id` (FK), `bunny_video_id`, `order_index`, `descripcion` |
 | `modulo` | `id`, `nombre`, `descripcion`, `categoria_id` (FK) |
 | `categoria` | `id`, `nombre` |

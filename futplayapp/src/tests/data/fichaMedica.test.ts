@@ -126,7 +126,6 @@ describe("createFichaMedica", () => {
         peso_kg: 70,
         estatura_cm: 175,
         imc: 22.9,
-        grupo_sanguineo: "O+",
         enfermedades: "Ninguna",
         alergias: "Ninguna",
         medicamentos: "Ninguno",

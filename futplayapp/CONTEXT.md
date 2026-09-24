@@ -247,7 +247,6 @@ futplayapp/
 | `peso_kg` | NUMERIC |
 | `estatura_cm` | INTEGER |
 | `imc` | NUMERIC |
-| `grupo_sanguineo` | TEXT |
 | `enfermedades` | TEXT |
 | `alergias` | TEXT |
 | `medicamentos` | TEXT |
@@ -308,6 +307,7 @@ futplayapp/
 | `limitar_15_alumnos()` | TRIGGER | Controla cupo máximo |
 | `manejar_inscripcion_clase()` | TRIGGER | Valida membresía + consume token al inscribir |
 | `procesar_boleta_pagada()` | TRIGGER | Crea membresía y asigna tokens al pagar boleta |
+| `sincronizar_estado_membresia()` | TRIGGER | Normaliza al escribir: membresía vencida => `estado=false` + `tokens_usados = tokens_totales` (migración `fix_membresia_vencida.sql`) |
 
 ### 3.5 Triggers
 
@@ -318,6 +318,7 @@ futplayapp/
 | `clase_usuario` | `trigger_inscripcion` | BEFORE INSERT | `manejar_inscripcion_clase()` |
 | `clase_usuario` | `trigger_limitar_15_alumnos` | BEFORE INSERT | `limitar_15_alumnos()` |
 | `membresia` | `trigger_prevenir_doble_plan` | BEFORE INSERT | `check_membresia_activa()` |
+| `membresia` | `trg_membresia_sincronizar_estado` | BEFORE INSERT OR UPDATE OF fecha_vencimiento, estado | `sincronizar_estado_membresia()` |
 
 ### 3.6 Políticas RLS
 
@@ -492,7 +493,7 @@ type Student = {
 - Flujo compra: click → verificar ficha médica → si no tiene: abrir `FichaMedicaModal` → al completar: crear membresía → redirect a /dashboard
 
 ### FichaMedicaModal (`checkout/FichaMedicaModal.tsx`)
-- 2 pasos: PERSONAL (RUT, teléfono, edad, peso, estatura, grupo sanguíneo) → MÉDICA (enfermedades, alergias, medicamentos, observaciones)
+- 2 pasos: PERSONAL (RUT, teléfono, edad, peso, estatura) → MÉDICA (enfermedades, alergias, medicamentos, observaciones)
 - Calcula IMC en vivo
 - Guarda en `usuario` (rut, telefono) + `ficha_medica` en Supabase
 

@@ -362,7 +362,6 @@ export type Database = {
           enfermedades: string | null
           estatura_cm: number | null
           fecha_nacimiento: string | null
-          grupo_sanguineo: string | null
           imc: number | null
           medicamentos: string | null
           observaciones: string | null
@@ -375,7 +374,6 @@ export type Database = {
           enfermedades?: string | null
           estatura_cm?: number | null
           fecha_nacimiento?: string | null
-          grupo_sanguineo?: string | null
           imc?: number | null
           medicamentos?: string | null
           observaciones?: string | null
@@ -388,7 +386,6 @@ export type Database = {
           enfermedades?: string | null
           estatura_cm?: number | null
           fecha_nacimiento?: string | null
-          grupo_sanguineo?: string | null
           imc?: number | null
           medicamentos?: string | null
           observaciones?: string | null

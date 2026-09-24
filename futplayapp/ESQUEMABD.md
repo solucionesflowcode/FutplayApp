@@ -152,7 +152,6 @@ Boletas de compra (Flow.cl).
 | `usuario_id` | uuid | NOT NULL (PK) |
 | `fecha_nacimiento` | date | NULL |
 | `perfil` | USER-ENUM | NULL |
-| `grupo_sanguineo` | text | NULL |
 | `estatura_cm` | integer | NULL |
 | `peso_kg` | numeric | NULL |
 | `imc` | real | NULL |
