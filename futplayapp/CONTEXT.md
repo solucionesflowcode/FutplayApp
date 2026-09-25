@@ -213,6 +213,8 @@ futplayapp/
 | `estado` | BOOLEAN? | `true`=pagado, `null`=pendiente (según triggers) |
 | `fecha_inicio` | TIMESTAMPTZ | Inicio de vigencia (compra/cobro) |
 | `fecha_vencimiento` | TIMESTAMPTZ | Vigencia hasta `fecha_inicio` + `plan.dias` (30/90) |
+| `congelada` | BOOLEAN | DEFAULT false; congelada por admin: no corre el tiempo y no puede usarse |
+| `fecha_congelamiento` | TIMESTAMPTZ | Momento del congelamiento; al reactivar se suma a `fecha_vencimiento` |
 
 #### `clase`
 | Columna | Tipo |
@@ -307,7 +309,7 @@ futplayapp/
 | `limitar_15_alumnos()` | TRIGGER | Controla cupo máximo |
 | `manejar_inscripcion_clase()` | TRIGGER | Valida membresía + consume token al inscribir |
 | `procesar_boleta_pagada()` | TRIGGER | Crea membresía y asigna tokens al pagar boleta |
-| `sincronizar_estado_membresia()` | TRIGGER | Normaliza al escribir: membresía vencida => `estado=false` + `tokens_usados = tokens_totales` (migración `fix_membresia_vencida.sql`) |
+| `sincronizar_estado_membresia()` | TRIGGER | Normaliza al escribir: membresía vencida y NO congelada => `estado=false` + `tokens_usados = tokens_totales` (migración `congelar_membresias.sql`) |
 
 ### 3.5 Triggers
 
@@ -318,7 +320,7 @@ futplayapp/
 | `clase_usuario` | `trigger_inscripcion` | BEFORE INSERT | `manejar_inscripcion_clase()` |
 | `clase_usuario` | `trigger_limitar_15_alumnos` | BEFORE INSERT | `limitar_15_alumnos()` |
 | `membresia` | `trigger_prevenir_doble_plan` | BEFORE INSERT | `check_membresia_activa()` |
-| `membresia` | `trg_membresia_sincronizar_estado` | BEFORE INSERT OR UPDATE OF fecha_vencimiento, estado | `sincronizar_estado_membresia()` |
+| `membresia` | `trg_membresia_sincronizar_estado` | BEFORE INSERT OR UPDATE OF fecha_vencimiento, estado, congelada | `sincronizar_estado_membresia()` |
 
 ### 3.6 Políticas RLS
 

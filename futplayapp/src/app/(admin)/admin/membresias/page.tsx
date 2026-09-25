@@ -8,12 +8,16 @@ import {
   Loader2,
   X,
   Search,
+  Snowflake,
+  Play,
 } from "lucide-react";
 import {
   getMembresiasGestion,
   createMembresiaGestion,
   updateMembresiaGestion,
   deleteMembresiaGestion,
+  congelarMembresia,
+  reactivarMembresia,
   type MembresiaGestion,
 } from "@/data/membresia";
 import { getUsers, getPlanesAdmin, type Plan } from "@/data/plans";
@@ -59,6 +63,21 @@ function formatFecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function EstadoBadge({ m }: { m: MembresiaGestion }) {
+  if (m.congelada) {
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+        Congelada
+      </span>
+    );
+  }
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.estado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+      {m.estado ? "Activa" : "Inactiva"}
+    </span>
+  );
+}
+
 export default function MembresiasPage() {
   const [membresias, setMembresias] = useState<MembresiaGestion[]>([]);
   const [usuarios, setUsuarios] = useState<Student[]>([]);
@@ -69,7 +88,9 @@ export default function MembresiasPage() {
   const [form, setForm] = useState<MembresiaForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exito, setExito] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [freezeAction, setFreezeAction] = useState<{ id: string; action: "congelar" | "reactivar" } | null>(null);
 
   const fetchData = useCallback(async () => {
     const [m, u, planesResult] = await Promise.all([
@@ -181,6 +202,29 @@ export default function MembresiasPage() {
     }
   };
 
+  const handleFreezeAction = async () => {
+    if (!freezeAction) return;
+    setSaving(true);
+    setError(null);
+    setExito(null);
+    const result = freezeAction.action === "congelar"
+      ? await congelarMembresia(freezeAction.id)
+      : await reactivarMembresia(freezeAction.id);
+    const action = freezeAction.action;
+    const id = freezeAction.id;
+    setFreezeAction(null);
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error || "Error al ejecutar la acción");
+      return;
+    }
+    const nombre = membresias.find((m) => m.id === id)?.usuario_nombre ?? "";
+    setExito(action === "congelar"
+      ? `Membresía de ${nombre} congelada correctamente. Los días quedan pausados.`
+      : `Membresía de ${nombre} reactivada correctamente. Nuevo vencimiento: ${formatFecha(result.fecha_vencimiento ?? "")}`);
+    fetchData();
+  };
+
   if (loading && membresias.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -213,6 +257,9 @@ export default function MembresiasPage() {
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+          )}
+          {exito && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">{exito}</div>
           )}
 
           {/* LISTA */}
@@ -264,10 +311,14 @@ export default function MembresiasPage() {
                               <div><span className="text-gray-400">Vence: </span><span className="font-semibold text-gray-700">{formatFecha(m.fecha_vencimiento)}</span></div>
                             </div>
                             <div className="flex items-center justify-between pt-1 border-t border-gray-50">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.estado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                                {m.estado ? "Activa" : "Inactiva"}
-                              </span>
+                              <EstadoBadge m={m} />
                               <div className="flex gap-2">
+                                {(!m.congelada && m.estado) && (
+                                  <button onClick={() => setFreezeAction({ id: m.id, action: "congelar" })} className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg" title="Congelar"><Snowflake size={14} /></button>
+                                )}
+                                {m.congelada && (
+                                  <button onClick={() => setFreezeAction({ id: m.id, action: "reactivar" })} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Reactivar"><Play size={14} /></button>
+                                )}
                                 <button onClick={() => openEdit(m)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
                                 <button onClick={() => setDeleteId(m.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
                               </div>
@@ -288,12 +339,28 @@ export default function MembresiasPage() {
                         <td className="p-3 text-gray-600 whitespace-nowrap">{formatFecha(m.fecha_inicio)}</td>
                         <td className="p-3 text-gray-600 whitespace-nowrap">{formatFecha(m.fecha_vencimiento)}</td>
                         <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.estado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                            {m.estado ? "Activa" : "Inactiva"}
-                          </span>
+                          <EstadoBadge m={m} />
                         </td>
                         <td className="p-3">
                           <div className="flex gap-2">
+                            {(!m.congelada && m.estado) && (
+                              <button
+                                onClick={() => setFreezeAction({ id: m.id, action: "congelar" })}
+                                className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg"
+                                title="Congelar"
+                              >
+                                <Snowflake size={16} />
+                              </button>
+                            )}
+                            {m.congelada && (
+                              <button
+                                onClick={() => setFreezeAction({ id: m.id, action: "reactivar" })}
+                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                                title="Reactivar"
+                              >
+                                <Play size={16} />
+                              </button>
+                            )}
                             <button
                               onClick={() => openEdit(m)}
                               className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
@@ -473,6 +540,16 @@ export default function MembresiasPage() {
         message="¿Eliminar esta membresía? Esta acción no se puede deshacer."
         onConfirm={() => deleteId && handleDelete(deleteId)}
         onCancel={() => setDeleteId(null)}
+      />
+
+      <ConfirmDialog
+        open={freezeAction !== null}
+        title={freezeAction?.action === "congelar" ? "Congelar membresía" : "Reactivar membresía"}
+        message={freezeAction?.action === "congelar"
+          ? "¿Congelar esta membresía? El tiempo dejará de correr y el jugador no podrá reservar clases hasta reactivar."
+          : "¿Reactivar esta membresía? El vencimiento se correrá por la cantidad de días que estuvo congelada."}
+        onConfirm={handleFreezeAction}
+        onCancel={() => setFreezeAction(null)}
       />
     </>
   );

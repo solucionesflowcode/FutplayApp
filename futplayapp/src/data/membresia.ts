@@ -20,6 +20,8 @@ type MembresiaRow = {
     fecha_inicio: string;
     fecha_vencimiento: string;
     estado: boolean;
+    congelada: boolean;
+    fecha_congelamiento?: string | null;
 };
 
 export type MembresiaConPlan = {
@@ -36,6 +38,8 @@ export type MembresiaConPlan = {
     tokens_restantes: number;
     fecha_inicio: string;
     fecha_vencimiento: string;
+    congelada: boolean;
+    fecha_congelamiento?: string | null;
 };
 
 export async function userHasMembresia(userId: string): Promise<boolean> {
@@ -48,6 +52,7 @@ export async function userHasMembresia(userId: string): Promise<boolean> {
         .select("id")
         .eq("usuario_id", userId)
         .eq("estado", true)
+        .eq("congelada", false)
         .lte("fecha_inicio", ahoraIso)
         .gte("fecha_vencimiento", ahoraIso)
         .order("fecha_vencimiento", { ascending: false })
@@ -80,7 +85,7 @@ async function getPlanById(planId: string): Promise<PlanRow | null> {
 }
 
 function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): MembresiaConPlan {
-    const activa = m.estado === true && membresiaActiva(m.fecha_vencimiento);
+    const activa = m.estado === true && !m.congelada && membresiaActiva(m.fecha_vencimiento);
     const tokensUsados = activa ? m.tokens_usados : m.tokens_totales;
     const restantes = activa ? m.tokens_totales - m.tokens_usados : 0;
     return {
@@ -97,6 +102,8 @@ function buildMembresiaConPlan(m: MembresiaRow, plan: PlanRow | null): Membresia
         tokens_restantes: restantes,
         fecha_inicio: m.fecha_inicio,
         fecha_vencimiento: m.fecha_vencimiento,
+        congelada: m.congelada === true,
+        fecha_congelamiento: m.fecha_congelamiento ?? null,
     };
 }
 
@@ -251,7 +258,49 @@ export type MembresiaGestion = {
   fecha_inicio: string;
   fecha_vencimiento: string;
   estado: boolean;
+  congelada: boolean;
+  fecha_congelamiento?: string | null;
 };
+
+type AccionCongelar = {
+  ok: boolean;
+  error?: string;
+  fecha_vencimiento?: string;
+};
+
+export async function congelarMembresia(id: string): Promise<AccionCongelar> {
+  try {
+    const res = await fetch("/api/admin/membresias/freeze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ membreciaId: id, accion: "congelar" }),
+    });
+
+    const body = await res.json();
+    if (!res.ok) return { ok: false, error: body?.error || "Error al congelar la membresía" };
+    return { ok: true };
+  } catch (err) {
+    console.error("Error calling congelar membresia API:", err);
+    return { ok: false, error: "Error de red al congelar la membresía" };
+  }
+}
+
+export async function reactivarMembresia(id: string): Promise<AccionCongelar> {
+  try {
+    const res = await fetch("/api/admin/membresias/freeze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ membreciaId: id, accion: "reactivar" }),
+    });
+
+    const body = await res.json();
+    if (!res.ok) return { ok: false, error: body?.error || "Error al reactivar la membresía" };
+    return { ok: true, fecha_vencimiento: body?.fecha_vencimiento };
+  } catch (err) {
+    console.error("Error calling reactivar membresia API:", err);
+    return { ok: false, error: "Error de red al reactivar la membresía" };
+  }
+}
 
 export async function getMembresiasGestion(): Promise<MembresiaGestion[]> {
   try {

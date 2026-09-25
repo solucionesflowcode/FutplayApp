@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, X, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, X, Loader2, Snowflake } from "lucide-react";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import ProximoEntrenamiento from "../../../components/userDashboard/ProximoEntrenamiento";
 import AvisoReagendar from "../../../components/userDashboard/AvisoReagendar";
@@ -20,6 +20,7 @@ export default function DashboardClient() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [tienePlan, setTienePlan] = useState(true);
+    const [tienePlanCongelado, setTienePlanCongelado] = useState(false);
     const [tieneFicha, setTieneFicha] = useState(false);
     const [planChecked, setPlanChecked] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -105,21 +106,23 @@ export default function DashboardClient() {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-            const [tieneFichaData, membresiaResponse] = await Promise.all([
+            const [tieneFichaData, membreciaResponse] = await Promise.all([
                 userHasFichaMedica(user.id),
                 supabase
                     .from("membresia")
-                    .select("id")
+                    .select("congelada")
                     .eq("usuario_id", user.id)
                     .eq("estado", true)
                     .lte("fecha_inicio", new Date().toISOString())
                     .gte("fecha_vencimiento", new Date().toISOString())
+                    .order("fecha_vencimiento", { ascending: false })
                     .limit(1)
                     .maybeSingle()
             ]);
 
             setTieneFicha(tieneFichaData);
-            setTienePlan(!!membresiaResponse.data);
+            setTienePlanCongelado(membreciaResponse.data?.congelada === true);
+            setTienePlan(!!membreciaResponse.data && membreciaResponse.data.congelada !== true);
             setPlanChecked(true);
         };
         check();
@@ -161,7 +164,26 @@ export default function DashboardClient() {
                         <Recordatorio />
                     </div>
                     <div className="w-full">
-                        <PlanesRender />
+                        {tienePlanCongelado ? (
+                            <div className="w-full bg-gradient-to-br from-[#001c37] to-[#00305B] px-8 py-8 shadow-xl mt-6 text-white relative overflow-hidden border-t-2 border-t-[#F39200] flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-amber-400/20 p-3 rounded-full border border-amber-400/30">
+                                        <Snowflake className="text-amber-400" size={28} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h2 className="text-2xl font-bold leading-tight">
+                                            Tu plan está congelado
+                                        </h2>
+                                        <p className="text-white/70 text-sm max-w-lg">
+                                            El administrador pausó tu membresía. No puedes reservar clases mientras está congelada y tus días restantes se conservan.
+                                        </p>
+                                    </div>
+                                </div>
+                                <Snowflake className="text-amber-400/30 absolute -right-4 -bottom-4 w-40 h-40" />
+                            </div>
+                        ) : (
+                            <PlanesRender />
+                        )}
                     </div>
                     {planChecked && (
                         tieneFicha ? (

@@ -66,6 +66,8 @@ Membresías activas de los usuarios.
 | `fecha_inicio` | timestamptz | NOT NULL | now() | Inicio de vigencia |
 | `fecha_vencimiento` | timestamptz | NOT NULL | - | Fin de vigencia |
 | `estado` | boolean | NOT NULL | true | Activa/inactiva |
+| `congelada` | boolean | NOT NULL | false | Congelada por admin (no corre el tiempo, no se puede usar) |
+| `fecha_congelamiento` | timestamptz | NULL | - | Momento del congelamiento (para correr el vencimiento al reactivar) |
 | `created_at` | timestamp | NOT NULL | now() | Fecha de creación |
 
 **Índices:**
@@ -256,7 +258,7 @@ Cada 15 minutos:
    - < 3h: `cancelado_sin_reembolso`
    - < 1h: No permitida
 4. **Cupo:** Default 15, cancelaciones NO ocupan cupo
-5. **Membresía activa:** `estado=true` AND `fecha_inicio <= now() <= fecha_vencimiento`
+5. **Membresía activa:** `estado=true` AND `congelada=false` AND `fecha_inicio <= now() <= fecha_vencimiento`
 
 | `id` | uuid | NOT NULL | gen_random_uuid() |
 | `nombre` | text | NOT NULL | - |

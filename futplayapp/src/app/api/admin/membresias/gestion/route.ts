@@ -16,6 +16,8 @@ type MembresiaGestionRow = {
   fecha_inicio: string;
   fecha_vencimiento: string;
   estado: boolean;
+  congelada: boolean;
+  fecha_congelamiento: string | null;
   created_at: string | null;
 };
 
@@ -62,6 +64,8 @@ export async function GET() {
       fecha_inicio: m.fecha_inicio,
       fecha_vencimiento: m.fecha_vencimiento,
       estado: m.estado,
+      congelada: m.congelada === true,
+      fecha_congelamiento: m.fecha_congelamiento ?? null,
       created_at: m.created_at,
     }));
 

@@ -269,7 +269,7 @@ futplayapp/
 |---|---|
 | `usuario` | `id` (UUID PK, FK auth.users), `nombre`, `email`, `telefono`, `rol` (rol_usuario), `rut` |
 | `plan` | `id`, `nombre`, `tokens_mensuales`, `precio`, `descripcion`, `tipo`, `tokens`, `dias_semana`, `duracion_semanas`, `dias` (30/90), `activo` |
-| `membresia` | `id`, `usuario_id` (FK), `plan_id` (FK), `tokens_totales`, `tokens_usados`, `estado` (bool?), `fecha_inicio` (timestamptz), `fecha_vencimiento` (timestamptz) |
+| `membresia` | `id`, `usuario_id` (FK), `plan_id` (FK), `tokens_totales`, `tokens_usados`, `estado` (bool?), `fecha_inicio` (timestamptz), `fecha_vencimiento` (timestamptz), `congelada` (bool), `fecha_congelamiento` (timestamptz) |
 | `clase` | `id`, `titulo`, `descripcion`, `sede_id` (FK), `cupo_maximo`, `profesor_id` (FK), `fecha_hora` |
 | `clase_usuario` | `id`, `usuario_id` (FK), `clase_id` (FK), `asistencia` (string: sin_confirmar, pendiente, confirmado_whatsapp, asistio, no_asistio, cancelado, cancelado_sin_reembolso) |
 | `ficha_medica` | `id`, `usuario_id` (FK), `fecha_nacimiento`, `peso_kg`, `estatura_cm`, `imc`, `enfermedades`, `alergias`, `medicamentos`, `observaciones` |

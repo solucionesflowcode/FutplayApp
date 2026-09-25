@@ -6,7 +6,7 @@ import { useAuthUser } from "@/context";
 import Link from "next/link";
 import { Crown, CheckCircle2 } from "lucide-react";
 import { getPlanes, type Plan } from "@/data/plans";
-import { userHasMembresia } from "@/data/membresia";
+import { userHasMembresia, getMembresiaByUser } from "@/data/membresia";
 import { userHasFichaMedica } from "@/data/fichaMedica";
 import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 
@@ -26,6 +26,12 @@ export default function PlanesRender() {
             setLoading(true);
 
             try {
+                const membresia = await getMembresiaByUser(usuario.id);
+                if (membresia?.congelada) {
+                    setHasPlan(true);
+                    setLoading(false);
+                    return;
+                }
                 const hasMembership = await userHasMembresia(usuario.id);
                 setHasPlan(hasMembership);
 

@@ -22,6 +22,7 @@ async function getMembresiaByUser(userId: string): Promise<Membresia | null> {
         .from("membresia")
         .select("*")
         .eq("usuario_id", userId)
+        .eq("congelada", false)
         .gte("fecha_vencimiento", ahora)
         .order("fecha_vencimiento", { ascending: false })
         .limit(1)

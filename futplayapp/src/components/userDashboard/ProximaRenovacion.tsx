@@ -12,6 +12,8 @@ type MembresiaRow = {
     fecha_vencimiento: string;
     tokens_totales: number;
     tokens_usados: number;
+    congelada?: boolean;
+    fecha_congelamiento?: string | null;
     plan?: { nombre: string; precio: number } | null;
 };
 
@@ -23,6 +25,8 @@ type MembresiaData = {
     fecha_vencimiento: string;
     tokens_totales: number;
     tokens_usados: number;
+    congelada: boolean;
+    fecha_congelamiento?: string | null;
 };
 
 export default function ProximaRenovacion() {
@@ -64,6 +68,8 @@ export default function ProximaRenovacion() {
                 fecha_vencimiento: membresiaRes.fecha_vencimiento,
                 tokens_totales: membresiaRes.tokens_totales,
                 tokens_usados: membresiaRes.tokens_usados,
+                congelada: membresiaRes.congelada === true,
+                fecha_congelamiento: membresiaRes.fecha_congelamiento ?? null,
             });
             setLoading(false);
         };
@@ -120,14 +126,18 @@ export default function ProximaRenovacion() {
     }
 
     const now = ahoraChile();
+    const congelada = membresia.congelada === true;
     const vencimiento = new Date(membresia.fecha_vencimiento);
     const inicio = new Date(membresia.fecha_inicio);
+    const tiempoReferencia = congelada && membresia.fecha_congelamiento
+        ? new Date(membresia.fecha_congelamiento)
+        : now;
     const duracionMs = vencimiento.getTime() - inicio.getTime();
     const diasDuracion = Math.max(duracionMs / 86400000, 1);
-    const elapsedMs = now.getTime() - inicio.getTime();
+    const elapsedMs = tiempoReferencia.getTime() - inicio.getTime();
     const diasTranscurridos = Math.max(0, Math.floor(elapsedMs / 86400000));
     const porcentajeMes = Math.round(Math.min((diasTranscurridos / diasDuracion) * 100, 100));
-    const diasRestantes = Math.max(0, Math.ceil((vencimiento.getTime() - now.getTime()) / 86400000));
+    const diasRestantes = Math.max(0, Math.ceil((vencimiento.getTime() - tiempoReferencia.getTime()) / 86400000));
     const proximaRenovacion = vencimiento;
 
     const formatoPeso = (n: number) =>
@@ -163,7 +173,16 @@ export default function ProximaRenovacion() {
                         <h2 className="text-white text-sm font-extrabold tracking-wide uppercase">
                             Fecha de Vencimiento
                         </h2>
-                        {diasRestantes === 0 ? (
+                        {congelada ? (
+                            <>
+                                <span className="bg-amber-400/20 text-amber-400 border border-amber-400/30 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mt-1 inline-block">
+                                    Plan Congelado
+                                </span>
+                                <p className="text-white/40 text-[10px] font-semibold mt-1">
+                                    {membresia.plan_nombre}
+                                </p>
+                            </>
+                        ) : diasRestantes === 0 ? (
                             <span className="bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mt-1 inline-block">
                                 Plan Vencido
                             </span>
@@ -285,6 +304,12 @@ export default function ProximaRenovacion() {
                     </div>
                 </div>
             </div>
+
+            {congelada && (
+                <p className="text-amber-400/80 text-[10px] font-semibold text-center mt-3 relative z-10">
+                    Tu plan está pausado por el administrador. Los días se conservan.
+                </p>
+            )}
         </div>
     );
 }

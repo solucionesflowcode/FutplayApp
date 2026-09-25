@@ -27,6 +27,7 @@ describe("userHasMembresia", () => {
             id: "m1",
             usuario_id: USER_ID,
             estado: true,
+            congelada: false,
             fecha_inicio: "2026-06-01T00:00:00.000Z",
             fecha_vencimiento: "2026-07-01T00:00:00.000Z",
         }]);
@@ -41,6 +42,7 @@ describe("userHasMembresia", () => {
             id: "m1",
             usuario_id: USER_ID,
             estado: true,
+            congelada: false,
             fecha_inicio: "2026-05-01T00:00:00.000Z",
             fecha_vencimiento: "2026-05-31T00:00:00.000Z",
         }]);
@@ -55,6 +57,7 @@ describe("userHasMembresia", () => {
             id: "m1",
             usuario_id: USER_ID,
             estado: true,
+            congelada: false,
             fecha_inicio: "2026-07-01T00:00:00.000Z",
             fecha_vencimiento: "2026-08-01T00:00:00.000Z",
         }]);
@@ -69,6 +72,23 @@ describe("userHasMembresia", () => {
             id: "m1",
             usuario_id: USER_ID,
             estado: false,
+            congelada: false,
+            fecha_inicio: "2026-06-01T00:00:00.000Z",
+            fecha_vencimiento: "2026-07-01T00:00:00.000Z",
+        }]);
+
+        const result = await userHasMembresia(USER_ID);
+
+        expect(result).toBe(false);
+    });
+
+    it("retorna false si la membresía está CONGELADA aunque estado=true y esté vigente", async () => {
+        __setTableData("membresia", [{
+            id: "m1",
+            usuario_id: USER_ID,
+            estado: true,
+            congelada: true,
+            fecha_congelamiento: "2026-06-10T12:00:00.000Z",
             fecha_inicio: "2026-06-01T00:00:00.000Z",
             fecha_vencimiento: "2026-07-01T00:00:00.000Z",
         }]);
@@ -160,6 +180,30 @@ it("MB-012: membresía vencida => tokens_restantes 0 y NO intenta actualizar est
         const fromSpy = createClient().from as ReturnType<typeof vi.fn>;
         const membresiaCalls = fromSpy.mock.calls.filter(([t]) => t === "membresia").length;
         expect(membresiaCalls).toBe(1);
+    });
+
+    it("MB-014: membresía CONGELADA vigente => tokens_restantes 0 y congelada=true", async () => {
+        __setTableData("membresia", {
+            id: "m-congelada",
+            usuario_id: USER_ID,
+            plan_id: "p1",
+            tokens_totales: 30,
+            tokens_usados: 4,
+            fecha_inicio: "2026-06-01T00:00:00.000Z",
+            fecha_vencimiento: "2026-07-01T00:00:00.000Z",
+            estado: true,
+            congelada: true,
+            fecha_congelamiento: "2026-06-10T12:00:00.000Z",
+        });
+        __setTableData("plan", { id: "p1", nombre: "Premium", tokens_mensuales: 30, precio: 40000 });
+
+        const result = await getMembresiaByUser(USER_ID);
+
+        expect(result).not.toBeNull();
+        expect(result!.congelada).toBe(true);
+        expect(result!.fecha_congelamiento).toBe("2026-06-10T12:00:00.000Z");
+        expect(result!.tokens_restantes).toBe(0);
+        expect(result!.tokens_usados).toBe(result!.tokens_totales);
     });
 
 });
