@@ -216,32 +216,30 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
     // Los partidos no descuentan tokens: no debe devolverse nada.
-    const { data: clase } = await admin.from("clase").select("tipo_evento").eq("id", id).maybeSingle();
-    const esPartido = clase?.tipo_evento === "partido";
+    const { data: claseInfo } = await admin.from("clase").select("tipo_evento").eq("id", id).maybeSingle();
+    const esPartido = claseInfo?.tipo_evento === "partido";
 
-    // Only return tokens to active enrollments (not cancelled)
-    const { data: inscripciones } = await admin
-      .from("clase_usuario")
-      .select("usuario_id")
+    // Cuántos tokens corresponde devolver (antes de borrar)
+    const { count: conToken } = await admin.from("clase_usuario")
+      .select("id", { count: "exact", head: true })
       .eq("clase_id", id)
-      .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
+      .or("asistencia.is.null,asistencia.neq.cancelado");
 
-    // Return 1 token to each registered student via devolver_token() RPC,
-    // contando SOLO los reembolsos que el RPC confirmó (data === true).
-    let tokensDevueltos = 0;
-    if (!esPartido && inscripciones && inscripciones.length > 0) {
-      const userIds = [...new Set(inscripciones.map((i) => i.usuario_id))];
-      for (const uid of userIds) {
-        const { data: ok, error } = await admin.rpc("devolver_token", { p_usuario_id: uid });
-        if (!error && ok === true) tokensDevueltos++;
-      }
+    // CASCADE DELETE removes clase_usuario records; the DB trigger
+    // handles returning tokens automatically — no RPC call needed.
+    const { error: delError } = await admin.from("clase").delete().eq("id", id);
+    if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
+
+    // Calcular cuántos tokens se devolvieron vs. no se pudieron devolver
+    let devueltos = 0, noDevueltos = 0;
+    if (!esPartido) {
+      const { count: fallidos } = await admin.from("tokens_no_devueltos")
+        .select("id", { count: "exact", head: true }).eq("clase_id", id);
+      noDevueltos = fallidos ?? 0;
+      devueltos = Math.max((conToken ?? 0) - noDevueltos, 0);
     }
 
-    // CASCADE DELETE removes clase_usuario records automatically
-    const { error } = await admin.from("clase").delete().eq("id", id);
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true, tokens_devueltos: tokensDevueltos });
+    return NextResponse.json({ success: true, tokens_devueltos: devueltos, tokens_no_devueltos: noDevueltos });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -260,9 +260,15 @@ describe("DELETE /api/admin/clases", () => {
         __resetMocks();
     });
 
-    it("API-ADM-CLASES-DEL-001: elimina clase y retorna tokens devueltos", async () => {
+    it("API-ADM-CLASES-DEL-001: elimina clase y reporta tokens devueltos por el trigger", async () => {
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
-        __setTableData("clase_usuario", [{ usuario_id: "u1", clase_id: "c1" }, { usuario_id: "u2", clase_id: "c1" }]);
+        // 2 inscripciones activas → el trigger devuelve 2 tokens
+        __setTableData("clase_usuario", [
+            { id: "cu1", usuario_id: "u1", clase_id: "c1", asistencia: null },
+            { id: "cu2", usuario_id: "u2", clase_id: "c1", asistencia: null },
+        ]);
+        // Ningún fallo registrado en la vista
+        __setTableData("tokens_no_devueltos", []);
 
         const res = await DELETE(makeRequest("http://localhost:3000/api/admin/clases?id=c1"));
 
@@ -270,11 +276,15 @@ describe("DELETE /api/admin/clases", () => {
         const json = await res.json();
         expect(json.success).toBe(true);
         expect(json.tokens_devueltos).toBe(2);
+        expect(json.tokens_no_devueltos).toBe(0);
     });
 
     it("API-ADM-CLASES-DEL-002: no devuelve tokens al eliminar un partido", async () => {
         __setTableData("clase", { id: "c1", tipo_evento: "partido" });
-        __setTableData("clase_usuario", [{ usuario_id: "u1", clase_id: "c1" }, { usuario_id: "u2", clase_id: "c1" }]);
+        __setTableData("clase_usuario", [
+            { id: "cu1", usuario_id: "u1", clase_id: "c1" },
+            { id: "cu2", usuario_id: "u2", clase_id: "c1" },
+        ]);
 
         const res = await DELETE(makeRequest("http://localhost:3000/api/admin/clases?id=c1"));
 
@@ -282,22 +292,29 @@ describe("DELETE /api/admin/clases", () => {
         const json = await res.json();
         expect(json.success).toBe(true);
         expect(json.tokens_devueltos).toBe(0);
+        expect(json.tokens_no_devueltos).toBe(0);
     });
 
-    it("API-ADM-CLASES-DEL-003: cuenta solo los reembolsos confirmados por el RPC", async () => {
-        const client = createMockServerClient();
-        (client.rpc as any).mockImplementation(async () => ({ data: false, error: null }));
-        vi.mocked(getAdminClient).mockResolvedValueOnce(client);
-
+    it("API-ADM-CLASES-DEL-003: reporta tokens_no_devueltos cuando el trigger no pudo devolver algunos", async () => {
         __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
-        __setTableData("clase_usuario", [{ usuario_id: "u1", clase_id: "c1" }, { usuario_id: "u2", clase_id: "c1" }]);
+        // 3 inscripciones activas
+        __setTableData("clase_usuario", [
+            { id: "cu1", usuario_id: "u1", clase_id: "c1", asistencia: null },
+            { id: "cu2", usuario_id: "u2", clase_id: "c1", asistencia: null },
+            { id: "cu3", usuario_id: "u3", clase_id: "c1", asistencia: null },
+        ]);
+        // 1 fallo registrado en la vista (membresía inactiva, etc.)
+        __setTableData("tokens_no_devueltos", [
+            { id: "tnd1", clase_id: "c1", usuario_id: "u3" },
+        ]);
 
         const res = await DELETE(makeRequest("http://localhost:3000/api/admin/clases?id=c1"));
 
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json.success).toBe(true);
-        expect(json.tokens_devueltos).toBe(0);
+        expect(json.tokens_devueltos).toBe(2);
+        expect(json.tokens_no_devueltos).toBe(1);
     });
 });
 
