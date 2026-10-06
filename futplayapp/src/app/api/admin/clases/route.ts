@@ -49,11 +49,12 @@ export async function GET(request: Request) {
       const { data: clase } = await admin.from("clase").select("*").eq("id", claseId).single();
       if (!clase) return NextResponse.json({ error: "Clase no encontrada" }, { status: 404 });
 
+      // Se listan TODAS las inscripciones, sin filtrar por estado: el detalle
+      // de una clase debe mostrar también a los alumnos cancelados.
       const { data: inscripciones } = await admin
         .from("clase_usuario")
         .select("id, usuario_id, asistencia")
-        .eq("clase_id", claseId)
-        .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
+        .eq("clase_id", claseId);
 
       const userIds = [...new Set((inscripciones || []).map((i) => i.usuario_id))];
       const { data: usuarios } = await admin.from("usuario").select("id, nombre").in("id", userIds);

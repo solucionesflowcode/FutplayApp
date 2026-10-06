@@ -116,7 +116,7 @@ describe("GET /api/admin/clases", () => {
         expect(json).toHaveProperty("inscripciones");
     });
 
-    it("API-ADM-CLASES-GET-006: ?tipo=asistencia excluye inscripciones canceladas", async () => {
+    it("API-ADM-CLASES-GET-006: ?tipo=asistencia incluye también las canceladas", async () => {
         __setTableData("clase", { id: "c1", titulo: "Clase A", fecha_hora: "2026-06-15T10:00:00Z" });
         __setTableData("clase_usuario", [
             { id: "cu1", clase_id: "c1", usuario_id: "u1", asistencia: "asistio" },
@@ -129,8 +129,13 @@ describe("GET /api/admin/clases", () => {
 
         expect(res.status).toBe(200);
         const json = await res.json();
-        expect(json.inscripciones).toHaveLength(1);
-        expect(json.inscripciones[0].id).toBe("cu1");
+        expect(json.inscripciones).toHaveLength(3);
+        expect(json.inscripciones.map((i: any) => i.id)).toEqual(["cu1", "cu2", "cu3"]);
+        expect(json.inscripciones.map((i: any) => i.asistencia)).toEqual([
+            "asistio",
+            "cancelado",
+            "cancelado_sin_reembolso",
+        ]);
     });
 
     it("API-ADM-CLASES-GET-007: el conteo inscritos excluye inscripciones canceladas", async () => {

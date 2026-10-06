@@ -697,6 +697,51 @@ export default function ClasesPage() {
 }
 
 /* ─── ASISTENCIA DETALLE ─── */
+const ESTADOS_CANCELADOS = new Set(["cancelado", "cancelado_sin_reembolso"]);
+
+function esCancelada(asistencia: string | null | undefined): boolean {
+  return ESTADOS_CANCELADOS.has(asistencia ?? "");
+}
+
+function BadgeAsistencia({ asistencia }: { asistencia: string | null | undefined }) {
+  const a = asistencia ?? "";
+
+  if (a === "asistio") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+        <Check size={12} /> Presente
+      </span>
+    );
+  }
+  if (a === "confirmado_whatsapp") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
+        <Check size={12} /> Confirmado
+      </span>
+    );
+  }
+  if (a === "no_asistio") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
+        <X size={12} /> Ausente
+      </span>
+    );
+  }
+  if (a === "cancelado" || a === "cancelado_sin_reembolso") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full text-xs font-semibold">
+        <X size={12} />
+        {a === "cancelado_sin_reembolso" ? "Cancelada sin reembolso" : "Cancelada"}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">
+      Pendiente
+    </span>
+  );
+}
+
 function AsistenciaDetalle({
   data,
   onToggle,
@@ -706,13 +751,20 @@ function AsistenciaDetalle({
 }) {
   const { clase, inscripciones } = data;
 
+  const canceladas = inscripciones.filter((i: InscripcionRow) => esCancelada(i.asistencia)).length;
+  const activas = inscripciones.length - canceladas;
+  const presentes = inscripciones.filter((i: InscripcionRow) => i.asistencia === "asistio").length;
+  const ausentes = inscripciones.filter((i: InscripcionRow) => i.asistencia === "no_asistio").length;
+  const confirmados = inscripciones.filter((i: InscripcionRow) => i.asistencia === "confirmado_whatsapp").length;
+  const pendientes = inscripciones.length - presentes - ausentes - confirmados - canceladas;
+
   return (
     <div className="bg-white border border-gray-200">
       <div className="p-4 border-b border-gray-100">
         <h2 className="text-lg font-bold text-gray-900">{clase.titulo || "Partido"}</h2>
         <p className="text-sm text-gray-500 mt-1">
           {clase.cupo_maximo != null ? (
-            <>Cupo: {inscripciones.length}/{clase.cupo_maximo}</>
+            <>Cupo: {activas}/{clase.cupo_maximo} · {inscripciones.length} inscritos en total</>
           ) : (
             <>{inscripciones.length} inscritos</>
           )}
@@ -748,18 +800,16 @@ function AsistenciaDetalle({
                     <div className="p-3 space-y-2">
                       <p className="font-medium text-gray-900 text-sm">{ins.usuario_nombre}</p>
                       <div className="flex items-center justify-between">
-                        {ins.asistencia === "asistio" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold"><Check size={12} /> Presente</span>
-                        ) : ins.asistencia === "no_asistio" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold"><X size={12} /> Ausente</span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">Pendiente</span>
-                        )}
+                        <BadgeAsistencia asistencia={ins.asistencia} />
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => onToggle(ins.usuario_id, true)} className="flex-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"><Check size={14} className="inline" /> Presente</button>
-                        <button onClick={() => onToggle(ins.usuario_id, false)} className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"><X size={14} className="inline" /> Ausente</button>
-                      </div>
+                      {esCancelada(ins.asistencia) ? (
+                        <p className="text-xs text-gray-400">Alumno cancelado: no se registra asistencia.</p>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button onClick={() => onToggle(ins.usuario_id, true)} className="flex-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"><Check size={14} className="inline" /> Presente</button>
+                          <button onClick={() => onToggle(ins.usuario_id, false)} className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"><X size={14} className="inline" /> Ausente</button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -767,35 +817,27 @@ function AsistenciaDetalle({
                 <tr key={ins.id} className="hidden md:table-row border-b hover:bg-gray-50/50">
                   <td className="p-3 font-medium text-gray-900">{ins.usuario_nombre}</td>
                   <td className="p-3">
-                    {ins.asistencia === "asistio" ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                        <Check size={12} /> Presente
-                      </span>
-                    ) : ins.asistencia === "no_asistio" ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
-                        <X size={12} /> Ausente
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">
-                        Pendiente
-                      </span>
-                    )}
+                    <BadgeAsistencia asistencia={ins.asistencia} />
                   </td>
                   <td className="p-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => onToggle(ins.usuario_id, true)}
-                        className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"
-                      >
-                        <Check size={14} className="inline" /> Presente
-                      </button>
-                      <button
-                        onClick={() => onToggle(ins.usuario_id, false)}
-                        className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"
-                      >
-                        <X size={14} className="inline" /> Ausente
-                      </button>
-                    </div>
+                    {esCancelada(ins.asistencia) ? (
+                      <span className="text-xs text-gray-400">—</span>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => onToggle(ins.usuario_id, true)}
+                          className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"
+                        >
+                          <Check size={14} className="inline" /> Presente
+                        </button>
+                        <button
+                          onClick={() => onToggle(ins.usuario_id, false)}
+                          className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"
+                        >
+                          <X size={14} className="inline" /> Ausente
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               </Fragment>
@@ -807,9 +849,11 @@ function AsistenciaDetalle({
       <div className="p-3 border-t border-gray-100 flex items-center gap-4 text-sm">
         <Users size={16} className="text-gray-400" />
         <span className="text-gray-600">
-          <strong className="text-green-600">{inscripciones.filter((i: InscripcionRow) => i.asistencia === "asistio").length}</strong> presentes ·{" "}
-          <strong className="text-red-500">{inscripciones.filter((i: InscripcionRow) => i.asistencia === "no_asistio").length}</strong> ausentes ·{" "}
-          <strong className="text-gray-400">{inscripciones.filter((i: InscripcionRow) => i.asistencia !== "asistio" && i.asistencia !== "no_asistio").length}</strong> pendientes
+          <strong className="text-green-600">{presentes}</strong> presentes ·{" "}
+          <strong className="text-red-500">{ausentes}</strong> ausentes ·{" "}
+          <strong className="text-emerald-600">{confirmados}</strong> confirmados ·{" "}
+          <strong className="text-gray-400">{pendientes}</strong> pendientes ·{" "}
+          <strong className="text-gray-500">{canceladas}</strong> canceladas
         </span>
       </div>
     </div>

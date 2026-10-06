@@ -144,7 +144,7 @@ export function makeChain(table: string) {
         if (!r) return Promise.resolve({ data: null, error: null, count: 0 });
 
         let data = r.data;
-        let error = r.error;
+        const error = r.error;
         noMatchError = null;
 
         if (Array.isArray(data)) {
