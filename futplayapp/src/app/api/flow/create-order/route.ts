@@ -2,7 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createFlowOrder } from "@/lib/flow";
-import { membresiaActiva } from "@/lib/fechas";
 import { rateLimit } from "@/lib/rate-limit";
 import { getBaseUrl } from "@/lib/base-url";
 import { traducirError } from "@/lib/errores";
@@ -91,47 +90,22 @@ export async function POST(request: Request) {
     }
   }
 
-  // Filtro en la base (no en JS) para no dejar pasar duplicados: un admin puede
-  // crear membresías manualmente desde el panel de gestión sin cerrar la anterior.
-  const { data: existingMembresia, error: membresiaError } = await adminClient
-    .from("membresia")
-    .select("id, fecha_inicio, fecha_vencimiento, estado, congelada, sin_tokens")
-    .eq("usuario_id", user.id)
-    .eq("estado", true)
-    .eq("congelada", false)
-    .eq("sin_tokens", false)
-    .order("fecha_inicio", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // Falla cerrado: si la consulta falla (por ejemplo, porque la migración
-  // sin_tokens todavía no se aplicó) NO se permite comprar, porque responder
-  // "no tenés membresía" sería un bypass silencioso del control.
-  if (membresiaError) {
+  // Regla centralizada: la misma función que usa el trigger.
+  // Falla cerrado — si la consulta falla, NO se permite comprar.
+  const { data: tieneVigente, error: vigError } = await adminClient
+    .rpc("usuario_tiene_membresia_vigente", { p_usuario_id: user.id });
+  if (vigError) {
+    console.error("No se pudo verificar la membresía vigente:", vigError.message);
     return NextResponse.json(
-      { error: "No pudimos verificar tu plan actual. Intenta de nuevo en un momento." },
+      { error: "No se pudo procesar la compra. Intenta de nuevo." },
       { status: 500 }
     );
   }
-
-  if (existingMembresia) {
-    const m = existingMembresia as {
-      fecha_inicio: string;
-      fecha_vencimiento: string;
-    };
-
-    // Solo bloquea la compra si la membresía vigente es realmente USABLE.
-    // Una membresía sin tokens (sin_tokens=true, cerrada por el trigger al
-    // agotar el saldo) deja de bloquear la compra: ese es el objetivo de la
-    // regla. Los días que quedaban se pierden.
-    const vigente = membresiaActiva(m.fecha_vencimiento) && m.fecha_inicio <= new Date().toISOString();
-
-    if (vigente) {
-      return NextResponse.json(
-        { error: "Ya tienes un plan activo. No puedes comprar otro hasta que termine el período actual." },
-        { status: 409 }
-      );
-    }
+  if (tieneVigente === true) {
+    return NextResponse.json(
+      { error: "Ya tienes una membresía vigente. Podrás comprar otra cuando se agoten tus tokens o venza tu plan." },
+      { status: 409 }
+    );
   }
 
   let recurrenciaId: string | null = null;

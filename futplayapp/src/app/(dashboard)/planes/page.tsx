@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 import { getPlanes, type Plan } from "@/data/plans";
-import { getMiMembresia } from "@/data/pagos";
+import { tieneMembresiaPagos } from "@/data/pagos";
 import { useAuthUser } from "@/context";
-import { membresiaActiva } from "@/lib/fechas";
 import { userHasFichaMedica } from "@/data/fichaMedica";
 
 export default function PlanesPage() {
@@ -47,11 +46,9 @@ export default function PlanesPage() {
                 if (cancelled) return;
                 setPlanes(planesData);
                 if (usuario?.id) {
-                    const membresia = await getMiMembresia(usuario.id);
+                    const vigente = await tieneMembresiaPagos(usuario.id);
                     if (cancelled) return;
-                    if (membresia) {
-                        setTienePlanActivo(membresiaActiva(membresia.fecha_vencimiento));
-                    }
+                    setTienePlanActivo(vigente);
                 }
             } catch (err) {
                 console.error("Error obteniendo datos:", err);

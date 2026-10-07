@@ -96,3 +96,19 @@ export async function getMiMembresia(userId: string): Promise<PagosMembresia | n
         tokens_mensuales: data.plan?.tokens_mensuales || 0,
     };
 }
+
+/**
+ * Verifica si el usuario tiene una membresía vigente usando la misma
+ * función SQL que el trigger y create-order (regla centralizada).
+ */
+export async function tieneMembresiaPagos(userId: string): Promise<boolean> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+        .rpc("usuario_tiene_membresia_vigente", { p_usuario_id: userId });
+    if (error) {
+        console.error("Error verificando membresía vigente:", error.message);
+        return false; // Falla abierto en el frontend: el backend valida de todas formas
+    }
+    return data === true;
+}
+

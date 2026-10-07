@@ -7,9 +7,11 @@ type MockResponse = { data: any; error: any };
 const state: {
     authUser: any;
     tables: Record<string, MockResponse>;
+    rpcResponses: Record<string, MockResponse>;
 } = {
     authUser: null,
     tables: {},
+    rpcResponses: {},
 };
 
 // ── Test helpers ────────────────────────────────────────────
@@ -17,6 +19,7 @@ const state: {
 export function __resetMocks() {
     state.authUser = null;
     state.tables = {};
+    state.rpcResponses = {};
 }
 
 export function __setAuthUser(user: any) {
@@ -25,6 +28,10 @@ export function __setAuthUser(user: any) {
 
 export function __setTableData(table: string, data: any, error: any = null) {
     state.tables[table] = { data, error };
+}
+
+export function __setRpcResponse(fnName: string, data: any, error: any = null) {
+    state.rpcResponses[fnName] = { data, error };
 }
 
 // ── Query engine helpers ────────────────────────────────────
@@ -252,7 +259,11 @@ export function createMockServerClient() {
             },
         },
         from: vi.fn((table: string) => makeChain(table)),
-        rpc: vi.fn(() => Promise.resolve({ data: true, error: null })),
+        rpc: vi.fn((fnName: string) => {
+            const r = state.rpcResponses[fnName];
+            if (r) return Promise.resolve({ data: r.data, error: r.error });
+            return Promise.resolve({ data: true, error: null });
+        }),
         storage: {
             getBucket: vi.fn(() => Promise.resolve({ error: null })),
             createBucket: vi.fn(() => Promise.resolve({ error: null })),
