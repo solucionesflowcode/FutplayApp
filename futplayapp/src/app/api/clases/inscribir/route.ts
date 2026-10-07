@@ -83,7 +83,7 @@ export async function POST(request: Request) {
         .limit(1)
         .maybeSingle();
 
-    const tipoPlan = (tipoPlanRow as unknown as { plan: { tipo_plan: "normal" | "familiar" | "kids" } } | null)?.plan?.tipo_plan ?? "normal";
+    const tipoPlan = (tipoPlanRow as unknown as { plan: { tipo_plan: "normal" | "familiar" | "kids" | "liga" } } | null)?.plan?.tipo_plan ?? "normal";
 
     if (tipoPlan === "kids" && clase.tipo_evento !== "kids") {
         return NextResponse.json(

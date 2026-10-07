@@ -7,7 +7,7 @@ type PlanRow = {
     tokens_mensuales: number;
     precio: number;
     dias: number;
-    tipo_plan?: "normal" | "familiar" | "kids";
+    tipo_plan?: "normal" | "familiar" | "kids" | "liga";
 };
 
 type MembresiaRow = {
@@ -33,7 +33,7 @@ export type MembresiaConPlan = {
     tokens_mensuales: number;
     precio: number;
     dias?: number;
-    tipo_plan?: "normal" | "familiar" | "kids";
+    tipo_plan?: "normal" | "familiar" | "kids" | "liga";
     tokens_totales: number;
     tokens_usados: number;
     tokens_restantes: number;
@@ -127,7 +127,9 @@ export async function getMembresiaByUser(userId: string): Promise<MembresiaConPl
         .from("membresia")
         .select("*")
         .eq("usuario_id", userId)
-
+        // tokens_totales > 0 excluye los registros de Plan Liga (pago único,
+        // inactivos) para que no tapen la membresía real más reciente.
+        .gt("tokens_totales", 0)
         .order("fecha_inicio", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -243,7 +245,9 @@ export async function devolverToken(userId: string): Promise<boolean> {
         .from("membresia")
         .select("id, tokens_usados")
         .eq("usuario_id", userId)
-
+        // tokens_totales > 0 excluye los registros de Plan Liga (pago único,
+        // inactivos) para que no tapen la membresía real más reciente.
+        .gt("tokens_totales", 0)
         .order("fecha_inicio", { ascending: false })
         .limit(1)
         .maybeSingle();

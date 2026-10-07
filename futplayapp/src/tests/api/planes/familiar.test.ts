@@ -108,4 +108,22 @@ describe("GET /api/planes/familiar", () => {
         expect(text).not.toContain("tok-familiar-123");
         expect(text).not.toContain("codigo_acceso");
     });
+
+    it("acepta el link de un plan liga", async () => {
+        __setTableData("plan", [{ ...FAMILIAR_PLAN, id: "plan-liga", tipo_plan: "liga", codigo_acceso: "tok-liga" }]);
+
+        const res = await GET(makeRequest("?token=tok-liga"));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.tipo_plan).toBe("liga");
+    });
+
+    it("rechaza el token de un plan normal", async () => {
+        __setTableData("plan", [{ ...FAMILIAR_PLAN, tipo_plan: "normal" }]);
+
+        const res = await GET(makeRequest("?token=tok-familiar-123"));
+
+        expect(res.status).toBe(404);
+    });
 });

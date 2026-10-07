@@ -37,7 +37,7 @@ function localISONow(): string {
   return new Date().toISOString();
 }
 
-export async function getProximaClase(userId: string, tipoPlan?: "normal" | "familiar" | "kids"): Promise<Array<{
+export async function getProximaClase(userId: string, tipoPlan?: "normal" | "familiar" | "kids" | "liga"): Promise<Array<{
   titulo: string;
   descripcion: string;
   fecha_hora: string;

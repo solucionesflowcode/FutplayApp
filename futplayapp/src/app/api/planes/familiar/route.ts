@@ -5,7 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 // GET /api/planes/familiar?token=XXXX
-// Endpoint público: valida el codigo_acceso de un plan familiar y
+// Endpoint público: valida el codigo_acceso de un plan familiar o liga y
 // devuelve sus datos para la página /planes/familiar/[token].
 // Nunca devuelve el propio codigo_acceso.
 export async function GET(request: Request) {
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     .from("plan")
     .select("id, nombre, precio, tokens_mensuales, dias_vigencia, tipo_plan")
     .eq("codigo_acceso", token)
-    .eq("tipo_plan", "familiar")
+    .in("tipo_plan", ["familiar", "liga"])
     .maybeSingle();
 
   if (error) {

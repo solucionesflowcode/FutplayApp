@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
 import { ahoraChile, fechaVencimientoDesde } from "@/lib/fechas";
+import { crearMembresiaPorBoleta } from "@/lib/membresia-pago";
 
 export async function POST(request: Request) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -189,53 +190,15 @@ export async function POST(request: Request) {
 
       console.log(`[Flow Webhook] Boleta ${boleta.id} marcada como pagada`);
 
-      // ── Crear membresía (duración según plan.dias desde compra) ──
+      // ── Crear membresía (duración según plan.dias desde compra; Liga = registro inactivo) ──
       try {
-        const { data: boletaItem } = await adminClient
-          .from("boleta_item")
-          .select("plan_id")
-          .eq("boleta_id", boleta.id)
-          .maybeSingle();
-
-        if (boletaItem) {
-          const { data: plan } = await adminClient
-            .from("plan")
-            .select("tokens_mensuales, dias")
-            .eq("id", boletaItem.plan_id)
-            .maybeSingle();
-
-          if (plan?.tokens_mensuales) {
-              const { data: existingForBoleta } = await adminClient
-                    .from("membresia")
-                    .select("id")
-                    .eq("boleta_id", boleta.id)
-                    .maybeSingle();
-
-                  if (!existingForBoleta) {
-                    const fecha_inicio = ahoraChile().toISOString();
-                    const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
-                    const { error: membresiaError } = await adminClient
-                      .from("membresia")
-                      .insert({
-                        usuario_id: boleta.usuario_id,
-                        plan_id: boletaItem.plan_id,
-                        boleta_id: boleta.id,
-                        fecha_inicio,
-                        fecha_vencimiento,
-                        tokens_totales: plan.tokens_mensuales,
-                        tokens_usados: 0,
-                        estado: true,
-                      });
-
-              if (membresiaError) {
-                console.error(`[Flow Webhook] Error al crear membresía: ${membresiaError.message}`);
-              } else {
-                console.log(`[Flow Webhook] Membresía creada para usuario ${boleta.usuario_id} (plan ${boletaItem.plan_id})`);
-              }
-            } else {
-              console.log(`[Flow Webhook] Membresía ya existe para boleta ${boleta.id}, saltando creación`);
-            }
-          }
+        const res = await crearMembresiaPorBoleta(adminClient, boleta.id, boleta.usuario_id);
+        if (res.creada) {
+          console.log(`[Flow Webhook] Membresía ${res.liga ? "liga (inactiva) " : ""}creada para usuario ${boleta.usuario_id}`);
+        } else if (res.motivo === "ya_existe") {
+          console.log(`[Flow Webhook] Membresía ya existe para boleta ${boleta.id}, saltando creación`);
+        } else if (res.motivo === "error") {
+          console.error(`[Flow Webhook] Error al crear membresía: ${res.error}`);
         }
       } catch (err) {
         console.error(`[Flow Webhook] Error inesperado al crear membresía:`, err);

@@ -8,12 +8,15 @@ import {
   Loader2,
   X,
   Search,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   getPlanesAdmin,
   createPlanAdmin,
   updatePlanAdmin,
   deletePlanAdmin,
+  PLANES_CON_LINK,
   type Plan,
 } from "@/data/plans";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
@@ -39,6 +42,19 @@ function formatPrice(n: number) {
   return "$" + n.toLocaleString("es-CL");
 }
 
+function TipoBadge({ tipo }: { tipo?: Plan["tipo_plan"] }) {
+  if (tipo === "familiar") {
+    return <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold">Familiar · oculto</span>;
+  }
+  if (tipo === "liga") {
+    return <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold">Liga · pago único · oculto</span>;
+  }
+  if (tipo === "kids") {
+    return <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">Kids</span>;
+  }
+  return null;
+}
+
 export default function PlanesPage() {
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +64,7 @@ export default function PlanesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchPlanes = useCallback(async () => {
     const { planes, error } = await getPlanesAdmin();
@@ -117,6 +134,51 @@ export default function PlanesPage() {
         )
       );
     }
+  };
+
+  // Copia el link de acceso del plan (familiar/liga). Si aún no tiene
+  // codigo_acceso lo genera; si ya tiene, reutiliza el existente para no
+  // invalidar links ya compartidos.
+  const handleCopyLink = async (p: Plan) => {
+    setError(null);
+    let url: string;
+    if (p.codigo_acceso) {
+      url = `${window.location.origin}/planes/familiar/${p.codigo_acceso}`;
+    } else {
+      const res = await fetch("/api/admin/planes/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.url) {
+        setError(body.error || "No se pudo generar el link");
+        return;
+      }
+      url = body.url;
+      setPlanes((prev) => prev.map((x) => (x.id === p.id ? { ...x, codigo_acceso: body.token } : x)));
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(p.id);
+      setTimeout(() => setCopiedId((c) => (c === p.id ? null : c)), 2000);
+    } catch {
+      window.prompt("Copia el link de acceso:", url);
+    }
+  };
+
+  const renderLinkButton = (p: Plan, size: number) => {
+    if (!p.tipo_plan || !PLANES_CON_LINK.includes(p.tipo_plan)) return null;
+    const copied = copiedId === p.id;
+    return (
+      <button
+        onClick={() => handleCopyLink(p)}
+        className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"
+        title={copied ? "Link copiado" : "Copiar link de acceso"}
+      >
+        {copied ? <Check size={size} /> : <Copy size={size} />}
+      </button>
+    );
   };
 
   const handleDelete = async (id: string) => {
@@ -200,7 +262,10 @@ export default function PlanesPage() {
                         <tr className="md:hidden border-b border-gray-100">
                           <td colSpan={5} className="p-0">
                             <div className="p-3 space-y-1.5">
-                              <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
+                                <TipoBadge tipo={p.tipo_plan} />
+                              </div>
                               <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
                                 <div><span className="text-gray-400">Precio: </span><span className="font-semibold text-gray-900">{formatPrice(p.precio)}</span></div>
                                 <div><span className="text-gray-400">Tokens: </span><span className="font-semibold text-gray-700">{p.tokens_mensuales}</span><span className="text-gray-400"> sesiones</span></div>
@@ -208,6 +273,7 @@ export default function PlanesPage() {
                               </div>
                               <div className="flex gap-2 pt-1 border-t border-gray-50">
                                 <button onClick={() => openEdit(p)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
+                                {renderLinkButton(p, 14)}
                                 <button onClick={() => setDeleteId(p.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
                               </div>
                             </div>
@@ -215,7 +281,12 @@ export default function PlanesPage() {
                         </tr>
                         {/* DESKTOP ROW */}
                         <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
-                          <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{p.nombre}</td>
+                          <td className="p-3 font-semibold text-gray-900 max-w-[260px]">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate">{p.nombre}</span>
+                              <TipoBadge tipo={p.tipo_plan} />
+                            </div>
+                          </td>
                           <td className="p-3 font-semibold text-gray-900 whitespace-nowrap">{formatPrice(p.precio)}</td>
                           <td className="p-3 text-gray-600">
                             <span className="font-semibold">{p.tokens_mensuales}</span>
@@ -234,6 +305,7 @@ export default function PlanesPage() {
                               >
                                 <Pencil size={16} />
                               </button>
+                              {renderLinkButton(p, 16)}
                               <button
                                 onClick={() => setDeleteId(p.id)}
                                 className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"

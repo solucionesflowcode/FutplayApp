@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
-import { ahoraChile, fechaVencimientoDesde } from "@/lib/fechas";
+import { crearMembresiaPorBoleta } from "@/lib/membresia-pago";
 
 async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServerClient>, boletaId: string) {
   try {
@@ -14,47 +14,11 @@ async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServe
 
     if (!boletaInfo?.usuario_id) return;
 
-    const { data: boletaItem } = await adminClient
-      .from("boleta_item")
-      .select("plan_id")
-      .eq("boleta_id", boletaId)
-      .maybeSingle();
-
-    if (!boletaItem?.plan_id) return;
-
-    const { data: plan } = await adminClient
-      .from("plan")
-      .select("tokens_mensuales, dias")
-      .eq("id", boletaItem.plan_id)
-      .maybeSingle();
-
-    if (!plan?.tokens_mensuales) return;
-
-    const { data: existing } = await adminClient
-      .from("membresia")
-      .select("id")
-      .eq("boleta_id", boletaId)
-      .maybeSingle();
-
-    if (existing) return;
-
-    const fecha_inicio = ahoraChile().toISOString();
-    const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
-    const { error } = await adminClient.from("membresia").insert({
-      usuario_id: boletaInfo.usuario_id,
-      plan_id: boletaItem.plan_id,
-      boleta_id: boletaId,
-      fecha_inicio,
-      fecha_vencimiento,
-      tokens_totales: plan.tokens_mensuales,
-      tokens_usados: 0,
-      estado: true,
-    });
-
-    if (error) {
-      console.error(`[Flow Confirm] Error al crear membresía: ${error.message}`);
-    } else {
-      console.log(`[Flow Confirm] Membresía creada para boleta ${boletaId}`);
+    const res = await crearMembresiaPorBoleta(adminClient, boletaId, boletaInfo.usuario_id);
+    if (res.creada) {
+      console.log(`[Flow Confirm] Membresía ${res.liga ? "liga (inactiva) " : ""}creada para boleta ${boletaId}`);
+    } else if (res.motivo === "error") {
+      console.error(`[Flow Confirm] Error al crear membresía: ${res.error}`);
     }
   } catch (err) {
     console.error(`[Flow Confirm] Error inesperado al crear membresía:`, err);

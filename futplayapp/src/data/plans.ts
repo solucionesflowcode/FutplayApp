@@ -9,7 +9,17 @@ export type Plan = {
     tokens_mensuales: number;
     dias: number;
     dias_vigencia?: number;
+    tipo_plan?: TipoPlan;
+    codigo_acceso?: string | null;
 };
+
+export type TipoPlan = "normal" | "familiar" | "kids" | "liga";
+
+// Planes que solo se compran con el link del admin (codigo_acceso):
+// no aparecen en el catálogo público.
+export const PLANES_CON_LINK: TipoPlan[] = ["familiar", "liga"];
+// tipo_plan NULL cuenta como plan normal (NOT IN descartaría los NULL).
+const FILTRO_CATALOGO = `tipo_plan.is.null,tipo_plan.not.in.(${PLANES_CON_LINK.join(",")})`;
 
 export async function getPlanes(): Promise<Plan[]> {
     const supabase = createClient();
@@ -17,6 +27,7 @@ export async function getPlanes(): Promise<Plan[]> {
     const { data, error } = await supabase
         .from("plan")
         .select("*")
+        .or(FILTRO_CATALOGO)
         .order("precio", { ascending: true });
 
     if (error) {
@@ -33,6 +44,7 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
     const { data, error } = await supabase
         .from("plan")
         .select("*")
+        .or(FILTRO_CATALOGO)
         .order("precio", { ascending: true })
         .limit(limit);
 

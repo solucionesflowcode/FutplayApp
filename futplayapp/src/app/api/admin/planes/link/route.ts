@@ -7,7 +7,7 @@ import { traducirError } from "@/lib/errores";
 export const dynamic = "force-dynamic";
 
 // POST /api/admin/planes/link  { id }
-// Genera (o regenera) el codigo_acceso de un plan familiar y devuelve
+// Genera (o regenera) el codigo_acceso de un plan familiar o liga y devuelve
 // la URL de acceso completa. Regenerar invalida el link anterior.
 export async function POST(request: Request) {
   const user = await verifyAdmin();
@@ -31,9 +31,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
     }
 
-    if (plan.tipo_plan !== "familiar") {
+    if (plan.tipo_plan !== "familiar" && plan.tipo_plan !== "liga") {
       return NextResponse.json(
-        { error: "Solo los planes familiares tienen link de acceso" },
+        { error: "Solo los planes familiares y liga tienen link de acceso" },
         { status: 400 }
       );
     }

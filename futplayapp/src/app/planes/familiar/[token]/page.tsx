@@ -11,7 +11,7 @@ type PlanFamiliar = {
     precio: number;
     tokens_mensuales: number;
     dias_vigencia: number | null;
-    tipo_plan: "normal" | "familiar";
+    tipo_plan: "normal" | "familiar" | "liga";
 };
 
 function formatPrice(n: number) {
@@ -33,6 +33,7 @@ export default function PlanFamiliarPage() {
     const [plan, setPlan] = useState<PlanFamiliar | null>(null);
     const [loading, setLoading] = useState(true);
     const [invalid, setInvalid] = useState(false);
+    const esLiga = plan?.tipo_plan === "liga";
 
     useEffect(() => {
         if (!token) {
@@ -108,26 +109,37 @@ export default function PlanFamiliarPage() {
                         {renderPlanIcon(plan.nombre)}
 
                         <span className="inline-block px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold mb-3">
-                            Plan Familiar · Exclusivo
+                            {esLiga ? "Plan Liga · Pago único" : "Plan Familiar · Exclusivo"}
                         </span>
 
                         <h1 className="text-3xl font-black text-[#00305B] capitalize">{plan.nombre}</h1>
 
                         <div className="my-6">
                             <span className="text-5xl font-black text-[#00305B]">{formatPrice(plan.precio)}</span>
-                            <span className="text-gray-400 font-medium ml-2">
-                                / {(plan.dias_vigencia ?? 30) >= 90 ? "trimestre" : "mes"}
-                            </span>
+                            {!esLiga && (
+                                <span className="text-gray-400 font-medium ml-2">
+                                    / {(plan.dias_vigencia ?? 30) >= 90 ? "trimestre" : "mes"}
+                                </span>
+                            )}
                         </div>
 
                         <div className="bg-gray-50 border border-gray-100 rounded-lg p-5 text-left space-y-3 mb-8">
-                            <div className="flex items-center gap-3">
-                                <Zap size={18} className="text-[#F28C28] shrink-0" />
-                                <p className="text-gray-600 text-sm">
-                                    <span className="font-bold text-gray-900">{plan.tokens_mensuales}</span>{" "}
-                                    sesiones de entrenamiento por período
-                                </p>
-                            </div>
+                            {esLiga ? (
+                                <div className="flex items-center gap-3">
+                                    <Zap size={18} className="text-[#F28C28] shrink-0" />
+                                    <p className="text-gray-600 text-sm">
+                                        Pago único. Puedes comprarlo aunque tengas un plan activo.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3">
+                                    <Zap size={18} className="text-[#F28C28] shrink-0" />
+                                    <p className="text-gray-600 text-sm">
+                                        <span className="font-bold text-gray-900">{plan.tokens_mensuales}</span>{" "}
+                                        sesiones de entrenamiento por período
+                                    </p>
+                                </div>
+                            )}
                             <div className="flex items-center gap-3">
                                 <Users size={18} className="text-[#F28C28] shrink-0" />
                                 <p className="text-gray-600 text-sm">

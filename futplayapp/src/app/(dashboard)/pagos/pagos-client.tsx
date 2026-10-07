@@ -1378,7 +1378,8 @@ export default function PagosClient() {
         );
     }
 
-    if (tienePlanActivo) {
+    // El Plan Liga es un pago único: se puede comprar con una membresía activa.
+    if (tienePlanActivo && plan.tipo_plan !== "liga") {
         return (
             <main className="min-h-screen bg-[#f8f9fb] flex flex-col">
                 <TopNavBarUser />

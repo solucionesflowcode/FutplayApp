@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { planId, recurrencia: conRecurrencia, acceso: tokenAcceso } = body;
+  const { planId, recurrencia: recurrenciaSolicitada, acceso: tokenAcceso } = body;
 
   if (!planId) {
     return NextResponse.json({ error: "planId es requerido" }, { status: 400 });
@@ -79,9 +79,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
   }
 
-  // Los planes familiares solo se pueden comprar con el link del admin:
+  // Plan Liga: pago único, comprable aunque haya membresía vigente.
+  const esLiga = plan.tipo_plan === "liga";
+  const conRecurrencia = esLiga ? false : Boolean(recurrenciaSolicitada);
+
+  // Los planes familiares y liga solo se pueden comprar con el link del admin:
   // exigir el codigo_acceso correcto (verificación server-side).
-  if (plan.tipo_plan === "familiar") {
+  if (plan.tipo_plan === "familiar" || esLiga) {
     if (!tokenAcceso || tokenAcceso !== plan.codigo_acceso) {
       return NextResponse.json(
         { error: "Este plan solo puede comprarse con un link de acceso válido." },
@@ -92,20 +96,22 @@ export async function POST(request: Request) {
 
   // Regla centralizada: la misma función que usa el trigger.
   // Falla cerrado — si la consulta falla, NO se permite comprar.
-  const { data: tieneVigente, error: vigError } = await adminClient
-    .rpc("usuario_tiene_membresia_vigente", { p_usuario_id: user.id });
-  if (vigError) {
-    console.error("No se pudo verificar la membresía vigente:", vigError.message);
-    return NextResponse.json(
-      { error: "No se pudo procesar la compra. Intenta de nuevo." },
-      { status: 500 }
-    );
-  }
-  if (tieneVigente === true) {
-    return NextResponse.json(
-      { error: "Ya tienes una membresía vigente. Podrás comprar otra cuando se agoten tus tokens o venza tu plan." },
-      { status: 409 }
-    );
+  if (!esLiga) {
+    const { data: tieneVigente, error: vigError } = await adminClient
+      .rpc("usuario_tiene_membresia_vigente", { p_usuario_id: user.id });
+    if (vigError) {
+      console.error("No se pudo verificar la membresía vigente:", vigError.message);
+      return NextResponse.json(
+        { error: "No se pudo procesar la compra. Intenta de nuevo." },
+        { status: 500 }
+      );
+    }
+    if (tieneVigente === true) {
+      return NextResponse.json(
+        { error: "Ya tienes una membresía vigente. Podrás comprar otra cuando se agoten tus tokens o venza tu plan." },
+        { status: 409 }
+      );
+    }
   }
 
   let recurrenciaId: string | null = null;

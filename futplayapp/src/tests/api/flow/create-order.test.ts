@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
-import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser } from "@/tests/mocks/supabase";
+import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser, __setRpcResponse } from "@/tests/mocks/supabase";
 import { resetRateLimit } from "@/lib/rate-limit";
 
 // ── Env vars ────────────────────────────────────────
@@ -53,6 +53,8 @@ describe("POST /api/flow/create-order", () => {
     beforeEach(() => {
         resetRateLimit();
         __resetMocks();
+        // Por defecto el usuario no tiene membresía vigente.
+        __setRpcResponse("usuario_tiene_membresia_vigente", false);
         vi.mocked(createFlowOrder).mockReset();
         vi.mocked(createFlowOrder).mockResolvedValue({
             url: "https://sandbox.flow.cl/checkout",
@@ -360,6 +362,49 @@ describe("POST /api/flow/create-order", () => {
             expect(res.status).toBe(200);
             const json = await res.json();
             expect(json).toHaveProperty("boletaId");
+        });
+    });
+
+    describe("plan liga (pago único)", () => {
+        const LIGA_PLAN = {
+            id: "plan-liga",
+            nombre: "Liga stadio Italiano",
+            precio: 50000,
+            tokens_mensuales: 1,
+            dias: 90,
+            tipo_plan: "liga",
+            codigo_acceso: "tok-liga-123",
+        };
+
+        beforeEach(() => {
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", [LIGA_PLAN]);
+            __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 50000, recurrencia_id: null });
+            __setTableData("boleta_item", { id: "item-1" });
+        });
+
+        it("retorna 403 sin código de acceso", async () => {
+            const res = await POST(makeRequest({ planId: "plan-liga" }));
+
+            expect(res.status).toBe(403);
+        });
+
+        it("permite comprar aunque el usuario tenga membresía vigente", async () => {
+            __setRpcResponse("usuario_tiene_membresia_vigente", true);
+
+            const res = await POST(makeRequest({ planId: "plan-liga", acceso: "tok-liga-123" }));
+
+            expect(res.status).toBe(200);
+            expect(createFlowOrder).toHaveBeenCalledOnce();
+        });
+
+        it("ignora la recurrencia (pago único)", async () => {
+            const res = await POST(makeRequest({ planId: "plan-liga", acceso: "tok-liga-123", recurrencia: true }));
+
+            expect(res.status).toBe(200);
+            const params = vi.mocked(createFlowOrder).mock.calls[0][0];
+            expect(params).not.toHaveProperty("recurrence");
         });
     });
 });

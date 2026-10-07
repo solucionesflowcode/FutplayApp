@@ -75,6 +75,9 @@ export async function getMiMembresia(userId: string): Promise<PagosMembresia | n
         .from("membresia")
         .select("*, plan(nombre, tokens_mensuales, precio)")
         .eq("usuario_id", userId)
+        // tokens_totales > 0 excluye los registros de Plan Liga (pago único,
+        // inactivos) para que no tapen la membresía real más reciente.
+        .gt("tokens_totales", 0)
         .order("fecha_inicio", { ascending: false })
         .limit(1)
         .maybeSingle();

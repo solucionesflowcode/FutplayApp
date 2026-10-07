@@ -40,6 +40,7 @@ export default async function Page({ params }: PageProps) {
         .from("membresia")
         .select("*")
         .eq("usuario_id", user.id)
+        .gt("tokens_totales", 0) // el registro de Plan Liga (0 tokens) no da acceso
         .gte("fecha_inicio", startISO)
         .lt("fecha_inicio", endISO);
 

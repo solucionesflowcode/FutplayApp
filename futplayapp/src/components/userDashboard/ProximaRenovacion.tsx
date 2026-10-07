@@ -50,6 +50,8 @@ export default function ProximaRenovacion() {
                 .from("membresia")
                 .select("*, plan(nombre, precio)")
                 .eq("usuario_id", user.id)
+                // Excluye registros de Plan Liga (pago único, 0 tokens)
+                .gt("tokens_totales", 0)
                 .order("fecha_inicio", { ascending: false })
                 .limit(1)
                 .maybeSingle();

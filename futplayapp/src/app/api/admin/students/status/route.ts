@@ -27,7 +27,8 @@ export async function POST(request: Request) {
   const { data: membresias } = await adminClient
     .from("membresia")
     .select("*")
-    .eq("usuario_id", userId);
+    .eq("usuario_id", userId)
+    .gt("tokens_totales", 0); // ignora registros de Plan Liga (pago único)
 
   const sorted = (membresias || []).sort(
     (a, b) =>
