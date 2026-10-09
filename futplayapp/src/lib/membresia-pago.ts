@@ -58,6 +58,9 @@ export async function crearMembresiaPorBoleta(
     estado: !esLiga,
   });
 
+  // 23505 = unique_violation (idx_membresia_boleta_id): el webhook y /confirm
+  // pueden crearla a la vez; si el otro ganó la carrera, ya existe.
+  if (error?.code === "23505") return { creada: false, motivo: "ya_existe" };
   if (error) return { creada: false, motivo: "error", error: error.message };
   return { creada: true, liga: esLiga };
 }

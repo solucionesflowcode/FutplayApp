@@ -73,27 +73,18 @@ export async function GET(request: Request) {
                 console.error(`[Flow Confirm] Mismatch: boletaId=${boletaId} !== commerceOrder=${statusData.commerceOrder}`);
                 return NextResponse.json({ error: "Boleta no coincide con el pago" }, { status: 403 });
             }
+            // Flow confirmó el pago: es la fuente de verdad, así que la boleta
+            // queda pagada aunque el frontend la haya anulado antes.
             if (boleta.estado !== "pagado") {
-                const { data: updated } = await adminClient
+                await adminClient
                     .from("boleta")
                     .update({ estado: "pagado" })
                     .eq("id", boletaId)
-                    .eq("estado", "pendiente")
-                    .select("id")
-                    .maybeSingle();
-
-                if (!updated) {
-                    const { data: current } = await adminClient
-                        .from("boleta")
-                        .select("estado")
-                        .eq("id", boletaId)
-                        .single();
-                    return NextResponse.json({ estado: current?.estado || "pagado" });
-                }
-
-                // Si llegamos aquí, el UPDATE funcionó (cambiamos pendiente → pagado)
-                await crearMembresiaSiAplica(adminClient, boletaId);
+                    .neq("estado", "pagado");
             }
+            // Siempre (idempotente): repara la membresía si el webhook marcó la
+            // boleta como pagada pero falló al crearla.
+            await crearMembresiaSiAplica(adminClient, boletaId);
             return NextResponse.json({ estado: "pagado" });
         } catch {
             // Sandbox: si getStatus falla, asumimos éxito

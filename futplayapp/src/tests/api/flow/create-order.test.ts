@@ -33,6 +33,7 @@ vi.mock("@/lib/flow", () => ({
 
 import { POST } from "@/app/api/flow/create-order/route";
 import { createFlowOrder } from "@/lib/flow";
+import { createServerClient } from "@supabase/ssr";
 
 // ── Helpers ─────────────────────────────────────────
 
@@ -188,20 +189,19 @@ describe("POST /api/flow/create-order", () => {
             expect(params.recurrence).toBeUndefined();
         });
 
-        it("retorna 200 y crea recurrencia si se solicita pago automático", async () => {
-            __setTableData("recurrencia", { id: "rec-1" });
-            __setTableData("boleta", {
-                id: "boleta-2", usuario_id: "user-1", estado: "pendiente",
-                total: 15000, recurrencia_id: "rec-1",
-            });
-
+        it("API-FLOW-CREATE-REC-001: ignora recurrencia=true del body (cobros recurrentes no soportados)", async () => {
+            // Aceptarla permitía crear una recurrencia y luego generar membresías
+            // reenviando el webhook de la boleta pagada.
+            vi.mocked(createServerClient).mockClear();
             const res = await POST(makeRequest({ planId: "plan-1", recurrencia: true }));
 
             expect(res.status).toBe(200);
-            expect(createFlowOrder).toHaveBeenCalledOnce();
             const params = vi.mocked(createFlowOrder).mock.calls[0][0];
-            expect(params.paymentMethod).toBe(1);
-            expect(params.recurrence).toEqual({ period: 30 });
+            expect(params).not.toHaveProperty("recurrence");
+
+            const results = vi.mocked(createServerClient).mock.results;
+            const fromCalls = results.flatMap((r) => (r.value.from as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]));
+            expect(fromCalls).not.toContain("recurrencia");
         });
     });
 
@@ -305,22 +305,6 @@ describe("POST /api/flow/create-order", () => {
             expect(json.error).toContain("Flow timeout");
         });
 
-        it("retorna 502 y hace rollback si flowOrder falla con recurrencia", async () => {
-            __setAuthUser(TEST_USER);
-            __setTableData("usuario", TEST_USER);
-            __setTableData("plan", TEST_PLAN);
-            __setTableData("membresia", null);
-            __setTableData("boleta", { id: "boleta-1" });
-            __setTableData("boleta_item", { id: "item-1" });
-            __setTableData("recurrencia", { id: "rec-1" });
-            vi.mocked(createFlowOrder).mockRejectedValue(new Error("Flow timeout"));
-
-            const res = await POST(makeRequest({ planId: "plan-1", recurrencia: true }));
-
-            expect(res.status).toBe(502);
-            const json = await res.json();
-            expect(json.error).toContain("Flow timeout");
-        });
     });
 
     describe("planes familiares (acceso por link)", () => {

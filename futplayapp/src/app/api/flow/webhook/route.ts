@@ -1,7 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { getFlowPaymentStatus } from "@/lib/flow";
-import { ahoraChile, fechaVencimientoDesde } from "@/lib/fechas";
 import { crearMembresiaPorBoleta } from "@/lib/membresia-pago";
 
 export async function POST(request: Request) {
@@ -70,138 +69,52 @@ export async function POST(request: Request) {
         .single();
 
       if (findError || !boleta) {
-        // Puede ser un cobro recurrente donde la boleta original fue eliminada
         console.error(`[Flow Webhook] Boleta no encontrada: ${orderId}`);
         return NextResponse.json({ error: "Boleta no encontrada" }, { status: 404 });
       }
 
-      // ── Cobro recurrente: boleta ya pagada y tiene recurrencia ──
-      if (boleta.estado === "pagado" && boleta.recurrencia_id) {
-        const { data: recurrencia } = await adminClient
-          .from("recurrencia")
-          .select("usuario_id, plan_id, activa")
-          .eq("id", boleta.recurrencia_id)
-          .single();
+      // Los cobros recurrentes no están soportados: una notificación repetida
+      // de una boleta ya pagada NO genera boletas ni membresías nuevas (antes
+      // cualquiera podía reenviar el webhook con su token y sumar membresías).
+      if (boleta.recurrencia_id) {
+        console.warn(`[Flow Webhook] Boleta ${boleta.id} tiene recurrencia ${boleta.recurrencia_id}: cobros recurrentes no soportados, se procesa como pago único`);
+      }
 
-        if (recurrencia?.activa) {
-          const { data: plan } = await adminClient
-            .from("plan")
-            .select("precio, tokens_mensuales, dias")
-            .eq("id", recurrencia.plan_id)
-            .single();
+      // Flow (getStatus) es la fuente de verdad: si confirma el pago, la boleta
+      // queda pagada aunque el frontend la haya anulado antes (el alumno pagó
+      // pero no volvió por urlReturn y /planes canceló la boleta "huérfana").
+      if (boleta.estado !== "pagado") {
+        const { data: updated, error: updateError } = await adminClient
+          .from("boleta")
+          .update({ estado: "pagado" })
+          .eq("id", boleta.id)
+          .neq("estado", "pagado")
+          .select("id")
+          .maybeSingle();
 
-          if (plan) {
-            const { data: newBoleta } = await adminClient
-              .from("boleta")
-              .insert({
-                usuario_id: recurrencia.usuario_id,
-                estado: "pendiente",
-                total: plan.precio,
-                recurrencia_id: boleta.recurrencia_id,
-              })
-              .select("id")
-              .single();
-
-            if (newBoleta) {
-              await adminClient.from("boleta_item").insert({
-                boleta_id: newBoleta.id,
-                plan_id: recurrencia.plan_id,
-                cantidad: 1,
-                precio: plan.precio,
-                total: plan.precio,
-              });
-
-              // ── TOCTOU guard: re-verificar que la recurrencia sigue activa antes de cobrar ──
-              const { data: recurrenciaRecheck } = await adminClient
-                .from("recurrencia")
-                .select("activa")
-                .eq("id", boleta.recurrencia_id)
-                .single();
-
-              if (!recurrenciaRecheck?.activa) {
-                console.log(`[Flow Webhook] Recurrencia ${boleta.recurrencia_id} desactivada durante procesamiento, anulando boleta ${newBoleta.id}`);
-                await adminClient.from("boleta").update({ estado: "anulado" }).eq("id", newBoleta.id);
-                return NextResponse.json({ message: "OK" });
-              }
-
-              const { error: recurrenteUpdateError } = await adminClient
-                .from("boleta")
-                .update({ estado: "pagado" })
-                .eq("id", newBoleta.id)
-                .eq("estado", "pendiente");
-
-              if (recurrenteUpdateError) {
-                console.error(`[Flow Webhook] Error al pagar boleta recurrente:`, recurrenteUpdateError);
-              }
-
-              console.log(`[Flow Webhook] Cobro recurrente: nueva boleta ${newBoleta.id} creada y pagada`);
-
-              // ── Crear membresía ──
-              try {
-                if (plan.tokens_mensuales) {
-                  const fecha_inicio = ahoraChile().toISOString();
-                  const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
-                  const { error: membresiaError } = await adminClient
-                    .from("membresia")
-                    .insert({
-                      usuario_id: recurrencia.usuario_id,
-                      plan_id: recurrencia.plan_id,
-                      boleta_id: newBoleta.id,
-                      fecha_inicio,
-                      fecha_vencimiento,
-                      tokens_totales: plan.tokens_mensuales,
-                      tokens_usados: 0,
-                      estado: true,
-                    });
-
-                  if (membresiaError) {
-                    console.error(`[Flow Webhook] Error al crear membresía recurrente: ${membresiaError.message}`);
-                  } else {
-                    console.log(`[Flow Webhook] Membresía recurrente creada para usuario ${recurrencia.usuario_id}`);
-                  }
-                }
-              } catch (err) {
-                console.error(`[Flow Webhook] Error inesperado al crear membresía recurrente:`, err);
-              }
-            }
-          }
+        if (updateError) {
+          console.error(`[Flow Webhook] Error al actualizar boleta:`, updateError);
+          return NextResponse.json({ error: updateError.message }, { status: 500 });
         }
-        return NextResponse.json({ message: "OK" });
-      }
 
-      // ── Update atómico: solo si sigue pendiente ──
-      const { data: updated, error: updateError } = await adminClient
-        .from("boleta")
-        .update({ estado: "pagado" })
-        .eq("id", boleta.id)
-        .eq("estado", "pendiente")
-        .select("id")
-        .maybeSingle();
-
-      if (updateError) {
-        console.error(`[Flow Webhook] Error al actualizar boleta:`, updateError);
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
-      }
-
-      if (!updated) {
-        console.log(`[Flow Webhook] Boleta ${boleta.id} ya fue procesada por otro webhook`);
-        return NextResponse.json({ message: "Ya procesado" });
-      }
-
-      console.log(`[Flow Webhook] Boleta ${boleta.id} marcada como pagada`);
-
-      // ── Crear membresía (duración según plan.dias desde compra; Liga = registro inactivo) ──
-      try {
-        const res = await crearMembresiaPorBoleta(adminClient, boleta.id, boleta.usuario_id);
-        if (res.creada) {
-          console.log(`[Flow Webhook] Membresía ${res.liga ? "liga (inactiva) " : ""}creada para usuario ${boleta.usuario_id}`);
-        } else if (res.motivo === "ya_existe") {
-          console.log(`[Flow Webhook] Membresía ya existe para boleta ${boleta.id}, saltando creación`);
-        } else if (res.motivo === "error") {
-          console.error(`[Flow Webhook] Error al crear membresía: ${res.error}`);
+        if (updated) {
+          console.log(`[Flow Webhook] Boleta ${boleta.id} marcada como pagada (estado anterior: ${boleta.estado})`);
         }
-      } catch (err) {
-        console.error(`[Flow Webhook] Error inesperado al crear membresía:`, err);
+      }
+
+      // Asegurar la membresía en cada notificación (idempotente por boleta_id):
+      // si un intento anterior falló al crearla, este la repara. Si falla,
+      // se responde 500 para que Flow reintente la notificación.
+      const res = await crearMembresiaPorBoleta(adminClient, boleta.id, boleta.usuario_id);
+      if (res.creada) {
+        console.log(`[Flow Webhook] Membresía ${res.liga ? "liga (inactiva) " : ""}creada para usuario ${boleta.usuario_id}`);
+      } else if (res.motivo === "ya_existe") {
+        console.log(`[Flow Webhook] Membresía ya existe para boleta ${boleta.id}`);
+      } else if (res.motivo === "error") {
+        console.error(`[Flow Webhook] Error al crear membresía para boleta ${boleta.id}: ${res.error}`);
+        return NextResponse.json({ error: "Error al crear membresía" }, { status: 500 });
+      } else {
+        console.error(`[Flow Webhook] Boleta ${boleta.id} pagada sin membresía: ${res.motivo}`);
       }
     } else if (statusData.status === 3 || statusData.status === 4) {
       const { data: boleta, error: findError } = await adminClient

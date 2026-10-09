@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
-import { createMockServerClient, makeChain, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
+import { createMockServerClient, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
 import { mockPaymentStatus } from "@/tests/helpers/flow";
 
 // ── Env vars ────────────────────────────────────────
@@ -49,6 +49,20 @@ function makeRequest(body: Record<string, string>, contentType: string = "applic
 
 const BOLETA_ID = "boleta-123";
 const FLOW_TOKEN = "flow-token-abc";
+
+/** Payloads pasados a `method` (insert/update) sobre `table` en el último cliente creado. */
+function escrituras(table: string, method: "insert" | "update"): unknown[] {
+    const results = (createServerClient as ReturnType<typeof vi.fn>).mock.results;
+    const client = results[results.length - 1].value;
+    const fromSpy = client.from as ReturnType<typeof vi.fn>;
+    const payloads: unknown[] = [];
+    fromSpy.mock.calls.forEach((call: unknown[], i: number) => {
+        if (call[0] !== table) return;
+        const chain = fromSpy.mock.results[i].value;
+        for (const c of chain[method].mock.calls) payloads.push(c[0]);
+    });
+    return payloads;
+}
 
 // ── Tests ───────────────────────────────────────────
 
@@ -145,33 +159,57 @@ describe("POST /api/flow/webhook", () => {
         expect(json.message).toBe("OK");
     });
 
-    // ── Recurring charge ───────────────────────────────
+    // ── Recurrencia (no soportada) ─────────────────────
 
-    it("crea nueva boleta para cobro recurrente si recurrencia activa", async () => {
+    it("WEB-REC-001: reenviar el webhook de una boleta pagada con recurrencia NO crea boletas ni membresías nuevas", async () => {
+        // Antes: cada reenvío (cualquiera puede hacerlo con su propio token)
+        // creaba una boleta pagada + una membresía nueva.
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: "rec-1", usuario_id: "u1" });
         __setTableData("recurrencia", { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: true });
-        __setTableData("plan", { id: "plan-1", precio: 15000 });
-        __setTableData("boleta_item", { id: "item-nuevo" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", precio: 15000, tokens_mensuales: 10 });
+        __setTableData("membresia", { id: "mem-1", boleta_id: BOLETA_ID });
 
-        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.message).toBe("OK");
+        for (let i = 0; i < 3; i++) {
+            const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+            expect(res.status).toBe(200);
+            expect(escrituras("boleta", "insert")).toHaveLength(0);
+            expect(escrituras("membresia", "insert")).toHaveLength(0);
+        }
     });
 
-    it("no crea nueva boleta si recurrencia no está activa", async () => {
+    // ── Boleta anulada por el frontend pero pagada en Flow ──
+
+    it("WEB-ANUL-001: si Flow confirma el pago de una boleta anulada, la marca pagada y crea la membresía", async () => {
+        // El alumno pagó pero no volvió por urlReturn; /planes anuló la boleta
+        // "huérfana". Antes el webhook respondía "Ya procesado" y el alumno se
+        // quedaba sin membresía habiendo pagado.
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: "rec-1", usuario_id: "u1" });
-        __setTableData("recurrencia", { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: false });
-        __setTableData("plan", { id: "plan-1", precio: 15000 });
+        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10, dias: 30 });
+        __setTableData("membresia", null);
 
         const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
 
         expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.message).toBe("OK");
+        expect(escrituras("boleta", "update")).toEqual([{ estado: "pagado" }]);
+        expect(escrituras("membresia", "insert")).toHaveLength(1);
+        expect(escrituras("membresia", "insert")[0]).toMatchObject({ usuario_id: "u1", boleta_id: BOLETA_ID, tokens_totales: 10 });
+    });
+
+    it("WEB-ANUL-002: el rechazo (status 3) no pisa una boleta ya pagada", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 3, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: null, usuario_id: "u1" });
+
+        await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "3" }));
+
+        // El update existe pero va filtrado por estado=pendiente: verificamos el filtro.
+        const results = (createServerClient as ReturnType<typeof vi.fn>).mock.results;
+        const fromSpy = results[results.length - 1].value.from as ReturnType<typeof vi.fn>;
+        const updateChain = fromSpy.mock.results.find((r) => r.value.update.mock.calls.length > 0)!.value;
+        expect(updateChain.eq).toHaveBeenCalledWith("estado", "pendiente");
     });
 
     // ── Fallback when getFlowPaymentStatus fails ──────
@@ -225,16 +263,44 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(200);
     });
 
-    it("no rompe el webhook si falla la creación de membresía", async () => {
+    it("WEB-ERR-001: si falla la creación de membresía responde 500 para que Flow reintente", async () => {
+        // Antes respondía 200: Flow no reintentaba y el alumno quedaba con la
+        // boleta pagada y sin membresía.
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
         __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
         __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
-        __setTableData("membresia", null, { message: "duplicate key value" });
+        __setTableData("membresia", null, { message: "connection reset" });
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(500);
+    });
+
+    it("WEB-ERR-002: si la membresía ya la creó /confirm en paralelo (unique violation) responde 200", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
+        __setTableData("membresia", null, { message: "duplicate key value violates unique constraint", code: "23505" });
 
         const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
 
         expect(res.status).toBe(200);
+    });
+
+    it("WEB-REPAIR-001: un reintento sobre una boleta ya pagada sin membresía la crea", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: null, usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
+        __setTableData("membresia", null);
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
+
+        expect(res.status).toBe(200);
+        expect(escrituras("boleta", "update")).toHaveLength(0);
+        expect(escrituras("membresia", "insert")).toHaveLength(1);
     });
 
     it("WEB-023: usa plan.dias (90) para fecha_vencimiento al crear membresía", async () => {
@@ -271,19 +337,6 @@ describe("POST /api/flow/webhook", () => {
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
         __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
         __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
-        __setTableData("membresia", { id: "mem-1", boleta_id: BOLETA_ID });
-
-        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
-
-        expect(res.status).toBe(200);
-    });
-
-    it("WEB-021: salta creación si ya existe membresía para esta boleta (cobro recurrente)", async () => {
-        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: "rec-1", usuario_id: "u1" });
-        __setTableData("recurrencia", { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: true });
-        __setTableData("plan", { id: "plan-1", precio: 15000, tokens_mensuales: 10 });
-        __setTableData("boleta_item", { id: "item-nuevo" });
         __setTableData("membresia", { id: "mem-1", boleta_id: BOLETA_ID });
 
         const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
@@ -347,73 +400,24 @@ describe("POST /api/flow/webhook", () => {
 
     // ── Race condition tests ──────────────────────────
 
-    it("WEBHOOK-RACE-001: segundo webhook status=2 retorna 'Ya procesado' si boleta ya fue pagada", async () => {
+    it("WEBHOOK-RACE-001: un segundo webhook status=2 sobre una boleta pagada con membresía no escribe nada", async () => {
         vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
         __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
         __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
         __setTableData("plan", { id: "plan-1", tokens_mensuales: 10 });
         __setTableData("membresia", null);
 
-        // First webhook — normal processing
         const res1 = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
         expect(res1.status).toBe(200);
 
-        // Boleta ahora está pagada en Supabase
+        // Estado después del primer webhook
         __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: null, usuario_id: "u1" });
-
-        // Segundo webhook: el update atómico .eq("estado","pendiente") no encuentra filas
-        const raceClient = createMockServerClient();
-        raceClient.from = vi.fn((table: string) => {
-            const chain = makeChain(table);
-            if (table === "boleta") {
-                chain.maybeSingle = vi.fn(() => Promise.resolve({ data: null, error: null }));
-            }
-            return chain;
-        }) as any;
-        vi.mocked(createServerClient).mockReturnValueOnce(raceClient);
+        __setTableData("membresia", { id: "mem-1", boleta_id: BOLETA_ID });
 
         const res2 = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
-        const json2 = await res2.json();
-        expect(json2.message).toBe("Ya procesado");
-    });
 
-    it("WEBHOOK-RACE-002: TOCTOU guard anula nueva boleta si recurrencia se desactiva durante el procesamiento", async () => {
-        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
-        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", recurrencia_id: "rec-1", usuario_id: "u1" });
-        __setTableData("recurrencia", { id: "rec-1", usuario_id: "u1", plan_id: "plan-1", activa: true });
-        __setTableData("plan", { id: "plan-1", precio: 15000, tokens_mensuales: 10 });
-        __setTableData("boleta_item", { id: "item-nuevo" });
-        __setTableData("membresia", null);
-
-        // Simular que la recurrencia se desactiva ENTRE la creación de la nueva boleta y el TOCTOU recheck
-        // El primer from("recurrencia") (para verificar activa) retorna true
-        // El segundo from("recurrencia") (TOCTOU recheck) debe retornar activa=false
-        // Como makeChain lee del mismo state, necesitamos cambiar el state entre llamadas.
-        // Usamos mockImplementationOnce para controlar qué devuelve each from().
-
-        const raceClient = createMockServerClient();
-
-        // Track how many times from("recurrencia") is called
-        let recurrenciaCalls = 0;
-
-        raceClient.from = vi.fn((table: string) => {
-            if (table === "recurrencia") {
-                recurrenciaCalls++;
-                const chain = makeChain(table);
-                if (recurrenciaCalls >= 2) {
-                    // TOCTOU recheck: recurrencia ya no está activa
-                    chain.single = vi.fn(() => Promise.resolve({ data: { id: "rec-1", activa: false }, error: null }));
-                }
-                return chain;
-            }
-            return makeChain(table);
-        }) as any;
-
-        vi.mocked(createServerClient).mockReturnValueOnce(raceClient);
-
-        const res = await POST(makeRequest({ token: FLOW_TOKEN, commerceOrder: BOLETA_ID, status: "2" }));
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.message).toBe("OK");
+        expect(res2.status).toBe(200);
+        expect(escrituras("boleta", "update")).toHaveLength(0);
+        expect(escrituras("membresia", "insert")).toHaveLength(0);
     });
 });

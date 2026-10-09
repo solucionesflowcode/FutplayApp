@@ -44,7 +44,10 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { planId, recurrencia: recurrenciaSolicitada, acceso: tokenAcceso } = body;
+  // `recurrencia` se ignora a propósito: los cobros recurrentes no están
+  // soportados (el webhook no los procesa). Antes se aceptaba desde el body
+  // y abría una vía para generar membresías reenviando el webhook.
+  const { planId, acceso: tokenAcceso } = body;
 
   if (!planId) {
     return NextResponse.json({ error: "planId es requerido" }, { status: 400 });
@@ -81,7 +84,6 @@ export async function POST(request: Request) {
 
   // Plan Liga: pago único, comprable aunque haya membresía vigente.
   const esLiga = plan.tipo_plan === "liga";
-  const conRecurrencia = esLiga ? false : Boolean(recurrenciaSolicitada);
 
   // Los planes familiares y liga solo se pueden comprar con el link del admin:
   // exigir el codigo_acceso correcto (verificación server-side).
@@ -114,39 +116,18 @@ export async function POST(request: Request) {
     }
   }
 
-  let recurrenciaId: string | null = null;
-  if (conRecurrencia) {
-    const { data: rec, error: recError } = await adminClient
-      .from("recurrencia")
-      .insert({ usuario_id: usuario.id, plan_id: plan.id })
-      .select("id")
-      .single();
-
-    if (recError || !rec) {
-      return NextResponse.json(
-        { error: `Error al crear recurrencia: ${recError?.message}` },
-        { status: 500 }
-      );
-    }
-    recurrenciaId = rec.id;
-  }
-
   const { data: boleta, error: boletaError } = await adminClient
     .from("boleta")
     .insert({
       usuario_id: usuario.id,
       estado: "pendiente",
       total: plan.precio,
-      recurrencia_id: recurrenciaId,
       flow_confirmada: false,
     })
     .select()
     .single();
 
   if (boletaError || !boleta) {
-    if (recurrenciaId) {
-      await adminClient.from("recurrencia").delete().eq("id", recurrenciaId);
-    }
     return NextResponse.json(
       { error: `Error al crear boleta: ${boletaError?.message}` },
       { status: 500 }
@@ -165,9 +146,6 @@ export async function POST(request: Request) {
 
   if (itemError) {
     await adminClient.from("boleta").delete().eq("id", boleta.id);
-    if (recurrenciaId) {
-      await adminClient.from("recurrencia").delete().eq("id", recurrenciaId);
-    }
     return NextResponse.json(
       { error: `Error al crear item: ${itemError.message}` },
       { status: 500 }
@@ -189,7 +167,6 @@ export async function POST(request: Request) {
       urlReturn: `${publicUrl}/api/flow/return`,
       timeout: 1800,
       paymentMethod: 1, // solo tarjetas crédito + débito
-      ...(conRecurrencia ? { recurrence: { period: plan.dias_vigencia ?? 30 } } : {}),
     });
 
     await adminClient
@@ -205,9 +182,6 @@ export async function POST(request: Request) {
   } catch (error) {
     await adminClient.from("boleta_item").delete().eq("boleta_id", boleta.id);
     await adminClient.from("boleta").delete().eq("id", boleta.id);
-    if (recurrenciaId) {
-      await adminClient.from("recurrencia").delete().eq("id", recurrenciaId);
-    }
 
     // Log de diagnóstico para Vercel: captura el endpoint y config de Flow.
     console.error("[create-order] Error al crear orden Flow:", {

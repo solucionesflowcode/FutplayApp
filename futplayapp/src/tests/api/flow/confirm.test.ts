@@ -31,6 +31,7 @@ vi.mock("@/lib/flow", () => ({
 
 import { GET } from "@/app/api/flow/confirm/route";
 import { getFlowPaymentStatus } from "@/lib/flow";
+import { createServerClient } from "@supabase/ssr";
 
 // ── Helpers ─────────────────────────────────────────
 
@@ -248,5 +249,58 @@ describe("GET /api/flow/confirm", () => {
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json.estado).toBe("pagado");
+    });
+
+    // ── Pago confirmado por Flow sobre boleta anulada / reparación ──
+
+    function insertsMembresia(): unknown[] {
+        const results = vi.mocked(createServerClient).mock.results;
+        const fromSpy = results[results.length - 1].value.from as ReturnType<typeof vi.fn>;
+        const payloads: unknown[] = [];
+        fromSpy.mock.calls.forEach((call: unknown[], i: number) => {
+            if (call[0] !== "membresia") return;
+            for (const c of fromSpy.mock.results[i].value.insert.mock.calls) payloads.push(c[0]);
+        });
+        return payloads;
+    }
+
+    it("CONFIRM-030: si Flow confirma el pago de una boleta anulada, responde pagado y crea la membresía", async () => {
+        // El frontend anula boletas "huérfanas"; si el alumno sí pagó, Flow manda.
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "anulado", usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 4, dias: 30 });
+        __setTableData("membresia", null);
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        expect((await res.json()).estado).toBe("pagado");
+        expect(insertsMembresia()).toHaveLength(1);
+    });
+
+    it("CONFIRM-031: con token real y boleta ya pagada sin membresía, la repara", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 4, dias: 30 });
+        __setTableData("membresia", null);
+
+        const res = await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect((await res.json()).estado).toBe("pagado");
+        expect(insertsMembresia()).toHaveLength(1);
+    });
+
+    it("CONFIRM-032: con token real y boleta pagada con membresía, no duplica", async () => {
+        vi.mocked(getFlowPaymentStatus).mockResolvedValue(mockPaymentStatus({ status: 2, commerceOrder: BOLETA_ID }));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pagado", usuario_id: "u1" });
+        __setTableData("boleta_item", { id: "item-1", boleta_id: BOLETA_ID, plan_id: "plan-1" });
+        __setTableData("plan", { id: "plan-1", tokens_mensuales: 4, dias: 30 });
+        __setTableData("membresia", { id: "mem-1", boleta_id: BOLETA_ID });
+
+        await GET(makeRequest(FLOW_TOKEN, BOLETA_ID));
+
+        expect(insertsMembresia()).toHaveLength(0);
     });
 });
