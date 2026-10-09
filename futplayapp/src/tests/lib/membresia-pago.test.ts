@@ -52,4 +52,30 @@ describe("crearMembresiaPorBoleta", () => {
         expect(res).toEqual({ creada: false, motivo: "ya_existe" });
         expect(inserts).toHaveLength(0);
     });
+
+    it("MEMPAGO-FECHA-001: fecha_inicio es el instante real (no la hora de Chile disfrazada de UTC)", async () => {
+        // Regresión: ahoraChile() guardaba fecha_inicio/fecha_vencimiento 3-4 h
+        // antes de lo real y las membresías vencían antes de tiempo.
+        __setTableData("plan", { id: "p1", tokens_mensuales: 8, dias: 30, tipo_plan: "normal" });
+        const { client, inserts } = setup();
+
+        const antes = Date.now();
+        await crearMembresiaPorBoleta(client, "b1", "u1");
+        const despues = Date.now();
+
+        const inicio = new Date(inserts[0].fecha_inicio).getTime();
+        const vencimiento = new Date(inserts[0].fecha_vencimiento).getTime();
+        expect(inicio).toBeGreaterThanOrEqual(antes);
+        expect(inicio).toBeLessThanOrEqual(despues);
+        expect(vencimiento - inicio).toBe(30 * 24 * 60 * 60 * 1000);
+    });
+
+    it("MEMPAGO-DUP-001: unique violation (webhook y /confirm en paralelo) cuenta como ya_existe", async () => {
+        __setTableData("plan", { id: "p1", tokens_mensuales: 8, dias: 30, tipo_plan: "normal" });
+        __setTableData("membresia", null, { message: "duplicate key", code: "23505" });
+
+        const res = await crearMembresiaPorBoleta(createMockServerClient() as any, "b1", "u1");
+
+        expect(res).toEqual({ creada: false, motivo: "ya_existe" });
+    });
 });

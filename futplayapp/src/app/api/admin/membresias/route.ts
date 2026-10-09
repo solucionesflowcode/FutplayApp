@@ -2,7 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { traducirError } from "@/lib/errores";
-import { ahoraChile } from "@/lib/fechas";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -99,7 +98,7 @@ export async function GET() {
       m.estado === true &&
       !sinTokens &&
       !m.congelada &&
-      new Date(m.fecha_vencimiento) >= ahoraChile();
+      new Date(m.fecha_vencimiento) >= new Date();
     const restantes = vigente ? m.tokens_totales - m.tokens_usados : 0;
 
     const existing = resultMap.get(m.usuario_id);

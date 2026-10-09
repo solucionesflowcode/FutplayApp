@@ -1,22 +1,10 @@
+// Las fechas de membresía son timestamptz (instantes absolutos): se comparan
+// y se guardan con el instante real, `new Date()`. La zona America/Santiago
+// solo importa al MOSTRARLAS (formatear*). Antes existía ahoraChile(), que
+// devolvía la hora de pared de Chile disfrazada de UTC: guardaba las fechas
+// 3-4 h antes de lo real y las membresías vencían antes de tiempo.
 export function membresiaActiva(fechaVencimiento: string): boolean {
-  return new Date(fechaVencimiento) >= ahoraChile();
-}
-
-export function ahoraChile(): Date {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Santiago",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(new Date());
-
-  const get = (type: string) => parseInt(parts.find((p) => p.type === type)!.value, 10);
-
-  return new Date(Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")));
+  return new Date(fechaVencimiento) >= new Date();
 }
 
 export function fechaVencimientoDesde(inicio: Date | string, dias: number): Date {

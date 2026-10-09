@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { CreditCard } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { ahoraChile } from "@/lib/fechas";
 
 type MembresiaRow = {
     id: string;
@@ -127,7 +126,7 @@ export default function ProximaRenovacion() {
         );
     }
 
-    const now = ahoraChile();
+    const now = new Date();
     const congelada = membresia.congelada === true;
     const vencimiento = new Date(membresia.fecha_vencimiento);
     const inicio = new Date(membresia.fecha_inicio);

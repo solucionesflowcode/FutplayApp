@@ -16,7 +16,7 @@ type Membresia = {
 async function getMembresiaByUser(userId: string): Promise<Membresia | null> {
     const supabase = createClient();
 
-    const ahora = (await import("@/lib/fechas")).ahoraChile().toISOString();
+    const ahora = new Date().toISOString();
 
     const { data, error } = await supabase
         .from("membresia")

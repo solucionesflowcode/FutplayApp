@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
-import { ahoraChile } from "@/lib/fechas";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Membresía no encontrada" }, { status: 404 });
     }
 
-    const now = ahoraChile();
+    const now = new Date();
     const nowIso = now.toISOString();
 
     if (accion === "congelar") {

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterAll, beforeAll } from "vitest";
 import { createMockServerClient, __resetMocks, __setTableData, __setAuthUser } from "@/tests/mocks/supabase";
-import { ahoraChile } from "@/lib/fechas";
 
 beforeAll(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
@@ -33,7 +32,7 @@ function makeRequest(url: string, opts?: RequestInit): Request {
 const DAY = 24 * 60 * 60 * 1000;
 
 function buildMembership(overrides: Record<string, unknown> = {}) {
-    const now = ahoraChile();
+    const now = new Date();
     return {
         id: "m1",
         usuario_id: "u1",
@@ -115,7 +114,7 @@ describe("POST /api/admin/membresias/freeze", () => {
     });
 
     it("FRZ-006: congelar una membresía ya congelada retorna 400", async () => {
-        const now = ahoraChile();
+        const now = new Date();
         __setTableData("membresia", [buildMembership({
             congelada: true,
             fecha_congelamiento: new Date(now.getTime() - 2 * DAY).toISOString(),
@@ -147,7 +146,7 @@ describe("POST /api/admin/membresias/freeze", () => {
     });
 
     it("FRZ-008: congelar una membresía vencida retorna 400", async () => {
-        const now = ahoraChile();
+        const now = new Date();
         __setTableData("membresia", [buildMembership({
             fecha_vencimiento: new Date(now.getTime() - 5 * DAY).toISOString(),
         })]);
@@ -176,7 +175,7 @@ describe("POST /api/admin/membresias/freeze", () => {
     });
 
     it("FRZ-010: reactivar mueve fecha_vencimiento por la duración del congelamiento", async () => {
-        const now = ahoraChile();
+        const now = new Date();
         const fechaCongelamiento = new Date(now.getTime() - 5 * DAY);
         const vencimientoBase = new Date(now.getTime() + 15 * DAY);
         __setTableData("membresia", [buildMembership({

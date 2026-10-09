@@ -23,7 +23,6 @@ import {
 import { getUsers, getPlanesAdmin, type Plan } from "@/data/plans";
 import type { Student } from "@/components/admin/StudentsTable";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
-import { ahoraChile } from "@/lib/fechas";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -164,7 +163,7 @@ export default function MembresiasPage() {
     const isCreate = modal === "create";
     const planSel = planes.find((pl) => pl.id === form.plan_id);
     const diasVigencia = planSel?.dias_vigencia ?? planSel?.dias ?? 30;
-    const ahora = ahoraChile();
+    const ahora = new Date();
     const fecha_inicio = isCreate ? ahora.toISOString() : dateToIso(form.fecha_inicio);
     const fecha_vencimiento = isCreate
       ? new Date(ahora.getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString()

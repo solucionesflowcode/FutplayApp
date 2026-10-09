@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
-import { ahoraChile, membresiaActiva, fechaVencimientoDesde } from "@/lib/fechas";
+import { membresiaActiva, fechaVencimientoDesde } from "@/lib/fechas";
 
 type PlanRow = {
     id: string;
@@ -48,7 +48,7 @@ export type MembresiaConPlan = {
 export async function userHasMembresia(userId: string): Promise<boolean> {
     const supabase = createClient();
 
-    const ahoraIso = ahoraChile().toISOString();
+    const ahoraIso = new Date().toISOString();
 
     // sin_tokens=true cuenta como "sin plan": el trigger ya cerró la membresía al
     // agotar el saldo y el alumno debe poder comprar el plan siguiente.
@@ -214,7 +214,7 @@ export async function createMembresia(
 ): Promise<boolean> {
     const supabase = createClient();
 
-    const fecha_inicio = ahoraChile().toISOString();
+    const fecha_inicio = new Date().toISOString();
     const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, dias).toISOString();
 
     const { error } = await supabase
@@ -343,7 +343,7 @@ export async function createMembresiaGestion(data: {
   dias: number;
 }): Promise<boolean> {
   try {
-    const fecha_inicio = ahoraChile().toISOString();
+    const fecha_inicio = new Date().toISOString();
     const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, data.dias).toISOString();
 
     const res = await fetch("/api/admin/membresias/gestion", {

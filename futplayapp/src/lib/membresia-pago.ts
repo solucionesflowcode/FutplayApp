@@ -1,5 +1,5 @@
 import type { createServerClient } from "@supabase/ssr";
-import { ahoraChile, fechaVencimientoDesde } from "@/lib/fechas";
+import { fechaVencimientoDesde } from "@/lib/fechas";
 
 type AdminClient = ReturnType<typeof createServerClient>;
 
@@ -45,7 +45,7 @@ export async function crearMembresiaPorBoleta(
 
   if (existing) return { creada: false, motivo: "ya_existe" };
 
-  const fecha_inicio = ahoraChile().toISOString();
+  const fecha_inicio = new Date().toISOString();
   const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, plan.dias || 30).toISOString();
   const { error } = await adminClient.from("membresia").insert({
     usuario_id: usuarioId,
