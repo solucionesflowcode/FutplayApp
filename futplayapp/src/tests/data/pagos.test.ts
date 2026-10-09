@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createMockServerClient, __resetMocks, __setTableData } from "@/tests/mocks/supabase";
+import { createMockServerClient, __resetMocks, __setTableData, __setRpcResponse } from "@/tests/mocks/supabase";
 
 vi.mock("@/utils/supabase/client", () => ({
     createClient: vi.fn(),
 }));
 
 import { createClient } from "@/utils/supabase/client";
-import { getMisBoletas, getMiMembresia } from "@/data/pagos";
+import { getMisBoletas, getMiMembresia, tieneMembresiaPagos } from "@/data/pagos";
 
 const USER_ID = "user-test-001";
 
@@ -156,5 +156,38 @@ describe("getMiMembresia", () => {
         expect(result!.plan_nombre).toBe("Sin plan");
         expect(result!.precio).toBe(0);
         expect(result!.tokens_mensuales).toBe(0);
+    });
+});
+
+describe("tieneMembresiaPagos", () => {
+    // /planes y /pagos deciden con esto si muestran "Ya tienes un plan activo".
+    // La regla vive en SQL (usuario_tiene_membresia_vigente): estado=true,
+    // vigente por fechas y con tokens disponibles.
+    it("PAGOS-VIG-001: true si el RPC indica membresía vigente con tokens", async () => {
+        __setRpcResponse("usuario_tiene_membresia_vigente", true);
+
+        expect(await tieneMembresiaPagos(USER_ID)).toBe(true);
+    });
+
+    it("PAGOS-VIG-002: false si el RPC indica que no hay membresía usable (p. ej. sin tokens)", async () => {
+        __setRpcResponse("usuario_tiene_membresia_vigente", false);
+
+        expect(await tieneMembresiaPagos(USER_ID)).toBe(false);
+    });
+
+    it("PAGOS-VIG-003: falla abierto (false) si el RPC da error: el servidor valida al pagar", async () => {
+        __setRpcResponse("usuario_tiene_membresia_vigente", null, { message: "Error" });
+
+        expect(await tieneMembresiaPagos(USER_ID)).toBe(false);
+    });
+
+    it("PAGOS-VIG-004: consulta el RPC con el id del usuario", async () => {
+        const client = createMockServerClient();
+        vi.mocked(createClient).mockReturnValue(client as any);
+        __setRpcResponse("usuario_tiene_membresia_vigente", false);
+
+        await tieneMembresiaPagos(USER_ID);
+
+        expect(client.rpc).toHaveBeenCalledWith("usuario_tiene_membresia_vigente", { p_usuario_id: USER_ID });
     });
 });

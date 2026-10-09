@@ -93,15 +93,22 @@ export async function POST(request: Request) {
       );
     }
 
+    const tokens_totales = body.tokens_totales ?? 0;
+    const tokens_usados = body.tokens_usados ?? 0;
+    const agotada = tokens_usados >= tokens_totales;
+
     const { error } = await admin.from("membresia").insert({
       usuario_id: body.usuario_id,
       plan_id: body.plan_id,
       boleta_id: body.boleta_id || null,
-      tokens_totales: body.tokens_totales ?? 0,
-      tokens_usados: body.tokens_usados ?? 0,
+      tokens_totales,
+      tokens_usados,
       fecha_inicio: body.fecha_inicio,
       fecha_vencimiento: body.fecha_vencimiento,
-      estado: body.estado ?? true,
+      // Una membresía creada ya agotada queda cerrada igual que la cierra el
+      // trigger de inscripción; si no, bloquearía la compra del plan siguiente.
+      estado: agotada ? false : (body.estado ?? true),
+      sin_tokens: agotada,
     });
 
     if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
@@ -139,6 +146,35 @@ export async function PUT(request: Request) {
     // a cerrarla sola cuando el alumno gaste el token recuperado.
     if (body.sin_tokens !== undefined) updateData.sin_tokens = body.sin_tokens;
     else if (body.estado === true) updateData.sin_tokens = false;
+
+    // Si se editan los tokens, los flags se recalculan igual que en el trigger
+    // de inscripción: el trigger solo corre al inscribirse, así que una edición
+    // manual podía dejar una membresía con 0 tokens marcada como activa (y esa
+    // membresía bloqueaba la compra del plan siguiente).
+    if (body.tokens_usados !== undefined || body.tokens_totales !== undefined) {
+      const { data: actual, error: actualError } = await admin
+        .from("membresia")
+        .select("tokens_usados, tokens_totales, sin_tokens")
+        .eq("id", body.id)
+        .single();
+
+      if (actualError || !actual) {
+        return NextResponse.json({ error: "Membresía no encontrada" }, { status: 404 });
+      }
+
+      const usados = body.tokens_usados ?? actual.tokens_usados;
+      const totales = body.tokens_totales ?? actual.tokens_totales;
+
+      if (usados >= totales) {
+        updateData.sin_tokens = true;
+        updateData.estado = false;
+      } else if (actual.sin_tokens === true && body.sin_tokens === undefined) {
+        // Se le devolvieron tokens a una membresía cerrada por agotarse:
+        // vuelve a quedar usable (salvo que el admin indique otro estado).
+        updateData.sin_tokens = false;
+        if (body.estado === undefined) updateData.estado = true;
+      }
+    }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });

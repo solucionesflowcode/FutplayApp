@@ -36,7 +36,7 @@ import {
 import Link from "next/link";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
 import { getPlanes, type Plan } from "@/data/plans";
-import { getMisBoletas, getMiMembresia, type PagosBoleta, type PagosMembresia } from "@/data/pagos";
+import { getMisBoletas, getMiMembresia, tieneMembresiaPagos, type PagosBoleta, type PagosMembresia } from "@/data/pagos";
 import { useAuthUser } from "@/context";
 import { membresiaActiva } from "@/lib/fechas";
 
@@ -1049,9 +1049,12 @@ export default function PagosClient() {
             try {
                 // Con "acceso" (plan familiar), el plan no viene en getPlanes()
                 // porque está oculto del catálogo: se obtiene por su token.
-                const [planesData, membresia, planFamiliar] = await Promise.all([
+                // Misma regla que /planes y create-order (RPC usuario_tiene_membresia_vigente).
+                // Antes se miraba solo la fecha de vencimiento de la última membresía y se
+                // bloqueaba con "Ya tienes un plan activo" a alumnos sin tokens.
+                const [planesData, tieneVigente, planFamiliar] = await Promise.all([
                     getPlanes(),
-                    getMiMembresia(usuario.id),
+                    tieneMembresiaPagos(usuario.id),
                     accesoFamiliar
                         ? fetch(`/api/planes/familiar?token=${encodeURIComponent(accesoFamiliar)}`)
                               .then((r) => (r.ok ? r.json() : null))
@@ -1060,9 +1063,7 @@ export default function PagosClient() {
                 ]);
                 if (cancelled) return;
                 setPlanes(planFamiliar ? [...planesData, planFamiliar] : planesData);
-                if (membresia) {
-                    setTienePlanActivo(membresiaActiva(membresia.fecha_vencimiento));
-                }
+                setTienePlanActivo(tieneVigente);
             } catch (err) {
                 console.error("Error obteniendo datos:", err);
             } finally {
