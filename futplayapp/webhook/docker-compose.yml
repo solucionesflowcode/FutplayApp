@@ -9,8 +9,6 @@ services:
       SCHEDULER_ENABLED: "true"
       TZ: America/Santiago
       RECORDATORIOS_PATH: /data/recordatorios.json
-    ports:
-      - "3001:3001"
     volumes:
       - bot-session:/app/whatsapp-session
       - bot-cache:/app/.wwebjs_cache

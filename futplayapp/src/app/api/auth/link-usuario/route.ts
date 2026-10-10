@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { traducirError } from "@/lib/errores";
 
 /** POST /api/auth/link-usuario
- *  Busca al usuario en la tabla `usuario` por su email usando service role.
- *  Recibe { email, id, nombre } desde el callback (ya autenticado).
- *  - Si encuentra el email: actualiza el id al valor actual de auth.users.
- *  - Si no lo encuentra: crea una entrada nueva.
- *  Usa service role directamente (no cookies) para evitar problemas de
- *  propagación de sesión con signInWithIdToken en cuentas Google Workspace.
+ *  Header: Authorization: Bearer <access_token de la sesión recién creada>
+ *
+ *  Vincula la fila de `usuario` con el usuario autenticado, buscándola por
+ *  email con service role:
+ *  - Si existe con otro id: actualiza el id al de auth.users.
+ *  - Si no existe: crea una entrada nueva (rol jugador).
+ *  Usa service role (no cookies) para evitar problemas de propagación de sesión
+ *  con signInWithIdToken en cuentas Google Workspace.
+ *
+ *  El id y el email salen SIEMPRE del token verificado, nunca del body: antes
+ *  la ruta no tenía autenticación y tomaba ambos del body, así que cualquiera
+ *  podía reasignar filas de `usuario` con la service role.
  */
 export async function POST(req: Request) {
-  const { email, id, nombre: nombreBody } = await req.json();
-  if (!email || !id) {
-    return NextResponse.json({ error: "email e id requeridos" }, { status: 400 });
+  const auth = req.headers.get("authorization") || "";
+  const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!accessToken) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -26,6 +32,15 @@ export async function POST(req: Request) {
     serviceKey,
   );
 
+  const { data: { user }, error: authError } = await adminClient.auth.getUser(accessToken);
+  if (authError || !user?.email) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const id = user.id;
+  const email = user.email;
+  const nombreToken = (user.user_metadata?.full_name as string | undefined) || undefined;
+
   // 1. Intentar encontrar usuario por email
   const { data: existing } = await adminClient
     .from("usuario")
@@ -34,12 +49,11 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (existing) {
-    // Si el id ya coincide, devolver tal cual
     if (existing.id === id) {
       return NextResponse.json({ usuario: { id: existing.id, nombre: existing.nombre, rol: existing.rol } });
     }
 
-    // Actualizar el id al nuevo valor de auth.users
+    // Actualizar el id al valor actual de auth.users
     const { data: updated, error: updateError } = await adminClient
       .from("usuario")
       .update({ id })
@@ -55,7 +69,7 @@ export async function POST(req: Request) {
   }
 
   // 2. No existe por email — crear entrada nueva
-  const nombre = nombreBody || email.split("@")[0] || "Usuario";
+  const nombre = nombreToken || email.split("@")[0] || "Usuario";
   const { data: created, error: createError } = await adminClient
     .from("usuario")
     .insert({ id, nombre, email, rol: "jugador" })

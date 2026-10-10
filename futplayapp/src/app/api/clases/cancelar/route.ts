@@ -23,8 +23,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const { inscripcionId, fechaHora } = await request.json();
-    if (!inscripcionId || !fechaHora) {
+    // La fecha de la clase se lee de la BD: antes se usaba la que mandaba el
+    // cliente, y con una fecha futura falsa se recuperaba el token aunque se
+    // cancelara a última hora o después de la clase.
+    const { inscripcionId } = await request.json();
+    if (!inscripcionId) {
         return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 });
     }
 
@@ -58,17 +61,18 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: "Esta inscripción ya no puede cancelarse." });
     }
 
-    let esPartido = false;
-    if (claseInfo?.clase_id) {
-        const { data: clase } = await admin
-            .from("clase")
-            .select("tipo_evento")
-            .eq("id", claseInfo.clase_id)
-            .maybeSingle();
-        esPartido = clase?.tipo_evento === "partido";
+    const { data: clase } = await admin
+        .from("clase")
+        .select("tipo_evento, fecha_hora")
+        .eq("id", claseInfo.clase_id)
+        .maybeSingle();
+
+    if (!clase?.fecha_hora) {
+        return NextResponse.json({ error: "Clase no encontrada" }, { status: 404 });
     }
 
-    const horas = (parseClaseFechaHora(fechaHora).getTime() - Date.now()) / (1000 * 60 * 60);
+    const esPartido = clase.tipo_evento === "partido";
+    const horas = (parseClaseFechaHora(clase.fecha_hora).getTime() - Date.now()) / (1000 * 60 * 60);
 
     // No se puede cancelar si la clase ya pasó
     if (horas < 0) {

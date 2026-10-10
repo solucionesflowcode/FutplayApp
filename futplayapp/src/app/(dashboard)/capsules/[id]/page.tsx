@@ -4,7 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import VideoPlayerView from "@/components/videoPlayer/VideoPlayerView";
 import { redirect } from "next/navigation";
-import { getChileMonthBounds } from "@/lib/fechas";
+import { tieneAccesoContenido } from "@/lib/acceso-contenido";
+import { getSignedEmbedUrl } from "@/lib/bunny";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -16,7 +17,7 @@ export default async function Page({ params }: PageProps) {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
         redirect("/login");
     }
@@ -34,24 +35,21 @@ export default async function Page({ params }: PageProps) {
         redirect("/capsules");
     }
 
-    const { startISO, endISO } = getChileMonthBounds();
+    const hasMembresia = await tieneAccesoContenido(supabase, user.id);
 
-    const { data: membresiaData } = await supabase
-        .from("membresia")
-        .select("*")
-        .eq("usuario_id", user.id)
-        .gt("tokens_totales", 0) // el registro de Plan Liga (0 tokens) no da acceso
-        .gte("fecha_inicio", startISO)
-        .lt("fecha_inicio", endISO);
-
-    const hasMembresia = (membresiaData?.length ?? 0) > 0;
+    // La URL del video se firma en el servidor y solo para quien tiene acceso:
+    // el reproductor de Bunny rechaza URLs sin firma (Token Authentication).
+    const videoUrl = hasMembresia && capsula.bunny_video_id
+        ? getSignedEmbedUrl(capsula.bunny_video_id)
+        : null;
 
     const documentos = await getDocumentosByCapsulaId(id);
 
     return (
-        <VideoPlayerView 
-            capsula={capsula} 
-            hasMembership={hasMembresia} 
+        <VideoPlayerView
+            capsula={capsula}
+            hasMembership={hasMembresia}
+            videoUrl={videoUrl}
             documentos={documentos}
         />
     );

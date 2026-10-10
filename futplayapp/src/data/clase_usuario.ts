@@ -35,15 +35,14 @@ export async function actualizarAsistencia(
 }
 
 export async function cancelarClase(
-  inscripcionId: string,
-  usuarioId: string,
-  fechaHora: string
+  inscripcionId: string
 ): Promise<{ success: boolean; message: string }> {
   try {
     const res = await fetch("/api/clases/cancelar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inscripcionId, fechaHora }),
+      // fechaHora ya no se envía: el servidor usa la de la clase en la BD.
+      body: JSON.stringify({ inscripcionId }),
     });
 
         const data = await res.json();

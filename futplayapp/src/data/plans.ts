@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { PLAN_COLUMNAS_PUBLICAS } from "@/lib/plan-columnas";
 import type { Student } from "@/components/admin/StudentsTable";
 import { getAdminMembresias } from "@/data/membresia";
 
@@ -26,7 +27,7 @@ export async function getPlanes(): Promise<Plan[]> {
 
     const { data, error } = await supabase
         .from("plan")
-        .select("*")
+        .select(PLAN_COLUMNAS_PUBLICAS)
         .or(FILTRO_CATALOGO)
         .order("precio", { ascending: true });
 
@@ -43,7 +44,7 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
 
     const { data, error } = await supabase
         .from("plan")
-        .select("*")
+        .select(PLAN_COLUMNAS_PUBLICAS)
         .or(FILTRO_CATALOGO)
         .order("precio", { ascending: true })
         .limit(limit);

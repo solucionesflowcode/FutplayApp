@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { PLAN_COLUMNAS_PUBLICAS } from "@/lib/plan-columnas";
 import { membresiaActiva, fechaVencimientoDesde } from "@/lib/fechas";
 
 type PlanRow = {
@@ -78,7 +79,7 @@ async function getPlanById(planId: string): Promise<PlanRow | null> {
 
     const { data, error } = await supabase
         .from("plan")
-        .select("*")
+        .select(PLAN_COLUMNAS_PUBLICAS)
         .eq("id", planId)
         .single();
 
@@ -169,7 +170,7 @@ export async function getAllMembresiasConPlan(): Promise<MembresiaConPlan[]> {
 
     const { data: planes } = await supabase
         .from("plan")
-        .select("*")
+        .select(PLAN_COLUMNAS_PUBLICAS)
         .in("id", planIds);
 
     const planesMap = new Map((planes || []).map((p) => [p.id, p as PlanRow]));

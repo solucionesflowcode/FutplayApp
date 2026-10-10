@@ -26,10 +26,23 @@ vi.mock("@supabase/supabase-js", () => ({
 import { POST } from "@/app/api/clases/cancelar/route";
 
 const USER_ID = "user-test-001";
+const HORA = 3600000;
 
-function makeRequest(url: string, opts?: RequestInit): Request {
-    return new Request(url, opts);
+function cancelar(body: object): Promise<Response> {
+    return POST(new Request("http://localhost:3000/api/clases/cancelar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    }));
 }
+
+/** Inscripción del usuario + clase con su fecha REAL en la BD. */
+function prepararClase(tipo_evento: string, fecha_hora: string, asistencia: string | null = "sin_confirmar") {
+    __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia });
+    __setTableData("clase", { id: "c1", tipo_evento, fecha_hora });
+}
+
+const enHoras = (h: number) => new Date(Date.now() + h * HORA).toISOString();
 
 describe("POST /api/clases/cancelar", () => {
     beforeEach(() => {
@@ -40,370 +53,153 @@ describe("POST /api/clases/cancelar", () => {
     it("API-CLASES-CAN-001: retorna 401 si no está autenticado", async () => {
         __setAuthUser(null);
 
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: "2026-07-01T10:00:00Z" }),
-        }));
+        const res = await cancelar({ inscripcionId: "cu1" });
 
         expect(res.status).toBe(401);
-        const json = await res.json();
-        expect(json.error).toBe("No autenticado");
+        expect((await res.json()).error).toBe("No autenticado");
     });
 
-    it("API-CLASES-CAN-002: retorna 400 si faltan parámetros", async () => {
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
-        }));
+    it("API-CLASES-CAN-002: retorna 400 si falta inscripcionId", async () => {
+        const res = await cancelar({});
 
         expect(res.status).toBe(400);
-        const json = await res.json();
-        expect(json.error).toBe("Faltan parámetros");
+        expect((await res.json()).error).toBe("Faltan parámetros");
     });
 
     it("API-CLASES-CAN-003: retorna 500 si falta SUPABASE_SERVICE_ROLE_KEY", async () => {
         vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
 
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: "2026-07-01T10:00:00Z" }),
-        }));
+        const res = await cancelar({ inscripcionId: "cu1" });
 
         expect(res.status).toBe(500);
-        const json = await res.json();
-        expect(json.error).toBe("Falta SUPABASE_SERVICE_ROLE_KEY");
+        expect((await res.json()).error).toBe("Falta SUPABASE_SERVICE_ROLE_KEY");
 
         vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
     });
 
     it("API-CLASES-CAN-004: retorna success false si la clase ya pasó", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+        prepararClase("entrenamiento", enHoras(-1));
 
-        const pastDate = new Date(Date.now() - 3600000).toISOString();
+        const json = await (await cancelar({ inscripcionId: "cu1" })).json();
 
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: pastDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
         expect(json.success).toBe(false);
         expect(json.message).toBe("La clase ya ha pasado.");
     });
 
     it("API-CLASES-CAN-005: cancela con >= 3h de antelación y devuelve token (entrenamiento)", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+        prepararClase("entrenamiento", enHoras(4));
 
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+        const json = await (await cancelar({ inscripcionId: "cu1" })).json();
 
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
         expect(json.success).toBe(true);
         expect(json.message).toBe("Clase cancelada. Te devolvimos el token.");
     });
 
     it("API-CLASES-CAN-006: cancela con >= 3h de antelación (partido, no devuelve token)", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
-        __setTableData("clase", { id: "c1", tipo_evento: "partido" });
+        prepararClase("partido", enHoras(4));
 
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+        const json = await (await cancelar({ inscripcionId: "cu1" })).json();
 
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
         expect(json.success).toBe(true);
         expect(json.message).toBe("Partido cancelado.");
-    });
-
-    it("API-CLASES-CAN-007: cancela con >= 3h pero RPC falla (mensaje informativo)", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
-        __setTableData("membresia", { id: "m1", tokens_usados: 3 });
-
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.success).toBe(true);
     });
 
     it("API-CLASES-CAN-008: cancela con < 3h de antelación (sin reembolso)", async () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date("2026-07-01T08:00:00Z"));
+        prepararClase("entrenamiento", enHoras(1.5));
 
-        __resetMocks();
-        __setAuthUser({ id: USER_ID, email: "test@test.cl" });
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+        const json = await (await cancelar({ inscripcionId: "cu1" })).json();
 
-        const nearFutureDate = "2026-07-01T09:30:00Z";
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: nearFutureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
         expect(json.success).toBe(true);
         expect(json.message).toContain("no se devuelve el token");
-
-        vi.useRealTimers();
     });
 
     it("API-CLASES-CAN-009: cancela partido con < 3h de antelación", async () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date("2026-07-01T08:00:00Z"));
+        prepararClase("partido", enHoras(1.5));
 
-        __resetMocks();
-        __setAuthUser({ id: USER_ID, email: "test@test.cl" });
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
-        __setTableData("clase", { id: "c1", tipo_evento: "partido" });
+        const json = await (await cancelar({ inscripcionId: "cu1" })).json();
 
-        const nearFutureDate = "2026-07-01T09:30:00Z";
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: nearFutureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
         expect(json.success).toBe(true);
         expect(json.message).toBe("Partido cancelado.");
-
-        vi.useRealTimers();
     });
 
-    it("API-CLASES-CAN-010: rechaza cancelar si ya está cancelado", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "cancelado" });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+    it("API-CLASES-CAN-009B: no permite cancelar con menos de 1h", async () => {
+        prepararClase("entrenamiento", enHoras(0.5));
 
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+        const json = await (await cancelar({ inscripcionId: "cu1" })).json();
 
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
         expect(json.success).toBe(false);
-        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
+        expect(json.message).toContain("menos de 1 hora");
     });
 
-    it("API-CLASES-CAN-011: rechaza cancelar si ya está presente", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "presente" });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+    it.each(["cancelado", "cancelado_sin_reembolso", "asistio", "no_asistio", "presente", "ausente"])(
+        "API-CLASES-CAN-010: rechaza cancelar si el estado es %s",
+        async (estado) => {
+            prepararClase("entrenamiento", enHoras(4), estado);
 
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+            const json = await (await cancelar({ inscripcionId: "cu1" })).json();
 
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.success).toBe(false);
-        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
-    });
-
-    it("API-CLASES-CAN-012: rechaza cancelar si ya está ausente", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "ausente" });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
-
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.success).toBe(false);
-        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
-    });
+            expect(json.success).toBe(false);
+            expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
+        },
+    );
 
     it("API-CLASES-CAN-013: retorna 404 si la inscripción no existe", async () => {
         __setTableData("clase_usuario", null);
 
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "inexistente", fechaHora: futureDate }),
-        }));
+        const res = await cancelar({ inscripcionId: "inexistente" });
 
         expect(res.status).toBe(404);
-        const json = await res.json();
-        expect(json.error).toBe("Inscripción no encontrada");
+        expect((await res.json()).error).toBe("Inscripción no encontrada");
     });
 
     it("API-CLASES-CAN-013B: retorna 404 si la inscripción pertenece a otro usuario", async () => {
         __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: "otro-user" });
 
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
+        const res = await cancelar({ inscripcionId: "cu1" });
 
         expect(res.status).toBe(404);
-        const json = await res.json();
-        expect(json.error).toBe("Inscripción no encontrada");
+        expect((await res.json()).error).toBe("Inscripción no encontrada");
     });
 
-    it("API-CLASES-CAN-014: error al actualizar la inscripción retorna error", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: null });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+    it("API-CLASES-CAN-013C: retorna 404 si la clase no existe", async () => {
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "sin_confirmar" });
+        __setTableData("clase", null);
 
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
+        const res = await cancelar({ inscripcionId: "cu1" });
 
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.success).toBe(true);
-        expect(json.message).toContain("cancelada");
+        expect(res.status).toBe(404);
     });
 
-    it("API-CLASES-CAN-015: rechaza cancelar si ya está cancelado_sin_reembolso", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "cancelado_sin_reembolso" });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
-
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.success).toBe(false);
-        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
-    });
-
-    it("API-CLASES-CAN-016: rechaza cancelar si ya asistio", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "asistio" });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
-
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.success).toBe(false);
-        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
-    });
-
-    it("API-CLASES-CAN-018: cancela con hora naive de Chile (sin Z) con >= 3h reales y devuelve token", async () => {
+    it("API-CLASES-CAN-018: interpreta la fecha naive de la BD como hora de Chile (>= 3h, devuelve token)", async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-07-01T11:00:00Z"));
+        // 13:00 Chile (invierno, UTC-4) = 17:00Z. Faltan 6 h.
+        prepararClase("entrenamiento", "2026-07-01T13:00:00");
 
-        __resetMocks();
-        __setAuthUser({ id: USER_ID, email: "test@test.cl" });
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+        const json = await (await cancelar({ inscripcionId: "cu1" })).json();
 
-        // "2026-07-01T13:00:00" = 13:00 hora local Chile = 17:00Z. Faltan 6h.
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: "2026-07-01T13:00:00" }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
         expect(json.success).toBe(true);
         expect(json.message).toContain("Te devolvimos el token");
-
         vi.useRealTimers();
     });
 
-    it("API-CLASES-CAN-019: cancela con hora naive de Chile (sin Z) con < 3h reales (sin reembolso)", async () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date("2026-07-01T11:00:00Z"));
+    // ── Fraude: el cliente ya no decide la fecha ──
 
-        __resetMocks();
-        __setAuthUser({ id: USER_ID, email: "test@test.cl" });
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
+    it("API-CLASES-CAN-FRAUDE-001: ignora una fechaHora futura falsa del body si la clase ya pasó", async () => {
+        prepararClase("entrenamiento", enHoras(-2));
 
-        // "2026-07-01T09:30:00" = 09:30 hora local Chile = 13:30Z. Faltan 2.5h.
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: "2026-07-01T09:30:00" }),
-        }));
+        const json = await (await cancelar({ inscripcionId: "cu1", fechaHora: enHoras(48) })).json();
 
-        expect(res.status).toBe(200);
-        const json = await res.json();
+        expect(json.success).toBe(false);
+        expect(json.message).toBe("La clase ya ha pasado.");
+    });
+
+    it("API-CLASES-CAN-FRAUDE-002: ignora una fechaHora falsa del body y no devuelve token si faltan < 3h", async () => {
+        prepararClase("entrenamiento", enHoras(2));
+
+        const json = await (await cancelar({ inscripcionId: "cu1", fechaHora: enHoras(48) })).json();
+
         expect(json.success).toBe(true);
         expect(json.message).toContain("no se devuelve el token");
-
-        vi.useRealTimers();
-    });
-
-    it("API-CLASES-CAN-020: rechaza cancelar si ya no_asistio", async () => {
-        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "no_asistio" });
-        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento" });
-
-        const futureDate = new Date(Date.now() + 4 * 3600000).toISOString();
-
-        const res = await POST(makeRequest("http://localhost:3000/api/clases/cancelar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ inscripcionId: "cu1", fechaHora: futureDate }),
-        }));
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.success).toBe(false);
-        expect(json.message).toBe("Esta inscripción ya no puede cancelarse.");
     });
 });

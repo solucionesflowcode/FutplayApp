@@ -80,6 +80,12 @@ async function cancelarAsistencia(usuarioId, db) {
   const proxima = await db.getProximaClaseUsuario(usuarioId);
   if (!proxima) return 'No tienes clases próximas agendadas.';
   const horas = horasHasta(proxima.horario.fecha_hora);
+  // Los partidos no descuentan token al inscribirse: cancelarlos nunca
+  // devuelve uno (antes el bot lo devolvía y regalaba tokens).
+  if (proxima.clase?.tipo_evento === 'partido') {
+    await db.updateAsistencia(proxima.id, horas >= 3 ? 'cancelado' : 'cancelado_sin_reembolso');
+    return '❌ Partido cancelado.';
+  }
   if (horas >= 3) {
     await db.updateAsistencia(proxima.id, 'cancelado');
     const tokenOk = await db.devolverToken(usuarioId);

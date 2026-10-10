@@ -38,7 +38,7 @@ async function getProximaClaseUsuario(usuarioId) {
 
   const { data: clase } = await supabase
     .from('clase')
-    .select('id, titulo, fecha_hora')
+    .select('id, titulo, fecha_hora, tipo_evento')
     .in('id', claseIds)
     .gte('fecha_hora', new Date().toISOString())
     .order('fecha_hora', { ascending: true })
@@ -51,7 +51,7 @@ async function getProximaClaseUsuario(usuarioId) {
 
   return {
     id: claseUsuario.id,
-    clase: { titulo: clase.titulo ?? 'Clase' },
+    clase: { titulo: clase.titulo ?? 'Clase', tipo_evento: clase.tipo_evento },
     horario: { fecha_hora: clase.fecha_hora }
   };
 }
@@ -267,7 +267,7 @@ async function getProximaClaseUsuarioActioned(usuarioId) {
 
   return {
     id: claseUsuario.id,
-    clase: { titulo: clase.titulo ?? 'Clase' },
+    clase: { titulo: clase.titulo ?? 'Clase', tipo_evento: clase.tipo_evento },
     horario: { fecha_hora: clase.fecha_hora },
     asistencia: claseUsuario.asistencia,
   };

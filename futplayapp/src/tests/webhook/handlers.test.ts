@@ -184,6 +184,24 @@ describe("cancelarAsistencia", () => {
     expect(db.devolverToken).toHaveBeenCalledWith("user-1");
   });
 
+  it("WH-PARTIDO-001: cancelar un partido con >= 3h NO devuelve token (nunca se cobró)", async () => {
+    db.getProximaClaseUsuario.mockResolvedValue({ ...classeFutura(5), clase: { titulo: "Partido", tipo_evento: "partido" } });
+    db.updateAsistencia.mockResolvedValue(true);
+    const res = await cancelarAsistencia("user-1", db);
+    expect(res).toBe("❌ Partido cancelado.");
+    expect(db.updateAsistencia).toHaveBeenCalledWith("insc-1", "cancelado");
+    expect(db.devolverToken).not.toHaveBeenCalled();
+  });
+
+  it("WH-PARTIDO-002: cancelar un partido con < 3h queda sin reembolso y sin token", async () => {
+    db.getProximaClaseUsuario.mockResolvedValue({ ...classeFutura(1), clase: { titulo: "Partido", tipo_evento: "partido" } });
+    db.updateAsistencia.mockResolvedValue(true);
+    const res = await cancelarAsistencia("user-1", db);
+    expect(res).toBe("❌ Partido cancelado.");
+    expect(db.updateAsistencia).toHaveBeenCalledWith("insc-1", "cancelado_sin_reembolso");
+    expect(db.devolverToken).not.toHaveBeenCalled();
+  });
+
   it("cancela sin reembolso si faltan menos de 3 horas", async () => {
     db.getProximaClaseUsuario.mockResolvedValue(classeFutura(1));
     db.updateAsistencia.mockResolvedValue(true);

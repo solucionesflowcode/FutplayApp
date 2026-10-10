@@ -18,6 +18,8 @@
  * Documentación: https://docs.bunny.net/api-reference/stream
  */
 
+import { createHash } from "node:crypto";
+
 const BUNNY_API_BASE = "https://video.bunnycdn.com";
 
 function getConfig() {
@@ -254,19 +256,33 @@ export async function deleteVideo(videoId: string): Promise<void> {
 // ──────────────────────────────────────────────
 
 /**
- * Genera la URL de embedding para el reproductor de Bunny Stream.
+ * URL de embedding FIRMADA para el reproductor de Bunny Stream (server-side).
  *
- * Usar en un <iframe> para reproducir el video:
+ * Con "Token Authentication" activado en la librería de Bunny, el reproductor
+ * solo acepta URLs con `token = SHA256_hex(BUNNY_TOKEN_KEY + videoId + expires)`
+ * y `expires` (epoch en segundos) aún no vencido. Generarla solo para usuarios
+ * con acceso: sin la firma, conocer el videoId ya no basta para ver el video.
  *
- *   <iframe src={getEmbedUrl(videoId)} ... />
+ * Si falta BUNNY_TOKEN_KEY devuelve la URL sin firma (y avisa en el log) para
+ * no romper la reproducción mientras se configura Bunny.
  *
  * @param videoId - GUID del video.
- * @returns URL completa tipo https://player.mediadelivery.net/embed/{libraryId}/{videoId}
+ * @param ttlSegundos - Vigencia de la URL (default 4 h).
  */
-export function getEmbedUrl(videoId: string): string {
-    const libraryId = process.env.BUNNY_LIBRARY_ID;
+export function getSignedEmbedUrl(videoId: string, ttlSegundos = 4 * 60 * 60): string {
+    const libraryId = process.env.BUNNY_LIBRARY_ID || process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
     if (!libraryId) throw new Error("Missing BUNNY_LIBRARY_ID");
-    return `https://player.mediadelivery.net/embed/${libraryId}/${videoId}`;
+    const base = `https://player.mediadelivery.net/embed/${libraryId}/${videoId}`;
+
+    const tokenKey = process.env.BUNNY_TOKEN_KEY;
+    if (!tokenKey) {
+        console.warn("[Bunny] Falta BUNNY_TOKEN_KEY: se sirve la URL de video SIN firma");
+        return base;
+    }
+
+    const expires = Math.floor(Date.now() / 1000) + ttlSegundos;
+    const token = createHash("sha256").update(tokenKey + videoId + expires).digest("hex");
+    return `${base}?token=${token}&expires=${expires}`;
 }
 
 /**

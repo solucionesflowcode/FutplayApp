@@ -17,6 +17,5 @@ RUN npx puppeteer browsers install chrome --install-deps
 
 COPY . .
 
-EXPOSE 3001
 
 CMD ["node", "server.js"]

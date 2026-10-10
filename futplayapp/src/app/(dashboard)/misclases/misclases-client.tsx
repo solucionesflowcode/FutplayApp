@@ -151,11 +151,11 @@ export default function MisClasesClient() {
         void load();
     }, [load]);
 
-    const handleCancel = useCallback(async (inscripcionId: string, fechaHora: string) => {
+    const handleCancel = useCallback(async (inscripcionId: string) => {
         setCancelandoId(inscripcionId);
         setCancelMsg(null);
 
-        const result = await cancelarClase(inscripcionId, usuario!.id, fechaHora);
+        const result = await cancelarClase(inscripcionId);
 
         if (result.success) {
             setSessions((prev) =>
@@ -591,10 +591,7 @@ export default function MisClasesClient() {
                             onClose={() => setCancelTarget(null)}
                             onConfirm={async () => {
                                 if (!cancelTarget?.inscripcionId) return;
-                                await handleCancel(
-                                    cancelTarget.inscripcionId,
-                                    cancelTarget.fecha_hora,
-                                );
+                                await handleCancel(cancelTarget.inscripcionId);
                             }}
                             loading={cancelandoId !== null}
                             titulo={cancelTarget?.titulo ?? ""}

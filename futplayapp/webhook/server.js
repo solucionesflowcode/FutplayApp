@@ -1,4 +1,3 @@
-const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const cron = require('node-cron');
@@ -30,9 +29,6 @@ function guardarRecordatorios() {
     console.error('Error guardando recordatorios:', e.message);
   }
 }
-
-const app = express();
-app.use(express.json());
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -277,50 +273,7 @@ if (process.env.SCHEDULER_ENABLED !== 'true') {
   console.log('[Scheduler] Desactivado. SCHEDULER_ENABLED=true para activar.');
 }
 
-// ─── Webhook HTTP ───
-app.post('/whatsapp-webhook', async (req, res) => {
-  try {
-    const data = req.body;
-    if (data.event === 'messages.upsert') {
-      const message = data.data?.[0];
-      if (!message) return res.sendStatus(200);
-      const telefono = message.key?.remoteJid?.split('@')[0];
-      const texto = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
-      if (telefono && texto) await procesarMensajeWhatsApp(telefono, texto, db);
-    }
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('Error en webhook:', err);
-    res.sendStatus(200);
-  }
-});
-
-// ─── Forzar recordatorio ahora (testing) ───
-app.get('/test-reminder/:claseId', async (req, res) => {
-  try {
-    const horarios = await db.getHorarios24h();
-    const h = horarios.find(x => x.id === req.params.claseId);
-    if (!h) return res.status(404).send('Clase no está en ventana 24h');
-
-    const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
-    if (!inscripciones.length) return res.send('Sin alumnos sin confirmar');
-
-      const clase = await db.getClase(h.clase_id);
-      for (const insc of inscripciones) {
-        const usuario = await db.getUsuario(insc.usuario_id);
-        if (!usuario?.telefono) continue;
-        const telefono = usuario.telefono.replace('+', '');
-        const mensaje = buildReminderMessage(usuario, clase, parseFechaHoraChile(h.fecha_hora));
-        await sendMessageWithRetry(whatsapp, `${telefono}@c.us`, mensaje);
-        await db.setPendiente(insc.id);
-        res.send(`✅ Recordatorio enviado a ${usuario.nombre} (${telefono})`);
-      }
-  } catch (err) {
-    res.status(500).send('Error: ' + err.message);
-  }
-});
-
-const PORT = process.env.WEBHOOK_PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Webhook Express activo en puerto ${PORT}`);
-});
+// Sin servidor HTTP: los mensajes llegan por el cliente de WhatsApp
+// (c.on('message')). Los endpoints /whatsapp-webhook y /test-reminder se
+// eliminaron: estaban expuestos sin autenticación y permitían suplantar un
+// teléfono para cancelar clases ajenas o disparar recordatorios.

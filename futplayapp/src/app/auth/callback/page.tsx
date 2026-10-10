@@ -84,14 +84,11 @@ export default function AuthCallback() {
         // por email mediante API route con service role.
         if (!usuario && user.email) {
           try {
+            // La ruta toma id y email del token verificado (no del body).
+            const { data: { session } } = await supabase.auth.getSession();
             const linkRes = await fetch("/api/auth/link-usuario", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: user.email,
-                id: user.id,
-                nombre: user.user_metadata?.full_name || undefined,
-              }),
+              headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
             });
             if (linkRes.ok) {
               const linkData = await linkRes.json();

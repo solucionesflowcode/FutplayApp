@@ -21,6 +21,8 @@ import { useAuthUser } from "@/context";
 interface VideoPlayerViewProps {
   capsula: Capsula;
   hasMembership: boolean;
+  /** URL de embed firmada en el servidor; null si no hay acceso o video. */
+  videoUrl: string | null;
   documentos: Documento[];
   onUnlock?: () => void;
 }
@@ -54,7 +56,7 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
 }
 
-export default function VideoPlayerView({ capsula, hasMembership, documentos, onUnlock }: VideoPlayerViewProps) {
+export default function VideoPlayerView({ capsula, hasMembership, videoUrl, documentos, onUnlock }: VideoPlayerViewProps) {
   const { usuario } = useAuthUser();
   const [comment, setComment] = useState("");
   const [comentarios, setComentarios] = useState<Comentario[]>([]);
@@ -130,7 +132,7 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
                     Obtener Membresía
                   </Link>
                 </div>
-              ) : !process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID || !capsula.bunny_video_id ? (
+              ) : !videoUrl ? (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-900 p-4 sm:p-8 text-center">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-3 sm:mb-4 border border-red-500/20">
                     <Play size={20} className="text-red-500 opacity-50 sm:hidden" />
@@ -138,15 +140,13 @@ export default function VideoPlayerView({ capsula, hasMembership, documentos, on
                   </div>
                   <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Video no disponible</h3>
                   <p className="text-gray-400 text-sm max-w-xs">
-                    {!process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID 
-                      ? "Falta configuración técnica (Library ID). Por favor, contacta a soporte."
-                      : "Esta cápsula no tiene un video vinculado todavía."}
+                    Esta cápsula no tiene un video vinculado todavía.
                   </p>
                 </div>
               ) : (
                 <>
                   <iframe
-                    src={`https://player.mediadelivery.net/embed/${process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID}/${capsula.bunny_video_id}`}
+                    src={videoUrl}
                     className="w-full h-full border-0"
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
                     allowFullScreen

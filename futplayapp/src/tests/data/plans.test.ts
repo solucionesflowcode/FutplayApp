@@ -306,3 +306,25 @@ describe("getUsers", () => {
         expect(diana.phone).toBe("");
     });
 });
+
+describe("columnas de plan pedidas desde el navegador", () => {
+    // Regresión de seguridad: plan.codigo_acceso es el secreto del link de planes
+    // familiares/liga. La BD revoca su SELECT a usuarios; si el cliente pide "*"
+    // o esa columna, la consulta falla (y antes exponía el código).
+    it("PLANS-COLS-001: getPlanes y getPlanesLimit no piden '*' ni codigo_acceso", async () => {
+        const client = createMockServerClient();
+        vi.mocked(createClient).mockReturnValue(client as any);
+        __setTableData("plan", MOCK_PLANS);
+
+        await getPlanes();
+        await getPlanesLimit(2);
+
+        const chains = (client.from as ReturnType<typeof vi.fn>).mock.results.map((r) => r.value);
+        const columnas = chains.flatMap((c) => c.select.mock.calls.map((call: unknown[]) => String(call[0])));
+        expect(columnas).toHaveLength(2);
+        for (const cols of columnas) {
+            expect(cols).not.toBe("*");
+            expect(cols).not.toContain("codigo_acceso");
+        }
+    });
+});

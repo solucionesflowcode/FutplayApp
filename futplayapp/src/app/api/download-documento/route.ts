@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
-
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { tieneAccesoContenido } from "@/lib/acceso-contenido";
 
 function getAdminClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -14,6 +15,21 @@ function getAdminClient() {
 
 export async function GET(request: Request) {
   try {
+    // Los documentos son contenido pago: antes cualquiera (incluso sin sesión)
+    // podía descargarlos.
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { cookies: { getAll() { return cookieStore.getAll(); }, setAll() {} } }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (!(await tieneAccesoContenido(supabase, user.id))) {
+      return NextResponse.json({ error: "Necesitas una membresía vigente" }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
