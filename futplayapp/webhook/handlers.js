@@ -95,13 +95,43 @@ async function cancelarAsistencia(usuarioId, db) {
   return '❌ Clase cancelada. Como faltan menos de 3h, no se devuelve el token.';
 }
 
+// Teléfono real de un contacto (para cuentas @lid, cuyo id NO es el número).
+// Antes se usaba contact.id.user, que en @lid es un identificador interno:
+// el alumno no se encontraba y su respuesta se ignoraba.
+function telefonoDesdeContacto(contact) {
+  if (!contact) return null;
+  const numero = String(contact.number ?? '').replace(/\D/g, '');
+  if (numero) return numero;
+  if (contact.id?.server === 'c.us' && contact.id?.user) {
+    return String(contact.id.user).replace(/\D/g, '');
+  }
+  return null;
+}
+
+const CONFIRMAR = new Set(['1', 'si', 'confirmo', 'confirmar', 'confirmado', 'voy']);
+const CANCELAR = new Set(['2', 'no', 'cancelo', 'cancelar', 'cancela', 'no voy']);
+
+// Normaliza la respuesta del alumno: "Sí", "1.", " SI! " → '1'; "No", "2)" → '2'.
+// Antes solo se aceptaban "1" y "2" exactos.
+function interpretarRespuesta(texto) {
+  const t = String(texto ?? '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (CONFIRMAR.has(t)) return '1';
+  if (CANCELAR.has(t)) return '2';
+  return null;
+}
+
 async function procesarMensajeWhatsApp(telefono, texto, db) {
-  const textoUpper = texto.toUpperCase().trim();
+  const opcion = interpretarRespuesta(texto);
   const usuario = await db.buscarUsuarioPorTelefono(telefono);
   if (!usuario) return null;
 
-  // ── Si no es 1 ni 2, recordar opciones si tiene clase pendiente ──
-  if (textoUpper !== '1' && textoUpper !== '2') {
+  // ── Si no es confirmar ni cancelar, recordar opciones si tiene clase pendiente ──
+  if (!opcion) {
     const pendiente = await db.getProximaClaseUsuario(usuario.id);
     if (pendiente) {
       return `Para confirmar tu clase responde *1*, para cancelar responde *2*.`;
@@ -112,7 +142,7 @@ async function procesarMensajeWhatsApp(telefono, texto, db) {
   // ── Normal flow: find a pending class ──
   const proxima = await db.getProximaClaseUsuario(usuario.id);
   if (proxima) {
-    if (textoUpper === '1') return await confirmarAsistencia(usuario.id, db);
+    if (opcion === '1') return await confirmarAsistencia(usuario.id, db);
     return await cancelarAsistencia(usuario.id, db);
   }
 
@@ -130,4 +160,4 @@ async function procesarMensajeWhatsApp(telefono, texto, db) {
   return null;
 }
 
-module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, horasHasta, parseFechaHoraChile, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };
+module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, interpretarRespuesta, telefonoDesdeContacto, horasHasta, parseFechaHoraChile, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };

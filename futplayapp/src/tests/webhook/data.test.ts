@@ -221,4 +221,29 @@ describe("webhook/data.js — scheduler data functions", () => {
             expect(result).toBeNull();
         });
     });
+
+    // ── usuarioTienePendienteAntes ──────────────────
+
+    describe("usuarioTienePendienteAntes", () => {
+        it("SCH-DATA-019: true si el alumno tiene un 'pendiente' en una clase futura anterior", async () => {
+            __setTableData("clase_usuario", [{ clase_id: "c-antes", usuario_id: "u1", asistencia: "pendiente" }]);
+            __setTableData("clase", [{ id: "c-antes", fecha_hora: hourOffset(2) }]);
+
+            expect(await data.usuarioTienePendienteAntes("u1", hourOffset(5))).toBe(true);
+        });
+
+        it("SCH-DATA-020: false si su 'pendiente' es de una clase posterior", async () => {
+            __setTableData("clase_usuario", [{ clase_id: "c-despues", usuario_id: "u1", asistencia: "pendiente" }]);
+            __setTableData("clase", [{ id: "c-despues", fecha_hora: hourOffset(8) }]);
+
+            expect(await data.usuarioTienePendienteAntes("u1", hourOffset(5))).toBe(false);
+        });
+
+        it("SCH-DATA-021: false si el 'pendiente' es de OTRO alumno (el bloqueo ya no es global)", async () => {
+            __setTableData("clase_usuario", [{ clase_id: "c-antes", usuario_id: "otro", asistencia: "pendiente" }]);
+            __setTableData("clase", [{ id: "c-antes", fecha_hora: hourOffset(2) }]);
+
+            expect(await data.usuarioTienePendienteAntes("u1", hourOffset(5))).toBe(false);
+        });
+    });
 });

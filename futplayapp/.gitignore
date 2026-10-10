@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!webhook/.env.example
 
 # vercel
 .vercel
@@ -45,6 +46,7 @@ webhook/node_modules/
 webhook/whatsapp-session/
 webhook/.wwebjs_cache/
 webhook/.recordatorios.json
+webhook/data/
 
 
 # data

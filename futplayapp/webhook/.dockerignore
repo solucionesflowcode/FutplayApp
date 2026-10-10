@@ -6,3 +6,4 @@ whatsapp-session
 Dockerfile
 docker-compose.yml
 .dockerignore
+data

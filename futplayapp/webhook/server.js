@@ -8,8 +8,9 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const db = require('./data');
-const { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached, parseFechaHoraChile } = require('./handlers');
+const { procesarMensajeWhatsApp, sendMessageWithRetry, recargarPagina, esFrameDetached, telefonoDesdeContacto } = require('./handlers');
 const { esErrorPerfilOcupado, matarChromeStale } = require('./limpieza');
+const { crearScheduler } = require('./scheduler');
 
 const RECORDATORIOS_PATH = process.env.RECORDATORIOS_PATH || path.join(__dirname, '.recordatorios.json');
 let recordatoriosEnviados = new Set();
@@ -31,9 +32,11 @@ function guardarRecordatorios() {
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!supabaseUrl) { console.error('Falta NEXT_PUBLIC_SUPABASE_URL'); process.exit(1); }
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) console.warn('AVISO: Sin SUPABASE_SERVICE_ROLE_KEY. Solo lectura.');
+// Sin la service role la RLS bloquea todo y el bot "funciona" sin hacer nada
+// (antes caía a la clave pública en silencio). Mejor no arrancar.
+if (!supabaseKey) { console.error('Falta SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
 db.init(supabaseUrl, supabaseKey);
 
 // ─── WhatsApp Client ───
@@ -101,9 +104,12 @@ function crearCliente() {
 
     let telefono;
     if (msg.from.endsWith('@lid')) {
-      const contact = await msg.getContact();
-      const rawId = contact.id?.user || contact.id?._serialized || contact.id || contact.number;
-      telefono = rawId.replace(/@\w+/g, '').replace(/\D/g, '');
+      // Cuentas con identificador @lid: el id NO es el teléfono.
+      telefono = telefonoDesdeContacto(await msg.getContact());
+      if (!telefono) {
+        console.warn(`[Bot] No se pudo obtener el teléfono de ${msg.from}`);
+        return;
+      }
     } else {
       telefono = msg.from.replace('@c.us', '');
     }
@@ -206,67 +212,16 @@ process.on('unhandledRejection', (err) => console.error('Rechazo no manejado:', 
 
 iniciarWhatsApp();
 
-// ─── Scheduler ───
+// ─── Scheduler (reglas en scheduler.js) ───
 if (process.env.SCHEDULER_ENABLED === 'true') {
-  cron.schedule('* * * * *', async () => {
-    if (!whatsappReady) { console.log('[Scheduler] WhatsApp no conectado, saltando ciclo'); return; }
-    const ahora = new Date();
-
-    let horarios = await db.getHorarios24h();
-    horarios.sort((a, b) => parseFechaHoraChile(a.fecha_hora) - parseFechaHoraChile(b.fecha_hora));
-    console.log(`[DEBUG SERVER] Scheduler: horarios en 24h=${horarios.length}`);
-    for (const h of horarios) {
-      const hayBloqueo = await db.hayPendientesAnteriores(h.fecha_hora);
-      if (hayBloqueo) {
-        console.log(`[DEBUG SERVER] Scheduler: clase ${h.id} bloqueada, esperando pendientes anteriores`);
-        break;
-      }
-      console.log(`[DEBUG SERVER] Scheduler: procesando horario id=${h.id}, fecha_hora=${h.fecha_hora}`);
-      const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
-      if (!inscripciones.length) { console.log(`[DEBUG SERVER] Scheduler: sin inscripciones sin confirmar`); continue; }
-      const clase = await db.getClase(h.clase_id);
-
-      for (const insc of inscripciones) {
-        if (recordatoriosEnviados.has(insc.id)) { console.log(`[DEBUG SERVER] Scheduler: recordatorio ya enviado para insc=${insc.id}`); continue; }
-        const usuario = await db.getUsuario(insc.usuario_id);
-        if (!usuario?.telefono) { console.log(`[DEBUG SERVER] Scheduler: usuario ${insc.usuario_id} sin telefono`); continue; }
-
-        const fecha = parseFechaHoraChile(h.fecha_hora);
-        const telefono = usuario.telefono.replace('+', '');
-        const mensaje = buildReminderMessage(usuario, clase, fecha);
-
-        console.log(`[DEBUG SERVER] Scheduler: enviando a ${usuario.nombre} (${telefono}): "${mensaje}"`);
-        try {
-          await sendMessageWithRetry(whatsapp, `${telefono}@c.us`, mensaje);
-          await db.setPendiente(insc.id);
-          recordatoriosEnviados.add(insc.id);
-          guardarRecordatorios();
-          console.log(`[DEBUG SERVER] Scheduler: enviado OK a ${usuario.nombre}`);
-        } catch (err) {
-          console.error(`Error al enviar a ${usuario.nombre}:`, err.message);
-        }
-        await new Promise(r => setTimeout(r, 1000));
-      }
-    }
-
-    // La confirmación se cierra 1 hora antes de la clase: sin_confirmar y
-    // pendiente que no confirmaron quedan cancelados sin reembolso.
-    const cerrando = await db.getHorariosProximos1h();
-    for (const h of cerrando) {
-      await db.actualizarPorClaseYEstado(h.id, 'sin_confirmar', 'cancelado_sin_reembolso');
-      await db.actualizarPorClaseYEstado(h.id, 'pendiente', 'cancelado_sin_reembolso');
-    }
-
-    const pasados = await db.getHorariosPasados();
-    for (const h of pasados) {
-      await db.actualizarPorClaseYEstado(h.id, 'pendiente', 'cancelado_sin_reembolso');
-    }
-
-    const pasados1h = await db.getHorariosPasados1h();
-    for (const h of pasados1h) {
-      await db.actualizarPorClaseYEstado(h.id, 'confirmado_whatsapp', 'no_asistio');
-    }
+  const tick = crearScheduler({
+    db,
+    enviar: (chatId, texto) => sendMessageWithRetry(whatsapp, chatId, texto),
+    estaListo: () => whatsappReady,
+    recordatoriosEnviados,
+    guardarRecordatorios,
   });
+  cron.schedule('* * * * *', tick);
 }
 
 if (process.env.SCHEDULER_ENABLED !== 'true') {

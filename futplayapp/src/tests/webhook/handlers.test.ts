@@ -3,10 +3,39 @@ import {
   confirmarAsistencia,
   cancelarAsistencia,
   procesarMensajeWhatsApp,
+  interpretarRespuesta,
+  telefonoDesdeContacto,
   horasHasta,
   buildReminderMessage,
   sendMessageWithRetry,
 } from "../../../webhook/handlers";
+
+describe("interpretarRespuesta", () => {
+  it.each([
+    ["1", "1"], [" 1. ", "1"], ["Sí", "1"], ["SI!", "1"], ["si", "1"], ["confirmo", "1"],
+    ["2", "2"], ["2)", "2"], ["No", "2"], ["cancelo", "2"], ["no voy", "2"],
+  ])("BOT-RESP-VAR: '%s' → %s", (texto, esperado) => {
+    expect(interpretarRespuesta(texto)).toBe(esperado);
+  });
+
+  it.each(["hola", "12", "si pero", "", "gracias"])("BOT-RESP-VAR: '%s' no es una respuesta", (texto) => {
+    expect(interpretarRespuesta(texto)).toBeNull();
+  });
+});
+
+describe("telefonoDesdeContacto", () => {
+  it("BOT-LID-001: usa contact.number (en @lid el id NO es el teléfono)", () => {
+    expect(telefonoDesdeContacto({ number: "56912345678", id: { user: "123456789012345", server: "lid" } })).toBe("56912345678");
+  });
+
+  it("BOT-LID-002: sin number y con id c.us usa el id", () => {
+    expect(telefonoDesdeContacto({ id: { user: "56912345678", server: "c.us" } })).toBe("56912345678");
+  });
+
+  it("BOT-LID-003: sin number y con id @lid devuelve null (no inventa un teléfono)", () => {
+    expect(telefonoDesdeContacto({ id: { user: "123456789012345", server: "lid" } })).toBeNull();
+  });
+});
 
 type MockDb = {
   getProximaClaseUsuario: ReturnType<typeof vi.fn>;

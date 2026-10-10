@@ -137,22 +137,29 @@ async function getHorariosProximos1h() {
   return (data ?? []).map(c => ({ id: c.id, clase_id: c.id }));
 }
 
+// Ventana hacia atrás para los barridos post-clase. Antes se recorrían TODAS
+// las clases históricas cada minuto (crece sin límite). 48 h alcanza de sobra
+// para que el scheduler (cada minuto) procese cada clase recién terminada.
+const VENTANA_PASADAS_MS = 48 * 60 * 60 * 1000;
+
 async function getHorariosPasados() {
+  const ahora = Date.now();
   const { data } = await supabase
     .from('clase')
     .select('id')
-    .lt('fecha_hora', new Date().toISOString());
+    .gte('fecha_hora', new Date(ahora - VENTANA_PASADAS_MS).toISOString())
+    .lt('fecha_hora', new Date(ahora).toISOString());
 
   return (data ?? []).map(c => ({ id: c.id, clase_id: c.id }));
 }
 
 async function getHorariosPasados1h() {
-  const haceUnaHora = new Date(Date.now() - 60 * 60 * 1000);
-
+  const ahora = Date.now();
   const { data } = await supabase
     .from('clase')
     .select('id')
-    .lte('fecha_hora', haceUnaHora.toISOString());
+    .gte('fecha_hora', new Date(ahora - VENTANA_PASADAS_MS).toISOString())
+    .lte('fecha_hora', new Date(ahora - 60 * 60 * 1000).toISOString());
 
   return (data ?? []).map(c => ({ id: c.id, clase_id: c.id }));
 }
@@ -222,24 +229,29 @@ async function getHorarioCompleto(claseId) {
   return data ? { id: data.id, fecha_hora: data.fecha_hora, clase_id: data.id } : null;
 }
 
-async function hayPendientesAnteriores(fechaHora) {
+// ¿Este alumno tiene un recordatorio sin responder ('pendiente') de una clase
+// FUTURA anterior a `fechaHora`? Las respuestas 1/2 aplican a su clase más
+// próxima, así que no se le manda un segundo recordatorio hasta que responda
+// el primero. Antes el bloqueo era GLOBAL: un solo alumno sin responder frenaba
+// los recordatorios de todos para las clases siguientes.
+async function usuarioTienePendienteAntes(usuarioId, fechaHora) {
+  const { data: pendientes } = await supabase
+    .from('clase_usuario')
+    .select('clase_id')
+    .eq('usuario_id', usuarioId)
+    .eq('asistencia', 'pendiente');
+
+  if (!pendientes?.length) return false;
+
   const { data: clases } = await supabase
     .from('clase')
     .select('id')
-    .lt('fecha_hora', fechaHora);
-
-  if (!clases?.length) return false;
-
-  const claseIds = clases.map(c => c.id);
-
-  const { data } = await supabase
-    .from('clase_usuario')
-    .select('id')
-    .in('clase_id', claseIds)
-    .eq('asistencia', 'pendiente')
+    .in('id', pendientes.map(p => p.clase_id))
+    .gte('fecha_hora', new Date().toISOString())
+    .lt('fecha_hora', fechaHora)
     .limit(1);
 
-  return (data?.length ?? 0) > 0;
+  return (clases?.length ?? 0) > 0;
 }
 
 async function getProximaClaseUsuarioActioned(usuarioId) {
@@ -295,6 +307,6 @@ module.exports = {
   getHorario,
   getHorarioCompleto,
   _setTestClient,
-  hayPendientesAnteriores,
+  usuarioTienePendienteAntes,
   getProximaClaseUsuarioActioned,
 };

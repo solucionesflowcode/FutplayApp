@@ -2,6 +2,8 @@ services:
   whatsapp-bot:
     build: .
     container_name: futplay-whatsapp-bot
+    # Se levanta solo al iniciar Docker Desktop (activar "Start Docker Desktop
+    # when you sign in" para que arranque con el PC).
     restart: unless-stopped
     env_file:
       - .env
@@ -9,12 +11,14 @@ services:
       SCHEDULER_ENABLED: "true"
       TZ: America/Santiago
       RECORDATORIOS_PATH: /data/recordatorios.json
+      # El QR para vincular WhatsApp se guarda como imagen en webhook/data/qr.png
+      QR_TO_FILE: /data/qr.png
+    # Sin puertos publicados: el bot no expone HTTP.
     volumes:
       - bot-session:/app/whatsapp-session
       - bot-cache:/app/.wwebjs_cache
-      - bot-data:/data
+      - ./data:/data
 
 volumes:
   bot-session:
   bot-cache:
-  bot-data:
