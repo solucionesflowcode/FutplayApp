@@ -15,8 +15,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Archivo requerido" }, { status: 400 });
     }
 
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Solo se permiten imágenes" }, { status: 400 });
+    // Lista blanca: "image/*" dejaba pasar SVG, que puede llevar scripts y se
+    // sirve desde un bucket público.
+    const tiposPermitidos: Record<string, string> = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+    };
+    const extPermitida = tiposPermitidos[file.type];
+    if (!extPermitida) {
+      return NextResponse.json({ error: "Formato no permitido. Usa JPG, PNG o WebP" }, { status: 400 });
     }
 
     if (file.size > 2 * 1024 * 1024) {
@@ -25,8 +33,8 @@ export async function POST(request: Request) {
 
     const adminClient = await getAdminClient();
 
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `admin_${user.id}_${Date.now()}.${ext}`;
+    // La extensión sale del tipo validado, no del nombre que manda el cliente.
+    const fileName = `admin_${user.id}_${Date.now()}.${extPermitida}`;
     const bytes = await file.arrayBuffer();
 
     // Ensure bucket exists

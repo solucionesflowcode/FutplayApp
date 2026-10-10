@@ -39,9 +39,13 @@ export async function POST(request: Request) {
 
   if (status === "Activo") {
     if (current) {
+      // Reactivar de verdad: con solo tokens_usados=0 la membresía seguía con
+      // estado=false / sin_tokens=true y el alumno figuraba "Activo" sin poder
+      // reservar. Si ya venció, el trigger sincronizar_estado_membresia la
+      // vuelve a cerrar.
       const { error } = await adminClient
         .from("membresia")
-        .update({ tokens_usados: 0 })
+        .update({ tokens_usados: 0, estado: true, sin_tokens: false })
         .eq("id", current.id);
 
       if (error) {

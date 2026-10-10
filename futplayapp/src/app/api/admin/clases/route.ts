@@ -216,15 +216,22 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
-    // Los partidos no descuentan tokens: no debe devolverse nada.
-    const { data: claseInfo } = await admin.from("clase").select("tipo_evento").eq("id", id).maybeSingle();
+    // Los partidos no descuentan tokens y en una clase ya realizada los tokens
+    // se consumieron: en ambos casos no se devuelve nada. Misma regla que el
+    // trigger devolver_tokens_al_borrar_clase.
+    const { data: claseInfo } = await admin.from("clase").select("tipo_evento, fecha_hora").eq("id", id).maybeSingle();
     const esPartido = claseInfo?.tipo_evento === "partido";
+    const yaOcurrio = claseInfo?.fecha_hora ? new Date(claseInfo.fecha_hora) <= new Date() : false;
+    const devuelveTokens = !esPartido && !yaOcurrio;
 
-    // Cuántos tokens corresponde devolver (antes de borrar)
-    const { count: conToken } = await admin.from("clase_usuario")
-      .select("id", { count: "exact", head: true })
-      .eq("clase_id", id)
-      .or("asistencia.is.null,asistencia.neq.cancelado");
+    // Cuántos tokens corresponde devolver (antes de borrar): solo inscripciones
+    // aún activas. Antes contaba también cancelado_sin_reembolso y asistencias.
+    const { count: conToken } = devuelveTokens
+      ? await admin.from("clase_usuario")
+          .select("id", { count: "exact", head: true })
+          .eq("clase_id", id)
+          .or("asistencia.is.null,asistencia.in.(sin_confirmar,pendiente,confirmado_whatsapp)")
+      : { count: 0 };
 
     // CASCADE DELETE removes clase_usuario records; the DB trigger
     // handles returning tokens automatically — no RPC call needed.
@@ -233,7 +240,7 @@ export async function DELETE(request: Request) {
 
     // Calcular cuántos tokens se devolvieron vs. no se pudieron devolver
     let devueltos = 0, noDevueltos = 0;
-    if (!esPartido) {
+    if (devuelveTokens) {
       const { count: fallidos } = await admin.from("tokens_no_devueltos")
         .select("id", { count: "exact", head: true }).eq("clase_id", id);
       noDevueltos = fallidos ?? 0;
@@ -263,18 +270,28 @@ export async function PATCH(request: Request) {
 
       const estado = asistencia ? "asistio" : "no_asistio";
 
-      const { data: existing } = await admin
+      const { data: existing, error: findError } = await admin
         .from("clase_usuario")
         .select("id")
         .eq("clase_id", clase_id)
         .eq("usuario_id", usuario_id)
         .maybeSingle();
 
-      if (existing) {
-        await admin.from("clase_usuario").update({ asistencia: estado }).eq("id", existing.id);
-      } else {
-        await admin.from("clase_usuario").insert({ clase_id, usuario_id, asistencia: estado });
+      if (findError) return NextResponse.json({ error: traducirError(findError.message) }, { status: 500 });
+
+      // Solo se marca asistencia de alumnos inscritos. Antes, si no existía la
+      // inscripción, se creaba una (el trigger cobraba un token o fallaba) y
+      // la respuesta era success igual.
+      if (!existing) {
+        return NextResponse.json({ error: "El alumno no está inscrito en esta clase" }, { status: 404 });
       }
+
+      const { error: updateError } = await admin
+        .from("clase_usuario")
+        .update({ asistencia: estado })
+        .eq("id", existing.id);
+
+      if (updateError) return NextResponse.json({ error: traducirError(updateError.message) }, { status: 500 });
 
       return NextResponse.json({ success: true });
     }

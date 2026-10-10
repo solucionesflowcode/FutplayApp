@@ -321,6 +321,23 @@ describe("DELETE /api/admin/clases", () => {
         expect(json.tokens_devueltos).toBe(2);
         expect(json.tokens_no_devueltos).toBe(1);
     });
+
+    it("API-ADM-CLASES-DEL-004: una clase ya realizada no devuelve tokens", async () => {
+        // Antes se contaban (y el trigger devolvía) los tokens de quienes ya
+        // asistieron: borrar una clase pasada regalaba tokens.
+        __setTableData("clase", { id: "c1", tipo_evento: "entrenamiento", fecha_hora: new Date(Date.now() - 86400000).toISOString() });
+        __setTableData("clase_usuario", [
+            { id: "cu1", usuario_id: "u1", clase_id: "c1", asistencia: "asistio" },
+            { id: "cu2", usuario_id: "u2", clase_id: "c1", asistencia: "no_asistio" },
+        ]);
+
+        const res = await DELETE(makeRequest("http://localhost:3000/api/admin/clases?id=c1"));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.tokens_devueltos).toBe(0);
+        expect(json.tokens_no_devueltos).toBe(0);
+    });
 });
 
 describe("PATCH /api/admin/clases", () => {
@@ -328,7 +345,9 @@ describe("PATCH /api/admin/clases", () => {
         __resetMocks();
     });
 
-    it("API-ADM-CLASES-PATCH-001: registrar-asistencia upsert crea si no existe", async () => {
+    it("API-ADM-CLASES-PATCH-001: registrar-asistencia NO crea inscripción si el alumno no está inscrito (404)", async () => {
+        // Antes la creaba: el trigger de inscripción cobraba un token (o
+        // fallaba) y la respuesta era success igual.
         __setTableData("clase_usuario", null);
 
         const res = await PATCH(makeRequest("http://localhost:3000/api/admin/clases", {
@@ -337,9 +356,42 @@ describe("PATCH /api/admin/clases", () => {
             body: JSON.stringify({ accion: "registrar-asistencia", clase_id: "c1", usuario_id: "u1", asistencia: true }),
         }));
 
+        expect(res.status).toBe(404);
+    });
+
+    it("API-ADM-CLASES-PATCH-001B: registrar-asistencia actualiza la inscripción existente", async () => {
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: "u1", asistencia: "confirmado_whatsapp" });
+
+        const res = await PATCH(makeRequest("http://localhost:3000/api/admin/clases", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accion: "registrar-asistencia", clase_id: "c1", usuario_id: "u1", asistencia: false }),
+        }));
+
         expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.success).toBe(true);
+        expect((await res.json()).success).toBe(true);
+    });
+
+    it("API-ADM-CLASES-PATCH-001C: registrar-asistencia propaga el error al actualizar", async () => {
+        const client = createMockServerClient();
+        const from = client.from;
+        client.from = vi.fn((table: string) => {
+            const chain = from(table);
+            if (table === "clase_usuario") {
+                chain.update = vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: { message: "boom" } })) }));
+            }
+            return chain;
+        }) as typeof client.from;
+        vi.mocked(getAdminClient).mockResolvedValueOnce(client as never);
+        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: "u1" });
+
+        const res = await PATCH(makeRequest("http://localhost:3000/api/admin/clases", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accion: "registrar-asistencia", clase_id: "c1", usuario_id: "u1", asistencia: true }),
+        }));
+
+        expect(res.status).toBe(500);
     });
 
     it("API-ADM-CLASES-PATCH-002: retorna 400 para acción inválida", async () => {

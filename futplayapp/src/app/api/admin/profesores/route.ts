@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
+import { sincronizarEmailAuth } from "@/lib/auth-email";
 
 export async function GET(request: Request) {
   const user = await verifyAdmin();
@@ -116,19 +117,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // También verificar en auth.users directamente
-    const { data: existingAuth } = await admin.auth.admin.listUsers();
-    const authMatch = existingAuth?.users?.some(
-      (u) => u.email?.toLowerCase() === body.email.toLowerCase().trim()
-    );
-    if (authMatch) {
-      return NextResponse.json(
-        { error: "Este email ya tiene una cuenta de autenticación. Si es un usuario huérfano, elimínalo desde Supabase Dashboard." },
-        { status: 409 }
-      );
-    }
-
-    const tempPassword = Math.random().toString(36).slice(-10) + "Aa1!";
+    // Un email ya registrado en auth.users lo rechaza createUser (abajo). Antes
+    // se revisaba con listUsers(), que solo trae la primera página de usuarios.
+    const tempPassword = crypto.randomUUID().slice(0, 12) + "Aa1!";
 
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
       email: body.email,
@@ -137,7 +128,7 @@ export async function POST(request: Request) {
     });
 
     if (authError || !authData.user) {
-      if (authError?.message?.toLowerCase().includes("already registered")) {
+      if (authError?.code === "email_exists" || /already (been )?registered/i.test(authError?.message ?? "")) {
         return NextResponse.json(
           { error: "Este email ya está registrado en el sistema de autenticación. Usa otro email o elimina el usuario huérfano desde Supabase Auth." },
           { status: 409 }
@@ -214,7 +205,7 @@ export async function PUT(request: Request) {
 
     const updateData: Record<string, unknown> = {};
     if (body.nombre !== undefined) updateData.nombre = body.nombre;
-    if (body.email !== undefined) updateData.email = body.email;
+    if (body.email !== undefined) updateData.email = String(body.email).toLowerCase().trim();
     if (body.telefono !== undefined) updateData.telefono = body.telefono;
     if (body.foto_url !== undefined) updateData.foto_url = body.foto_url;
     if (body.rol !== undefined) {
@@ -242,6 +233,9 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
     }
 
+    const emailError = await sincronizarEmailAuth(admin, body.id, updateData.email as string | undefined);
+    if (emailError) return NextResponse.json({ error: traducirError(emailError) }, { status: 500 });
+
     const { error } = await admin.from("usuario").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
@@ -263,6 +257,14 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
+    // Esta ruta solo elimina profesores: antes borraba cualquier usuario
+    // (alumnos o admins) con el id recibido.
+    const { data: objetivo } = await admin.from("usuario").select("rol").eq("id", id).maybeSingle();
+    if (!objetivo) return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 });
+    if (objetivo.rol !== "profesor") {
+      return NextResponse.json({ error: "El usuario no es profesor" }, { status: 400 });
+    }
+
     const [{ count: claseCount }, { count: capsulaCount }] = await Promise.all([
       admin.from("clase").select("*", { count: "exact", head: true }).eq("profesor_id", id),
       admin.from("capsula").select("*", { count: "exact", head: true }).eq("profesor_id", id),
@@ -280,7 +282,10 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await admin.auth.admin.deleteUser(id);
+    const { error: authError } = await admin.auth.admin.deleteUser(id);
+    if (authError && authError.status !== 404) {
+      return NextResponse.json({ error: traducirError(authError.message) }, { status: 500 });
+    }
 
     const { error } = await admin.from("usuario").delete().eq("id", id);
     if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });

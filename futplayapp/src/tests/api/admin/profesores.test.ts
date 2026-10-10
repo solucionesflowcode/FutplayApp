@@ -132,7 +132,7 @@ describe("DELETE /api/admin/profesores", () => {
     });
 
     it("API-ADM-PROFESORES-DEL-001: elimina profesor y su usuario", async () => {
-        __setTableData("profesor", [{ id: "p1" }]);
+        __setTableData("usuario", { id: "p1", rol: "profesor" });
 
         const res = await DELETE(makeRequest("http://localhost:3000/api/admin/profesores?id=p1"));
 
@@ -148,10 +148,19 @@ describe("DELETE /api/admin/profesores", () => {
     });
 
     it("API-ADM-PROFESORES-DEL-003: retorna 404 si profesor no existe", async () => {
-        __setTableData("profesor", null);
+        __setTableData("usuario", null);
 
         const res = await DELETE(makeRequest("http://localhost:3000/api/admin/profesores?id=inexistente"));
 
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(404);
+    });
+
+    it("API-ADM-PROFESORES-DEL-004: no elimina usuarios que no son profesores", async () => {
+        // Antes esta ruta borraba cualquier usuario (alumno o admin) por id.
+        __setTableData("usuario", { id: "a1", rol: "administrador" });
+
+        const res = await DELETE(makeRequest("http://localhost:3000/api/admin/profesores?id=a1"));
+
+        expect(res.status).toBe(400);
     });
 });

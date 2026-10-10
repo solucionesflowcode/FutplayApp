@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { fechaVencimientoDesde } from "@/lib/fechas";
+import { sincronizarEmailAuth } from "@/lib/auth-email";
 
 
 export async function POST(request: Request) {
@@ -120,13 +121,18 @@ export async function PUT(request: Request) {
 
     const updateData: any = {};
     if (body.nombre !== undefined) updateData.nombre = body.nombre;
-    if (body.email !== undefined) updateData.email = body.email;
+    if (body.email !== undefined) updateData.email = String(body.email).toLowerCase().trim();
     if (body.rut !== undefined) updateData.rut = body.rut;
     if (body.telefono !== undefined) updateData.telefono = body.telefono;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
     }
+
+    // El email también vive en auth.users: si solo cambia en `usuario`, el
+    // alumno inicia sesión con el email viejo y queda desvinculado de su perfil.
+    const emailError = await sincronizarEmailAuth(admin, body.id, updateData.email);
+    if (emailError) return NextResponse.json({ error: emailError }, { status: 500 });
 
     const { error } = await admin.from("usuario").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -148,19 +154,35 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
-    // 1) Eliminar registros en tablas hijas
-    await admin.from("membresia").delete().eq("usuario_id", id);
-    await admin.from("boleta").delete().eq("usuario_id", id);
-    await admin.from("clase_usuario").delete().eq("usuario_id", id);
-    await admin.from("ficha_medica").delete().eq("usuario_id", id);
-    await admin.from("horario").delete().eq("usuario_id", id);
+    // Un alumno con pagos no se elimina: se conserva el historial financiero.
+    // Antes se borraban membresía, inscripciones y ficha y DESPUÉS fallaba al
+    // borrar las boletas (boleta_item no tiene cascade), dejando datos a medias.
+    const { count: boletas, error: boletasError } = await admin
+      .from("boleta")
+      .select("id", { count: "exact", head: true })
+      .eq("usuario_id", id);
+    if (boletasError) return NextResponse.json({ error: boletasError.message }, { status: 500 });
+    if ((boletas ?? 0) > 0) {
+      return NextResponse.json(
+        { error: `No se puede eliminar: el alumno tiene ${boletas} pago(s) registrado(s).` },
+        { status: 409 }
+      );
+    }
 
-    // 2) Eliminar de usuario
+    // Membresía, inscripciones, ficha, comentarios y recurrencia: el borrado de
+    // auth.users cascadea a `usuario` y desde ahí a sus tablas hijas, salvo
+    // recurrencia (FK sin cascade), que se borra antes.
+    const { error: recError } = await admin.from("recurrencia").delete().eq("usuario_id", id);
+    if (recError) return NextResponse.json({ error: recError.message }, { status: 500 });
+
+    const { error: authError } = await admin.auth.admin.deleteUser(id);
+    if (authError && authError.status !== 404) {
+      return NextResponse.json({ error: authError.message }, { status: 500 });
+    }
+
+    // Por si la fila de usuario no estaba enlazada a auth.users (id distinto).
     const { error: usuarioError } = await admin.from("usuario").delete().eq("id", id);
     if (usuarioError) return NextResponse.json({ error: usuarioError.message }, { status: 500 });
-
-    // 3) Eliminar de auth.users
-    await admin.auth.admin.deleteUser(id);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
