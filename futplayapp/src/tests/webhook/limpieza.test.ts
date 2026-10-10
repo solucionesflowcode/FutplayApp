@@ -7,6 +7,7 @@ import {
   leerPidSingletonLock,
   pidsChromeConPerfil,
   matarChromeStale,
+  limpiarLocksHuerfanos,
 } from "../../../webhook/limpieza";
 
 function tempSesion() {
@@ -34,6 +35,62 @@ describe("esErrorPerfilOcupado", () => {
   it("BOT-LOCK-004: no confunde otros errores con lock de perfil", () => {
     expect(esErrorPerfilOcupado(new Error("Page crashed"))).toBe(false);
     expect(esErrorPerfilOcupado(null)).toBe(false);
+  });
+
+  it("BOT-LOCK-012: detecta el perfil bloqueado por un contenedor anterior (Linux)", () => {
+    const err = new Error(
+      "Failed to launch the browser process: Code: 21 ... The profile appears to be in use by another Chromium process (674) on another computer (21f592a2f542)."
+    );
+    expect(esErrorPerfilOcupado(err)).toBe(true);
+  });
+});
+
+// ─── limpiarLocksHuerfanos (Linux/Docker) ────────────────────────────────
+
+describe("limpiarLocksHuerfanos", () => {
+  // fs falso: los symlinks reales requieren permisos especiales en Windows.
+  function fsFalso(destinoLock: string | null) {
+    return {
+      readlinkSync: vi.fn(() => {
+        if (destinoLock === null) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+        return destinoLock;
+      }),
+      unlinkSync: vi.fn(),
+    };
+  }
+  const silenciar = () => vi.spyOn(console, "log").mockImplementation(() => {});
+
+  it("BOT-LOCK-013: borra el candado de OTRO host (contenedor anterior tras apagar el PC de golpe)", () => {
+    silenciar();
+    const f = fsFalso("21f592a2f542-674");
+
+    const borro = limpiarLocksHuerfanos("/app/whatsapp-session", { hostname: "da2491960b27", estaVivo: () => true, fsImpl: f as any });
+
+    expect(borro).toBe(true);
+    const borrados = f.unlinkSync.mock.calls.map((c) => path.basename(String(c[0])));
+    expect(borrados).toEqual(["SingletonLock", "SingletonCookie", "SingletonSocket"]);
+    expect(String(f.unlinkSync.mock.calls[0][0])).toContain(path.join("whatsapp-session", "session"));
+  });
+
+  it("BOT-LOCK-014: borra el candado de este host si ese proceso ya no existe", () => {
+    silenciar();
+    const f = fsFalso("da2491960b27-674");
+
+    expect(limpiarLocksHuerfanos("/s", { hostname: "da2491960b27", estaVivo: () => false, fsImpl: f as any })).toBe(true);
+  });
+
+  it("BOT-LOCK-015: NO toca el candado de un Chrome vivo en este mismo contenedor", () => {
+    const f = fsFalso("da2491960b27-674");
+
+    expect(limpiarLocksHuerfanos("/s", { hostname: "da2491960b27", estaVivo: () => true, fsImpl: f as any })).toBe(false);
+    expect(f.unlinkSync).not.toHaveBeenCalled();
+  });
+
+  it("BOT-LOCK-016: sin candado no hace nada", () => {
+    const f = fsFalso(null);
+
+    expect(limpiarLocksHuerfanos("/s", { hostname: "h", estaVivo: () => true, fsImpl: f as any })).toBe(false);
+    expect(f.unlinkSync).not.toHaveBeenCalled();
   });
 });
 

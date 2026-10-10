@@ -114,9 +114,10 @@ Autenticación por grupo: **admin** = `verifyAdmin()` + service_role; **user** =
 - **Sin servidor HTTP:** los mensajes llegan por el cliente de whatsapp-web.js (`c.on('message')`). Se eliminaron `/whatsapp-webhook` y `/test-reminder`, y el contenedor ya no publica el puerto 3001.
 - **Respuestas:** "1" confirma (`confirmado_whatsapp`) y "2" cancela con las mismas reglas de 3 h. Cancelar un partido nunca devuelve token.
 - **Scheduler** (node-cron, cada minuto; `SCHEDULER_ENABLED=true`):
-  1. Manda los recordatorios 24 h antes (`sin_confirmar` → `pendiente`).
+  1. Manda los recordatorios 24 h antes (`sin_confirmar` → `pendiente`), salvo si la clase empieza en menos de 2 h.
   2. 1 h antes de la clase, solo `pendiente` (avisado y sin responder) pasa a `cancelado_sin_reembolso`. Las reservas `sin_confirmar` (nunca avisadas) no se cancelan.
   3. 1 h después de la clase, `confirmado_whatsapp` pasa a `no_asistio` (el profesor lo corrige a `asistio`).
+- **Encendidos cortos** (`webhook/mensajes.js`): al conectarse lee las respuestas recibidas con el bot apagado (desde `estado-bot.json`, máx. 48 h) y las aplica con la hora real del mensaje. El scheduler no corre hasta terminar.
 - Sin `SUPABASE_SERVICE_ROLE_KEY` el bot **no arranca**. Despliegue: `webhook/DESPLIEGUE.md`.
 - Incluye un watchdog de reconexión y limpieza de Chrome colgado (`limpieza.js`). La sesión se guarda en un volumen de Docker.
 

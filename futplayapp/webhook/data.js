@@ -17,34 +17,43 @@ function _setTestClient(client) {
 
 async function buscarUsuarioPorTelefono(telefono) {
   const raw = telefono.replace(/\D/g, '');
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('usuario')
     .select('id, nombre, rol')
     .in('telefono', [raw, '+' + raw])
     .maybeSingle();
+  // Lanza en vez de devolver null: un error de BD no debe confundirse con "no
+  // es alumno", o el mensaje se marcaría como procesado y se perdería.
+  if (error) throw new Error(`buscarUsuarioPorTelefono: ${error.message}`);
   return data;
 }
 
-async function getProximaClaseUsuario(usuarioId) {
-  const { data: inscripciones } = await supabase
+// `desde`: hora en que el alumno mandó el mensaje (por defecto, ahora). Con el
+// bot en encendidos cortos, una respuesta puede procesarse cuando su clase ya
+// pasó: se busca la próxima clase A PARTIR DE ESA HORA para no aplicarla a la
+// clase siguiente.
+async function getProximaClaseUsuario(usuarioId, desde = new Date()) {
+  const { data: inscripciones, error } = await supabase
     .from('clase_usuario')
     .select('id, clase_id')
     .eq('usuario_id', usuarioId)
     .in('asistencia', ['sin_confirmar', 'pendiente']);
 
+  if (error) throw new Error(`getProximaClaseUsuario: ${error.message}`);
   if (!inscripciones?.length) return null;
 
   const claseIds = inscripciones.map(i => i.clase_id);
 
-  const { data: clase } = await supabase
+  const { data: clase, error: errorClase } = await supabase
     .from('clase')
     .select('id, titulo, fecha_hora, tipo_evento')
     .in('id', claseIds)
-    .gte('fecha_hora', new Date().toISOString())
+    .gte('fecha_hora', desde.toISOString())
     .order('fecha_hora', { ascending: true })
     .limit(1)
     .maybeSingle();
 
+  if (errorClase) throw new Error(`getProximaClaseUsuario: ${errorClase.message}`);
   if (!clase) return null;
 
   const claseUsuario = inscripciones.find(i => i.clase_id === clase.id);
@@ -56,22 +65,30 @@ async function getProximaClaseUsuario(usuarioId) {
   };
 }
 
-async function confirmarAsistencia(claseUsuarioId) {
-  const { error } = await supabase
-    .from('clase_usuario')
-    .update({ asistencia: 'confirmado_whatsapp' })
-    .eq('id', claseUsuarioId)
-    .in('asistencia', ['sin_confirmar', 'pendiente']);
-  return !error;
-}
-
-async function updateAsistencia(claseUsuarioId, estado) {
-  const { error } = await supabase
+// Cambia la asistencia solo si sigue en sin_confirmar/pendiente. Devuelve true
+// únicamente si ESTA llamada cambió la fila: antes devolvía !error, y con dos
+// "2" seguidos (o "2" + cancelar en la web) ambos procesos creían haber
+// cancelado y se devolvían dos tokens.
+async function cambiarAsistenciaAbierta(claseUsuarioId, estado) {
+  const { data, error } = await supabase
     .from('clase_usuario')
     .update({ asistencia: estado })
     .eq('id', claseUsuarioId)
-    .in('asistencia', ['sin_confirmar', 'pendiente']);
-  return !error;
+    .in('asistencia', ['sin_confirmar', 'pendiente'])
+    .select('id');
+  if (error) {
+    console.error(`Error actualizando asistencia ${claseUsuarioId}:`, error.message);
+    return false;
+  }
+  return (data?.length ?? 0) > 0;
+}
+
+async function confirmarAsistencia(claseUsuarioId) {
+  return cambiarAsistenciaAbierta(claseUsuarioId, 'confirmado_whatsapp');
+}
+
+async function updateAsistencia(claseUsuarioId, estado) {
+  return cambiarAsistenciaAbierta(claseUsuarioId, estado);
 }
 
 async function devolverToken(usuarioId) {
@@ -254,7 +271,7 @@ async function usuarioTienePendienteAntes(usuarioId, fechaHora) {
   return (clases?.length ?? 0) > 0;
 }
 
-async function getProximaClaseUsuarioActioned(usuarioId) {
+async function getProximaClaseUsuarioActioned(usuarioId, desde = new Date()) {
   const { data: inscripciones } = await supabase
     .from('clase_usuario')
     .select('id, clase_id, asistencia')
@@ -268,7 +285,7 @@ async function getProximaClaseUsuarioActioned(usuarioId) {
     .from('clase')
     .select('id, titulo, fecha_hora')
     .in('id', claseIds)
-    .gte('fecha_hora', new Date().toISOString())
+    .gte('fecha_hora', desde.toISOString())
     .order('fecha_hora', { ascending: true })
     .limit(1)
     .maybeSingle();

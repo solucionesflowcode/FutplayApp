@@ -245,14 +245,15 @@ describe("cancelarAsistencia", () => {
     expect(db.devolverToken).not.toHaveBeenCalled();
   });
 
-  it("responde igual aunque updateAsistencia falle silenciosamente", async () => {
+  it("BOT-CANCEL-001: si la reserva ya había cambiado (update sin filas) NO devuelve token", async () => {
+    // Antes devolvía el token igual: dos "2" seguidos reembolsaban dos veces.
     db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
     db.updateAsistencia.mockResolvedValue(false);
     db.devolverToken.mockResolvedValue(true);
     const res = await cancelarAsistencia("user-1", db);
-    expect(res).toBe("❌ Clase cancelada. Te devolvimos el token.");
+    expect(res).toContain("No pudimos cancelar");
     expect(db.updateAsistencia).toHaveBeenCalledWith("insc-1", "cancelado");
-    expect(db.devolverToken).toHaveBeenCalledWith("user-1");
+    expect(db.devolverToken).not.toHaveBeenCalled();
   });
 
   it("responde distinto si devolverToken falla", async () => {
@@ -272,21 +273,20 @@ describe("cancelarAsistencia", () => {
     expect(db.devolverToken).not.toHaveBeenCalled();
   });
 
-  it("intenta devolverToken aunque updateAsistencia falle (>= 3h)", async () => {
-    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
+  it("BOT-CANCEL-002: con < 3 h y update sin filas no dice 'Clase cancelada'", async () => {
+    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(1));
     db.updateAsistencia.mockResolvedValue(false);
-    db.devolverToken.mockResolvedValue(true);
     const res = await cancelarAsistencia("user-1", db);
-    expect(res).toContain("Te devolvimos el token");
-    expect(db.devolverToken).toHaveBeenCalledWith("user-1");
+    expect(res).toContain("No pudimos cancelar");
+    expect(db.devolverToken).not.toHaveBeenCalled();
   });
 
-  it("avisa si update y devolverToken fallan ambos", async () => {
-    db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
+  it("BOT-CANCEL-003: partido con update sin filas no dice 'Partido cancelado'", async () => {
+    db.getProximaClaseUsuario.mockResolvedValue({ ...classeFutura(5), clase: { titulo: "Partido", tipo_evento: "partido" } });
     db.updateAsistencia.mockResolvedValue(false);
-    db.devolverToken.mockResolvedValue(false);
     const res = await cancelarAsistencia("user-1", db);
-    expect(res).toBe("❌ Clase cancelada. No se pudo devolver el token.");
+    expect(res).toContain("No pudimos cancelar");
+    expect(db.devolverToken).not.toHaveBeenCalled();
   });
 });
 
@@ -397,7 +397,8 @@ describe("procesarMensajeWhatsApp", () => {
     const res = await procesarMensajeWhatsApp("56912345678", "1", db);
     expect(res).toContain("Ya cancelaste");
     expect(res).toContain("Spinning");
-    expect(res).toContain("desde la página web");
+    // Puede haber cancelado por WhatsApp: no se afirma que fue en la web.
+    expect(res).not.toContain("página web");
     expect(db.confirmarAsistencia).not.toHaveBeenCalled();
     expect(db.updateAsistencia).not.toHaveBeenCalled();
   });
@@ -433,6 +434,31 @@ describe("procesarMensajeWhatsApp", () => {
     const res = await procesarMensajeWhatsApp("56912345678", "2", db);
     expect(res).toContain("Ya cancelaste");
     expect(db.updateAsistencia).not.toHaveBeenCalled();
+  });
+
+  it("BOT-OFF-001: mensaje atrasado que no es 1/2 → no responde ni consulta la BD", async () => {
+    const res = await procesarMensajeWhatsApp("56912345678", "gracias", db, { atrasado: true });
+    expect(res).toBeNull();
+    expect(db.buscarUsuarioPorTelefono).not.toHaveBeenCalled();
+  });
+
+  it("BOT-OFF-002: busca la clase y aplica las reglas desde la hora del mensaje (enviadoEn)", async () => {
+    const enviadoEn = new Date(Date.now() - 4 * 3600000);
+    db.buscarUsuarioPorTelefono.mockResolvedValue({ id: "user-1", nombre: "Juan", rol: "jugador" });
+    // Clase 5 h después del mensaje = 1 h desde ahora: por hora del mensaje, con reembolso.
+    db.getProximaClaseUsuario.mockResolvedValue({
+      id: "insc-1",
+      clase: { titulo: "Tecnico", tipo_evento: "entrenamiento" },
+      horario: { fecha_hora: new Date(enviadoEn.getTime() + 5 * 3600000).toISOString() },
+    });
+    db.updateAsistencia.mockResolvedValue(true);
+    db.devolverToken.mockResolvedValue(true);
+
+    const res = await procesarMensajeWhatsApp("56912345678", "2", db, { enviadoEn, atrasado: true });
+
+    expect(db.getProximaClaseUsuario).toHaveBeenCalledWith("user-1", enviadoEn);
+    expect(db.updateAsistencia).toHaveBeenCalledWith("insc-1", "cancelado");
+    expect(res).toContain("Te devolvimos el token");
   });
 
   it("BOT-RESP-005: flujo normal sigue funcionando si hay clase pendiente (no llama actioned)", async () => {

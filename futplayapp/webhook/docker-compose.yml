@@ -11,6 +11,8 @@ services:
       SCHEDULER_ENABLED: "true"
       TZ: America/Santiago
       RECORDATORIOS_PATH: /data/recordatorios.json
+      # Hasta dónde se revisaron mensajes (el bot corre en encendidos cortos)
+      ESTADO_PATH: /data/estado-bot.json
       # El QR para vincular WhatsApp se guarda como imagen en webhook/data/qr.png
       QR_TO_FILE: /data/qr.png
     # Sin puertos publicados: el bot no expone HTTP.

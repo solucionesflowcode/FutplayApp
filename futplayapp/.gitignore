@@ -46,6 +46,7 @@ webhook/node_modules/
 webhook/whatsapp-session/
 webhook/.wwebjs_cache/
 webhook/.recordatorios.json
+webhook/.estado-bot.json
 webhook/data/
 
 

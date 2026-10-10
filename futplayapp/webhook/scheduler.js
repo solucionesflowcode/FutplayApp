@@ -1,5 +1,9 @@
 const { parseFechaHoraChile, buildReminderMessage } = require('./handlers');
 
+// Anticipación mínima para mandar el recordatorio: deja al menos 1 h para
+// responder antes del cierre de 1 h previo a la clase.
+const MARGEN_RECORDATORIO_MS = 2 * 60 * 60 * 1000;
+
 /**
  * Un ciclo del scheduler (lo dispara node-cron cada minuto desde server.js).
  *
@@ -16,6 +20,10 @@ const { parseFechaHoraChile, buildReminderMessage } = require('./handlers');
  *     Si el alumno ya tiene un recordatorio sin responder de una clase anterior,
  *     se espera a que responda (sus respuestas aplican a la clase más próxima).
  *     El bloqueo es POR ALUMNO; antes era global y un alumno frenaba a todos.
+ *     No se avisa si la clase empieza en menos de 2 h (MARGEN_RECORDATORIO_MS):
+ *     quien se inscribe tarde recibía el recordatorio y en el mismo ciclo la
+ *     regla 2 lo cancelaba sin reembolso, sin tiempo para responder. Esa
+ *     inscripción queda 'sin_confirmar' y no se cancela.
  *  2. 1 h antes de la clase, quien recibió el recordatorio y no respondió
  *     ('pendiente') queda 'cancelado_sin_reembolso'. Las inscripciones
  *     'sin_confirmar' (nunca avisadas: sin teléfono, envío fallido, bot caído)
@@ -42,6 +50,7 @@ function crearScheduler(deps) {
     horarios.sort((a, b) => parseFechaHoraChile(a.fecha_hora) - parseFechaHoraChile(b.fecha_hora));
 
     for (const h of horarios) {
+      if (parseFechaHoraChile(h.fecha_hora).getTime() - Date.now() < MARGEN_RECORDATORIO_MS) continue;
       const inscripciones = await db.getInscripcionesSinConfirmar(h.id);
       if (!inscripciones.length) continue;
       const clase = await db.getClase(h.clase_id);
@@ -102,4 +111,4 @@ function crearScheduler(deps) {
   };
 }
 
-module.exports = { crearScheduler };
+module.exports = { crearScheduler, MARGEN_RECORDATORIO_MS };

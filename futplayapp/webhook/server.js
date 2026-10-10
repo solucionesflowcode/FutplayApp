@@ -8,9 +8,13 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const db = require('./data');
-const { procesarMensajeWhatsApp, sendMessageWithRetry, recargarPagina, esFrameDetached, telefonoDesdeContacto } = require('./handlers');
+const { sendMessageWithRetry, recargarPagina } = require('./handlers');
 const { esErrorPerfilOcupado, matarChromeStale } = require('./limpieza');
 const { crearScheduler } = require('./scheduler');
+const { crearEstado, manejarMensaje, ponerseAlDia } = require('./mensajes');
+
+// Hasta dónde se revisaron mensajes y cuáles ya se atendieron (encendidos cortos).
+const estado = crearEstado(process.env.ESTADO_PATH || path.join(__dirname, '.estado-bot.json'));
 
 const RECORDATORIOS_PATH = process.env.RECORDATORIOS_PATH || path.join(__dirname, '.recordatorios.json');
 let recordatoriosEnviados = new Set();
@@ -62,6 +66,38 @@ let whatsappReady = false;
 let inicializando = false;
 let apagando = false;
 let ultimoIntento = 0;
+// true cuando ya se atendieron los mensajes que llegaron con el bot apagado.
+// El scheduler NO corre antes: si no, cancelaría como "sin respuesta" a quien
+// respondió con el PC apagado.
+let alDia = false;
+let enEspera = [];
+
+const depsMensajes = (atrasado) => ({ db, estado, recargarPagina: () => recargarPagina(whatsapp), atrasado });
+
+function atender(msg, atrasado) {
+  return manejarMensaje(msg, depsMensajes(atrasado))
+    .catch((err) => console.error(`[Bot] Error atendiendo mensaje de ${msg.from}:`, err.message));
+}
+
+async function ponerseAlDiaConReintento(cliente) {
+  if (cliente !== whatsapp || !whatsappReady) return;
+  const conexion = Date.now();
+  const desdeMs = estado.desde();
+  try {
+    console.log(`[Bot] Revisando mensajes recibidos desde ${new Date(desdeMs).toISOString()}...`);
+    const n = await ponerseAlDia(cliente, { desdeMs, manejar: (m) => manejarMensaje(m, depsMensajes(true)) });
+    estado.marcarRevisado(conexion);
+    console.log(`[Bot] Al día: ${n} mensaje(s) atrasado(s) atendido(s).`);
+  } catch (err) {
+    console.error('[Bot] Error poniéndose al día, reintento en 60 s:', err.message);
+    setTimeout(() => ponerseAlDiaConReintento(cliente), 60000);
+    return;
+  }
+  alDia = true;
+  const cola = enEspera;
+  enEspera = [];
+  for (const msg of cola) await atender(msg, false);
+}
 
 function crearCliente() {
   const c = new Client({
@@ -80,11 +116,16 @@ function crearCliente() {
     });
   }
 
-  c.on('ready', () => { console.log('WhatsApp conectado!'); whatsappReady = true; });
+  c.on('ready', () => {
+    console.log('WhatsApp conectado!');
+    whatsappReady = true;
+    ponerseAlDiaConReintento(c);
+  });
 
   c.on('disconnected', (reason) => {
     console.error('WhatsApp desconectado:', reason);
     whatsappReady = false;
+    alDia = false;
     if (apagando) return;
     if (reason === 'LOGOUT') {
       console.log('La sesión fue desvinculada. Vuelve a escanear el QR para reconectar.');
@@ -97,39 +138,14 @@ function crearCliente() {
   c.on('auth_failure', (msg) => {
     console.error('auth_failure:', msg);
     whatsappReady = false;
+    alDia = false;
   });
 
   c.on('message', async msg => {
-    if (msg.from.endsWith('@g.us') || msg.from.endsWith('@broadcast')) return;
-
-    let telefono;
-    if (msg.from.endsWith('@lid')) {
-      // Cuentas con identificador @lid: el id NO es el teléfono.
-      telefono = telefonoDesdeContacto(await msg.getContact());
-      if (!telefono) {
-        console.warn(`[Bot] No se pudo obtener el teléfono de ${msg.from}`);
-        return;
-      }
-    } else {
-      telefono = msg.from.replace('@c.us', '');
-    }
-
-    const respuesta = await procesarMensajeWhatsApp(telefono, msg.body, db);
-    if (respuesta) {
-      for (let i = 0; i < 3; i++) {
-        try {
-          await msg.reply(respuesta);
-          break;
-        } catch (err) {
-          if (esFrameDetached(err) && i < 2) {
-            console.log(`[WARN] Frame detached al responder, recargando página...`);
-            await recargarPagina(whatsapp);
-            continue;
-          }
-          throw err;
-        }
-      }
-    }
+    // Mientras se pone al día, los mensajes en vivo esperan: así se atienden
+    // en orden y después de los atrasados del mismo alumno.
+    if (!alDia) { enEspera.push(msg); return; }
+    await atender(msg, false);
   });
 
   return c;
@@ -148,6 +164,9 @@ async function iniciarWhatsApp() {
   // antes de abrir uno nuevo. Sin esto, initialize() falla para siempre con
   // "browser is already running" y el bot queda atascado en un loop de 15s.
   await matarChromeStale(SESSION_PATH);
+  whatsappReady = false;
+  alDia = false;
+  enEspera = [];
   whatsapp = crearCliente();
   try {
     await whatsapp.initialize();
@@ -217,12 +236,21 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
   const tick = crearScheduler({
     db,
     enviar: (chatId, texto) => sendMessageWithRetry(whatsapp, chatId, texto),
-    estaListo: () => whatsappReady,
+    // Solo con los mensajes atrasados ya atendidos (ver alDia).
+    estaListo: () => whatsappReady && alDia,
     recordatoriosEnviados,
     guardarRecordatorios,
   });
   cron.schedule('* * * * *', tick);
 }
+
+// Mientras está conectado y al día, los mensajes llegan en vivo: se avanza la
+// marca de revisión para que el próximo encendido busque solo lo nuevo. Margen
+// de 2 min por si un mensaje llegó justo antes de una desconexión (los ya
+// atendidos se saltan por id).
+cron.schedule('* * * * *', () => {
+  if (whatsappReady && alDia) estado.marcarRevisado(Date.now() - 2 * 60 * 1000);
+});
 
 if (process.env.SCHEDULER_ENABLED !== 'true') {
   console.log('[Scheduler] Desactivado. SCHEDULER_ENABLED=true para activar.');

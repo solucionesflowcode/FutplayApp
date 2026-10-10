@@ -150,6 +150,35 @@ describe("scheduler del bot", () => {
         expect(db.actualizarPorClaseYEstado).not.toHaveBeenCalled();
     });
 
+    it("SCH-011: no avisa clases que empiezan en menos de 2 h (ni consulta sus inscripciones)", async () => {
+        const db = crearDb({
+            getHorarios24h: vi.fn().mockResolvedValue([
+                { id: "c-30m", clase_id: "c-30m", fecha_hora: new Date(Date.now() + 0.5 * 3600000).toISOString() },
+                { id: "c-119m", clase_id: "c-119m", fecha_hora: new Date(Date.now() + 119 * 60000).toISOString() },
+            ]),
+        });
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(enviar).not.toHaveBeenCalled();
+        expect(db.getInscripcionesSinConfirmar).not.toHaveBeenCalled();
+    });
+
+    it("SCH-012: con 2 h justas o más sí avisa", async () => {
+        const db = crearDb({
+            getHorarios24h: vi.fn().mockResolvedValue([
+                { id: "c-121m", clase_id: "c-121m", fecha_hora: new Date(Date.now() + 121 * 60000).toISOString() },
+            ]),
+        });
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(db.getInscripcionesSinConfirmar).toHaveBeenCalledWith("c-121m");
+        expect(enviar).toHaveBeenCalledTimes(1);
+    });
+
     it("SCH-010: normaliza el teléfono a solo dígitos para el chatId", async () => {
         const db = crearDb({ getUsuario: vi.fn().mockResolvedValue({ nombre: "Ana", telefono: "+56 9 1234 5678" }) });
         const { tick, enviar } = crear(db);

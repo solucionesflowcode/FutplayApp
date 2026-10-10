@@ -23,8 +23,11 @@ function parseFechaHoraChile(fechaHora) {
   return new Date(Date.UTC(y, mo - 1, d, h, mi) - offsetMs);
 }
 
-function horasHasta(fecha_hora) {
-  return (parseFechaHoraChile(fecha_hora) - new Date()) / (1000 * 60 * 60);
+// Horas entre `desde` y la clase. `desde` es la hora en que el alumno MANDÓ el
+// mensaje: el bot puede procesarlo tarde (corre en encendidos cortos) y las
+// reglas de 1 h / 3 h deben juzgarse por cuándo respondió, no por cuándo se leyó.
+function horasHasta(fecha_hora, desde = new Date()) {
+  return (parseFechaHoraChile(fecha_hora) - desde) / (1000 * 60 * 60);
 }
 
 function buildReminderMessage(usuario, clase, fechaHora) {
@@ -68,30 +71,36 @@ async function sendMessageWithRetry(whatsapp, chatId, message, maxRetries = 3) {
   }
 }
 
-async function confirmarAsistencia(usuarioId, db) {
-  const proxima = await db.getProximaClaseUsuario(usuarioId);
+// enviadoEn: hora del mensaje del alumno. La clase "próxima" se busca a partir
+// de esa hora: si respondió antes de una clase que ya pasó cuando el bot lo
+// procesa, la respuesta aplica a ESA clase y no a la siguiente.
+async function confirmarAsistencia(usuarioId, db, enviadoEn = new Date()) {
+  const proxima = await db.getProximaClaseUsuario(usuarioId, enviadoEn);
   if (!proxima) return 'No tienes clases próximas agendadas.';
-  if (horasHasta(proxima.horario.fecha_hora) < 1) return 'Ya no alcanzas a confirmar, la clase empieza en menos de 1 hora.';
+  if (horasHasta(proxima.horario.fecha_hora, enviadoEn) < 1) return 'Ya no alcanzas a confirmar, la clase empieza en menos de 1 hora.';
   const ok = await db.confirmarAsistencia(proxima.id);
   return ok ? `✅ Asistencia confirmada! Nos vemos en "${proxima.clase.titulo}".` : 'Error al confirmar. Intentalo de nuevo.';
 }
 
-async function cancelarAsistencia(usuarioId, db) {
-  const proxima = await db.getProximaClaseUsuario(usuarioId);
+const NO_SE_PUDO_CANCELAR = 'No pudimos cancelar: tu reserva ya había cambiado. Revisa "Mis clases" en la página.';
+
+async function cancelarAsistencia(usuarioId, db, enviadoEn = new Date()) {
+  const proxima = await db.getProximaClaseUsuario(usuarioId, enviadoEn);
   if (!proxima) return 'No tienes clases próximas agendadas.';
-  const horas = horasHasta(proxima.horario.fecha_hora);
+  const horas = horasHasta(proxima.horario.fecha_hora, enviadoEn);
   // Los partidos no descuentan token al inscribirse: cancelarlos nunca
   // devuelve uno (antes el bot lo devolvía y regalaba tokens).
-  if (proxima.clase?.tipo_evento === 'partido') {
-    await db.updateAsistencia(proxima.id, horas >= 3 ? 'cancelado' : 'cancelado_sin_reembolso');
-    return '❌ Partido cancelado.';
-  }
-  if (horas >= 3) {
-    await db.updateAsistencia(proxima.id, 'cancelado');
+  const esPartido = proxima.clase?.tipo_evento === 'partido';
+  const conReembolso = horas >= 3;
+  // El token se devuelve solo si ESTA llamada canceló la reserva: si otra
+  // (un "2" repetido o la web) ya la cambió, no se reembolsa de nuevo.
+  const cancelada = await db.updateAsistencia(proxima.id, conReembolso ? 'cancelado' : 'cancelado_sin_reembolso');
+  if (!cancelada) return NO_SE_PUDO_CANCELAR;
+  if (esPartido) return '❌ Partido cancelado.';
+  if (conReembolso) {
     const tokenOk = await db.devolverToken(usuarioId);
     return tokenOk ? '❌ Clase cancelada. Te devolvimos el token.' : '❌ Clase cancelada. No se pudo devolver el token.';
   }
-  await db.updateAsistencia(proxima.id, 'cancelado_sin_reembolso');
   return '❌ Clase cancelada. Como faltan menos de 3h, no se devuelve el token.';
 }
 
@@ -125,14 +134,19 @@ function interpretarRespuesta(texto) {
   return null;
 }
 
-async function procesarMensajeWhatsApp(telefono, texto, db) {
+// opts.enviadoEn: hora del mensaje (Date). opts.atrasado: el mensaje llegó con
+// el bot apagado y se procesa al ponerse al día; en ese caso solo se atienden
+// respuestas 1/2 (no se contesta "responde 1 o 2" a un "gracias" de hace horas).
+async function procesarMensajeWhatsApp(telefono, texto, db, opts = {}) {
+  const enviadoEn = opts.enviadoEn ?? new Date();
   const opcion = interpretarRespuesta(texto);
+  if (!opcion && opts.atrasado) return null;
   const usuario = await db.buscarUsuarioPorTelefono(telefono);
   if (!usuario) return null;
 
   // ── Si no es confirmar ni cancelar, recordar opciones si tiene clase pendiente ──
   if (!opcion) {
-    const pendiente = await db.getProximaClaseUsuario(usuario.id);
+    const pendiente = await db.getProximaClaseUsuario(usuario.id, enviadoEn);
     if (pendiente) {
       return `Para confirmar tu clase responde *1*, para cancelar responde *2*.`;
     }
@@ -140,20 +154,21 @@ async function procesarMensajeWhatsApp(telefono, texto, db) {
   }
 
   // ── Normal flow: find a pending class ──
-  const proxima = await db.getProximaClaseUsuario(usuario.id);
+  const proxima = await db.getProximaClaseUsuario(usuario.id, enviadoEn);
   if (proxima) {
-    if (opcion === '1') return await confirmarAsistencia(usuario.id, db);
-    return await cancelarAsistencia(usuario.id, db);
+    if (opcion === '1') return await confirmarAsistencia(usuario.id, db, enviadoEn);
+    return await cancelarAsistencia(usuario.id, db, enviadoEn);
   }
 
-  // ── Edge case: no pending class — check if it was already actioned from the web ──
-  const actioned = await db.getProximaClaseUsuarioActioned(usuario.id);
+  // ── Sin clase pendiente: ¿ya respondió (por WhatsApp o en la web)? ──
+  // No se dice "desde la página web": casi siempre ya respondió por acá.
+  const actioned = await db.getProximaClaseUsuarioActioned(usuario.id, enviadoEn);
   if (actioned) {
     if (['cancelado', 'cancelado_sin_reembolso'].includes(actioned.asistencia)) {
-      return `Ya cancelaste "${actioned.clase.titulo}" desde la página web. No es necesario que respondas el mensaje.`;
+      return `Ya cancelaste "${actioned.clase.titulo}". No es necesario que respondas el mensaje.`;
     }
     if (['confirmado', 'confirmado_whatsapp', 'no_asistio'].includes(actioned.asistencia)) {
-      return `Ya confirmaste "${actioned.clase.titulo}" desde la página web. Nos vemos allí!`;
+      return `Ya confirmaste "${actioned.clase.titulo}". Nos vemos allí!`;
     }
   }
 

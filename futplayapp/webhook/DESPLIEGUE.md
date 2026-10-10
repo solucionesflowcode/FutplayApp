@@ -2,8 +2,23 @@
 
 El bot (whatsapp-web.js + Chrome headless) corre en un contenedor Docker. No
 expone puertos: los mensajes llegan por la sesión de WhatsApp Web y el
-scheduler corre dentro del contenedor. **Funciona mientras el PC esté encendido
-y con internet.**
+scheduler corre dentro del contenedor.
+
+**No necesita estar encendido todo el día.** Está pensado para encendidos
+cortos (por ejemplo, 3 veces al día unos 5 minutos). Cada vez que se conecta:
+
+1. **Se pone al día:** lee las respuestas que los alumnos mandaron con el PC
+   apagado (desde la última vez que estuvo conectado, máximo 48 h) y las aplica
+   con la **hora real del mensaje**: quien canceló con ≥ 3 h recibe su token
+   aunque el bot lo lea más tarde, y la respuesta aplica a la clase de ese
+   momento.
+2. **Recién después** corre el scheduler (recordatorios y cancelaciones), así
+   nunca se cancela como "sin respuesta" a quien sí respondió.
+
+Deja el PC encendido unos **5 minutos** desde que aparece `[Bot] Al día` en los
+logs. Para que los avisos lleguen a tiempo, conviene un encendido en la mañana,
+uno a mediodía y uno en la tarde: el recordatorio solo se manda si la clase
+empieza en más de 2 h.
 
 ## Requisitos (una vez)
 
@@ -44,12 +59,12 @@ La sesión queda guardada en el volumen `bot-session`: los reinicios no piden QR
 | Detener | `docker compose down` (la sesión se conserva) |
 | Re-vincular WhatsApp desde cero | `docker compose down` → `docker volume rm webhook_bot-session` → `docker compose up -d` → escanear el QR |
 
-`webhook/data/` contiene `qr.png` y `recordatorios.json` (los recordatorios ya enviados). No se sube al repo.
+`webhook/data/` contiene `qr.png`, `recordatorios.json` (los recordatorios ya enviados) y `estado-bot.json` (hasta cuándo se revisaron mensajes y cuáles ya se atendieron). No se sube al repo. Si borras `estado-bot.json`, el próximo arranque revisa las últimas 24 h; los cambios ya hechos no se repiten.
 
 ## Qué hace el bot
 
-- **Recordatorio 24 h antes** a cada reserva `sin_confirmar` de un alumno con teléfono → `pendiente`. Si el alumno tiene otro recordatorio sin responder de una clase anterior, espera a que responda (las respuestas aplican a su clase más próxima).
-- **Respuestas:** `1` / `sí` / `confirmo` → `confirmado_whatsapp`. `2` / `no` / `cancelo` → cancela con ≥ 3 h, devolviendo el token (los partidos nunca devuelven token); con < 3 h queda sin reembolso.
+- **Recordatorio 24 h antes** a cada reserva `sin_confirmar` de un alumno con teléfono → `pendiente`. Si el alumno tiene otro recordatorio sin responder de una clase anterior, espera a que responda (las respuestas aplican a su clase más próxima). **No se avisa si la clase empieza en menos de 2 h** (quien se inscribe tarde queda `sin_confirmar` y no se le cancela).
+- **Respuestas:** `1` / `sí` / `confirmo` → `confirmado_whatsapp`. `2` / `no` / `cancelo` → cancela con ≥ 3 h, devolviendo el token (los partidos nunca devuelven token); con < 3 h queda sin reembolso. El token se devuelve una sola vez aunque el alumno mande "2" repetido o cancele a la vez en la web.
 - **1 h antes de la clase:** quien recibió el recordatorio y no respondió (`pendiente`) queda `cancelado_sin_reembolso`. Las reservas nunca avisadas (`sin_confirmar`) **no** se cancelan.
 - **1 h después de la clase:** `confirmado_whatsapp` → `no_asistio` (el profesor lo corrige a `asistio`).
 

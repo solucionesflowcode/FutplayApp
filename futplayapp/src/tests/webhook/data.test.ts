@@ -162,6 +162,59 @@ describe("webhook/data.js — scheduler data functions", () => {
         });
     });
 
+    // ── confirmarAsistencia / updateAsistencia ───────
+    // Devuelven true solo si ESTA llamada cambió la fila (evita doble reembolso).
+
+    describe("confirmarAsistencia / updateAsistencia", () => {
+        it("BOT-DATA-001: true si la reserva estaba pendiente y se actualizó", async () => {
+            __setTableData("clase_usuario", [{ id: "cu1", asistencia: "pendiente" }]);
+
+            expect(await data.updateAsistencia("cu1", "cancelado")).toBe(true);
+            expect(await data.confirmarAsistencia("cu1")).toBe(true);
+        });
+
+        it("BOT-DATA-002: false si la reserva ya estaba cancelada (UPDATE sin filas, sin error)", async () => {
+            __setTableData("clase_usuario", [{ id: "cu1", asistencia: "cancelado" }]);
+
+            expect(await data.updateAsistencia("cu1", "cancelado")).toBe(false);
+            expect(await data.confirmarAsistencia("cu1")).toBe(false);
+        });
+
+        it("BOT-DATA-003: false si Supabase devuelve error", async () => {
+            const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+            __setTableData("clase_usuario", null, { message: "boom" });
+
+            expect(await data.updateAsistencia("cu1", "cancelado")).toBe(false);
+            spy.mockRestore();
+        });
+    });
+
+    // ── getProximaClaseUsuario / buscarUsuarioPorTelefono ──
+
+    describe("getProximaClaseUsuario (encendidos cortos)", () => {
+        it("BOT-DATA-004: con `desde` en el pasado encuentra la clase que ya pasó (respuesta atrasada)", async () => {
+            __setTableData("clase_usuario", [{ id: "cu1", clase_id: "c-pasada", usuario_id: "u1", asistencia: "pendiente" }]);
+            __setTableData("clase", [{ id: "c-pasada", titulo: "Tecnico", fecha_hora: hourOffset(-2), tipo_evento: "entrenamiento" }]);
+
+            expect(await data.getProximaClaseUsuario("u1")).toBeNull();
+            const r = await data.getProximaClaseUsuario("u1", new Date(Date.now() - 5 * 3600000));
+            expect(r?.id).toBe("cu1");
+        });
+
+        it("BOT-DATA-005: lanza si Supabase devuelve error (no se confunde con 'sin clases')", async () => {
+            __setTableData("clase_usuario", null, { message: "boom" });
+
+            await expect(data.getProximaClaseUsuario("u1")).rejects.toThrow("boom");
+        });
+
+        it("BOT-DATA-006: buscarUsuarioPorTelefono lanza si Supabase devuelve error", async () => {
+            // [] y no null: el mock descarta el error de maybeSingle cuando data es null.
+            __setTableData("usuario", [], { message: "boom" });
+
+            await expect(data.buscarUsuarioPorTelefono("56912345678")).rejects.toThrow("boom");
+        });
+    });
+
     // ── actualizarPorClaseYEstado ────────────────────
 
     describe("actualizarPorClaseYEstado", () => {
