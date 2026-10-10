@@ -24,7 +24,7 @@
 | 15 | Checks validados (`ck_membresia_tokens`, `ck_boleta_total`, `ck_plan_valores`, `ck_producto_precio`, `ck_clase_cupo`) | ✅ |
 | 16 | Cambios de código (cancelar, admin/clases) | ⏳ pendiente (ver §3) |
 | 17 | Pruebas de la app tras RLS (comentarios, documentos, compra recurrente, registro nuevo) | ⏳ confirmar |
-| 18 | Servidor del bot con `SUPABASE_SERVICE_ROLE_KEY` | ⏳ confirmar |
+| 18 | Servidor del bot con `SUPABASE_SERVICE_ROLE_KEY` | ✅ en código (`7ba46a6`: sin la clave el bot no arranca). ⏳ Falta el primer despliegue con `webhook/.env` (ver `webhook/DESPLIEGUE.md`) |
 
 ---
 

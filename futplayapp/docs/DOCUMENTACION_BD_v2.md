@@ -210,6 +210,6 @@ Correcciones de datos del 2026-10-09 (sin archivo de migración):
 3. Los profesores ven todos los perfiles y membresías (decisión aceptada).
 4. **Bunny:** mientras no se active *Token Authentication* y se configure `BUNNY_TOKEN_KEY`, los videos se sirven sin firma.
 5. **Supabase Auth:** *Leaked password protection* está desactivada (se activa desde el panel).
-6. El bot de WhatsApp usa la clave pública si falta `SUPABASE_SERVICE_ROLE_KEY`, y sin ella `devolver_token` falla en silencio.
+6. ~~El bot de WhatsApp usa la clave pública si falta `SUPABASE_SERVICE_ROLE_KEY`.~~ Resuelto en `7ba46a6`: sin esa clave el bot no arranca.
 7. No hay tabla de auditoría ni historial de tokens.
 8. Los esquemas `mock` y `backup_20261005` siguen en la base; hay que eliminarlos tras ~30 días de estabilidad.
