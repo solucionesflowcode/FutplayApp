@@ -45,15 +45,16 @@ function crearBd() {
         },
         // `desde` = hora del mensaje, igual que data.js. Primero la clase del
         // recordatorio ('pendiente'); si no hay, la 'sin_confirmar' más próxima.
-        async getProximaClaseUsuario(usuarioId: string, desde: Date = new Date()) {
+        async getProximaClaseUsuario(usuarioId: string, desde: Date = new Date(), { soloPendiente = false } = {}) {
             await tick();
-            const p = proxima(usuarioId, ["pendiente"], desde.getTime()) ?? proxima(usuarioId, ["sin_confirmar"], desde.getTime());
+            const p = proxima(usuarioId, ["pendiente"], desde.getTime())
+                ?? (soloPendiente ? null : proxima(usuarioId, ["sin_confirmar"], desde.getTime()));
             if (!p) return null;
             return { id: p.insc.id, clase: { titulo: p.clase.titulo, tipo_evento: p.clase.tipo_evento }, horario: { fecha_hora: p.clase.fecha_hora } };
         },
-        async getProximaClaseUsuarioActioned(usuarioId: string, desde: Date = new Date()) {
+        async getProximaClaseUsuarioActioned(usuarioId: string, desde: Date = new Date(), estados: string[] | null = null) {
             await tick();
-            const p = proxima(usuarioId, null, desde.getTime());
+            const p = proxima(usuarioId, estados, desde.getTime());
             if (!p) return null;
             return { id: p.insc.id, clase: { titulo: p.clase.titulo }, horario: { fecha_hora: p.clase.fecha_hora }, asistencia: p.insc.asistencia };
         },
@@ -496,6 +497,63 @@ describe("bot de WhatsApp — escenarios de punta a punta", () => {
         const res = await m.responder("56912345678", "1");
         expect(res).toContain("Ya confirmaste");
         expect(res).not.toContain("página web");
+    });
+
+    // "2" con el bot apagado + cancelación en la web antes de encender.
+    function alumnoConTresClases(m: ReturnType<typeof montar>) {
+        m.bd.usuarios.push({ id: "u1", nombre: "Ana", telefono: "+56912345678" });
+        m.bd.clases.push({ id: "cA", titulo: "Tecnico", fecha_hora: enHoras(5), tipo_evento: "entrenamiento" });
+        m.bd.clases.push({ id: "cB", titulo: "Fisico", fecha_hora: enHoras(6), tipo_evento: "entrenamiento" });
+        m.bd.clases.push({ id: "cC", titulo: "Tactico", fecha_hora: enHoras(20), tipo_evento: "entrenamiento" });
+        m.bd.inscripciones.push({ id: "iA", usuario_id: "u1", clase_id: "cA", asistencia: "confirmado_whatsapp" });
+        m.bd.inscripciones.push({ id: "iB", usuario_id: "u1", clase_id: "cB", asistencia: "pendiente" });
+        m.bd.inscripciones.push({ id: "iC", usuario_id: "u1", clase_id: "cC", asistencia: "sin_confirmar" });
+    }
+    // Lo que hace /api/clases/cancelar con ≥ 3 h.
+    const cancelarEnLaWeb = (m: ReturnType<typeof montar>, id: string) => {
+        m.bd.inscripciones.find((i) => i.id === id)!.asistencia = "cancelado";
+        return m.bd.db.devolverToken();
+    };
+
+    it("OFF-008: '2' con el bot apagado + cancela en la web → al encender NO cancela otra clase sin confirmar", async () => {
+        const m = montar();
+        alumnoConTresClases(m);
+
+        m.escribirConBotApagado("56912345678", "2"); // pensaba en B
+        avanzar(0.5);
+        await cancelarEnLaWeb(m, "iB");
+        avanzar(0.5);
+        const [respuesta] = await m.encenderBot();
+
+        expect(m.bd.estado("iB")).toBe("cancelado");
+        expect(["cancelado", "cancelado_sin_reembolso"]).not.toContain(m.bd.estado("iC"));
+        expect(m.bd.estado("iA")).toBe("confirmado_whatsapp");
+        expect(m.bd.tokens()).toBe(1); // solo el de la web
+        expect(respuesta).toContain('Ya cancelaste "Fisico"');
+    });
+
+    it("OFF-009: mismo caso sin otra clase → contesta por la clase cancelada, no 'Ya confirmaste' de otra", async () => {
+        const m = montar();
+        alumnoConTresClases(m);
+        m.bd.inscripciones.splice(m.bd.inscripciones.findIndex((i) => i.id === "iC"), 1);
+
+        m.escribirConBotApagado("56912345678", "2");
+        await cancelarEnLaWeb(m, "iB");
+        const [respuesta] = await m.encenderBot();
+
+        expect(respuesta).toContain('Ya cancelaste "Fisico"');
+        expect(respuesta).not.toContain("Ya confirmaste");
+        expect(m.bd.tokens()).toBe(1);
+    });
+
+    it("OFF-010: en vivo, un '2' sin recordatorio pendiente sigue aplicando a la clase sin confirmar más próxima", async () => {
+        const m = montar();
+        alumnoConTresClases(m);
+        await cancelarEnLaWeb(m, "iB");
+
+        await m.responder("56912345678", "2"); // en vivo: lo ve y lo decide ahora
+
+        expect(m.bd.estado("iC")).toBe("cancelado");
     });
 
     // Clase de hoy sin aviso (inscrito con < 2 h) + recordatorio de la de mañana.

@@ -71,6 +71,22 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Clase no encontrada" }, { status: 404 });
     }
 
+    // Update condicional: solo cambia la reserva si sigue abierta. Si el bot de
+    // WhatsApp (un "2") u otro clic la canceló entre la lectura de arriba y este
+    // update, no se toca ni se devuelve un segundo token (antes era .eq("id")
+    // a secas y ambos reembolsaban).
+    const cancelarSiAbierta = async (asistencia: "cancelado" | "cancelado_sin_reembolso") => {
+        const { data, error } = await admin
+            .from("clase_usuario")
+            .update({ asistencia })
+            .eq("id", inscripcionId)
+            .in("asistencia", ["sin_confirmar", "pendiente", "confirmado_whatsapp"])
+            .select("id")
+            .maybeSingle();
+        return { cambio: !!data, error };
+    };
+    const YA_CAMBIO = { success: false, message: "Esta inscripción ya no puede cancelarse." };
+
     const esPartido = clase.tipo_evento === "partido";
     const horas = (parseClaseFechaHora(clase.fecha_hora).getTime() - Date.now()) / (1000 * 60 * 60);
 
@@ -86,15 +102,13 @@ export async function POST(request: Request) {
 
     // Cancelación con 3+ horas: devuelve token
     if (horas >= 3) {
-        const { error: updateError } = await admin
-            .from("clase_usuario")
-            .update({ asistencia: "cancelado" })
-            .eq("id", inscripcionId);
+        const { cambio, error: updateError } = await cancelarSiAbierta("cancelado");
 
         if (updateError) {
             console.error("Error cancelando clase:", updateError.message);
             return NextResponse.json({ success: false, message: "Error al cancelar la clase." });
         }
+        if (!cambio) return NextResponse.json(YA_CAMBIO);
 
         // Partidos no descuentan token, así que no se devuelve
         if (esPartido) {
@@ -117,15 +131,13 @@ export async function POST(request: Request) {
     }
 
     // Cancelación con menos de 3 horas (pero más de 1): no devuelve token
-    const { error: updateError } = await admin
-        .from("clase_usuario")
-        .update({ asistencia: "cancelado_sin_reembolso" })
-        .eq("id", inscripcionId);
+    const { cambio, error: updateError } = await cancelarSiAbierta("cancelado_sin_reembolso");
 
     if (updateError) {
         console.error("Error cancelando clase:", updateError.message);
         return NextResponse.json({ success: false, message: "Error al cancelar la clase." });
     }
+    if (!cambio) return NextResponse.json(YA_CAMBIO);
 
     return NextResponse.json({ success: true, message: esPartido ? "Partido cancelado." : "Clase cancelada. Como faltan menos de 3h, no se devuelve el token." });
 }

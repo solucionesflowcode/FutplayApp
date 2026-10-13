@@ -37,17 +37,21 @@ async function buscarUsuarioPorTelefono(telefono) {
 // de ambas: con una clase anterior sin aviso (inscrito con < 2 h), el "2" del
 // recordatorio de mañana cancelaba la de hoy sin reembolso y la de mañana
 // también quedaba cancelada por no responder.
-async function getProximaClaseUsuario(usuarioId, desde = new Date()) {
+// soloPendiente: para respuestas atrasadas (el bot estaba apagado). Si la reserva
+// del recordatorio ya cambió (p. ej. la canceló en la web), el "2" no debe caer
+// en otra clase sin confirmar que el alumno nunca quiso cancelar.
+async function getProximaClaseUsuario(usuarioId, desde = new Date(), { soloPendiente = false } = {}) {
+  const estados = soloPendiente ? ['pendiente'] : ['pendiente', 'sin_confirmar'];
   const { data: inscripciones, error } = await supabase
     .from('clase_usuario')
     .select('id, clase_id, asistencia')
     .eq('usuario_id', usuarioId)
-    .in('asistencia', ['sin_confirmar', 'pendiente']);
+    .in('asistencia', estados);
 
   if (error) throw new Error(`getProximaClaseUsuario: ${error.message}`);
   if (!inscripciones?.length) return null;
 
-  for (const estado of ['pendiente', 'sin_confirmar']) {
+  for (const estado of estados) {
     const delEstado = inscripciones.filter(i => i.asistencia === estado);
     if (!delEstado.length) continue;
     const proxima = await proximaClaseEntre(delEstado, desde);
@@ -286,11 +290,15 @@ async function usuarioTienePendienteAntes(usuarioId, fechaHora) {
   return (clases?.length ?? 0) > 0;
 }
 
-async function getProximaClaseUsuarioActioned(usuarioId, desde = new Date()) {
-  const { data: inscripciones } = await supabase
+// estados: limita a esos estados (p. ej. solo cancelados al responder "2"), para
+// contestar "Ya cancelaste X" y no hablar de otra clase que sí confirmó.
+async function getProximaClaseUsuarioActioned(usuarioId, desde = new Date(), estados = null) {
+  let consulta = supabase
     .from('clase_usuario')
     .select('id, clase_id, asistencia')
     .eq('usuario_id', usuarioId);
+  if (estados) consulta = consulta.in('asistencia', estados);
+  const { data: inscripciones } = await consulta;
 
   if (!inscripciones?.length) return null;
 

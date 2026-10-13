@@ -229,6 +229,20 @@ describe("webhook/data.js — scheduler data functions", () => {
             expect((await data.getProximaClaseUsuario("u1"))?.id).toBe("cu-a");
         });
 
+        it("BOT-DATA-004e: soloPendiente (respuesta atrasada) ignora las 'sin_confirmar'", async () => {
+            __setTableData("clase_usuario", [
+                { id: "cu-c", clase_id: "c-c", usuario_id: "u1", asistencia: "sin_confirmar" },
+                { id: "cu-b", clase_id: "c-b", usuario_id: "u1", asistencia: "cancelado" },
+            ]);
+            __setTableData("clase", [
+                { id: "c-b", titulo: "B", fecha_hora: hourOffset(6), tipo_evento: "entrenamiento" },
+                { id: "c-c", titulo: "C", fecha_hora: hourOffset(20), tipo_evento: "entrenamiento" },
+            ]);
+
+            expect(await data.getProximaClaseUsuario("u1", new Date(), { soloPendiente: true })).toBeNull();
+            expect((await data.getProximaClaseUsuario("u1"))?.id).toBe("cu-c");
+        });
+
         it("BOT-DATA-004d: una 'pendiente' ya pasada no tapa a la 'sin_confirmar' futura", async () => {
             __setTableData("clase_usuario", [
                 { id: "cu-pasada", clase_id: "c-pasada", usuario_id: "u1", asistencia: "pendiente" },

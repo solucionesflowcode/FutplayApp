@@ -95,6 +95,37 @@ describe("POST /api/clases/cancelar", () => {
         expect(json.message).toBe("Clase cancelada. Te devolvimos el token.");
     });
 
+    it("API-CLASES-CAN-005B: si el bot la cancela entre la lectura y el update, la web NO devuelve otro token", async () => {
+        prepararClase("entrenamiento", enHoras(4), "pendiente");
+        // El "2" del bot llega justo antes del update de la web.
+        // El cliente admin de la ruta es createClient (supabase-js).
+        const { createClient } = await import("@supabase/supabase-js");
+        let cliente: ReturnType<typeof createMockServerClient> | null = null;
+        vi.mocked(createClient).mockImplementation((() => {
+            const c = createMockServerClient();
+            const from = c.from;
+            c.from = vi.fn((tabla: string) => {
+                const chain = from(tabla);
+                if (tabla === "clase_usuario") {
+                    const update = chain.update;
+                    chain.update = vi.fn((...a: unknown[]) => {
+                        __setTableData("clase_usuario", { id: "cu1", clase_id: "c1", usuario_id: USER_ID, asistencia: "cancelado" });
+                        return update(...a);
+                    });
+                }
+                return chain;
+            });
+            cliente = c;
+            return c;
+        }) as never);
+
+        const json = await (await cancelar({ inscripcionId: "cu1" })).json();
+
+        expect(json.success).toBe(false);
+        expect(cliente!.rpc).not.toHaveBeenCalledWith("devolver_token", expect.anything());
+        vi.mocked(createClient).mockImplementation((() => createMockServerClient()) as never);
+    });
+
     it("API-CLASES-CAN-006: cancela con >= 3h de antelación (partido, no devuelve token)", async () => {
         prepararClase("partido", enHoras(4));
 

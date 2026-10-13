@@ -74,8 +74,9 @@ async function sendMessageWithRetry(whatsapp, chatId, message, maxRetries = 3) {
 // enviadoEn: hora del mensaje del alumno. La clase "próxima" se busca a partir
 // de esa hora: si respondió antes de una clase que ya pasó cuando el bot lo
 // procesa, la respuesta aplica a ESA clase y no a la siguiente.
-async function confirmarAsistencia(usuarioId, db, enviadoEn = new Date()) {
-  const proxima = await db.getProximaClaseUsuario(usuarioId, enviadoEn);
+// busqueda: opciones de getProximaClaseUsuario ({ soloPendiente } si es atrasado).
+async function confirmarAsistencia(usuarioId, db, enviadoEn = new Date(), busqueda = {}) {
+  const proxima = await db.getProximaClaseUsuario(usuarioId, enviadoEn, busqueda);
   if (!proxima) return 'No tienes clases próximas agendadas.';
   if (horasHasta(proxima.horario.fecha_hora, enviadoEn) < 1) return 'Ya no alcanzas a confirmar, la clase empieza en menos de 1 hora.';
   const ok = await db.confirmarAsistencia(proxima.id);
@@ -84,8 +85,8 @@ async function confirmarAsistencia(usuarioId, db, enviadoEn = new Date()) {
 
 const NO_SE_PUDO_CANCELAR = 'No pudimos cancelar: tu reserva ya había cambiado. Revisa "Mis clases" en la página.';
 
-async function cancelarAsistencia(usuarioId, db, enviadoEn = new Date()) {
-  const proxima = await db.getProximaClaseUsuario(usuarioId, enviadoEn);
+async function cancelarAsistencia(usuarioId, db, enviadoEn = new Date(), busqueda = {}) {
+  const proxima = await db.getProximaClaseUsuario(usuarioId, enviadoEn, busqueda);
   if (!proxima) return 'No tienes clases próximas agendadas.';
   const horas = horasHasta(proxima.horario.fecha_hora, enviadoEn);
   // Los partidos no descuentan token al inscribirse: cancelarlos nunca
@@ -154,15 +155,25 @@ async function procesarMensajeWhatsApp(telefono, texto, db, opts = {}) {
   }
 
   // ── Normal flow: find a pending class ──
-  const proxima = await db.getProximaClaseUsuario(usuario.id, enviadoEn);
+  // Atrasado: solo la reserva del recordatorio. Si mientras el bot estaba
+  // apagado la canceló en la web, su "2" no debe cancelar OTRA clase.
+  const busqueda = { soloPendiente: !!opts.atrasado };
+  const proxima = await db.getProximaClaseUsuario(usuario.id, enviadoEn, busqueda);
   if (proxima) {
-    if (opcion === '1') return await confirmarAsistencia(usuario.id, db, enviadoEn);
-    return await cancelarAsistencia(usuario.id, db, enviadoEn);
+    if (opcion === '1') return await confirmarAsistencia(usuario.id, db, enviadoEn, busqueda);
+    return await cancelarAsistencia(usuario.id, db, enviadoEn, busqueda);
   }
 
   // ── Sin clase pendiente: ¿ya respondió (por WhatsApp o en la web)? ──
   // No se dice "desde la página web": casi siempre ya respondió por acá.
-  const actioned = await db.getProximaClaseUsuarioActioned(usuario.id, enviadoEn);
+  // Se busca la reserva coherente con la respuesta: a un "2" se le contesta por
+  // la clase que canceló, no por otra que tiene confirmada.
+  const estadosCoherentes = opcion === '2'
+    ? ['cancelado', 'cancelado_sin_reembolso']
+    : ['confirmado', 'confirmado_whatsapp', 'no_asistio'];
+  const actioned =
+    (await db.getProximaClaseUsuarioActioned(usuario.id, enviadoEn, estadosCoherentes)) ??
+    (await db.getProximaClaseUsuarioActioned(usuario.id, enviadoEn));
   if (actioned) {
     if (['cancelado', 'cancelado_sin_reembolso'].includes(actioned.asistencia)) {
       return `Ya cancelaste "${actioned.clase.titulo}". No es necesario que respondas el mensaje.`;

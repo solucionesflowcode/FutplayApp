@@ -456,7 +456,8 @@ describe("procesarMensajeWhatsApp", () => {
 
     const res = await procesarMensajeWhatsApp("56912345678", "2", db, { enviadoEn, atrasado: true });
 
-    expect(db.getProximaClaseUsuario).toHaveBeenCalledWith("user-1", enviadoEn);
+    // Atrasado: solo la reserva del recordatorio (soloPendiente).
+    expect(db.getProximaClaseUsuario).toHaveBeenCalledWith("user-1", enviadoEn, { soloPendiente: true });
     expect(db.updateAsistencia).toHaveBeenCalledWith("insc-1", "cancelado");
     expect(res).toContain("Te devolvimos el token");
   });

@@ -121,7 +121,7 @@ describe("manejarMensaje", () => {
 
         await manejarMensaje(mensaje({ body: "2", timestamp: seg(enviadoEn) }), { ...deps(db), atrasado: true });
 
-        expect(db.getProximaClaseUsuario).toHaveBeenCalledWith("u1", new Date(seg(enviadoEn) * 1000));
+        expect(db.getProximaClaseUsuario).toHaveBeenCalledWith("u1", new Date(seg(enviadoEn) * 1000), { soloPendiente: true });
         expect(db.updateAsistencia).toHaveBeenCalledWith("insc-1", "cancelado");
         expect(db.devolverToken).toHaveBeenCalled();
         vi.useRealTimers();

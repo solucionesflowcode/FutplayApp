@@ -114,7 +114,7 @@ Autenticación por grupo: **admin** = `verifyAdmin()` + service_role; **user** =
 ## 7. Bot de WhatsApp (`webhook/`)
 
 - **Sin servidor HTTP:** los mensajes llegan por el cliente de whatsapp-web.js (`c.on('message')`). Se eliminaron `/whatsapp-webhook` y `/test-reminder`, y el contenedor ya no publica el puerto 3001.
-- **Respuestas:** "1" confirma (`confirmado_whatsapp`) y "2" cancela con las mismas reglas de 3 h. Cancelar un partido nunca devuelve token. La respuesta aplica a la clase del recordatorio (`pendiente`); sin recordatorio pendiente, a la `sin_confirmar` más próxima.
+- **Respuestas:** "1" confirma (`confirmado_whatsapp`) y "2" cancela con las mismas reglas de 3 h. Cancelar un partido nunca devuelve token. La respuesta aplica a la clase del recordatorio (`pendiente`); sin recordatorio pendiente, a la `sin_confirmar` más próxima (salvo respuestas atrasadas, que solo aplican a la `pendiente`). `/api/clases/cancelar` cancela con un update condicional: si el bot ya la canceló, no devuelve otro token.
 - **Scheduler** (node-cron, cada minuto; `SCHEDULER_ENABLED=true`):
   1. Manda los recordatorios 24 h antes (`sin_confirmar` → `pendiente`), salvo si la clase empieza en menos de 2 h.
   2. 1 h antes de la clase, solo `pendiente` (avisado y sin responder) pasa a `cancelado_sin_reembolso`. Las reservas `sin_confirmar` (nunca avisadas) no se cancelan.
