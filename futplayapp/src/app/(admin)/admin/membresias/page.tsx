@@ -605,6 +605,12 @@ export default function MembresiasPage() {
         message={freezeAction?.action === "congelar"
           ? "¿Congelar esta membresía? El tiempo dejará de correr y el jugador no podrá reservar clases hasta reactivar. Sus reservas futuras se cancelarán y se le devolverán los tokens."
           : "¿Reactivar esta membresía? El vencimiento se correrá por la cantidad de días que estuvo congelada."}
+        // Sin esto el botón decía "Eliminar" (el valor por defecto del diálogo).
+        confirmLabel={freezeAction?.action === "congelar" ? "Congelar" : "Reactivar"}
+        loadingLabel={freezeAction?.action === "congelar" ? "Congelando..." : "Reactivando..."}
+        variant="warning"
+        // Deshabilita los botones mientras responde: evita el doble clic.
+        loading={saving}
         onConfirm={handleFreezeAction}
         onCancel={() => setFreezeAction(null)}
       />

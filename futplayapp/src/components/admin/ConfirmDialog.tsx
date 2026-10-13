@@ -9,6 +9,8 @@ type Props = {
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
+  // Texto del botón mientras carga (por defecto, el de eliminar).
+  loadingLabel?: string;
   variant?: "danger" | "warning";
 };
 
@@ -21,6 +23,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   loading = false,
+  loadingLabel = "Eliminando...",
   variant = "danger",
 }: Props) {
   if (!open) return null;
@@ -74,7 +77,7 @@ export default function ConfirmDialog({
             disabled={loading}
             className={`flex-1 px-4 py-2.5 rounded text-sm font-semibold text-white disabled:opacity-50 cursor-pointer ${confirmClass}`}
           >
-            {loading ? "Eliminando..." : confirmLabel}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>
