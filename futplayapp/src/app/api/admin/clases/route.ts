@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       .from("clase_usuario")
       .select("clase_id, asistencia")
       .in("clase_id", claseIds)
-      .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
+      .not("asistencia", "in", "(cancelado,cancelado_sin_reembolso)");
 
     type AsistenciaStats = { inscritos: number; presentes: number; ausentes: number; pendientes: number };
     const statsPorClase = new Map<string, AsistenciaStats>();

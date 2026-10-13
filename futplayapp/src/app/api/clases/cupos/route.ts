@@ -38,10 +38,17 @@ export async function GET() {
     );
 
     const { data: clases } = await admin.from("clase").select("id, cupo_maximo");
-    const { data: inscripciones } = await admin
+    // Sin comillas: en PostgREST `not.in.('cancelado',…)` toma las comillas como
+    // parte del valor, el enum lo rechaza y todas las clases salían con 0 inscritos.
+    const { data: inscripciones, error } = await admin
         .from("clase_usuario")
         .select("clase_id")
-        .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
+        .not("asistencia", "in", "(cancelado,cancelado_sin_reembolso)");
+
+    if (error) {
+        console.error("[cupos] Error contando inscritos:", error.message);
+        return NextResponse.json({ error: "No se pudieron cargar los cupos" }, { status: 500 });
+    }
 
     const inscritosPorClase = new Map<string, number>();
     for (const ins of (inscripciones ?? [])) {

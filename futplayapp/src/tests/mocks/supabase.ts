@@ -145,8 +145,13 @@ export function makeChain(table: string) {
     let countExact = false;
     let headOnly = false;
     let noMatchError: { message: string; code: string } | null = null;
+    // Como PostgREST: en `not.in.(…)` las comillas simples NO delimitan, son parte
+    // del valor ("'cancelado'"), y en una columna enum eso es un error. Antes el
+    // mock las borraba y los tests pasaban con un filtro que en producción fallaba.
+    let filterError: { message: string; code: string } | null = null;
 
     function execute(opts?: { single?: boolean; maybeSingle?: boolean }): Promise<any> {
+        if (filterError) return Promise.resolve({ data: null, error: filterError, count: null });
         const r = state.tables[table];
         if (!r) return Promise.resolve({ data: null, error: null, count: 0 });
 
@@ -228,7 +233,13 @@ export function makeChain(table: string) {
         gte: vi.fn((col: string, val: any) => { filters.push({ method: "gte", args: [col, val] }); return terminal; }),
         lt: vi.fn((col: string, val: any) => { filters.push({ method: "lt", args: [col, val] }); return terminal; }),
         lte: vi.fn((col: string, val: any) => { filters.push({ method: "lte", args: [col, val] }); return terminal; }),
-        not: vi.fn((col: string, op: string, val: string) => { filters.push({ method: "not", args: [col, op, val] }); return terminal; }),
+        not: vi.fn((col: string, op: string, val: string) => {
+            if (op === "in" && val.includes("'")) {
+                filterError = { message: `invalid input value for enum: ${val}`, code: "22P02" };
+            }
+            filters.push({ method: "not", args: [col, op, val] });
+            return terminal;
+        }),
         or: vi.fn(() => terminal),
         order: vi.fn((col: string, opts?: { ascending?: boolean }) => {
             orderBy = { column: col, ascending: opts?.ascending ?? true };

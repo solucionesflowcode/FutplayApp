@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         .from("clase_usuario")
         .select("*", { count: "exact", head: true })
         .eq("clase_id", claseId)
-        .not("asistencia", "in", "('cancelado','cancelado_sin_reembolso')");
+        .not("asistencia", "in", "(cancelado,cancelado_sin_reembolso)");
 
     if (count != null && count >= (clase.cupo_maximo ?? 15)) {
         return NextResponse.json({ error: "Esta clase ya está llena" }, { status: 400 });
