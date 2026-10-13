@@ -44,6 +44,19 @@ function getConfig() {
   };
 }
 
+/**
+ * Atajo de sandbox: dar una boleta por pagada SIN verificarla con Flow (el
+ * getStatus de sandbox falla a veces y no reemplaza {token}). Nunca en el
+ * deployment de producción de Vercel, aunque NEXT_PUBLIC_FLOW_SANDBOX quede en
+ * "true" por error: ahí cualquiera podría obtener una membresía sin pagar.
+ */
+export function permitirPagoSinVerificar(): boolean {
+  return (
+    process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true" &&
+    process.env.VERCEL_ENV !== "production"
+  );
+}
+
 // ──────────────────────────────────────────────
 // Signature (HMAC-SHA256)
 // ──────────────────────────────────────────────

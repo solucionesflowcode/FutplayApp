@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { getFlowPaymentStatus } from "@/lib/flow";
+import { getFlowPaymentStatus, permitirPagoSinVerificar } from "@/lib/flow";
 import { crearMembresiaPorBoleta } from "@/lib/membresia-pago";
 
 export async function POST(request: Request) {
@@ -46,9 +46,8 @@ export async function POST(request: Request) {
     try {
       statusData = await getFlowPaymentStatus(token);
     } catch {
-      const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
-      if (!isSandbox) {
-        console.error(`[Flow Webhook] getStatus falló en producción — devolviendo 502 para reintento`);
+      if (!permitirPagoSinVerificar()) {
+        console.error(`[Flow Webhook] getStatus falló — devolviendo 502 para reintento`);
         return NextResponse.json({ error: "Error al verificar pago con Flow" }, { status: 502 });
       }
       if (!boletaId) {

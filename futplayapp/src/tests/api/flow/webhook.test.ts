@@ -19,7 +19,9 @@ vi.mock("@supabase/ssr", () => ({
     createServerClient: vi.fn(() => createMockServerClient()),
 }));
 
-vi.mock("@/lib/flow", () => ({
+// permitirPagoSinVerificar es la real: las pruebas de sandbox dependen de ella.
+vi.mock("@/lib/flow", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/flow")>()),
     getFlowPaymentStatus: vi.fn(),
 }));
 
@@ -235,6 +237,33 @@ describe("POST /api/flow/webhook", () => {
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json.message).toBe("OK");
+    });
+
+    it("WEBHOOK-SBX-001: en producción de Vercel el atajo de sandbox NO marca pagada la boleta", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
+        vi.stubEnv("VERCEL_ENV", "production");
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("token falso"));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+
+        const res = await POST(makeRequest({ token: "falso" }, undefined, BOLETA_ID));
+
+        expect(res.status).toBe(502);
+        expect(escrituras("boleta", "update")).toEqual([]);
+        expect(escrituras("membresia", "insert")).toEqual([]);
+        vi.stubEnv("VERCEL_ENV", "");
+    });
+
+    it("WEBHOOK-SBX-002: fuera de producción (preview/local) el atajo de sandbox sigue funcionando", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
+        vi.stubEnv("VERCEL_ENV", "preview");
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("No services"));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente", recurrencia_id: null, usuario_id: "u1" });
+
+        const res = await POST(makeRequest({ token: FLOW_TOKEN }, undefined, BOLETA_ID));
+
+        expect(res.status).toBe(200);
+        expect(escrituras("boleta", "update")).toContainEqual({ estado: "pagado" });
+        vi.stubEnv("VERCEL_ENV", "");
     });
 
     // ── Membresía creation ────────────────────────────

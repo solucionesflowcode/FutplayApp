@@ -23,7 +23,9 @@ vi.mock("@supabase/ssr", () => ({
     createServerClient: vi.fn(() => createMockServerClient()),
 }));
 
-vi.mock("@/lib/flow", () => ({
+// permitirPagoSinVerificar es la real: las pruebas de sandbox dependen de ella.
+vi.mock("@/lib/flow", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/flow")>()),
     getFlowPaymentStatus: vi.fn(),
 }));
 
@@ -44,6 +46,18 @@ function makeRequest(token?: string, boletaId?: string): Request {
 
 
 const FLOW_TOKEN = "flow-token-abc";
+
+/** Payloads de update sobre `boleta` en el último cliente creado. */
+function updatesBoleta(): unknown[] {
+    const results = (createServerClient as ReturnType<typeof vi.fn>).mock.results;
+    const fromSpy = results[results.length - 1].value.from as ReturnType<typeof vi.fn>;
+    const payloads: unknown[] = [];
+    fromSpy.mock.calls.forEach((call: unknown[], i: number) => {
+        if (call[0] !== "boleta") return;
+        for (const c of fromSpy.mock.results[i].value.update.mock.calls) payloads.push(c[0]);
+    });
+    return payloads;
+}
 
 // ── Tests ───────────────────────────────────────────
 
@@ -189,6 +203,43 @@ describe("GET /api/flow/confirm", () => {
 
         expect(res.status).toBe(200);
         expect(getFlowPaymentStatus).not.toHaveBeenCalled();
+    });
+
+    it("CONFIRM-SBX-001: en producción de Vercel, sin token real NO se marca pagada aunque la variable diga sandbox", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
+        vi.stubEnv("VERCEL_ENV", "production");
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+
+        const res = await GET(makeRequest("{token}", BOLETA_ID));
+
+        expect((await res.json()).estado).toBe("pendiente");
+        expect(updatesBoleta()).toEqual([]);
+        vi.stubEnv("VERCEL_ENV", "");
+    });
+
+    it("CONFIRM-SBX-002: en producción de Vercel, si getStatus falla NO se marca pagada", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
+        vi.stubEnv("VERCEL_ENV", "production");
+        vi.mocked(getFlowPaymentStatus).mockRejectedValue(new Error("token falso"));
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+
+        const res = await GET(makeRequest("falso", BOLETA_ID));
+
+        expect((await res.json()).estado).toBe("pendiente");
+        expect(updatesBoleta()).toEqual([]);
+        vi.stubEnv("VERCEL_ENV", "");
+    });
+
+    it("CONFIRM-SBX-003: en local/preview con sandbox, sin token real se da por pagada (comportamiento de pruebas)", async () => {
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "true");
+        vi.stubEnv("VERCEL_ENV", "");
+        __setTableData("boleta", { id: BOLETA_ID, estado: "pendiente" });
+
+        const res = await GET(makeRequest("{token}", BOLETA_ID));
+
+        expect((await res.json()).estado).toBe("pagado");
+        expect(updatesBoleta()).toContainEqual({ estado: "pagado" });
+        vi.stubEnv("NEXT_PUBLIC_FLOW_SANDBOX", "false");
     });
 
     it("CONFIRM-024: retorna estado rechazado si boleta está rechazada en Supabase (sin token real)", async () => {

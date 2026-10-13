@@ -69,7 +69,7 @@ futplayapp/
 - **Membresía vigente:** `estado` + no congelada + `fecha_inicio <= now <= fecha_vencimiento`. Las fechas son el **instante real** (`new Date()`). `ahoraChile()` se eliminó.
 - **Comprar un plan:** lo bloquea solo una membresía vigente **con tokens**. La regla es la función SQL `usuario_tiene_membresia_vigente`, que usan `create-order` (servidor), `/planes` y `/pagos` (cliente vía RPC).
 - **Planes familiar y liga:** se compran solo con el link del admin (`codigo_acceso`, que no es legible por los usuarios). Liga es un pago único y no bloquea ni crea una membresía activa.
-- **Tokens:** los descuenta el trigger al inscribirse (los partidos no). Los devuelve `devolver_token` al cancelar con ≥ 3 h, salvo partidos.
+- **Tokens:** los descuenta el trigger al inscribirse (los partidos no). Los devuelve `devolver_token` al cancelar con ≥ 3 h, salvo partidos: van a la otra membresía activa si el alumno compró una; si no, la membresía cerrada por tokens se reactiva.
 - **Plan ↔ clase:** kids solo reserva clases kids; normal no reserva kids. Lo valida la API y el trigger.
 - **Cancelar:** ≥ 3 h → `cancelado` + token; 1–3 h → `cancelado_sin_reembolso`; < 1 h → no se permite. La fecha se lee de la BD.
 - **Borrar una clase:** devuelve tokens solo a reservas activas de clases que aún no ocurren.
@@ -92,6 +92,8 @@ Autenticación por grupo: **admin** = `verifyAdmin()` + service_role; **user** =
 2. Flow notifica a `flow/webhook?boletaId=…`. Se verifica con `getStatus` (si falla en producción responde 502 para que Flow reintente).
 3. Si el estado es 2 (pagado), la boleta pasa a `pagado` aunque estuviera anulada, y se asegura la membresía (`crearMembresiaPorBoleta`, idempotente). Si falla, responde 500 para que Flow reintente.
 4. El alumno vuelve por `flow/return` → `/dashboard?flowSuccess=1`, que consulta `flow/confirm` (que también repara la membresía si falta).
+5. Atajo de sandbox (dar por pagada sin verificar si `getStatus` falla o Flow no reemplaza `{token}`): solo con `NEXT_PUBLIC_FLOW_SANDBOX=true` **y** fuera del deployment de producción de Vercel (`permitirPagoSinVerificar` en `src/lib/flow.ts`).
+6. Boletas abandonadas: el cron `futplay-anular-boletas-abandonadas` anula cada hora las `pendiente` con más de 2 h (la orden de Flow expira a los 30 min).
 
 ## 6. Módulos de `src/lib` y `src/data`
 
@@ -112,7 +114,7 @@ Autenticación por grupo: **admin** = `verifyAdmin()` + service_role; **user** =
 ## 7. Bot de WhatsApp (`webhook/`)
 
 - **Sin servidor HTTP:** los mensajes llegan por el cliente de whatsapp-web.js (`c.on('message')`). Se eliminaron `/whatsapp-webhook` y `/test-reminder`, y el contenedor ya no publica el puerto 3001.
-- **Respuestas:** "1" confirma (`confirmado_whatsapp`) y "2" cancela con las mismas reglas de 3 h. Cancelar un partido nunca devuelve token.
+- **Respuestas:** "1" confirma (`confirmado_whatsapp`) y "2" cancela con las mismas reglas de 3 h. Cancelar un partido nunca devuelve token. La respuesta aplica a la clase del recordatorio (`pendiente`); sin recordatorio pendiente, a la `sin_confirmar` más próxima.
 - **Scheduler** (node-cron, cada minuto; `SCHEDULER_ENABLED=true`):
   1. Manda los recordatorios 24 h antes (`sin_confirmar` → `pendiente`), salvo si la clase empieza en menos de 2 h.
   2. 1 h antes de la clase, solo `pendiente` (avisado y sin responder) pasa a `cancelado_sin_reembolso`. Las reservas `sin_confirmar` (nunca avisadas) no se cancelan.

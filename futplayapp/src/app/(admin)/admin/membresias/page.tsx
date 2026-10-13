@@ -74,7 +74,7 @@ function EstadoBadge({ m }: { m: MembresiaGestion }) {
     return (
       <span
         className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700"
-        title="Se cerró al agotarse los tokens. El alumno puede comprar el plan siguiente. Si devolvió un token por cancelación, reactivala para devolvérselo."
+        title="Se cerró al agotarse los tokens. El alumno puede comprar el plan siguiente. Si cancela a tiempo, el token devuelto la reactiva sola (o va a su membresía nueva, si ya compró otra)."
       >
         Sin tokens
       </span>

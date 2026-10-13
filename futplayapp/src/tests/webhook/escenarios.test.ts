@@ -43,10 +43,11 @@ function crearBd() {
             const raw = telefono.replace(/\D/g, "");
             return usuarios.find((u) => u.telefono === raw || u.telefono === "+" + raw) ?? null;
         },
-        // `desde` = hora del mensaje, igual que data.js
+        // `desde` = hora del mensaje, igual que data.js. Primero la clase del
+        // recordatorio ('pendiente'); si no hay, la 'sin_confirmar' más próxima.
         async getProximaClaseUsuario(usuarioId: string, desde: Date = new Date()) {
             await tick();
-            const p = proxima(usuarioId, ["sin_confirmar", "pendiente"], desde.getTime());
+            const p = proxima(usuarioId, ["pendiente"], desde.getTime()) ?? proxima(usuarioId, ["sin_confirmar"], desde.getTime());
             if (!p) return null;
             return { id: p.insc.id, clase: { titulo: p.clase.titulo, tipo_evento: p.clase.tipo_evento }, horario: { fecha_hora: p.clase.fecha_hora } };
         },
@@ -495,5 +496,59 @@ describe("bot de WhatsApp — escenarios de punta a punta", () => {
         const res = await m.responder("56912345678", "1");
         expect(res).toContain("Ya confirmaste");
         expect(res).not.toContain("página web");
+    });
+
+    // Clase de hoy sin aviso (inscrito con < 2 h) + recordatorio de la de mañana.
+    function hoySinAvisoYMananaAvisada(m: ReturnType<typeof montar>) {
+        m.bd.usuarios.push({ id: "u1", nombre: "Ana", telefono: "+56912345678" });
+        m.bd.clases.push({ id: "c-manana", titulo: "Fisico", fecha_hora: enHoras(22.5), tipo_evento: "entrenamiento" });
+        m.bd.inscripciones.push({ id: "i-manana", usuario_id: "u1", clase_id: "c-manana", asistencia: "sin_confirmar" });
+        m.bd.clases.push({ id: "c-hoy", titulo: "Tecnico", fecha_hora: enHoras(1.5), tipo_evento: "entrenamiento" });
+        m.bd.inscripciones.push({ id: "i-hoy", usuario_id: "u1", clase_id: "c-hoy", asistencia: "sin_confirmar" });
+    }
+
+    it("BUG-004: '2' al recordatorio de mañana cancela MAÑANA (con token), no la clase de hoy sin aviso", async () => {
+        const m = montar();
+        hoySinAvisoYMananaAvisada(m);
+        await m.tickScheduler();
+        expect(m.enviados).toHaveLength(1);
+        expect(m.enviados[0].texto).toContain("Fisico");
+        expect(m.bd.estado("i-hoy")).toBe("sin_confirmar");
+
+        const res = await m.responder("56912345678", "2");
+        expect(res).toContain("devolvimos el token");
+        expect(m.bd.estado("i-manana")).toBe("cancelado");
+        expect(m.bd.estado("i-hoy")).toBe("sin_confirmar");
+        expect(m.bd.tokens()).toBe(1);
+
+        // La de hoy no se cancela por no responder (nunca se le avisó).
+        avanzar(3);
+        await m.tickScheduler();
+        expect(m.bd.estado("i-hoy")).toBe("sin_confirmar");
+    });
+
+    it("BUG-004b: '1' al recordatorio de mañana confirma MAÑANA y no queda cancelada al día siguiente", async () => {
+        const m = montar();
+        hoySinAvisoYMananaAvisada(m);
+        await m.tickScheduler();
+
+        await m.responder("56912345678", "1");
+        expect(m.bd.estado("i-manana")).toBe("confirmado_whatsapp");
+        expect(m.bd.estado("i-hoy")).toBe("sin_confirmar");
+
+        avanzar(22); // 30 min antes de la clase de mañana
+        await m.tickScheduler();
+        expect(m.bd.estado("i-manana")).toBe("confirmado_whatsapp");
+    });
+
+    it("BUG-004c: sin recordatorio pendiente, un '2' espontáneo sigue aplicando a la clase más próxima", async () => {
+        const m = montar();
+        alumnoConClase(m, 1.5); // < 2 h: no se avisa
+        await m.tickScheduler();
+        expect(m.enviados).toHaveLength(0);
+
+        await m.responder("56912345678", "2");
+        expect(m.bd.estado("i1")).toBe("cancelado_sin_reembolso");
+        expect(m.bd.tokens()).toBe(0);
     });
 });

@@ -1,5 +1,5 @@
-// clase.fecha_hora es timestamp sin zona horaria (hora local de Chile).
-// Convierte el wall-clock de Chile a instante absoluto; si ya trae Z/offset, se usa tal cual.
+// clase.fecha_hora es timestamptz: Supabase la devuelve con offset y se usa tal cual.
+// Un string sin offset se interpreta como hora local de Chile (wall-clock).
 function parseFechaHoraChile(fechaHora) {
   if (fechaHora instanceof Date) return new Date(fechaHora.getTime());
   const s = String(fechaHora);

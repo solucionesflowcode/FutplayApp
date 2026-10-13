@@ -32,16 +32,31 @@ async function buscarUsuarioPorTelefono(telefono) {
 // bot en encendidos cortos, una respuesta puede procesarse cuando su clase ya
 // pasó: se busca la próxima clase A PARTIR DE ESA HORA para no aplicarla a la
 // clase siguiente.
+// La respuesta aplica a la clase del recordatorio ('pendiente'). Solo si no hay
+// ninguna se usa la 'sin_confirmar' más próxima. Antes se tomaba la más próxima
+// de ambas: con una clase anterior sin aviso (inscrito con < 2 h), el "2" del
+// recordatorio de mañana cancelaba la de hoy sin reembolso y la de mañana
+// también quedaba cancelada por no responder.
 async function getProximaClaseUsuario(usuarioId, desde = new Date()) {
   const { data: inscripciones, error } = await supabase
     .from('clase_usuario')
-    .select('id, clase_id')
+    .select('id, clase_id, asistencia')
     .eq('usuario_id', usuarioId)
     .in('asistencia', ['sin_confirmar', 'pendiente']);
 
   if (error) throw new Error(`getProximaClaseUsuario: ${error.message}`);
   if (!inscripciones?.length) return null;
 
+  for (const estado of ['pendiente', 'sin_confirmar']) {
+    const delEstado = inscripciones.filter(i => i.asistencia === estado);
+    if (!delEstado.length) continue;
+    const proxima = await proximaClaseEntre(delEstado, desde);
+    if (proxima) return proxima;
+  }
+  return null;
+}
+
+async function proximaClaseEntre(inscripciones, desde) {
   const claseIds = inscripciones.map(i => i.clase_id);
 
   const { data: clase, error: errorClase } = await supabase

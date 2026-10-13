@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 
 import { NextResponse } from "next/server";
-import { getFlowPaymentStatus } from "@/lib/flow";
+import { getFlowPaymentStatus, permitirPagoSinVerificar } from "@/lib/flow";
 import { crearMembresiaPorBoleta } from "@/lib/membresia-pago";
 
 async function crearMembresiaSiAplica(adminClient: ReturnType<typeof createServerClient>, boletaId: string) {
@@ -87,9 +87,8 @@ export async function GET(request: Request) {
             await crearMembresiaSiAplica(adminClient, boletaId);
             return NextResponse.json({ estado: "pagado" });
         } catch {
-            // Sandbox: si getStatus falla, asumimos éxito
-            const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
-            if (isSandbox && boleta.estado !== "pagado") {
+            // Sandbox (nunca en producción): si getStatus falla, asumimos éxito
+            if (permitirPagoSinVerificar() && boleta.estado !== "pagado") {
                 const { data: updated } = await adminClient
                     .from("boleta")
                     .update({ estado: "pagado" })
@@ -105,9 +104,8 @@ export async function GET(request: Request) {
             // Producción: continuar para verificar estado en Supabase
         }
     } else {
-        // Sin token real (sandbox: Flow no reemplazó {token})
-        const isSandbox = process.env.NEXT_PUBLIC_FLOW_SANDBOX === "true";
-        if (isSandbox && boleta.estado !== "pagado") {
+        // Sin token real (sandbox: Flow no reemplazó {token}; nunca en producción)
+        if (permitirPagoSinVerificar() && boleta.estado !== "pagado") {
             const { data: updated } = await adminClient
                 .from("boleta")
                 .update({ estado: "pagado" })

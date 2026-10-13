@@ -64,7 +64,7 @@ La sesión queda guardada en el volumen `bot-session`: los reinicios no piden QR
 ## Qué hace el bot
 
 - **Recordatorio 24 h antes** a cada reserva `sin_confirmar` de un alumno con teléfono → `pendiente`. Si el alumno tiene otro recordatorio sin responder de una clase anterior, espera a que responda (las respuestas aplican a su clase más próxima). **No se avisa si la clase empieza en menos de 2 h** (quien se inscribe tarde queda `sin_confirmar` y no se le cancela).
-- **Respuestas:** `1` / `sí` / `confirmo` → `confirmado_whatsapp`. `2` / `no` / `cancelo` → cancela con ≥ 3 h, devolviendo el token (los partidos nunca devuelven token); con < 3 h queda sin reembolso. El token se devuelve una sola vez aunque el alumno mande "2" repetido o cancele a la vez en la web.
+- **Respuestas:** `1` / `sí` / `confirmo` → `confirmado_whatsapp`. `2` / `no` / `cancelo` → cancela con ≥ 3 h, devolviendo el token (los partidos nunca devuelven token); con < 3 h queda sin reembolso. El token se devuelve una sola vez aunque el alumno mande "2" repetido o cancele a la vez en la web. La respuesta aplica a la clase del recordatorio pendiente; solo si no tiene ninguno, a su clase sin confirmar más próxima.
 - **1 h antes de la clase:** quien recibió el recordatorio y no respondió (`pendiente`) queda `cancelado_sin_reembolso`. Las reservas nunca avisadas (`sin_confirmar`) **no** se cancelan.
 - **1 h después de la clase:** `confirmado_whatsapp` → `no_asistio` (el profesor lo corrige a `asistio`).
 

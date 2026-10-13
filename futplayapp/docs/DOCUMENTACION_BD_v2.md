@@ -132,7 +132,7 @@ Auditoría de los tokens que no se pudieron devolver al borrar una clase (`clase
 | `sincronizar_estado_membresia()` | `BEFORE INSERT/UPDATE OF fecha_vencimiento, estado, congelada` | Al vencer: `estado = false` y `tokens_usados = tokens_totales`. |
 | `bloquear_regalo_con_membresia_vigente()` | `BEFORE INSERT` en `membresia` | Impide crear una membresía sin boleta (regalo) si ya hay una vigente. |
 | `mantener_dias_plan_sincronizados()` | `BEFORE INSERT/UPDATE` en `plan` | Mantiene `dias` y `dias_vigencia` iguales (`dias` manda). |
-| `devolver_token(uuid)` | RPC (solo `service_role`) | Resta 1 a `tokens_usados` de la membresía vigente o cerrada por tokens. No toca `estado`. |
+| `devolver_token(uuid)` | RPC (solo `service_role`) | Si el alumno tiene otra membresía activa (compró el plan siguiente), el token se suma a esa (`tokens_usados - 1`, o `tokens_totales + 1` si no ha usado ninguno). Si no, la vigente cerrada por tokens recupera el token y **se reactiva** (`estado = true`, `sin_tokens = false`). Congeladas y vencidas no reciben tokens. Migración `docs/migrations/2026-10-devolver-token-reactivar.sql`. |
 | `usuario_tiene_membresia_vigente(uuid)` | RPC (`authenticated`) y `create-order` | `true` si hay una membresía activa, vigente y con tokens. Un usuario solo puede consultar **la suya** (o el staff, o el servidor con `auth.uid()` nulo). |
 | `check_is_staff()` | Policies | `true` si el usuario autenticado es administrador o profesor. |
 | `proteger_rol_usuario()` | `BEFORE UPDATE` en `usuario` | Solo un administrador puede cambiar roles. |
@@ -143,6 +143,7 @@ Auditoría de los tokens que no se pudieron devolver al borrar una clase (`clase
 **Tareas programadas** (`cron`, en UTC):
 - `futplay-expirar-membresias` (`0 9 * * *`, 06:00 Chile en verano).
 - `purge-cron-history` (`0 3 * * *`).
+- `futplay-anular-boletas-abandonadas` (`15 * * * *`): boletas `pendiente` con más de 2 h → `anulado`. Si Flow confirma después, el webhook la deja `pagado`. Migración `docs/migrations/2026-10-anular-boletas-abandonadas.sql`.
 
 ## 6. Seguridad (RLS)
 

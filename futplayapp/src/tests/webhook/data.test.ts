@@ -201,6 +201,47 @@ describe("webhook/data.js — scheduler data functions", () => {
             expect(r?.id).toBe("cu1");
         });
 
+        it("BOT-DATA-004b: prefiere la clase del recordatorio ('pendiente') aunque haya una 'sin_confirmar' antes", async () => {
+            __setTableData("clase_usuario", [
+                { id: "cu-hoy", clase_id: "c-hoy", usuario_id: "u1", asistencia: "sin_confirmar" },
+                { id: "cu-manana", clase_id: "c-manana", usuario_id: "u1", asistencia: "pendiente" },
+            ]);
+            __setTableData("clase", [
+                { id: "c-hoy", titulo: "Tecnico", fecha_hora: hourOffset(1.5), tipo_evento: "entrenamiento" },
+                { id: "c-manana", titulo: "Fisico", fecha_hora: hourOffset(22), tipo_evento: "entrenamiento" },
+            ]);
+
+            const r = await data.getProximaClaseUsuario("u1");
+            expect(r?.id).toBe("cu-manana");
+            expect(r?.clase.titulo).toBe("Fisico");
+        });
+
+        it("BOT-DATA-004c: sin ninguna 'pendiente' usa la 'sin_confirmar' más próxima", async () => {
+            __setTableData("clase_usuario", [
+                { id: "cu-a", clase_id: "c-a", usuario_id: "u1", asistencia: "sin_confirmar" },
+                { id: "cu-b", clase_id: "c-b", usuario_id: "u1", asistencia: "sin_confirmar" },
+            ]);
+            __setTableData("clase", [
+                { id: "c-b", titulo: "B", fecha_hora: hourOffset(30), tipo_evento: "entrenamiento" },
+                { id: "c-a", titulo: "A", fecha_hora: hourOffset(5), tipo_evento: "entrenamiento" },
+            ]);
+
+            expect((await data.getProximaClaseUsuario("u1"))?.id).toBe("cu-a");
+        });
+
+        it("BOT-DATA-004d: una 'pendiente' ya pasada no tapa a la 'sin_confirmar' futura", async () => {
+            __setTableData("clase_usuario", [
+                { id: "cu-pasada", clase_id: "c-pasada", usuario_id: "u1", asistencia: "pendiente" },
+                { id: "cu-futura", clase_id: "c-futura", usuario_id: "u1", asistencia: "sin_confirmar" },
+            ]);
+            __setTableData("clase", [
+                { id: "c-pasada", titulo: "P", fecha_hora: hourOffset(-3), tipo_evento: "entrenamiento" },
+                { id: "c-futura", titulo: "F", fecha_hora: hourOffset(6), tipo_evento: "entrenamiento" },
+            ]);
+
+            expect((await data.getProximaClaseUsuario("u1"))?.id).toBe("cu-futura");
+        });
+
         it("BOT-DATA-005: lanza si Supabase devuelve error (no se confunde con 'sin clases')", async () => {
             __setTableData("clase_usuario", null, { message: "boom" });
 
