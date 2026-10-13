@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { crearEstado, manejarMensaje, ponerseAlDia, VENTANA_MAX_MS, VENTANA_INICIAL_MS } from "../../../webhook/mensajes";
+import { crearEstado, manejarMensaje, ponerseAlDia, listarChatsSeguros, VENTANA_MAX_MS, VENTANA_INICIAL_MS } from "../../../webhook/mensajes";
 
 const H = 3600000;
 const AHORA = new Date("2026-10-12T12:00:00Z").getTime();
@@ -135,6 +135,49 @@ describe("manejarMensaje", () => {
         expect(db.buscarUsuarioPorTelefono).not.toHaveBeenCalled();
     });
 
+    it("MSG-005b: cuentas @lid toman el teléfono real del mapeo lid → teléfono de WhatsApp", async () => {
+        const db = dbConClase(5, Date.now());
+        const msg = mensaje({
+            from: "244426874081447@lid",
+            client: { getContactLidAndPhone: vi.fn().mockResolvedValue([{ lid: "244426874081447@lid", pn: "56979046977@c.us" }]) },
+            // contact.number devuelve el propio id @lid: no sirve como teléfono.
+            getContact: vi.fn().mockResolvedValue({ number: "244426874081447", id: { user: "244426874081447", server: "lid" } }),
+        });
+
+        await manejarMensaje(msg, deps(db));
+
+        expect(db.buscarUsuarioPorTelefono).toHaveBeenCalledWith("56979046977");
+    });
+
+    it("MSG-005c: si el contacto @lid solo devuelve su id, no se usa como teléfono", async () => {
+        vi.spyOn(console, "warn").mockImplementation(() => {});
+        const db = dbConClase(5, Date.now());
+        const msg = mensaje({
+            from: "244426874081447@lid",
+            client: { getContactLidAndPhone: vi.fn().mockResolvedValue([{ lid: "244426874081447@lid" }]) },
+            getContact: vi.fn().mockResolvedValue({ number: "244426874081447", id: { user: "244426874081447", server: "lid" } }),
+        });
+
+        expect(await manejarMensaje(msg, deps(db))).toBe(false);
+        expect(db.buscarUsuarioPorTelefono).not.toHaveBeenCalled();
+    });
+
+    it("MSG-002b: sin id._serialized (forma actual de whatsapp-web.js) igual se marca y no se repite", async () => {
+        const db = dbConClase(5, Date.now());
+        const d = deps(db);
+        const id = { fromMe: false, remote: "244426874081447@lid", id: "3ABD87B55F3750155DAC" };
+        const msg = () => mensaje({
+            id,
+            from: "244426874081447@lid",
+            client: { getContactLidAndPhone: vi.fn().mockResolvedValue([{ pn: "56979046977@c.us" }]) },
+        });
+
+        expect(await manejarMensaje(msg(), d)).toBe(true);
+        expect(await manejarMensaje(msg(), d)).toBe(false);
+        expect(db.confirmarAsistencia).toHaveBeenCalledTimes(1);
+        expect(d.estado.yaProcesado("false_244426874081447@lid_3ABD87B55F3750155DAC")).toBe(true);
+    });
+
     it("MSG-005: cuentas @lid toman el teléfono del contacto", async () => {
         const db = dbConClase(5, Date.now());
         const msg = mensaje({
@@ -263,5 +306,71 @@ describe("ponerseAlDia", () => {
         const wa = { getChats: vi.fn().mockRejectedValue(new Error("página no lista")) };
 
         await expect(ponerseAlDia(wa, { desdeMs: DESDE, manejar: vi.fn() })).rejects.toThrow("página no lista");
+    });
+});
+
+// ─── listarChatsSeguros ─────────────────────────────────────────────────
+
+describe("listarChatsSeguros", () => {
+    const DESDE = AHORA - 10 * H;
+
+    // Simula la página: evaluate corre la función contra una colección Chat falsa.
+    function cliente(modelos: { id: string; t: number }[]) {
+        const Chat = { getModelsArray: () => modelos.map((m) => ({ id: { _serialized: m.id }, t: m.t })) };
+        return {
+            pupPage: {
+                evaluate: vi.fn(async (fn: (a: number) => unknown, arg: number) => {
+                    const g = globalThis as unknown as { window?: unknown };
+                    const antes = g.window;
+                    g.window = { require: () => ({ Chat }) };
+                    try { return fn(arg); } finally { g.window = antes; }
+                }),
+            },
+            // getChatModel falla con los chats @lid: no debe usarse.
+            getChats: vi.fn().mockRejectedValue(new Error("r")),
+            getChatById: vi.fn().mockRejectedValue(new Error("r")),
+        };
+    }
+    const crearChat = (_wa: unknown, id: string, t: number) => ({ id: { _serialized: id }, timestamp: t, isGroup: false });
+
+    it("MSG-SYNC-007: no serializa chats (getChats/getChatById fallan con @lid) y devuelve los recientes", async () => {
+        const wa = cliente([{ id: "244426874081447@lid", t: seg(AHORA - H) }, { id: "569222@c.us", t: seg(AHORA - 2 * H) }]);
+
+        const chats = await listarChatsSeguros(wa, DESDE, crearChat);
+
+        expect(chats).toEqual([
+            { id: { _serialized: "244426874081447@lid" }, timestamp: seg(AHORA - H), isGroup: false },
+            { id: { _serialized: "569222@c.us" }, timestamp: seg(AHORA - 2 * H), isGroup: false },
+        ]);
+        expect(wa.getChats).not.toHaveBeenCalled();
+        expect(wa.getChatById).not.toHaveBeenCalled();
+    });
+
+    it("MSG-SYNC-008: solo chats privados con actividad desde la última revisión", async () => {
+        const wa = cliente([
+            { id: "569111@c.us", t: seg(AHORA - H) },
+            { id: "569333@c.us", t: seg(DESDE - H) },
+            { id: "123@g.us", t: seg(AHORA - H) },
+            { id: "status@broadcast", t: seg(AHORA - H) },
+            { id: "999@lid", t: seg(AHORA - H) },
+        ]);
+
+        const chats = await listarChatsSeguros(wa, DESDE, crearChat);
+
+        expect(chats.map((c: { id: { _serialized: string } }) => c.id._serialized)).toEqual(["569111@c.us", "999@lid"]);
+    });
+
+    it("MSG-SYNC-009: el chat liviano real usa fetchMessages de whatsapp-web.js sobre la página", async () => {
+        const evaluate = vi.fn()
+            .mockResolvedValueOnce([{ id: "244426874081447@lid", t: seg(AHORA - H) }])
+            .mockResolvedValueOnce([]);
+        const wa = { pupPage: { evaluate } };
+
+        const [c] = await listarChatsSeguros(wa, DESDE);
+        await c.fetchMessages({ limit: 30, fromMe: false });
+
+        // Segunda llamada = fetchMessages, con el id del chat (sin getChatModel).
+        expect(evaluate).toHaveBeenCalledTimes(2);
+        expect(evaluate.mock.calls[1][1]).toBe("244426874081447@lid");
     });
 });

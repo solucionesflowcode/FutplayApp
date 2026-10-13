@@ -66,19 +66,45 @@ function crearEstado(ruta, ahora = Date.now) {
   };
 }
 
+// Id estable del mensaje para no atenderlo dos veces. whatsapp-web.js ya no
+// trae id._serialized (llega {fromMe, remote, id}): sin esto ningún mensaje
+// quedaba marcado y cada encendido los volvía a procesar.
+function idMensaje(msg) {
+  const k = msg.id;
+  if (!k) return null;
+  if (k._serialized) return k._serialized;
+  if (k.remote && k.id) return `${k.fromMe ? 'true' : 'false'}_${k.remote}_${k.id}`;
+  return null;
+}
+
+// Teléfono real de una cuenta @lid (el id NO es el número). contact.number
+// devuelve el propio id @lid: el alumno no se encontraba y su respuesta se
+// ignoraba. getContactLidAndPhone() consulta el mapeo lid → teléfono.
+async function telefonoDeLid(msg) {
+  const lidUser = msg.from.split('@')[0];
+  try {
+    const [r] = (await msg.client?.getContactLidAndPhone?.([msg.from])) ?? [];
+    const pn = String(r?.pn ?? '').split('@')[0].replace(/\D/g, '');
+    if (pn && pn !== lidUser) return pn;
+  } catch (err) {
+    console.warn(`[Bot] No se pudo resolver ${msg.from}:`, err?.message || err);
+  }
+  const t = telefonoDesdeContacto(await msg.getContact());
+  return t && t !== lidUser ? t : null;
+}
+
 /**
  * Atiende un mensaje (en vivo o atrasado). Devuelve true si lo procesó.
  * deps: db, estado, recargarPagina(), atrasado
  */
 async function manejarMensaje(msg, { db, estado, recargarPagina, atrasado = false }) {
   if (msg.fromMe || !esChatPrivado(msg.from)) return false;
-  const id = msg.id?._serialized;
+  const id = idMensaje(msg);
   if (id && estado.yaProcesado(id)) return false;
 
   let telefono;
   if (msg.from.endsWith('@lid')) {
-    // Cuentas con identificador @lid: el id NO es el teléfono.
-    telefono = telefonoDesdeContacto(await msg.getContact());
+    telefono = await telefonoDeLid(msg);
     if (!telefono) {
       console.warn(`[Bot] No se pudo obtener el teléfono de ${msg.from}`);
       return false;
@@ -91,6 +117,9 @@ async function manejarMensaje(msg, { db, estado, recargarPagina, atrasado = fals
   // Si la BD falla, lanza y el mensaje NO queda marcado: se reintenta al
   // próximo encendido. Se marca antes de contestar: si falla el envío de la
   // respuesta, los cambios en la BD ya están hechos y no se repiten.
+  if (atrasado) {
+    console.log(`[Bot] Atrasado de ${telefono} (${enviadoEn.toISOString()}): ${JSON.stringify(String(msg.body ?? '').slice(0, 20))}`);
+  }
   const respuesta = await procesarMensajeWhatsApp(telefono, msg.body, db, { enviadoEn, atrasado });
   if (id) estado.marcarProcesado(id);
   if (!respuesta) return true;
@@ -109,6 +138,36 @@ async function manejarMensaje(msg, { db, estado, recargarPagina, atrasado = fals
     }
   }
   return true;
+}
+
+// Chat sin serializar su modelo: getChatModel() (getChats/getChatById) falla
+// con los chats @lid ("r"), pero fetchMessages() abre el chat crudo y sí funciona.
+function chatLiviano(whatsapp, id, timestamp) {
+  const { Chat } = require('whatsapp-web.js');
+  const chat = Object.create(Chat.prototype);
+  Object.defineProperty(chat, 'client', { value: whatsapp });
+  chat.id = { _serialized: id };
+  chat.timestamp = timestamp;
+  chat.isGroup = false;
+  return chat;
+}
+
+/**
+ * Chats privados con actividad desde `desdeMs`, listos para fetchMessages().
+ * client.getChats() serializa TODOS los chats en una sola llamada y falla
+ * entera con un chat @lid (error minificado "r"): el bot nunca se ponía al
+ * día. Aquí se piden solo los ids con actividad reciente y no se serializan.
+ */
+async function listarChatsSeguros(whatsapp, desdeMs, crearChat = chatLiviano) {
+  const recientes = await whatsapp.pupPage.evaluate(
+    (desdeSeg) => window.require('WAWebCollections').Chat.getModelsArray()
+      .filter((c) => (c.t || 0) > desdeSeg)
+      .map((c) => ({ id: c.id._serialized, t: c.t })),
+    Math.floor(desdeMs / 1000),
+  );
+  return recientes
+    .filter(({ id }) => esChatPrivado(id))
+    .map(({ id, t }) => crearChat(whatsapp, id, t));
 }
 
 /**
@@ -146,4 +205,4 @@ async function ponerseAlDia(whatsapp, { desdeMs, manejar, mensajesPorChat = MENS
   return atendidos;
 }
 
-module.exports = { crearEstado, manejarMensaje, ponerseAlDia, esChatPrivado, VENTANA_MAX_MS, VENTANA_INICIAL_MS };
+module.exports = { crearEstado, manejarMensaje, ponerseAlDia, listarChatsSeguros, esChatPrivado, VENTANA_MAX_MS, VENTANA_INICIAL_MS };

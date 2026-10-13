@@ -12,7 +12,7 @@ const { sendMessageWithRetry, recargarPagina } = require('./handlers');
 const { esErrorPerfilOcupado, matarChromeStale } = require('./limpieza');
 const { crearScheduler } = require('./scheduler');
 const { decidirWatchdog } = require('./watchdog');
-const { crearEstado, manejarMensaje, ponerseAlDia } = require('./mensajes');
+const { crearEstado, manejarMensaje, ponerseAlDia, listarChatsSeguros } = require('./mensajes');
 
 // Hasta dónde se revisaron mensajes y cuáles ya se atendieron (encendidos cortos).
 const estado = crearEstado(process.env.ESTADO_PATH || path.join(__dirname, '.estado-bot.json'));
@@ -91,7 +91,8 @@ async function ponerseAlDiaConReintento(cliente) {
   const desdeMs = estado.desde();
   try {
     console.log(`[Bot] Revisando mensajes recibidos desde ${new Date(desdeMs).toISOString()}...`);
-    const n = await ponerseAlDia(cliente, { desdeMs, manejar: (m) => manejarMensaje(m, depsMensajes(true)) });
+    const chats = { getChats: () => listarChatsSeguros(cliente, desdeMs) };
+    const n = await ponerseAlDia(chats, { desdeMs, manejar: (m) => manejarMensaje(m, depsMensajes(true)) });
     estado.marcarRevisado(conexion);
     console.log(`[Bot] Al día: ${n} mensaje(s) atrasado(s) atendido(s).`);
   } catch (err) {
