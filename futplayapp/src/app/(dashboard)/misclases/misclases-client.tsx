@@ -34,6 +34,8 @@ type SessionItem = {
     sede: string;
     claseId: string;
     tipo_evento: "entrenamiento" | "partido" | "kids";
+    cupo_maximo: number | null;
+    inscritos: number;
 };
 
 function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
@@ -49,6 +51,10 @@ function flattenClases(rows: ClaseConInscripcion[]): SessionItem[] {
             sede: row.sede?.nombre ?? "",
             claseId: row.id,
             tipo_evento: row.tipo_evento,
+            // Sin estos dos, el modal de reserva mostraba siempre "0 inscritos"
+            // y nunca marcaba una clase como llena.
+            cupo_maximo: row.cupo_maximo,
+            inscritos: row.inscritos,
         });
     }
     return out;
@@ -125,6 +131,9 @@ export default function MisClasesClient() {
         descripcion: string | null;
         fecha_hora: string;
         sede: string;
+        tipo_evento: "entrenamiento" | "partido" | "kids";
+        cupo_maximo: number | null;
+        inscritos: number;
     }[] | null>(null);
 
     const [cancelandoId, setCancelandoId] = useState<string | null>(null);
@@ -500,6 +509,8 @@ export default function MisClasesClient() {
                                                                 fecha_hora: s.fecha_hora,
                                                                 sede: s.sede,
                                                                 tipo_evento: s.tipo_evento,
+                                                                cupo_maximo: s.cupo_maximo,
+                                                                inscritos: s.inscritos,
                                                             })),
                                                         )
                                                     : undefined
