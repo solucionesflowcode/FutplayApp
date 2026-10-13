@@ -11,6 +11,7 @@ const db = require('./data');
 const { sendMessageWithRetry, recargarPagina } = require('./handlers');
 const { esErrorPerfilOcupado, matarChromeStale } = require('./limpieza');
 const { crearScheduler } = require('./scheduler');
+const { decidirWatchdog } = require('./watchdog');
 const { crearEstado, manejarMensaje, ponerseAlDia } = require('./mensajes');
 
 // Hasta dónde se revisaron mensajes y cuáles ya se atendieron (encendidos cortos).
@@ -66,6 +67,11 @@ let whatsappReady = false;
 let inicializando = false;
 let apagando = false;
 let ultimoIntento = 0;
+// Último QR nuevo o avance de carga: el cliente sigue vivo esperando el escaneo.
+let ultimaActividad = 0;
+// Sube con cada cliente nuevo. Un initialize() de un cliente ya reemplazado
+// falla al cerrarle Chrome; su error no debe programar otro reintento.
+let generacion = 0;
 // true cuando ya se atendieron los mensajes que llegaron con el bot apagado.
 // El scheduler NO corre antes: si no, cancelaría como "sin respuesta" a quien
 // respondió con el PC apagado.
@@ -104,6 +110,12 @@ function crearCliente() {
     authStrategy: new LocalAuth({ dataPath: SESSION_PATH }),
     puppeteer: puppeteerConfig
   });
+
+  const actividad = () => { if (c === whatsapp) ultimaActividad = Date.now(); };
+  c.on('qr', actividad);
+  c.on('loading_screen', actividad);
+  c.on('authenticated', actividad);
+  c.on('change_state', actividad);
 
   c.on('qr', qr => { qrcode.generate(qr, { small: true }); console.log('Escanea el QR.'); });
 
@@ -167,12 +179,16 @@ async function iniciarWhatsApp() {
   whatsappReady = false;
   alDia = false;
   enEspera = [];
+  const gen = ++generacion;
   whatsapp = crearCliente();
   try {
     await whatsapp.initialize();
-    inicializando = false;
+    if (gen === generacion) inicializando = false;
   } catch (err) {
-    console.error(`Error al iniciar WhatsApp: ${err.message}`);
+    // Cliente ya reemplazado (el watchdog le cerró Chrome): su error es esperado
+    // y el cliente nuevo ya está en marcha.
+    if (gen !== generacion) return;
+    console.error(`Error al iniciar WhatsApp: ${err.message || err}`);
     if (apagando) { inicializando = false; return; }
     const perfilOcupado = esErrorPerfilOcupado(err);
     if (perfilOcupado) {
@@ -183,20 +199,25 @@ async function iniciarWhatsApp() {
     console.log(`Reintentando en ${esperaMs / 1000}s...`);
     // inicializando sigue en true hasta que dispare el reintento, así no se pisan
     // el watchdog, el evento disconnected y el propio reintento.
-    setTimeout(() => { inicializando = false; iniciarWhatsApp(); }, esperaMs);
+    setTimeout(() => {
+      if (gen !== generacion) return; // otro cliente tomó el relevo mientras tanto
+      inicializando = false;
+      iniciarWhatsApp();
+    }, esperaMs);
   }
 }
 
-// Watchdog: si WhatsApp queda sin conectar y sin reintento pendiente, recarga el cliente.
-// También detecta una initialize() que se quedó colgada (QR sin escanear o página trabada).
+// Watchdog: si WhatsApp queda sin conectar y sin señales de vida, recarga el cliente.
+// No toca un cliente que sigue renovando el QR o cargando la sesión (reglas en watchdog.js).
 setInterval(() => {
   if (apagando) return;
-  if (whatsappReady) return;
-  const sinProgreso = Date.now() - ultimoIntento;
-  if (!inicializando && sinProgreso > 180000) {
-    console.log('[Watchdog] WhatsApp sin conectar por mucho tiempo, reiniciando cliente...');
+  const accion = decidirWatchdog({
+    ahora: Date.now(), conectado: whatsappReady, inicializando, ultimoIntento, ultimaActividad,
+  });
+  if (accion === 'reiniciar') {
+    console.log('[Watchdog] El QR dejó de renovarse sin conectar, reiniciando cliente...');
     iniciarWhatsApp();
-  } else if (inicializando && sinProgreso > 300000) {
+  } else if (accion === 'forzar') {
     console.log('[Watchdog] La inicialización lleva más de 5 min, forzando reinicio limpio...');
     matarChromeStale(SESSION_PATH).then(() => {
       inicializando = false;
