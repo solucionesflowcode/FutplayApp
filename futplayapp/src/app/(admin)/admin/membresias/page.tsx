@@ -252,8 +252,12 @@ export default function MembresiasPage() {
       return;
     }
     const nombre = membresias.find((m) => m.id === id)?.usuario_nombre ?? "";
+    const canceladas = result.reservasCanceladas ?? 0;
     setExito(action === "congelar"
-      ? `Membresía de ${nombre} congelada correctamente. Los días quedan pausados.`
+      ? `Membresía de ${nombre} congelada correctamente. Los días quedan pausados.` +
+        (canceladas > 0
+          ? ` Se cancelaron ${canceladas} reserva${canceladas !== 1 ? "s" : ""} futura${canceladas !== 1 ? "s" : ""} y se devolvieron sus tokens.`
+          : "")
       : `Membresía de ${nombre} reactivada correctamente. Nuevo vencimiento: ${formatFecha(result.fecha_vencimiento ?? "")}`);
     fetchData();
   };
@@ -599,7 +603,7 @@ export default function MembresiasPage() {
         open={freezeAction !== null}
         title={freezeAction?.action === "congelar" ? "Congelar membresía" : "Reactivar membresía"}
         message={freezeAction?.action === "congelar"
-          ? "¿Congelar esta membresía? El tiempo dejará de correr y el jugador no podrá reservar clases hasta reactivar."
+          ? "¿Congelar esta membresía? El tiempo dejará de correr y el jugador no podrá reservar clases hasta reactivar. Sus reservas futuras se cancelarán y se le devolverán los tokens."
           : "¿Reactivar esta membresía? El vencimiento se correrá por la cantidad de días que estuvo congelada."}
         onConfirm={handleFreezeAction}
         onCancel={() => setFreezeAction(null)}

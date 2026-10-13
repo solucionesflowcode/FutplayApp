@@ -129,9 +129,13 @@ function mapRol(rol: string): string {
     }
 }
 
-function getStatus(membresia: { tokens_totales: number; tokens_usados: number } | undefined): string {
+// tokens_restantes ya viene en 0 si la membresía está vencida, agotada o
+// congelada. Antes se miraban los tokens crudos y un alumno congelado figuraba
+// "Activo" con 0 tokens.
+export function getStatus(membresia: { tokens_restantes: number; congelada?: boolean } | undefined): string {
     if (!membresia) return "Inactivo";
-    return membresia.tokens_totales > membresia.tokens_usados ? "Activo" : "Vencido";
+    if (membresia.congelada) return "Congelado";
+    return membresia.tokens_restantes > 0 ? "Activo" : "Vencido";
 }
 
 export async function getUsers(): Promise<Student[]> {

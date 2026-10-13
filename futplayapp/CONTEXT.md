@@ -73,6 +73,7 @@ futplayapp/
 - **Plan ↔ clase:** kids solo reserva clases kids; normal no reserva kids. Lo valida la API y el trigger.
 - **Cancelar:** ≥ 3 h → `cancelado` + token; 1–3 h → `cancelado_sin_reembolso`; < 1 h → no se permite. La fecha se lee de la BD.
 - **Borrar una clase:** devuelve tokens solo a reservas activas de clases que aún no ocurren.
+- **Congelar** (`/api/admin/membresias/freeze`): cancela antes las reservas futuras abiertas del alumno y devuelve sus tokens (partidos no). **Reactivar** corre el vencimiento por los días congelados. Ambos son updates condicionales (un doble clic no suma los días dos veces). En la tabla de alumnos el estado es "Congelado"; `students/status` rechaza "Activo"/"Vencido" sobre una congelada (409).
 - **Contenido pago** (videos y documentos): staff, o alumno con membresía vigente (no congelada, con tokens totales > 0). El video usa una URL firmada de Bunny.
 
 ## 5. API (resumen)

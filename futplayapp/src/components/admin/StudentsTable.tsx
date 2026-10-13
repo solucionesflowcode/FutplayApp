@@ -16,6 +16,14 @@ export type Student = {
   medicalFileUrl?: string;
 };
 
+function colorEstado(status: string): string {
+  if (status === "Activo") return "bg-green-100 text-green-600";
+  if (status === "Inactivo") return "bg-yellow-100 text-yellow-600";
+  // Mismo color que la etiqueta "Congelada" de Membresías.
+  if (status === "Congelado") return "bg-amber-100 text-amber-700";
+  return "bg-red-100 text-red-600";
+}
+
 type FichaModalState = {
   open: boolean;
   loading: boolean;
@@ -91,13 +99,7 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
                           <p className="font-semibold text-black truncate text-sm">{student.name}</p>
                           <p className="text-[10px] text-gray-400 truncate">{student.id}</p>
                         </div>
-                        <span className={`shrink-0 ml-2 px-2 py-0.5 rounded text-[10px] font-medium ${
-                          student.status === "Activo"
-                            ? "bg-green-100 text-green-600"
-                            : student.status === "Inactivo"
-                            ? "bg-yellow-100 text-yellow-600"
-                            : "bg-red-100 text-red-600"
-                        }`}>{student.status}</span>
+                        <span className={`shrink-0 ml-2 px-2 py-0.5 rounded text-[10px] font-medium ${colorEstado(student.status)}`}>{student.status}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
                         {student.rut && <div><span className="text-gray-400">RUT: </span><span className="font-medium text-gray-700">{student.rut}</span></div>}
@@ -161,13 +163,7 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
 
                   <td className="p-3">
                     <span
-                      className={`px-2 py-1 rounded text-xs ${
-                        student.status === "Activo"
-                          ? "bg-green-100 text-green-600"
-                          : student.status === "Inactivo"
-                          ? "bg-yellow-100 text-yellow-600"
-                          : "bg-red-100 text-red-600"
-                      }`}
+                      className={`px-2 py-1 rounded text-xs ${colorEstado(student.status)}`}
                     >
                       {student.status}
                     </span>

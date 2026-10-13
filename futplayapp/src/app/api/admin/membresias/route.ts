@@ -87,11 +87,15 @@ export async function GET() {
     sin_tokens: boolean;
   };
   const resultMap = new Map<string, MembresiaRow>();
+  const prioridadMap = new Map<string, number>();
 
   // Se elige la fila con más tokens RESTANTES, no la mayor resta cruda: una
   // membresía vencida, congelada o sin tokens no compite. Antes ganaba la fila
   // con más saldo sin importar si estaba vigente, y el panel mostraba como
   // "Activo" a un alumno cuyo único plan ya había vencido.
+  // Con empate a 0 restantes, la congelada le gana a la vencida o agotada: es
+  // el plan que el alumno sigue teniendo (antes ganaba la primera fila y un
+  // alumno congelado podía figurar "Vencido").
   for (const m of membresias || []) {
     const sinTokens = m.sin_tokens === true;
     const vigente =
@@ -100,10 +104,12 @@ export async function GET() {
       !m.congelada &&
       new Date(m.fecha_vencimiento) >= new Date();
     const restantes = vigente ? m.tokens_totales - m.tokens_usados : 0;
+    const prioridad = restantes * 2 + (m.congelada === true ? 1 : 0);
 
     const existing = resultMap.get(m.usuario_id);
 
-    if (!existing || restantes > existing.tokens_restantes) {
+    if (!existing || prioridad > (prioridadMap.get(m.usuario_id) ?? -1)) {
+      prioridadMap.set(m.usuario_id, prioridad);
       const plan = planesMap.get(m.plan_id);
       resultMap.set(m.usuario_id, {
         membresia_id: m.id,

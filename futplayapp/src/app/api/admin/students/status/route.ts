@@ -30,6 +30,15 @@ export async function POST(request: Request) {
     .eq("usuario_id", userId)
     .gt("tokens_totales", 0); // ignora registros de Plan Liga (pago único)
 
+  // Congelada: "Activo" le devolvía todos los tokens pero la dejaba congelada
+  // (seguía sin poder reservar) y "Vencido" la dejaba vencida y congelada a la vez.
+  if ((status === "Activo" || status === "Vencido") && (membresias || []).some((m) => m.congelada === true)) {
+    return NextResponse.json(
+      { error: "La membresía está congelada: usa Reactivar en Membresías." },
+      { status: 409 }
+    );
+  }
+
   const sorted = (membresias || []).sort(
     (a, b) =>
       (b.tokens_totales - b.tokens_usados) -

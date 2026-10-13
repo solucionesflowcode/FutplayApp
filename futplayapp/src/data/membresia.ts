@@ -285,6 +285,8 @@ type AccionCongelar = {
   ok: boolean;
   error?: string;
   fecha_vencimiento?: string;
+  // Reservas futuras canceladas (con token devuelto) al congelar.
+  reservasCanceladas?: number;
 };
 
 export async function congelarMembresia(id: string): Promise<AccionCongelar> {
@@ -297,7 +299,7 @@ export async function congelarMembresia(id: string): Promise<AccionCongelar> {
 
     const body = await res.json();
     if (!res.ok) return { ok: false, error: body?.error || "Error al congelar la membresía" };
-    return { ok: true };
+    return { ok: true, reservasCanceladas: body?.reservasCanceladas ?? 0 };
   } catch (err) {
     console.error("Error calling congelar membresia API:", err);
     return { ok: false, error: "Error de red al congelar la membresía" };

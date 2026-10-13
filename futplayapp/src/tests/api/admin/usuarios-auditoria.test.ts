@@ -142,4 +142,17 @@ describe("POST /api/admin/students/status — Activo", () => {
             .map((c: unknown[]) => c[0]);
         expect(updates).toEqual([{ tokens_usados: 0, estado: true, sin_tokens: false }]);
     });
+
+    it("USR-STATUS-002: 'Activo' y 'Vencido' sobre una membresía congelada se rechazan sin cambiar nada", async () => {
+        __setTableData("membresia", [{ id: "m1", usuario_id: "u1", tokens_totales: 4, tokens_usados: 2, estado: true, sin_tokens: false, congelada: true }]);
+        const fromSpy = ref.client.from as ReturnType<typeof vi.fn>;
+
+        for (const status of ["Activo", "Vencido"]) {
+            const res = await POST_STATUS(req("http://localhost:3000/api/admin/students/status", "POST", { userId: "u1", status }));
+            expect(res.status).toBe(409);
+            expect((await res.json()).error).toContain("Reactivar");
+        }
+        const updates = fromSpy.mock.results.flatMap((r) => r.value.update.mock.calls as unknown[][]);
+        expect(updates).toEqual([]);
+    });
 });

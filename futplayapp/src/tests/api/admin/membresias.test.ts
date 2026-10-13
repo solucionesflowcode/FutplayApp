@@ -44,6 +44,31 @@ describe("GET /api/admin/membresias", () => {
         expect(Array.isArray(json)).toBe(true);
     });
 
+    it("API-ADM-MEMBRESIAS-GET-004: con una vencida y una congelada, muestra la congelada (sea cual sea el orden)", async () => {
+        const vencida = { id: "vieja", usuario_id: "u1", plan_id: "p1", tokens_totales: 4, tokens_usados: 4, estado: false, congelada: false, fecha_inicio: "2026-08-10T00:00:00.000Z", fecha_vencimiento: "2026-09-09T00:00:00.000Z" };
+        const congelada = { id: "actual", usuario_id: "u1", plan_id: "p1", tokens_totales: 4, tokens_usados: 2, estado: true, congelada: true, fecha_inicio: "2026-09-24T00:00:00.000Z", fecha_vencimiento: "2099-10-27T00:00:00.000Z" };
+
+        for (const orden of [[vencida, congelada], [congelada, vencida]]) {
+            __setTableData("membresia", orden);
+            const json = await (await GET(makeRequest("http://localhost:3000/api/admin/membresias"))).json();
+            expect(json).toHaveLength(1);
+            expect(json[0].membresia_id).toBe("actual");
+            expect(json[0].congelada).toBe(true);
+            expect(json[0].tokens_restantes).toBe(0);
+        }
+    });
+
+    it("API-ADM-MEMBRESIAS-GET-005: una activa con tokens le gana a la congelada", async () => {
+        __setTableData("membresia", [
+            { id: "congelada", usuario_id: "u1", plan_id: "p1", tokens_totales: 4, tokens_usados: 0, estado: true, congelada: true, fecha_inicio: "2026-09-01T00:00:00.000Z", fecha_vencimiento: "2099-01-01T00:00:00.000Z" },
+            { id: "activa", usuario_id: "u1", plan_id: "p1", tokens_totales: 4, tokens_usados: 3, estado: true, congelada: false, fecha_inicio: "2026-10-01T00:00:00.000Z", fecha_vencimiento: "2099-01-01T00:00:00.000Z" },
+        ]);
+
+        const json = await (await GET(makeRequest("http://localhost:3000/api/admin/membresias"))).json();
+
+        expect(json[0].membresia_id).toBe("activa");
+    });
+
     it("API-ADM-MEMBRESIAS-GET-002: retorna 401 si no está autenticado", async () => {
         __setAuthUser(null);
 

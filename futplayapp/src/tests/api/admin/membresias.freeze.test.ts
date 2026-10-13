@@ -215,6 +215,112 @@ describe("POST /api/admin/membresias/freeze", () => {
         expect(json.error).toContain("no está congelada");
     });
 
+    // ── Reservas futuras al congelar ────────────────────────────
+
+    /** Cliente admin (createClient de supabase-js) creado por la última llamada. */
+    async function clienteAdmin() {
+        const { createClient } = await import("@supabase/supabase-js");
+        const results = vi.mocked(createClient).mock.results;
+        return results[results.length - 1].value as ReturnType<typeof createMockServerClient>;
+    }
+
+    const enDias = (d: number) => new Date(Date.now() + d * DAY).toISOString();
+
+    it("FRZ-013: congelar cancela las reservas futuras abiertas y devuelve un token por clase (no por partido)", async () => {
+        __setTableData("membresia", [buildMembership()]);
+        __setTableData("clase_usuario", [
+            { id: "r-clase", usuario_id: "u1", asistencia: "pendiente", clase: { fecha_hora: enDias(2), tipo_evento: "entrenamiento" } },
+            { id: "r-partido", usuario_id: "u1", asistencia: "sin_confirmar", clase: { fecha_hora: enDias(3), tipo_evento: "partido" } },
+            { id: "r-pasada", usuario_id: "u1", asistencia: "pendiente", clase: { fecha_hora: enDias(-1), tipo_evento: "entrenamiento" } },
+            { id: "r-cancelada", usuario_id: "u1", asistencia: "cancelado", clase: { fecha_hora: enDias(4), tipo_evento: "entrenamiento" } },
+        ]);
+
+        const res = await POST(makeRequest("http://localhost:3000/api/admin/membresias/freeze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ membreciaId: "m1", accion: "congelar" }),
+        }));
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.reservasCanceladas).toBe(2); // la clase y el partido futuros
+        const admin = await clienteAdmin();
+        const devoluciones = admin.rpc.mock.calls.filter((c: unknown[]) => c[0] === "devolver_token");
+        expect(devoluciones).toHaveLength(1); // el partido no devuelve token
+    });
+
+    it("FRZ-014: sin reservas futuras, congela sin devolver tokens", async () => {
+        __setTableData("membresia", [buildMembership()]);
+        __setTableData("clase_usuario", []);
+
+        const res = await POST(makeRequest("http://localhost:3000/api/admin/membresias/freeze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ membreciaId: "m1", accion: "congelar" }),
+        }));
+
+        expect((await res.json()).reservasCanceladas).toBe(0);
+        expect((await clienteAdmin()).rpc).not.toHaveBeenCalled();
+    });
+
+    // ── Doble clic ──────────────────────────────────────────────
+
+    /** Simula que otro pedido cambió la membresía justo antes del update. */
+    async function conCambioAntesDelUpdate(fila: Record<string, unknown>) {
+        const { createClient } = await import("@supabase/supabase-js");
+        vi.mocked(createClient).mockImplementation((() => {
+            const c = createMockServerClient();
+            const from = c.from;
+            c.from = vi.fn((tabla: string) => {
+                const chain = from(tabla);
+                if (tabla === "membresia") {
+                    const update = chain.update;
+                    chain.update = vi.fn((...a: unknown[]) => {
+                        __setTableData("membresia", [fila]);
+                        return update(...a);
+                    });
+                }
+                return chain;
+            });
+            return c;
+        }) as never);
+        return () => vi.mocked(createClient).mockImplementation((() => createMockServerClient()) as never);
+    }
+
+    it("FRZ-015: doble clic en Reactivar no corre el vencimiento dos veces", async () => {
+        const congeladaHace5 = buildMembership({ congelada: true, fecha_congelamiento: enDias(-5) });
+        __setTableData("membresia", [congeladaHace5]);
+        // El primer pedido ya la reactivó cuando llega el update del segundo.
+        const restaurar = await conCambioAntesDelUpdate({ ...congeladaHace5, congelada: false, fecha_congelamiento: null });
+
+        const res = await POST(makeRequest("http://localhost:3000/api/admin/membresias/freeze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ membreciaId: "m1", accion: "reactivar" }),
+        }));
+        restaurar();
+
+        expect(res.status).toBe(400);
+        expect((await res.json()).error).toContain("no está congelada");
+    });
+
+    it("FRZ-016: doble clic en Congelar no pisa la fecha de congelamiento", async () => {
+        const activa = buildMembership();
+        __setTableData("membresia", [activa]);
+        __setTableData("clase_usuario", []);
+        const restaurar = await conCambioAntesDelUpdate({ ...activa, congelada: true, fecha_congelamiento: enDias(0) });
+
+        const res = await POST(makeRequest("http://localhost:3000/api/admin/membresias/freeze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ membreciaId: "m1", accion: "congelar" }),
+        }));
+        restaurar();
+
+        expect(res.status).toBe(400);
+        expect((await res.json()).error).toContain("ya está congelada");
+    });
+
     it("FRZ-012: reactivar sin fecha_congelamiento retorna 400", async () => {
         __setTableData("membresia", [buildMembership({
             congelada: true,

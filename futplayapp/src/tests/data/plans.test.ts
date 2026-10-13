@@ -267,6 +267,31 @@ describe("getUsers", () => {
         expect(result).toEqual([]);
     });
 
+    it("DATA-GETUSERS-005: un alumno congelado figura 'Congelado' (no 'Activo' con 0 tokens)", async () => {
+        __setTableData("usuario", [MOCK_USERS[0]]);
+        // Así la entrega /api/admin/membresias: congelada → tokens_restantes 0,
+        // pero tokens crudos 2/4 (antes getStatus los usaba y decía "Activo").
+        vi.mocked(getAdminMembresias).mockResolvedValue([
+            mockMembresia({ usuario_id: "u1", tokens_totales: 4, tokens_usados: 2, tokens_restantes: 0, congelada: true }),
+        ]);
+
+        const [alice] = await getUsers();
+
+        expect(alice.status).toBe("Congelado");
+        expect(alice.tokens).toBe(0);
+    });
+
+    it("DATA-GETUSERS-006: vencida o agotada con tokens crudos de sobra figura 'Vencido', no 'Activo'", async () => {
+        __setTableData("usuario", [MOCK_USERS[0]]);
+        vi.mocked(getAdminMembresias).mockResolvedValue([
+            mockMembresia({ usuario_id: "u1", tokens_totales: 4, tokens_usados: 1, tokens_restantes: 0, estado: false }),
+        ]);
+
+        const [alice] = await getUsers();
+
+        expect(alice.status).toBe("Vencido");
+    });
+
     it("DATA-GETUSERS-004: status Activo cuando tokens_restantes > 0, Vencido cuando = 0", async () => {
         __setTableData("usuario", [MOCK_USERS[0], MOCK_USERS[1]]);
         vi.mocked(getAdminMembresias).mockResolvedValue([
