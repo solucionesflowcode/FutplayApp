@@ -527,6 +527,8 @@ describe("bot de WhatsApp — escenarios de punta a punta", () => {
         const res = await m.responder("56912345678", "1");
         expect(res).toContain("Ya confirmaste");
         expect(res).not.toContain("página web");
+        // Un "2" tras confirmar no cancela: se le indica cancelar en la página.
+        expect(await m.responder("56912345678", "2")).toContain('cancela desde "Mis clases"');
     });
 
     // "2" con el bot apagado + cancelación en la web antes de encender.

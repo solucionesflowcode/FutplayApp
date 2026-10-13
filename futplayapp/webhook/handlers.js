@@ -80,8 +80,12 @@ async function confirmarAsistencia(usuarioId, db, enviadoEn = new Date(), busque
   if (!proxima) return 'No tienes clases próximas agendadas.';
   if (horasHasta(proxima.horario.fecha_hora, enviadoEn) < 1) return 'Ya no alcanzas a confirmar, la clase empieza en menos de 1 hora.';
   const ok = await db.confirmarAsistencia(proxima.id);
-  return ok ? `✅ Asistencia confirmada! Nos vemos en "${proxima.clase.titulo}".` : 'Error al confirmar. Intentalo de nuevo.';
+  return ok ? `✅ Asistencia confirmada! Nos vemos en "${proxima.clase.titulo}". ${COMO_CANCELAR}` : 'Error al confirmar. Intentalo de nuevo.';
 }
+
+// Una reserva confirmada ya no se cancela por WhatsApp (un "2" responde "Ya
+// confirmaste"): solo desde la página.
+const COMO_CANCELAR = 'Si no puedes asistir, cancela desde "Mis clases" en futplay.cl (con 3 h o más de anticipación se te devuelve el token).';
 
 const NO_SE_PUDO_CANCELAR = 'No pudimos cancelar: tu reserva ya había cambiado. Revisa "Mis clases" en la página.';
 
@@ -179,7 +183,7 @@ async function procesarMensajeWhatsApp(telefono, texto, db, opts = {}) {
       return `Ya cancelaste "${actioned.clase.titulo}". No es necesario que respondas el mensaje.`;
     }
     if (['confirmado', 'confirmado_whatsapp', 'no_asistio'].includes(actioned.asistencia)) {
-      return `Ya confirmaste "${actioned.clase.titulo}". Nos vemos allí!`;
+      return `Ya confirmaste "${actioned.clase.titulo}". Nos vemos allí! ${COMO_CANCELAR}`;
     }
   }
 

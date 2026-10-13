@@ -153,9 +153,9 @@ describe("confirmarAsistencia", () => {
     db.getProximaClaseUsuario.mockResolvedValue(classeFutura(5));
     db.confirmarAsistencia.mockResolvedValue(true);
     const res = await confirmarAsistencia("user-1", db);
-    expect(res).toBe(
-      '✅ Asistencia confirmada! Nos vemos en "Entrenamiento Funcional".'
-    );
+    expect(res).toContain('✅ Asistencia confirmada! Nos vemos en "Entrenamiento Funcional".');
+    // Confirmada ya no se cancela por WhatsApp: se le dice cómo hacerlo.
+    expect(res).toContain('cancela desde "Mis clases" en futplay.cl');
     expect(db.confirmarAsistencia).toHaveBeenCalledWith("insc-1");
   });
 
