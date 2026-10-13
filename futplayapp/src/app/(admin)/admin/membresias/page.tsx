@@ -62,6 +62,23 @@ function formatFecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+type EstadoMembresia = "activa" | "inactiva" | "sin_tokens" | "congelada";
+
+// Mismo orden de prioridad que EstadoBadge: el filtro y la etiqueta coinciden.
+function estadoDe(m: MembresiaGestion): EstadoMembresia {
+  if (m.congelada) return "congelada";
+  if (m.sin_tokens) return "sin_tokens";
+  return m.estado ? "activa" : "inactiva";
+}
+
+const FILTROS_ESTADO: { valor: EstadoMembresia | "todas"; etiqueta: string }[] = [
+  { valor: "todas", etiqueta: "Todas" },
+  { valor: "activa", etiqueta: "Activas" },
+  { valor: "inactiva", etiqueta: "Inactivas" },
+  { valor: "sin_tokens", etiqueta: "Sin tokens" },
+  { valor: "congelada", etiqueta: "Congeladas" },
+];
+
 function EstadoBadge({ m }: { m: MembresiaGestion }) {
   if (m.congelada) {
     return (
@@ -93,6 +110,7 @@ export default function MembresiasPage() {
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<EstadoMembresia | "todas">("todas");
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<MembresiaForm>(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -115,10 +133,16 @@ export default function MembresiasPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const filtered = membresias.filter((m) =>
+  const coincideBusqueda = (m: MembresiaGestion) =>
     m.usuario_nombre.toLowerCase().includes(search.toLowerCase()) ||
-    m.plan_nombre.toLowerCase().includes(search.toLowerCase())
-  );
+    m.plan_nombre.toLowerCase().includes(search.toLowerCase());
+  const porBusqueda = membresias.filter(coincideBusqueda);
+  const filtered = filtroEstado === "todas"
+    ? porBusqueda
+    : porBusqueda.filter((m) => estadoDe(m) === filtroEstado);
+  // Conteo por estado sobre la búsqueda actual (cada botón muestra cuántas hay).
+  const conteoEstado = (valor: EstadoMembresia | "todas") =>
+    valor === "todas" ? porBusqueda.length : porBusqueda.filter((m) => estadoDe(m) === valor).length;
 
   const resetForm = () => { setForm(emptyForm); setError(null); };
 
@@ -284,7 +308,27 @@ export default function MembresiasPage() {
                   className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} membresía{filtered.length !== 1 ? "s" : ""}</span>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
+                {FILTROS_ESTADO.map(({ valor, etiqueta }) => {
+                  const activo = filtroEstado === valor;
+                  return (
+                    <button
+                      key={valor}
+                      type="button"
+                      onClick={() => setFiltroEstado(valor)}
+                      aria-pressed={activo}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                        activo
+                          ? "bg-blue-600 border-blue-600 text-white"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-blue-400"
+                      }`}
+                    >
+                      {etiqueta} <span className={activo ? "text-white/70" : "text-gray-400"}>{conteoEstado(valor)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-sm text-gray-500 self-end sm:self-auto sm:ml-auto">{filtered.length} membresía{filtered.length !== 1 ? "s" : ""}</span>
             </div>
 
             <div className="md:overflow-x-auto">
@@ -304,7 +348,7 @@ export default function MembresiasPage() {
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-gray-400">
-                        {search ? "No se encontraron membresías" : "No hay membresías creadas aún"}
+                        {search || filtroEstado !== "todas" ? "No se encontraron membresías" : "No hay membresías creadas aún"}
                       </td>
                     </tr>
                   ) : filtered.map((m) => (
