@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { crearEstado, manejarMensaje, ponerseAlDia, listarChatsSeguros, VENTANA_MAX_MS, VENTANA_INICIAL_MS } from "../../../webhook/mensajes";
+import { crearEstado, manejarMensaje, ponerseAlDia, decidirPuestaAlDia, listarChatsSeguros, VENTANA_MAX_MS, VENTANA_INICIAL_MS, MAX_INTENTOS_PUESTA_AL_DIA } from "../../../webhook/mensajes";
 
 const H = 3600000;
 const AHORA = new Date("2026-10-12T12:00:00Z").getTime();
@@ -32,11 +32,35 @@ describe("crearEstado", () => {
         expect(crearEstado(ruta, () => AHORA).desde()).toBe(AHORA - 5 * H);
     });
 
-    it("MSG-EST-003: nunca mira más de 48 h atrás aunque el bot haya estado apagado más tiempo", () => {
+    it("MSG-EST-003: nunca mira más de 7 días atrás aunque el bot haya estado apagado más tiempo", () => {
         const ruta = path.join(dir, "e.json");
-        crearEstado(ruta, () => AHORA).marcarRevisado(AHORA - 100 * H);
+        crearEstado(ruta, () => AHORA).marcarRevisado(AHORA - 300 * H);
 
+        expect(VENTANA_MAX_MS).toBe(7 * 24 * H);
         expect(crearEstado(ruta, () => AHORA).desde()).toBe(AHORA - VENTANA_MAX_MS);
+    });
+
+    it("MSG-EST-003b: PC apagado un fin de semana largo (63 h) → igual lee los mensajes del viernes", () => {
+        const ruta = path.join(dir, "e.json");
+        crearEstado(ruta, () => AHORA).marcarRevisado(AHORA - 63 * H);
+
+        expect(crearEstado(ruta, () => AHORA).desde()).toBe(AHORA - 63 * H);
+    });
+
+    it("MSG-EST-006: con piso, el marcado de cada minuto no deja atrás el mensaje que falló (sobrevive reinicios)", () => {
+        const ruta = path.join(dir, "e.json");
+        const e = crearEstado(ruta, () => AHORA);
+        e.marcarRevisado(AHORA - 5 * H);
+        e.fijarPiso(AHORA - 3 * H);
+        e.marcarRevisado(AHORA); // el cron de server.js
+
+        expect(crearEstado(ruta, () => AHORA).desde()).toBe(AHORA - 3 * H);
+
+        // Una puesta al día sin fallos borra el piso y la marca vuelve a avanzar.
+        const e2 = crearEstado(ruta, () => AHORA);
+        e2.fijarPiso(null);
+        e2.marcarRevisado(AHORA);
+        expect(crearEstado(ruta, () => AHORA).desde()).toBe(AHORA);
     });
 
     it("MSG-EST-004: los ids procesados se recuerdan entre reinicios", () => {
@@ -253,10 +277,10 @@ describe("ponerseAlDia", () => {
         const atendidos: string[] = [];
         const manejar = vi.fn(async (m: { id: { _serialized: string } }) => { atendidos.push(m.id._serialized); return true; });
 
-        const n = await ponerseAlDia(wa, { desdeMs: DESDE, manejar });
+        const res = await ponerseAlDia(wa, { desdeMs: DESDE, manejar });
 
         expect(atendidos).toEqual(["b-1", "a-2"]);
-        expect(n).toBe(2);
+        expect(res).toEqual({ atendidos: 2, fallidos: 0, primerFallidoMs: null });
     });
 
     it("MSG-SYNC-002: no pide el historial de chats sin actividad nueva ni de grupos", async () => {
@@ -288,7 +312,8 @@ describe("ponerseAlDia", () => {
         const wa = { getChats: vi.fn().mockResolvedValue([roto, sano]) };
         const manejar = vi.fn().mockResolvedValue(true);
 
-        expect(await ponerseAlDia(wa, { desdeMs: DESDE, manejar })).toBe(1);
+        // Se cuenta como fallido desde el inicio: no se sabe qué mensajes tenía.
+        expect(await ponerseAlDia(wa, { desdeMs: DESDE, manejar })).toEqual({ atendidos: 1, fallidos: 1, primerFallidoMs: DESDE + 1 });
     });
 
     it("MSG-SYNC-005: un mensaje que falla al procesarse no frena a los siguientes", async () => {
@@ -298,8 +323,80 @@ describe("ponerseAlDia", () => {
         };
         const manejar = vi.fn().mockRejectedValueOnce(new Error("BD caída")).mockResolvedValue(true);
 
-        expect(await ponerseAlDia(wa, { desdeMs: DESDE, manejar })).toBe(1);
+        expect(await ponerseAlDia(wa, { desdeMs: DESDE, manejar })).toEqual({
+            atendidos: 1, fallidos: 1, primerFallidoMs: seg(AHORA - 2 * H) * 1000,
+        });
         expect(manejar).toHaveBeenCalledTimes(2);
+    });
+});
+
+// ─── decidirPuestaAlDia + reintentos (lo que hace server.js) ────────────
+
+describe("puesta al día con la BD caída", () => {
+    const DESDE = AHORA - 10 * H;
+
+    it("MSG-PAD-001: sin fallos → al día, marca hasta la conexión y borra el piso", () => {
+        expect(decidirPuestaAlDia({ fallidos: 0, primerFallidoMs: null }, 1, AHORA))
+            .toEqual({ alDia: true, revisadoHasta: AHORA, piso: null });
+    });
+
+    it("MSG-PAD-002: con fallos → NO al día (el scheduler espera) mientras queden intentos", () => {
+        for (let i = 1; i < MAX_INTENTOS_PUESTA_AL_DIA; i++) {
+            expect(decidirPuestaAlDia({ fallidos: 1, primerFallidoMs: AHORA - H }, i, AHORA)).toEqual({ alDia: false });
+        }
+    });
+
+    it("MSG-PAD-003: tras el último intento sigue (no bloquea el bot) con piso antes del mensaje fallido", () => {
+        expect(decidirPuestaAlDia({ fallidos: 1, primerFallidoMs: AHORA - H }, MAX_INTENTOS_PUESTA_AL_DIA, AHORA))
+            .toEqual({ alDia: true, revisadoHasta: AHORA, piso: AHORA - H - 1 });
+    });
+
+    // Repite el ciclo de server.js: ponerseAlDia → decidir → (reintentar | marcar).
+    async function cicloServer(wa: unknown, estado: ReturnType<typeof crearEstado>, manejar: (m: never) => Promise<boolean>, intento: number) {
+        const res = await ponerseAlDia(wa, { desdeMs: estado.desde(), manejar });
+        const d = decidirPuestaAlDia(res, intento, AHORA);
+        if (d.alDia) { estado.fijarPiso(d.piso); estado.marcarRevisado(d.revisadoHasta); }
+        return d.alDia;
+    }
+
+    it("MSG-PAD-004: el '1' que falló por la BD se aplica en el reintento y recién ahí corre el scheduler", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const estado = crearEstado(path.join(dir, "e.json"), () => AHORA);
+        estado.marcarRevisado(DESDE);
+        const wa = { getChats: vi.fn().mockResolvedValue([chat("569111@c.us", [{ id: "uno", ts: AHORA - 2 * H }, { id: "dos", ts: AHORA - H }])]) };
+        let bdCaida = true;
+        const aplicados: string[] = [];
+        const manejar = async (m: { id: { _serialized: string } }) => {
+            const id = m.id._serialized;
+            if (estado.yaProcesado(id)) return false;
+            if (bdCaida && id === "uno") throw new Error("fetch failed");
+            aplicados.push(id);
+            estado.marcarProcesado(id);
+            return true;
+        };
+
+        expect(await cicloServer(wa, estado, manejar as never, 1)).toBe(false); // scheduler no corre
+        expect(estado.desde()).toBe(DESDE); // la marca no avanzó
+        bdCaida = false;
+        expect(await cicloServer(wa, estado, manejar as never, 2)).toBe(true);
+
+        expect(aplicados).toEqual(["dos", "uno"]); // "dos" no se repite
+    });
+
+    it("MSG-PAD-005: si la BD sigue caída tras todos los intentos, el próximo encendido relee el mensaje", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const ruta = path.join(dir, "e.json");
+        const estado = crearEstado(ruta, () => AHORA);
+        estado.marcarRevisado(DESDE);
+        const wa = { getChats: vi.fn().mockResolvedValue([chat("569111@c.us", [{ id: "uno", ts: AHORA - 2 * H }])]) };
+        const falla = async () => { throw new Error("fetch failed"); };
+
+        let alDia = false;
+        for (let i = 1; !alDia; i++) alDia = await cicloServer(wa, estado, falla as never, i);
+        estado.marcarRevisado(AHORA); // cron de server.js mientras está al día
+
+        const siguienteEncendido = crearEstado(ruta, () => AHORA + 5 * H);
+        expect(siguienteEncendido.desde()).toBeLessThan(seg(AHORA - 2 * H) * 1000);
     });
 
     it("MSG-SYNC-006: si no puede listar los chats, lanza (server.js reintenta y el scheduler no cancela)", async () => {

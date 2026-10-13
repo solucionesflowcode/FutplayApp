@@ -8,6 +8,8 @@ import { procesarMensajeWhatsApp } from "../../../webhook/handlers";
 
 const H = 3600000;
 const T0 = new Date("2026-10-12T12:00:00Z").getTime();
+// Igual que VENTANA_PASADAS_MS de webhook/data.js.
+const VENTANA_PASADAS = 7 * 24 * H;
 
 type Insc = { id: string; usuario_id: string; clase_id: string; asistencia: string };
 type Clase = { id: string; titulo: string; fecha_hora: string; tipo_evento: string };
@@ -84,10 +86,10 @@ function crearBd() {
             return clases.filter((c) => ms(c) >= ahora() && ms(c) <= ahora() + H).map(horario);
         },
         async getHorariosPasados() {
-            return clases.filter((c) => ms(c) >= ahora() - 48 * H && ms(c) < ahora()).map(horario);
+            return clases.filter((c) => ms(c) >= ahora() - VENTANA_PASADAS && ms(c) < ahora()).map(horario);
         },
         async getHorariosPasados1h() {
-            return clases.filter((c) => ms(c) >= ahora() - 48 * H && ms(c) <= ahora() - H).map(horario);
+            return clases.filter((c) => ms(c) >= ahora() - VENTANA_PASADAS && ms(c) <= ahora() - H).map(horario);
         },
         async getInscripcionesSinConfirmar(claseId: string) {
             return inscripciones.filter((i) => i.clase_id === claseId && i.asistencia === "sin_confirmar");
@@ -486,6 +488,34 @@ describe("bot de WhatsApp — escenarios de punta a punta", () => {
 
         expect(respuesta).toBeNull();
         expect(m.bd.estado("i1")).toBe("pendiente");
+    });
+
+    it("OFF-011: fin de semana largo (PC apagado 63 h) → el '2' del viernes devuelve el token de la clase del sábado", async () => {
+        const m = montar();
+        alumnoConClase(m, 23); // clase del sábado; el bot avisa el viernes y se apaga
+        await m.tickScheduler();
+        expect(m.bd.estado("i1")).toBe("pendiente");
+
+        avanzar(1);
+        m.escribirConBotApagado("56912345678", "2"); // 22 h antes: con reembolso
+        avanzar(62); // lunes
+
+        await m.encenderBot();
+
+        expect(m.bd.estado("i1")).toBe("cancelado");
+        expect(m.bd.tokens()).toBe(1);
+    });
+
+    it("OFF-011b: tras un fin de semana largo, quien confirmó pasa a no_asistio (no queda 'confirmado' para siempre)", async () => {
+        const m = montar();
+        alumnoConClase(m, 23);
+        await m.tickScheduler();
+        await m.responder("56912345678", "1");
+
+        avanzar(62 + 23); // la clase fue hace 62 h (> 48 h)
+        await m.encenderBot();
+
+        expect(m.bd.estado("i1")).toBe("no_asistio");
     });
 
     it("BUG-003: volver a escribir '1' tras confirmar por WhatsApp no menciona la página web", async () => {

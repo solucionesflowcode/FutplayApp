@@ -174,9 +174,10 @@ async function getHorariosProximos1h() {
 }
 
 // Ventana hacia atrás para los barridos post-clase. Antes se recorrían TODAS
-// las clases históricas cada minuto (crece sin límite). 48 h alcanza de sobra
-// para que el scheduler (cada minuto) procese cada clase recién terminada.
-const VENTANA_PASADAS_MS = 48 * 60 * 60 * 1000;
+// las clases históricas cada minuto (crece sin límite). 7 días, igual que la
+// lectura de mensajes atrasados (mensajes.js): con 48 h, tras un fin de semana
+// largo con el PC apagado las clases del viernes quedaban 'pendiente' para siempre.
+const VENTANA_PASADAS_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function getHorariosPasados() {
   const ahora = Date.now();

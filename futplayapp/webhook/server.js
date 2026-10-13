@@ -12,7 +12,7 @@ const { sendMessageWithRetry, recargarPagina } = require('./handlers');
 const { esErrorPerfilOcupado, matarChromeStale } = require('./limpieza');
 const { crearScheduler } = require('./scheduler');
 const { decidirWatchdog } = require('./watchdog');
-const { crearEstado, manejarMensaje, ponerseAlDia, listarChatsSeguros } = require('./mensajes');
+const { crearEstado, manejarMensaje, ponerseAlDia, decidirPuestaAlDia, listarChatsSeguros } = require('./mensajes');
 
 // Hasta dónde se revisaron mensajes y cuáles ya se atendieron (encendidos cortos).
 const estado = crearEstado(process.env.ESTADO_PATH || path.join(__dirname, '.estado-bot.json'));
@@ -85,19 +85,30 @@ function atender(msg, atrasado) {
     .catch((err) => console.error(`[Bot] Error atendiendo mensaje de ${msg.from}:`, err.message));
 }
 
-async function ponerseAlDiaConReintento(cliente) {
+async function ponerseAlDiaConReintento(cliente, intento = 1) {
   if (cliente !== whatsapp || !whatsappReady) return;
   const conexion = Date.now();
   const desdeMs = estado.desde();
   try {
     console.log(`[Bot] Revisando mensajes recibidos desde ${new Date(desdeMs).toISOString()}...`);
     const chats = { getChats: () => listarChatsSeguros(cliente, desdeMs) };
-    const n = await ponerseAlDia(chats, { desdeMs, manejar: (m) => manejarMensaje(m, depsMensajes(true)) });
-    estado.marcarRevisado(conexion);
-    console.log(`[Bot] Al día: ${n} mensaje(s) atrasado(s) atendido(s).`);
+    const res = await ponerseAlDia(chats, { desdeMs, manejar: (m) => manejarMensaje(m, depsMensajes(true)) });
+    const decision = decidirPuestaAlDia(res, intento, conexion);
+    if (!decision.alDia) {
+      // Los ya atendidos quedaron en `procesados`: el reintento solo repite los fallidos.
+      console.error(`[Bot] ${res.fallidos} mensaje(s) atrasado(s) fallaron (intento ${intento}), reintento en 60 s; el scheduler espera.`);
+      setTimeout(() => ponerseAlDiaConReintento(cliente, intento + 1), 60000);
+      return;
+    }
+    estado.fijarPiso(decision.piso);
+    estado.marcarRevisado(decision.revisadoHasta);
+    if (decision.piso != null) {
+      console.error(`[Bot] ${res.fallidos} mensaje(s) atrasado(s) siguen fallando tras ${intento} intentos: se releerán desde ${new Date(decision.piso).toISOString()} al próximo encendido.`);
+    }
+    console.log(`[Bot] Al día: ${res.atendidos} mensaje(s) atrasado(s) atendido(s).`);
   } catch (err) {
     console.error('[Bot] Error poniéndose al día, reintento en 60 s:', err.message);
-    setTimeout(() => ponerseAlDiaConReintento(cliente), 60000);
+    setTimeout(() => ponerseAlDiaConReintento(cliente, intento), 60000);
     return;
   }
   alDia = true;

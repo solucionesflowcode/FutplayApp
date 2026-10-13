@@ -119,7 +119,7 @@ Autenticación por grupo: **admin** = `verifyAdmin()` + service_role; **user** =
   1. Manda los recordatorios 24 h antes (`sin_confirmar` → `pendiente`), salvo si la clase empieza en menos de 2 h.
   2. 1 h antes de la clase, solo `pendiente` (avisado y sin responder) pasa a `cancelado_sin_reembolso`. Las reservas `sin_confirmar` (nunca avisadas) no se cancelan.
   3. 1 h después de la clase, `confirmado_whatsapp` pasa a `no_asistio` (el profesor lo corrige a `asistio`).
-- **Encendidos cortos** (`webhook/mensajes.js`): al conectarse lee las respuestas recibidas con el bot apagado (desde `estado-bot.json`, máx. 48 h) y las aplica con la hora real del mensaje. El scheduler no corre hasta terminar.
+- **Encendidos cortos** (`webhook/mensajes.js`): al conectarse lee las respuestas recibidas con el bot apagado (desde `estado-bot.json`, máx. 7 días) y las aplica con la hora real del mensaje. El scheduler no corre hasta terminar; si un mensaje falla (BD caída) reintenta hasta 5 veces antes de seguir, y deja un piso en `estado-bot.json` para releerlo al próximo encendido. Los barridos post-clase también miran 7 días.
 - Sin `SUPABASE_SERVICE_ROLE_KEY` el bot **no arranca**. Despliegue: `webhook/DESPLIEGUE.md`.
 - Incluye un watchdog de reconexión y limpieza de Chrome colgado (`limpieza.js`). La sesión se guarda en un volumen de Docker.
 

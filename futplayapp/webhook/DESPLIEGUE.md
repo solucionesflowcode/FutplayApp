@@ -8,7 +8,7 @@ scheduler corre dentro del contenedor.
 cortos (por ejemplo, 3 veces al día unos 5 minutos). Cada vez que se conecta:
 
 1. **Se pone al día:** lee las respuestas que los alumnos mandaron con el PC
-   apagado (desde la última vez que estuvo conectado, máximo 48 h) y las aplica
+   apagado (desde la última vez que estuvo conectado, máximo 7 días) y las aplica
    con la **hora real del mensaje**: quien canceló con ≥ 3 h recibe su token
    aunque el bot lo lea más tarde, y la respuesta aplica a la clase de ese
    momento.
@@ -74,3 +74,12 @@ La sesión queda guardada en el volumen `bot-session`: los reinicios no piden QR
 - **`[Scheduler] WhatsApp no conectado`:** falta escanear el QR o se desvinculó la sesión.
 - **Chrome "already running" o perfil bloqueado:** el bot mata el Chrome huérfano solo. Si persiste, ejecuta `docker compose restart`.
 - **El PC se suspendió:** al volver, Docker reanuda el contenedor y el watchdog reconecta WhatsApp en ~1–3 min.
+- **`mensaje(s) atrasado(s) fallaron ... el scheduler espera`:** la BD o internet fallaron al leer las respuestas. El bot reintenta cada minuto (hasta 5 veces) y no cancela a nadie mientras tanto. Si sigue fallando, continúa y esas respuestas se releen al próximo encendido.
+- **Docker Desktop no arranca ("WSL update required"):** pasa si WSL no responde al iniciar el PC. Abre Docker Desktop a mano; el bot se levanta solo.
+
+## Casos que el bot no cubre
+
+- **WhatsApp desvinculado desde el teléfono:** el bot queda mostrando el QR y no avisa a nadie. Si dejan de llegar recordatorios, revisa los logs.
+- **Se adelanta una clase ya avisada a menos de 1 h:** el scheduler la cancela sin reembolso en el siguiente ciclo.
+- **El alumno escribe desde otro número:** se ignora (el número debe ser el de su perfil).
+- **Más de 30 mensajes de un mismo alumno con el bot apagado:** solo se leen los 30 últimos.

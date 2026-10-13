@@ -8,8 +8,13 @@ const { procesarMensajeWhatsApp, telefonoDesdeContacto, esFrameDetached } = requ
 // los mensajes quedan leídos y se perderían.
 
 // Nunca se mira más atrás que esto, aunque el bot haya estado apagado más tiempo
-// (las reglas post-clase del scheduler también usan 48 h).
-const VENTANA_MAX_MS = 48 * 60 * 60 * 1000;
+// (las reglas post-clase del scheduler usan la misma ventana). Antes era 48 h: con
+// el PC apagado un fin de semana largo, un "2" del viernes no se leía y la clase
+// del sábado quedaba cancelada sin reembolso aunque el alumno avisó a tiempo.
+const VENTANA_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+// Intentos de puesta al día con mensajes que fallaron (BD o internet caídos)
+// antes de dejar correr al scheduler. Uno por minuto.
+const MAX_INTENTOS_PUESTA_AL_DIA = 5;
 // Primer arranque sin estado guardado: se revisan las últimas 24 h.
 const VENTANA_INICIAL_MS = 24 * 60 * 60 * 1000;
 // Mensajes por chat que se piden al historial al ponerse al día.
@@ -22,15 +27,19 @@ const esChatPrivado = (chatId) => !chatId.endsWith('@g.us') && !chatId.endsWith(
 /**
  * Estado persistido en disco:
  *   ultimaRevision  ms epoch hasta donde ya se revisaron mensajes con certeza
+ *   pisoRevision    ms de un mensaje que no se pudo procesar: la marca no lo pasa
+ *                   hasta que una puesta al día lo procese (null si no hay)
  *   procesados      ids de mensajes ya atendidos
  */
 function crearEstado(ruta, ahora = Date.now) {
   let ultimaRevision = null;
+  let pisoRevision = null;
   let procesados = [];
   try {
     if (fs.existsSync(ruta)) {
       const j = JSON.parse(fs.readFileSync(ruta, 'utf8'));
       if (Number.isFinite(j.ultimaRevision)) ultimaRevision = j.ultimaRevision;
+      if (Number.isFinite(j.pisoRevision)) pisoRevision = j.pisoRevision;
       if (Array.isArray(j.procesados)) procesados = j.procesados.slice(-MAX_PROCESADOS);
     }
   } catch (e) {
@@ -40,7 +49,7 @@ function crearEstado(ruta, ahora = Date.now) {
 
   function guardar() {
     try {
-      fs.writeFileSync(ruta, JSON.stringify({ ultimaRevision, procesados: [...set].slice(-MAX_PROCESADOS) }));
+      fs.writeFileSync(ruta, JSON.stringify({ ultimaRevision, pisoRevision, procesados: [...set].slice(-MAX_PROCESADOS) }));
     } catch (e) {
       console.error('Error guardando estado del bot:', e.message);
     }
@@ -53,8 +62,15 @@ function crearEstado(ruta, ahora = Date.now) {
       const base = ultimaRevision ?? t - VENTANA_INICIAL_MS;
       return Math.max(base, t - VENTANA_MAX_MS);
     },
+    // Nunca pasa del piso: el mensaje que falló se vuelve a leer al próximo
+    // encendido (sin esto, el marcado de cada minuto lo dejaba atrás).
     marcarRevisado(ms) {
-      ultimaRevision = ms;
+      ultimaRevision = pisoRevision != null ? Math.min(ms, pisoRevision) : ms;
+      guardar();
+    },
+    fijarPiso(ms) {
+      pisoRevision = ms;
+      if (ms != null && ultimaRevision != null) ultimaRevision = Math.min(ultimaRevision, ms);
       guardar();
     },
     yaProcesado: (id) => set.has(id),
@@ -173,11 +189,18 @@ async function listarChatsSeguros(whatsapp, desdeMs, crearChat = chatLiviano) {
 /**
  * Al conectarse: busca en los chats privados los mensajes recibidos desde
  * `desdeMs` y los atiende en orden cronológico, usando la hora de cada mensaje.
- * Devuelve cuántos mensajes atendió. Un chat con error no frena a los demás.
+ * Un chat o mensaje con error no frena a los demás, pero se cuenta:
+ * devuelve { atendidos, fallidos, primerFallidoMs } (ver decidirPuestaAlDia).
  */
 async function ponerseAlDia(whatsapp, { desdeMs, manejar, mensajesPorChat = MENSAJES_POR_CHAT }) {
   const chats = await whatsapp.getChats();
   const atrasados = [];
+  let fallidos = 0;
+  let primerFallidoMs = null;
+  const fallo = (ms) => {
+    fallidos++;
+    primerFallidoMs = primerFallidoMs == null ? ms : Math.min(primerFallidoMs, ms);
+  };
 
   for (const chat of chats) {
     const chatId = chat.id?._serialized ?? '';
@@ -190,6 +213,8 @@ async function ponerseAlDia(whatsapp, { desdeMs, manejar, mensajesPorChat = MENS
       }
     } catch (err) {
       console.error(`[Bot] Error leyendo el chat ${chatId}:`, err.message);
+      // No se sabe qué mensajes tenía: hay que volver a leer desde el principio.
+      fallo(desdeMs + 1);
     }
   }
 
@@ -200,9 +225,25 @@ async function ponerseAlDia(whatsapp, { desdeMs, manejar, mensajesPorChat = MENS
       if (await manejar(m)) atendidos++;
     } catch (err) {
       console.error(`[Bot] Error procesando mensaje atrasado de ${m.from}:`, err.message);
+      fallo(m.timestamp * 1000);
     }
   }
-  return atendidos;
+  return { atendidos, fallidos, primerFallidoMs };
 }
 
-module.exports = { crearEstado, manejarMensaje, ponerseAlDia, listarChatsSeguros, esChatPrivado, VENTANA_MAX_MS, VENTANA_INICIAL_MS };
+/**
+ * Qué hacer tras una puesta al día (`intento` empieza en 1).
+ * Si un mensaje falló (BD o internet caídos), NO se da por al día: el scheduler
+ * cancelaría sin reembolso a quien sí respondió, y la marca de revisión dejaba el
+ * mensaje atrás para siempre. Se reintenta; tras MAX_INTENTOS se sigue (no se
+ * bloquea el bot) dejando un piso para releer ese mensaje al próximo encendido.
+ *   { alDia: false }                       → reintentar en 60 s
+ *   { alDia: true, revisadoHasta, piso }   → marcar y dejar correr al scheduler
+ */
+function decidirPuestaAlDia({ fallidos, primerFallidoMs }, intento, conexionMs) {
+  if (!fallidos) return { alDia: true, revisadoHasta: conexionMs, piso: null };
+  if (intento < MAX_INTENTOS_PUESTA_AL_DIA) return { alDia: false };
+  return { alDia: true, revisadoHasta: conexionMs, piso: primerFallidoMs - 1 };
+}
+
+module.exports = { crearEstado, manejarMensaje, ponerseAlDia, decidirPuestaAlDia, listarChatsSeguros, esChatPrivado, VENTANA_MAX_MS, VENTANA_INICIAL_MS, MAX_INTENTOS_PUESTA_AL_DIA };

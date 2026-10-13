@@ -83,6 +83,17 @@ describe("webhook/data.js — scheduler data functions", () => {
             expect(result[1]).toEqual({ id: "c2", clase_id: "c2" });
         });
 
+        it("SCH-DATA-004B: tras un fin de semana con el PC apagado (63 h) barre igual las clases del viernes; no las de hace > 7 días", async () => {
+            __setTableData("clase", [
+                { id: "viernes", fecha_hora: hourOffset(-63) },
+                { id: "vieja", fecha_hora: hourOffset(-8 * 24) },
+            ]);
+
+            const result = await data.getHorariosPasados();
+
+            expect(result.map((r: { id: string }) => r.id)).toEqual(["viernes"]);
+        });
+
         it("SCH-DATA-005: devuelve [] si no hay clases pasadas", async () => {
             __setTableData("clase", []);
             const result = await data.getHorariosPasados();
