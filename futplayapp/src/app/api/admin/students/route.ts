@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { fechaVencimientoDesde } from "@/lib/fechas";
 import { sincronizarEmailAuth } from "@/lib/auth-email";
+import { telefonoParaGuardar } from "@/lib/telefono";
+import { traducirError } from "@/lib/errores";
 
 
 export async function POST(request: Request) {
@@ -23,6 +25,12 @@ export async function POST(request: Request) {
       { error: "Rol inválido. Debe ser jugador o profesor" },
       { status: 400 }
     );
+  }
+
+  // Antes de crear la cuenta de auth: un teléfono inválido no deja un usuario a medias.
+  const telefonoNormalizado = telefonoParaGuardar(telefono);
+  if (telefonoNormalizado && typeof telefonoNormalizado === "object") {
+    return NextResponse.json({ error: telefonoNormalizado.error }, { status: 400 });
   }
 
   const adminClient = await getAdminClient();
@@ -52,7 +60,7 @@ export async function POST(request: Request) {
       email,
       rol,
       rut: rut || null,
-      telefono: telefono || null,
+      telefono: telefonoNormalizado,
     });
 
   if (usuarioError) {
@@ -102,7 +110,7 @@ export async function POST(request: Request) {
       nombre,
       rol,
       rut,
-      telefono,
+      telefono: telefonoNormalizado,
     },
     membresia,
     tempPassword,
@@ -122,8 +130,17 @@ export async function PUT(request: Request) {
     const updateData: any = {};
     if (body.nombre !== undefined) updateData.nombre = body.nombre;
     if (body.email !== undefined) updateData.email = String(body.email).toLowerCase().trim();
-    if (body.rut !== undefined) updateData.rut = body.rut;
-    if (body.telefono !== undefined) updateData.telefono = body.telefono;
+    // Vacío o null borra el dato (antes el formulario no tenía forma de borrarlo).
+    if (body.rut !== undefined) updateData.rut = String(body.rut ?? "").trim() || null;
+    if (body.telefono !== undefined) {
+      // Mismo formato que el perfil del alumno (+569XXXXXXXX): con espacios o
+      // sin el 9, el bot de WhatsApp no encontraba al alumno.
+      const telefono = telefonoParaGuardar(body.telefono);
+      if (telefono && typeof telefono === "object") {
+        return NextResponse.json({ error: telefono.error }, { status: 400 });
+      }
+      updateData.telefono = telefono;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
@@ -135,7 +152,8 @@ export async function PUT(request: Request) {
     if (emailError) return NextResponse.json({ error: emailError }, { status: 500 });
 
     const { error } = await admin.from("usuario").update(updateData).eq("id", body.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // traducirError: "Ese teléfono ya está registrado" en vez del error crudo de Postgres.
+    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

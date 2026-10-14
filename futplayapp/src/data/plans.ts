@@ -71,6 +71,7 @@ export async function createPlanAdmin(data: {
     precio: number;
     tokens_mensuales?: number;
     dias?: number;
+    tipo_plan?: TipoPlan;
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "POST",
@@ -90,6 +91,7 @@ export async function updatePlanAdmin(data: {
     precio?: number;
     tokens_mensuales?: number;
     dias?: number;
+    tipo_plan?: TipoPlan;
 }): Promise<{ success: boolean; error?: string }> {
     const res = await fetch("/api/admin/planes", {
         method: "PUT",

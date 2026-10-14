@@ -35,6 +35,9 @@ type MembresiaForm = {
   tokens_usados: number;
   fecha_inicio: string;
   fecha_vencimiento: string;
+  // ISO completos al abrir la edición: si el día no cambia, se reenvían tal cual.
+  fecha_inicio_original?: string;
+  fecha_vencimiento_original?: string;
   estado: boolean;
 };
 
@@ -161,6 +164,8 @@ export default function MembresiasPage() {
       tokens_usados: m.tokens_usados,
       fecha_inicio: isoToDate(m.fecha_inicio),
       fecha_vencimiento: isoToDate(m.fecha_vencimiento),
+      fecha_inicio_original: m.fecha_inicio,
+      fecha_vencimiento_original: m.fecha_vencimiento,
       estado: m.estado,
     });
     setModal("edit");
@@ -180,6 +185,10 @@ export default function MembresiasPage() {
         setError("La fecha de vencimiento no puede ser anterior a la de inicio");
         return;
       }
+      if (form.tokens_usados < 0 || form.tokens_usados > form.tokens_totales) {
+        setError("Los tokens usados deben estar entre 0 y los tokens totales");
+        return;
+      }
     }
     setSaving(true);
     setError(null);
@@ -188,14 +197,18 @@ export default function MembresiasPage() {
     const planSel = planes.find((pl) => pl.id === form.plan_id);
     const diasVigencia = planSel?.dias_vigencia ?? planSel?.dias ?? 30;
     const ahora = new Date();
-    const fecha_inicio = isCreate ? ahora.toISOString() : dateToIso(form.fecha_inicio);
+    // Si el admin no cambió la fecha, se reenvía la original: dateToIso la
+    // dejaba a medianoche y una membresía que vencía a las 05:15 perdía horas.
+    const fechaEditada = (dia: string, original?: string) =>
+      original && isoToDate(original) === dia ? original : dateToIso(dia);
+    const fecha_inicio = isCreate ? ahora.toISOString() : fechaEditada(form.fecha_inicio, form.fecha_inicio_original);
     const fecha_vencimiento = isCreate
       ? new Date(ahora.getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString()
-      : dateToIso(form.fecha_vencimiento);
+      : fechaEditada(form.fecha_vencimiento, form.fecha_vencimiento_original);
 
     const boleta_id = form.boleta_id.trim() || null;
 
-    const ok = isCreate
+    const res = isCreate
       ? await createMembresiaGestion({
           usuario_id: form.usuario_id,
           plan_id: form.plan_id,
@@ -214,8 +227,9 @@ export default function MembresiasPage() {
           estado: form.estado,
         });
 
-    if (!ok) {
-      setError("Error al guardar");
+    if (!res.ok) {
+      // El motivo real (p. ej. "El alumno ya tiene una membresía vigente").
+      setError(res.error);
       setSaving(false);
       return;
     }
@@ -227,10 +241,11 @@ export default function MembresiasPage() {
   };
 
   const handleDelete = async (id: string) => {
+    setDeleteId(null);
     setMembresias((prev) => prev.filter((m) => m.id !== id));
-    const ok = await deleteMembresiaGestion(id);
-    if (!ok) {
-      setError("Error al eliminar");
+    const res = await deleteMembresiaGestion(id);
+    if (!res.ok) {
+      setError(res.error);
       fetchData();
     }
   };
@@ -507,6 +522,25 @@ export default function MembresiasPage() {
                     />
                     <p className="text-[11px] text-gray-400 mt-1">Se autocompleta según el plan seleccionado</p>
                   </div>
+                  {/* Antes no existía: no había forma de corregir el saldo de un alumno. */}
+                  {modal === "edit" && (
+                    <div>
+                      <label htmlFor="tokens-usados" className="block text-xs font-semibold text-gray-500 mb-1">Tokens usados</label>
+                      <input
+                        id="tokens-usados"
+                        type="number"
+                        value={form.tokens_usados}
+                        onChange={(e) => setForm((p) => ({ ...p, tokens_usados: e.target.value === "" ? 0 : parseInt(e.target.value) }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                        min={0}
+                        max={form.tokens_totales}
+                      />
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Disponibles: {Math.max(0, form.tokens_totales - form.tokens_usados)}
+                        {form.tokens_usados >= form.tokens_totales && form.tokens_totales > 0 ? " · quedará sin tokens" : ""}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {modal === "create" ? (

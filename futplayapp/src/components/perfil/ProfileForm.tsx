@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { User, Mail, Shield, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+// Vive en lib/telefono (lo usan también el admin y su API).
+import { normalizeTelefono } from "@/lib/telefono";
+
+export { normalizeTelefono };
 
 type UsuarioData = {
   id: string;
@@ -11,16 +15,6 @@ type UsuarioData = {
   rut: string | null;
   telefono: string | null;
 };
-
-// Prefijo fijo +569: el usuario solo escribe los 8 dígitos del móvil.
-// Normaliza cualquier formato existente (56, +56, 9, espacios, guiones)
-// a +569XXXXXXXX sin repetir el 9 del prefijo.
-export function normalizeTelefono(value: string): string {
-  let digits = value.replace(/[^0-9]/g, "");
-  if (digits.startsWith("56")) digits = digits.slice(2); // +569 → 9...
-  if (digits.startsWith("9")) digits = digits.slice(1);  // quita el 9 del prefijo
-  return `+569${digits.slice(0, 8)}`;
-}
 
 export default function ProfileForm() {
   const [usuario, setUsuario] = useState<UsuarioData | null>(null);

@@ -18,6 +18,7 @@ import {
   deletePlanAdmin,
   PLANES_CON_LINK,
   type Plan,
+  type TipoPlan,
 } from "@/data/plans";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
@@ -29,6 +30,7 @@ type PlanForm = {
   precio: number;
   tokens_mensuales: number;
   dias: number;
+  tipo_plan: TipoPlan;
 };
 
 const emptyForm: PlanForm = {
@@ -36,7 +38,15 @@ const emptyForm: PlanForm = {
   precio: 0,
   tokens_mensuales: 1,
   dias: 30,
+  tipo_plan: "normal",
 };
+
+const TIPOS_PLAN: { valor: TipoPlan; etiqueta: string; ayuda: string }[] = [
+  { valor: "normal", etiqueta: "Normal", ayuda: "Aparece en el catálogo. Reserva entrenamientos y partidos." },
+  { valor: "kids", etiqueta: "Kids", ayuda: "Aparece en el catálogo. Solo reserva clases Kids." },
+  { valor: "familiar", etiqueta: "Familiar", ayuda: "Oculto: se compra solo con el link de acceso." },
+  { valor: "liga", etiqueta: "Liga", ayuda: "Oculto, pago único sin tokens: se compra solo con el link de acceso." },
+];
 
 function formatPrice(n: number) {
   return "$" + n.toLocaleString("es-CL");
@@ -93,13 +103,17 @@ export default function PlanesPage() {
       precio: p.precio,
       tokens_mensuales: p.tokens_mensuales,
       dias: p.dias ?? 30,
+      tipo_plan: p.tipo_plan ?? "normal",
     });
     setModal("edit");
   };
 
+  const esLiga = form.tipo_plan === "liga";
+
   const handleSave = async () => {
-    if (!form.nombre || form.precio <= 0 || form.tokens_mensuales <= 0 || form.dias <= 0) {
-      setError("Nombre, precio, tokens y días son obligatorios");
+    // El plan Liga es un pago único sin tokens: antes "tokens > 0" impedía guardarlo.
+    if (!form.nombre || form.precio <= 0 || form.dias <= 0 || (!esLiga && form.tokens_mensuales <= 0)) {
+      setError(esLiga ? "Nombre, precio y días son obligatorios" : "Nombre, precio, tokens y días son obligatorios");
       return;
     }
     setSaving(true);
@@ -108,8 +122,9 @@ export default function PlanesPage() {
     const payload = {
       nombre: form.nombre,
       precio: form.precio,
-      tokens_mensuales: form.tokens_mensuales,
+      tokens_mensuales: esLiga ? 0 : form.tokens_mensuales,
       dias: form.dias,
+      tipo_plan: form.tipo_plan,
     };
 
     const res = modal === "create"
@@ -125,15 +140,8 @@ export default function PlanesPage() {
     setSaving(false);
     setModal(null);
     resetForm();
-    if (modal === "create") {
-      fetchPlanes();
-    } else {
-      setPlanes((prev) =>
-        prev.map((p) =>
-          p.id === form.id ? { ...p, nombre: form.nombre, precio: form.precio, tokens_mensuales: form.tokens_mensuales, dias: form.dias } : p
-        )
-      );
-    }
+    // Se recarga también al editar: el tipo cambia el badge y el botón de link.
+    fetchPlanes();
   };
 
   // Copia el link de acceso del plan (familiar/liga). Si aún no tiene
@@ -182,9 +190,18 @@ export default function PlanesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar este plan? Los alumnos con este plan quedarán sin referencia.")) return;
+    // Ya se confirmó en el ConfirmDialog (antes además salía un confirm() nativo).
+    setDeleteId(null);
+    setError(null);
+    const anterior = planes;
     setPlanes((prev) => prev.filter((p) => p.id !== id));
-    await deletePlanAdmin(id);
+    // Un plan con membresías o compras no se puede borrar: la API responde 409
+    // con el motivo y el plan vuelve a la lista (antes desaparecía y volvía al recargar).
+    const res = await deletePlanAdmin(id).catch(() => ({ success: false, error: "Error de conexión" }));
+    if (!res.success) {
+      setPlanes(anterior);
+      setError(res.error || "No se pudo eliminar el plan");
+    }
   };
 
   if (loading && planes.length === 0) {
@@ -217,8 +234,8 @@ export default function PlanesPage() {
             </div>
           </div>
 
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+          {error && !modal && (
+            <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
           )}
 
           {/* LISTA */}
@@ -352,6 +369,22 @@ export default function PlanesPage() {
                   />
                 </div>
 
+                {/* Tipo: antes no se podía elegir desde el panel */}
+                <div>
+                  <label htmlFor="tipo-plan" className="block text-xs font-semibold text-gray-500 mb-1">Tipo de plan *</label>
+                  <select
+                    id="tipo-plan"
+                    value={form.tipo_plan}
+                    onChange={(e) => setForm((p) => ({ ...p, tipo_plan: e.target.value as TipoPlan }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  >
+                    {TIPOS_PLAN.map((t) => (
+                      <option key={t.valor} value={t.valor}>{t.etiqueta}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">{TIPOS_PLAN.find((t) => t.valor === form.tipo_plan)?.ayuda}</p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   {/* Precio */}
                   <div>
@@ -374,11 +407,13 @@ export default function PlanesPage() {
                     <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens Mensuales</label>
                     <input
                       type="number"
-                      value={form.tokens_mensuales || ""}
+                      value={esLiga ? 0 : form.tokens_mensuales || ""}
                       onChange={(e) => setForm((p) => ({ ...p, tokens_mensuales: parseInt(e.target.value) || 1 }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400"
                       min={1}
+                      disabled={esLiga}
                     />
+                    {esLiga && <p className="text-xs text-gray-400 mt-1">El plan Liga no da tokens.</p>}
                   </div>
                 </div>
 
@@ -425,7 +460,7 @@ export default function PlanesPage() {
       <ConfirmDialog
         open={deleteId !== null}
         title="Eliminar plan"
-        message="¿Eliminar este plan? Los alumnos con este plan quedarán sin referencia."
+        message="¿Eliminar este plan? Solo se puede eliminar si nunca se vendió ni se asignó a un alumno; si no, la eliminación se rechaza."
         onConfirm={() => deleteId && handleDelete(deleteId)}
         onCancel={() => setDeleteId(null)}
       />

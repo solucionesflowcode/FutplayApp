@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Student } from "./StudentsTable";
+import { telefonoParaGuardar } from "@/lib/telefono";
 
 type Props = {
   student: Student | null;
@@ -34,6 +35,11 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
       setError("El nombre es obligatorio");
       return;
     }
+    const telefono = telefonoParaGuardar(phone);
+    if (telefono && typeof telefono === "object") {
+      setError(telefono.error);
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -45,8 +51,9 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
         body: JSON.stringify({
           id: student.id,
           nombre: name.trim(),
-          rut: rut.trim() || undefined,
-          telefono: phone.trim() || undefined,
+          // Vacío → null: borra el dato (con `undefined` no se podía borrar).
+          rut: rut.trim() || null,
+          telefono,
         }),
       });
 
@@ -89,7 +96,8 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
 
         <input
           type="text"
-          placeholder="Teléfono"
+          placeholder="Teléfono (+569 XXXX XXXX)"
+          inputMode="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           className="w-full border border-gray-300 text-black p-3 rounded mb-4"

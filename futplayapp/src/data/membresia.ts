@@ -344,7 +344,7 @@ export async function createMembresiaGestion(data: {
   boleta_id?: string | null;
   tokens_totales: number;
   dias: number;
-}): Promise<boolean> {
+}): Promise<ResultadoGestion> {
   try {
     const fecha_inicio = new Date().toISOString();
     const fecha_vencimiento = fechaVencimientoDesde(fecha_inicio, data.dias).toISOString();
@@ -364,15 +364,10 @@ export async function createMembresiaGestion(data: {
       }),
     });
 
-    if (!res.ok) {
-      const body = await res.json();
-      console.error("Error creating membresia gestion:", body.error);
-      return false;
-    }
-    return true;
+    return await resultadoDe(res, "Error al crear la membresía");
   } catch (err) {
     console.error("Error calling create membresia gestion API:", err);
-    return false;
+    return { ok: false, error: ERROR_DE_RED };
   }
 }
 
@@ -388,7 +383,7 @@ export async function updateMembresiaGestion(
     fecha_vencimiento: string;
     estado: boolean;
   }>
-): Promise<boolean> {
+): Promise<ResultadoGestion> {
   try {
     const payload = { ...data, id };
     if (payload.boleta_id !== undefined) {
@@ -400,24 +395,35 @@ export async function updateMembresiaGestion(
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) return false;
-    return true;
+    return await resultadoDe(res, "Error al guardar la membresía");
   } catch (err) {
     console.error("Error calling update membresia gestion API:", err);
-    return false;
+    return { ok: false, error: ERROR_DE_RED };
   }
 }
 
-export async function deleteMembresiaGestion(id: string): Promise<boolean> {
+export async function deleteMembresiaGestion(id: string): Promise<ResultadoGestion> {
   try {
     const res = await fetch(`/api/admin/membresias/gestion?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
 
-    if (!res.ok) return false;
-    return true;
+    return await resultadoDe(res, "Error al eliminar la membresía");
   } catch (err) {
     console.error("Error calling delete membresia gestion API:", err);
-    return false;
+    return { ok: false, error: ERROR_DE_RED };
   }
+}
+
+// Resultado de las acciones del admin sobre membresías. Antes devolvían un
+// boolean y la pantalla solo podía decir "Error al guardar": el admin no veía
+// el motivo real (p. ej. "El alumno ya tiene una membresía vigente").
+export type ResultadoGestion = { ok: true } | { ok: false; error: string };
+
+const ERROR_DE_RED = "Error de conexión. Revisa tu internet e intenta de nuevo.";
+
+async function resultadoDe(res: Response, porDefecto: string): Promise<ResultadoGestion> {
+  if (res.ok) return { ok: true };
+  const body = await res.json().catch(() => ({}));
+  return { ok: false, error: (body as { error?: string })?.error || porDefecto };
 }

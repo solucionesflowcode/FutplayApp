@@ -6,7 +6,7 @@ vi.mock("@/utils/supabase/client", () => ({
 }));
 
 import { createClient } from "@/utils/supabase/client";
-import { userHasMembresia, getMembresiaByUser, createMembresia, devolverToken, getAllMembresiasConPlan, getAdminMembresias } from "@/data/membresia";
+import { userHasMembresia, getMembresiaByUser, createMembresia, devolverToken, getAllMembresiasConPlan, getAdminMembresias, createMembresiaGestion, updateMembresiaGestion, deleteMembresiaGestion } from "@/data/membresia";
 
 const USER_ID = "user-test-001";
 
@@ -456,5 +456,39 @@ describe("getAdminMembresias", () => {
         const result = await getAdminMembresias();
 
         expect(result).toEqual([]);
+    });
+});
+
+// ── Gestión del admin: el motivo del error llega a la pantalla (MEM-02) ──
+describe("createMembresiaGestion / updateMembresiaGestion / deleteMembresiaGestion", () => {
+    const respuesta = (status: number, body: unknown) =>
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status }));
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it("DATA-MEMB-GEST-001: devuelve el mensaje real de la API (antes solo 'false' → 'Error al guardar')", async () => {
+        respuesta(500, { error: "El alumno ya tiene una membresía vigente" });
+
+        const res = await createMembresiaGestion({ usuario_id: "u1", plan_id: "p1", tokens_totales: 4, dias: 30 });
+
+        expect(res).toEqual({ ok: false, error: "El alumno ya tiene una membresía vigente" });
+    });
+
+    it("DATA-MEMB-GEST-002: éxito → { ok: true }", async () => {
+        respuesta(200, { success: true });
+
+        expect(await updateMembresiaGestion("m1", { tokens_usados: 1 })).toEqual({ ok: true });
+    });
+
+    it("DATA-MEMB-GEST-003: sin mensaje de la API o sin conexión, un texto por defecto", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("no es json", { status: 500 }));
+        expect(await deleteMembresiaGestion("m1")).toEqual({ ok: false, error: "Error al eliminar la membresía" });
+
+        vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+        const sinRed = await updateMembresiaGestion("m1", { estado: true });
+        expect(sinRed.ok).toBe(false);
+        expect(!sinRed.ok && sinRed.error).toContain("conexión");
     });
 });

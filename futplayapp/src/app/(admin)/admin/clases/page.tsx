@@ -29,7 +29,7 @@ import {
 } from "@/data/clases";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
-import { fechaHoraChileAIso, fechaHoraChileDesdeIso } from "@/lib/fechas";
+import { claseEnFiltroFechas, errorFechaClase, fechaHoraChileAIso, fechaHoraChileDesdeIso, hoyChile } from "@/lib/fechas";
 
 type ViewMode = "list" | "asistencia-detalle";
 
@@ -47,6 +47,9 @@ type ClaseForm = {
   tipo_evento: "entrenamiento" | "partido" | "kids";
   fecha: string;
   hora: string;
+  // Al editar: si no cambian, no se exige que sean futuras (se puede corregir una clase pasada).
+  fecha_original?: string;
+  hora_original?: string;
 };
 
 const emptyForm: ClaseForm = {
@@ -93,21 +96,7 @@ export default function ClasesPage() {
       (c.titulo || "").toLowerCase().includes(search.toLowerCase()) ||
       c.sede_nombre.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
-
-    if (c.fecha_hora) {
-      const fecha = new Date(c.fecha_hora);
-      if (fechaDesde && fecha < new Date(fechaDesde)) return false;
-      if (fechaHasta) {
-        const hasta = new Date(fechaHasta);
-        hasta.setHours(23, 59, 59);
-        if (fecha > hasta) return false;
-      }
-      if (diasFiltro.length > 0 && !diasFiltro.includes(fecha.getDay())) return false;
-    } else {
-      if (fechaDesde || fechaHasta || diasFiltro.length > 0) return false;
-    }
-
-    return true;
+    return claseEnFiltroFechas(c.fecha_hora, { desde: fechaDesde, hasta: fechaHasta, dias: diasFiltro });
   });
 
   const resetForm = () => { setForm(emptyForm); setError(null); };
@@ -131,6 +120,8 @@ export default function ClasesPage() {
       tipo_evento: c.tipo_evento,
       fecha: fecha,
       hora: hora,
+      fecha_original: fecha,
+      hora_original: hora,
     });
     setModal("edit");
   };
@@ -140,21 +131,15 @@ export default function ClasesPage() {
       setError("Título y sede son obligatorios");
       return;
     }
-    if (form.fecha && form.hora) {
-      const ahora = new Date();
-      const fechaClase = new Date(form.fecha + "T" + form.hora);
-      if (fechaClase < ahora) {
-        setError("No se puede crear una clase en una fecha u hora pasada");
-        return;
-      }
-    } else if (form.fecha) {
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-      const fechaClase = new Date(form.fecha);
-      if (fechaClase < hoy) {
-        setError("No se puede crear una clase en una fecha pasada");
-        return;
-      }
+    // Sin fecha y hora la clase queda "Sin horario": ni el bot ni el calendario la manejan.
+    if (!form.fecha || !form.hora) {
+      setError("Fecha y hora son obligatorias");
+      return;
+    }
+    const errorFecha = errorFechaClase(modal === "create", form);
+    if (errorFecha) {
+      setError(errorFecha);
+      return;
     }
     setSaving(true);
     setError(null);
@@ -214,8 +199,16 @@ export default function ClasesPage() {
 
   const handleDelete = async (id: string) => {
     setDeleteId(null);
+    setError(null);
+    const anterior = clases;
     setClases((prev) => prev.filter((c) => c.id !== id));
-    await deleteClase(id);
+    // Antes no se revisaba el resultado: si fallaba, la clase desaparecía igual
+    // de la lista y volvía al recargar.
+    const res = await deleteClase(id).catch(() => ({ success: false, error: "Error de conexión" }));
+    if (!res.success) {
+      setClases(anterior);
+      setError(res.error || "No se pudo eliminar la clase");
+    }
   };
 
   const handleAsistenciaClase = async (claseId: string) => {
@@ -260,7 +253,7 @@ export default function ClasesPage() {
         <ConfirmDialog
           open={deleteId !== null}
           title="Eliminar clase"
-          message="¿Eliminar esta clase? También se eliminarán sus inscripciones."
+          message="¿Eliminar esta clase? Se borran sus inscripciones y, si aún no ocurre, se devuelve el token a cada alumno inscrito (los partidos no descuentan token)."
           onConfirm={() => deleteId && handleDelete(deleteId)}
           onCancel={() => setDeleteId(null)}
         />
@@ -300,6 +293,11 @@ export default function ClasesPage() {
               ) : null}
             </div>
           </div>
+
+          {/* Errores fuera del modal (p. ej. al eliminar). */}
+          {error && !modal && (
+            <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+          )}
 
           {/* ─── VIEW: LIST ─── */}
           {view === "list" && (
@@ -642,7 +640,8 @@ export default function ClasesPage() {
                     <input
                       type="date"
                       value={form.fecha}
-                      min={new Date().toISOString().slice(0, 10)}
+                      // Día de hoy en Chile: el día UTC ya es "mañana" después de las 21:00.
+                      min={hoyChile()}
                       onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                     />
@@ -688,7 +687,7 @@ export default function ClasesPage() {
       <ConfirmDialog
         open={deleteId !== null}
         title="Eliminar clase"
-        message="¿Eliminar esta clase? También se eliminarán sus inscripciones."
+        message="¿Eliminar esta clase? Se borran sus inscripciones y, si aún no ocurre, se devuelve el token a cada alumno inscrito (los partidos no descuentan token)."
         onConfirm={() => deleteId && handleDelete(deleteId)}
         onCancel={() => setDeleteId(null)}
       />

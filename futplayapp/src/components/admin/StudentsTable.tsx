@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Fragment } from "react";
+import { acotarPagina, paginasVisibles } from "@/lib/paginacion";
 import { Eye, Pencil, Trash2, Heart, X, Loader2 } from "lucide-react";
 import { getFichaMedicaByUser, calcularEdad, type FichaMedicaData } from "@/data/fichaMedica";
 
@@ -33,20 +34,33 @@ type FichaModalState = {
 
 type Props = {
   students: Student[];
+  // Cambia cuando cambia el filtro (p. ej. el texto buscado): vuelve a la página 1.
+  resetKey?: string;
   onView?: (student: Student) => void;
   onEdit?: (student: Student) => void;
   onDelete?: (student: Student) => void;
 };
 
-export default function StudentsTable({ students, onView, onEdit, onDelete }: Props) {
+export default function StudentsTable({ students, resetKey, onView, onEdit, onDelete }: Props) {
 
-  const [page, setPage] = useState(1);
+  const [paginaElegida, setPage] = useState(1);
   const [fichaModal, setFichaModal] = useState<FichaModalState>({
     open: false, loading: false, error: null, data: null,
   });
-  const itemsPerPage = 4;
+  // Antes eran 4: con ~75 usuarios quedaban 19 páginas.
+  const itemsPerPage = 20;
 
-  const totalPages = Math.ceil(students.length / itemsPerPage);
+  // Al buscar se vuelve a la primera página (antes se quedaba en la 5 y la
+  // tabla salía vacía con "Mostrando 17 a 3 de 3"). Se ajusta en el render
+  // al cambiar la clave, como recomienda React (sin useEffect).
+  const [claveAnterior, setClaveAnterior] = useState(resetKey);
+  if (resetKey !== claveAnterior) {
+    setClaveAnterior(resetKey);
+    setPage(1);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(students.length / itemsPerPage));
+  const page = acotarPagina(paginaElegida, totalPages);
 
   const currentData = students.slice(
     (page - 1) * itemsPerPage,
@@ -88,6 +102,13 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
           </thead>
 
           <tbody>
+            {currentData.length === 0 && (
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-gray-400">
+                  No se encontraron usuarios
+                </td>
+              </tr>
+            )}
             {currentData.map((student) => (
               <Fragment key={student.id}>
                 {/* MOBILE CARD */}
@@ -280,12 +301,12 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
       <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-3">
 
         <span className="text-sm text-gray-500">
-          Mostrando {(page - 1) * itemsPerPage + 1} a{" "}
-          {Math.min(page * itemsPerPage, students.length)} de{" "}
-          {students.length} registros
+          {students.length === 0
+            ? "Sin registros"
+            : `Mostrando ${(page - 1) * itemsPerPage + 1} a ${Math.min(page * itemsPerPage, students.length)} de ${students.length} registros`}
         </span>
 
-        <div className="flex gap-2 items-center">
+        <nav className="flex flex-wrap gap-2 items-center" aria-label="Paginación">
 
   {/* ANTERIOR */}
   <button
@@ -303,13 +324,15 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
     Anterior
   </button>
 
-  {/* NÚMEROS */}
-  {[1, 2, 3]
-    .filter((n) => n <= totalPages)
-    .map((num) => (
+  {/* NÚMEROS: primera, última y vecinas de la actual */}
+  {paginasVisibles(page, totalPages).map((num, i) =>
+    num === "…" ? (
+      <span key={`salto-${i}`} className="px-1 text-gray-400">…</span>
+    ) : (
       <button
         key={num}
         onClick={() => setPage(num)}
+        aria-current={page === num ? "page" : undefined}
         className={`
           px-4 py-2 rounded-lg font-semibold
           border transition-all
@@ -322,12 +345,13 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
       >
         {num}
       </button>
-  ))}
+    )
+  )}
 
   {/* SIGUIENTE */}
   <button
     onClick={() => setPage(page + 1)}
-    disabled={page === totalPages}
+    disabled={page >= totalPages}
     className="
       px-4 py-2 rounded-lg font-medium
       bg-white border border-gray-300
@@ -340,7 +364,7 @@ export default function StudentsTable({ students, onView, onEdit, onDelete }: Pr
     Siguiente
   </button>
 
-</div>    
+</nav>
 
       </div>
 

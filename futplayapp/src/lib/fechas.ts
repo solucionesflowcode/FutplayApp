@@ -33,6 +33,54 @@ export function fechaHoraChileDesdeIso(iso: string): { fecha: string; hora: stri
   return { fecha, hora };
 }
 
+/** Día de hoy en Chile (YYYY-MM-DD). `new Date().toISOString().slice(0, 10)` da el día UTC: después de las 21:00 ya es mañana. */
+export function hoyChile(ahora: Date = new Date()): string {
+  return ahora.toLocaleDateString("en-CA", { timeZone: "America/Santiago" });
+}
+
+/**
+ * ¿La clase cae en el filtro de fechas del admin? `desde`/`hasta` son
+ * YYYY-MM-DD (input date) y se comparan con el día de la clase EN CHILE.
+ * Antes se usaba `new Date("2026-10-14")` (medianoche UTC = 13/10 21:00 en
+ * Chile): "hasta" excluía el último día y "desde" se corría uno.
+ * `dias`: días de la semana (0 = domingo), también según el día en Chile.
+ */
+export function claseEnFiltroFechas(
+  fechaHoraIso: string | null,
+  { desde, hasta, dias = [] }: { desde?: string; hasta?: string; dias?: number[] },
+): boolean {
+  const hayFiltro = !!desde || !!hasta || dias.length > 0;
+  if (!fechaHoraIso) return !hayFiltro;
+  const chile = fechaHoraChileDesdeIso(fechaHoraIso);
+  if (!chile) return !hayFiltro;
+  if (desde && chile.fecha < desde) return false;
+  if (hasta && chile.fecha > hasta) return false;
+  if (dias.length > 0) {
+    const [y, m, d] = chile.fecha.split("-").map(Number);
+    if (!dias.includes(new Date(Date.UTC(y, m - 1, d)).getUTCDay())) return false;
+  }
+  return true;
+}
+
+/**
+ * Valida la fecha de una clase del admin (fecha/hora en hora de Chile).
+ * Solo exige que sea futura al CREAR o si se cambió: antes también se
+ * validaba al editar y no se podía corregir el profesor o la descripción de
+ * una clase ya pasada. Devuelve el mensaje de error o null.
+ */
+export function errorFechaClase(
+  esNueva: boolean,
+  { fecha, hora, fecha_original, hora_original }: { fecha: string; hora: string; fecha_original?: string; hora_original?: string },
+  ahora: Date = new Date(),
+): string | null {
+  const cambio = esNueva || fecha !== fecha_original || hora !== hora_original;
+  if (!cambio) return null;
+  if (new Date(fechaHoraChileAIso(fecha, hora)) < ahora) {
+    return "No se puede programar una clase en una fecha u hora pasada";
+  }
+  return null;
+}
+
 export function fechaHoraChileAIso(fecha: string, hora: string): string {
   const [y, m, d] = fecha.split("-").map(Number);
   const [hh, mm] = hora.split(":").map(Number);

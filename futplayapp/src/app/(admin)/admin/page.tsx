@@ -184,6 +184,7 @@ function AdminContent() {
 
       <StudentsTable
         students={filtered}
+        resetKey={search}
         onView={setViewStudent}
         onEdit={setEditStudent}
         onDelete={(s) => setDeleteStudent(s)}

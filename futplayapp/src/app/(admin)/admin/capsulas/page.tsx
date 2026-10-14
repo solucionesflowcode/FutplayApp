@@ -684,6 +684,9 @@ export default function CapsulasPage() {
       }
     }
 
+    // Antes un fallo al adjuntar el PDF solo quedaba en la consola y el admin
+    // creía que se había guardado.
+    let errorDocumento: string | null = null;
     if (pendingDoc && savedCapsulaId) {
       if (docIdToDeleteRef.current) {
         await deleteDocumento(docIdToDeleteRef.current);
@@ -696,12 +699,15 @@ export default function CapsulasPage() {
       });
       if (!docRes.success) {
         console.error("Error al guardar documento:", docRes.error);
+        errorDocumento = `La cápsula se guardó, pero no se pudo adjuntar el PDF "${pendingDoc.nombre}"${docRes.error ? `: ${docRes.error}` : ""}. Edítala y vuelve a subirlo.`;
       }
     }
 
     setSaving(false);
     setModal(null);
     resetForm();
+    // Después de resetForm (que limpia el error), para que se vea en la página.
+    if (errorDocumento) setError(errorDocumento);
     if (modal === "create") {
       fetchData();
     } else {
@@ -802,6 +808,11 @@ export default function CapsulasPage() {
           </div>
 
           {/* ─── TABLE ─── */}
+          {/* Errores fuera del modal (p. ej. el PDF que no se pudo adjuntar), arriba para que se vean. */}
+          {error && !modal && (
+            <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+          )}
+
           <div className="bg-white border border-gray-200">
             <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="relative w-full sm:max-w-xs">
@@ -981,9 +992,6 @@ export default function CapsulasPage() {
             </div>
           </div>
 
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-          )}
         </div>
 
         {/* ─── MODAL WIZARD ─── */}
