@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/admin/Sidebar";
 import ProfileDropdown from "@/components/admin/ProfileDropdown";
+import { ToastProvider } from "@/components/admin/ui";
 import { AuthGuard, AuthProvider } from "@/context";
 import { Menu } from "lucide-react";
 
@@ -36,7 +37,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="hidden md:flex items-center justify-end px-6 py-3 sticky top-0 bg-[#F8F9FB] z-30">
               <ProfileDropdown />
             </div>
-            {children}
+            {/* Avisos (useToast) disponibles en todas las pantallas del admin. */}
+            <ToastProvider>{children}</ToastProvider>
           </main>
         </div>
       </AuthGuard>

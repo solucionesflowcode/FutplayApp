@@ -194,6 +194,31 @@ como `src/tests/components/**`). Primero `Modal`, `Toast`, `ConfirmDialog` v2 y 
 
 *Criterio de salida:* componentes probados (teclado incluido) y documentados en este archivo.
 
+**Estado (13/10/2026): implementada.** Componentes en `src/components/admin/ui/` (importar desde
+`@/components/admin/ui`), 31 pruebas en `src/tests/components/admin-ui/`. `ToastProvider` ya
+está en `app/(admin)/admin/layout.tsx`. Colores de marca como tokens de Tailwind en
+`app/globals.css`: `bg-marca`, `hover:bg-marca-hover`, `text-acento`, `border-t-acento`.
+Ninguna pantalla los usa todavía: la migración es la fase 3.
+
+| Componente | Uso |
+|---|---|
+| `PageHeader` | `<PageHeader titulo descripcion acciones>{filtros}</PageHeader>` — un único `h1`. |
+| `DataTable<T>` | `columnas: Columna<T>[]` (`id`, `encabezado`, `celda`, `valorOrden?`), `getId`, `tarjetaMovil?`, `resetKey` (= texto buscado), `vacio`, `cargando`, `onFilaClick?`, `ordenInicial?`. 20 por página. |
+| `Modal` | `open`, `onClose`, `title`, `description?`, `footer?`, `size` (`sm`/`md`/`lg`), `bloquearCierre` (mientras guarda), `cerrarConFondo` (por defecto no). |
+| `ConfirmDialog` | `confirmLabel` **obligatorio**, `variante` (`peligro`/`advertencia`/`info`), `consecuencias?: ReactNode[]`, `cargando`. Reemplaza a `components/admin/ConfirmDialog`. |
+| `useToast()` | `toast.exito(msg)`, `toast.error(msg, detalle?)`, `toast.info(msg)`. Los errores no se cierran solos. |
+| `useAdminMutation()` | `ejecutar(() => api(), { exito, error?, revertir? })` → `boolean`. Entiende `{ ok }` y `{ success }`; revierte y avisa si falla o no hay red. |
+| `FormField` | `<FormField label required ayuda error>{(p) => <input {...p} className={CLASE_INPUT} />}</FormField>` |
+| `NumberInput` | `value: number \| null`, `onChange(n \| null)`: se puede vaciar; validar al guardar. |
+| `PhoneInput` | Prefijo +569 fijo; entrega `+569XXXXXXXX` o `""`. Validar con `telefonoParaGuardar` (`lib/telefono`). |
+| `StatCard` | `etiqueta`, `valor`, `detalle?`, `tono`, `onClick?` + `activa` (filtro con `aria-pressed`). |
+| `StatusBadge` | `<StatusBadge estado="congelada" />`: un solo mapa de estados (membresía, alumno, asistencia). |
+| `Button` | `variante` (`primario`/`secundario`/`peligro`/`advertencia`/`fantasma`), `cargando`, `textoCargando`, `icono`. |
+
+Nota: los íconos `Info`, `AlertTriangle` y `ChevronsUpDown` de lucide-react existen en runtime
+pero no en los tipos que resuelve TypeScript en este proyecto; usar `AlertCircle`,
+`TriangleAlert` y `ChevronDown`.
+
 ### Fase 3 — Migración por pantalla (≈ 4–5 días, una pantalla por PR)
 Orden por uso diario del club:
 1. **Membresías** (MEM-03…08), 2. **Usuarios** (USR-05…11), 3. **Clases** (CLA-05…10),

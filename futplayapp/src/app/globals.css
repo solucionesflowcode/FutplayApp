@@ -11,6 +11,13 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Colores de marca (componentes del admin, src/components/admin/ui):
+     bg-marca, text-acento, etc. en vez de repetir los hex en cada pantalla. */
+  --color-marca: #00305B;
+  --color-marca-hover: #002447;
+  --color-acento: #F28C28;
+  --color-acento-hover: #E07D1F;
 }
 
 body {
