@@ -105,7 +105,7 @@ describe("Gestión de cápsulas (fase 3)", () => {
         const fila = within(tabla()).getByText("Regate").closest("tr")!;
         expect(within(fila).getByText("Táctica")).toBeInTheDocument();
         expect(within(fila).getByText("Sin profesor")).toBeInTheDocument();
-    });
+    }, 15_000); // recorre los 3 pasos del formulario: con toda la suite en paralelo pasa de 5 s
 
     it("ADM-CAP-UI-002: una duración con formato inválido no se envía", async () => {
         const modal = await abrirEdicion();

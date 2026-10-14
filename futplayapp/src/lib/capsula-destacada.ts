@@ -1,34 +1,48 @@
-import fs from "fs";
-import path from "path";
+import { getAdminClient } from "@/utils/supabase/admin";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const DATA_FILE = path.join(DATA_DIR, "capsula-destacada.json");
-
-function ensureDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
-
+/**
+ * Cápsula destacada del E-learning: columna capsula.destacada (como mucho una
+ * en true, índice único parcial capsula_una_destacada).
+ *
+ * Antes se guardaba en .data/capsula-destacada.json: en Vercel el sistema de
+ * archivos es de solo lectura y efímero, así que marcarla fallaba ("Error al
+ * guardar") y los alumnos nunca veían una destacada.
+ */
 export async function getCapsulaDestacadaId(): Promise<string | null> {
   try {
-    ensureDir();
-    if (!fs.existsSync(DATA_FILE)) return null;
-    const raw = fs.readFileSync(DATA_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return data.capsula_id || null;
-  } catch {
+    const admin = await getAdminClient();
+    const { data, error } = await admin.from("capsula").select("id").eq("destacada", true).limit(1).maybeSingle();
+    if (error) {
+      console.error("[capsula-destacada] No se pudo leer:", error.message);
+      return null;
+    }
+    return (data?.id as string | undefined) ?? null;
+  } catch (err) {
+    console.error("[capsula-destacada] No se pudo leer:", err);
     return null;
   }
 }
 
+/** null quita la destacada. Devuelve false si falla o la cápsula no existe. */
 export async function setCapsulaDestacadaId(capsulaId: string | null): Promise<boolean> {
   try {
-    ensureDir();
-    const body = capsulaId ? { capsula_id: capsulaId } : {};
-    fs.writeFileSync(DATA_FILE, JSON.stringify(body, null, 2), "utf-8");
+    const admin = await getAdminClient();
+    // Primero se quita la actual: el índice único no permite dos en true.
+    const { error: errorQuitar } = await admin.from("capsula").update({ destacada: false }).eq("destacada", true);
+    if (errorQuitar) {
+      console.error("[capsula-destacada] No se pudo quitar la actual:", errorQuitar.message);
+      return false;
+    }
+    if (!capsulaId) return true;
+
+    const { data, error } = await admin.from("capsula").update({ destacada: true }).eq("id", capsulaId).select("id").maybeSingle();
+    if (error || !data) {
+      console.error("[capsula-destacada] No se pudo marcar:", error?.message ?? "cápsula no encontrada");
+      return false;
+    }
     return true;
-  } catch {
+  } catch (err) {
+    console.error("[capsula-destacada] No se pudo guardar:", err);
     return false;
   }
 }
