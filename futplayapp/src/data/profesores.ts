@@ -69,6 +69,23 @@ export async function cambiarRolAProfesor(
   return { success: true };
 }
 
+/**
+ * Quita el rol de profesor: vuelve a ser jugador y conserva su cuenta (PRO-01).
+ * Se rechaza (409) si tiene clases o cápsulas asignadas.
+ */
+export async function quitarRolProfesor(id: string): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch("/api/admin/profesores", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, rol: "jugador" }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return { success: false, error: body.error || "No se pudo quitar el rol" };
+  }
+  return { success: true };
+}
+
 export async function createProfesor(data: {
   nombre: string;
   email: string;
@@ -92,8 +109,9 @@ export async function updateProfesor(data: {
   id: string;
   nombre?: string;
   email?: string;
-  telefono?: string;
-  foto_url?: string;
+  // null borra el dato
+  telefono?: string | null;
+  foto_url?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/profesores", {
     method: "PUT",

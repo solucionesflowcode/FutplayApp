@@ -1,58 +1,80 @@
 "use client";
 
-import { useEffect, useState, useCallback, Fragment } from "react";
-import {
-  Search,
-  X,
-  Loader2,
-  Mail,
-  Phone,
-  Calendar,
-  BookOpen,
-  Video,
-  ChevronDown,
-  ChevronUp,
-  Pencil,
-  Trash2,
-  Check,
-  Plus,
-  Camera,
-  Upload,
-} from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Search, Pencil, Trash2, Ban, UserPlus, BookOpen, Video, Camera, Upload } from "lucide-react";
 import {
   getProfesores,
   updateProfesor,
   deleteProfesor,
+  quitarRolProfesor,
   searchUsuarioPorEmail,
   cambiarRolAProfesor,
   type Profesor,
   type UsuarioSearchResult,
 } from "@/data/profesores";
-import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { telefonoParaGuardar } from "@/lib/telefono";
+import { formatoTelefono } from "@/components/admin/StudentsTable";
+import {
+  Button,
+  CLASE_INPUT,
+  ConfirmDialog,
+  DataTable,
+  FormField,
+  Modal,
+  PageHeader,
+  PhoneInput,
+  useAdminMutation,
+  useToast,
+  type Columna,
+} from "@/components/admin/ui";
+
+type Accion = { tipo: "quitar" | "eliminar"; profesor: Profesor };
+
+const fechaCorta = (iso: string) => new Date(iso).toLocaleDateString("es-CL", { timeZone: "America/Santiago" });
+
+const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+
+function Avatar({ p, size = "w-9 h-9 text-sm" }: { p: { nombre: string; foto_url?: string | null }; size?: string }) {
+  return p.foto_url ? (
+    <img src={p.foto_url} alt="" className={`${size} rounded-full object-cover shrink-0`} />
+  ) : (
+    <div className={`${size} rounded-full bg-acento/10 flex items-center justify-center text-acento font-bold shrink-0`} aria-hidden>
+      {p.nombre.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+const asignado = (p: Profesor) => p.clases.length + p.capsulas.length > 0;
 
 export default function ProfesoresPage() {
+  const toast = useToast();
+  const { ejecutar } = useAdminMutation();
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [detalle, setDetalle] = useState<Profesor | null>(null);
 
-  // Search user by email
+  // Agregar profesor: busca un jugador por email y le da el rol (PRO-03).
+  const [agregarAbierto, setAgregarAbierto] = useState(false);
   const [buscarEmail, setBuscarEmail] = useState("");
   const [buscando, setBuscando] = useState(false);
-  const [resultadosBusqueda, setResultadosBusqueda] = useState<UsuarioSearchResult[] | null>(null);
-  const [convertiendoId, setConvirtiendoId] = useState<string | null>(null);
+  const [resultados, setResultados] = useState<UsuarioSearchResult[] | null>(null);
+  const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
+  const [convertir, setConvertir] = useState<UsuarioSearchResult | null>(null);
+  const [convirtiendo, setConvirtiendo] = useState(false);
 
-  // Edit modal state
+  // Edición
   const [editProfesor, setEditProfesor] = useState<Profesor | null>(null);
   const [editForm, setEditForm] = useState({ nombre: "", email: "", telefono: "" });
-  const [editFotoUrl, setEditFotoUrl] = useState("");
+  const [editFotoUrl, setEditFotoUrl] = useState<string | null>(null);
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPreview, setEditPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [fileUploading, setFileUploading] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nombre: string } | null>(null);
+  const [errorEdit, setErrorEdit] = useState<string | null>(null);
+
+  // Quitar rol / eliminar cuenta (PRO-01)
+  const [accion, setAccion] = useState<Accion | null>(null);
+  const [ejecutando, setEjecutando] = useState(false);
 
   const fetchProfesores = useCallback(async () => {
     const data = await getProfesores();
@@ -62,556 +84,408 @@ export default function ProfesoresPage() {
 
   useEffect(() => { fetchProfesores(); }, [fetchProfesores]);
 
-  const filtered = profesores.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      p.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const q = search.toLowerCase().trim();
+  const filtered = profesores.filter((p) => p.nombre.toLowerCase().includes(q) || p.email.toLowerCase().includes(q));
+
+  const cerrarAgregar = () => {
+    setAgregarAbierto(false);
+    setBuscarEmail("");
+    setResultados(null);
+    setErrorBusqueda(null);
+  };
 
   const handleBuscar = async () => {
-    if (!buscarEmail.trim() || buscarEmail.trim().length < 3) {
-      setError("Ingresa al menos 3 caracteres para buscar");
-      return;
-    }
+    const texto = buscarEmail.trim();
+    if (texto.length < 3) return setErrorBusqueda("Ingresa al menos 3 caracteres para buscar");
     setBuscando(true);
-    setError(null);
-    setSuccess(null);
-    setResultadosBusqueda(null);
+    setErrorBusqueda(null);
+    setResultados(null);
     try {
-      const resultados = await searchUsuarioPorEmail(buscarEmail.trim());
-      setResultadosBusqueda(resultados);
-      if (resultados.length === 0) {
-        setError("No se encontraron usuarios con ese email");
-      }
+      const encontrados = await searchUsuarioPorEmail(texto);
+      setResultados(encontrados);
+      if (encontrados.length === 0) setErrorBusqueda("No hay jugadores con ese email");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error al buscar");
+      setErrorBusqueda(err instanceof Error ? err.message : "Error al buscar");
     } finally {
       setBuscando(false);
     }
   };
 
-  const handleConvertir = async (id: string) => {
-    setConvirtiendoId(id);
-    setError(null);
-    setSuccess(null);
-    const res = await cambiarRolAProfesor(id);
-    if (!res.success) {
-      setError(res.error || "Error al cambiar rol");
-    } else {
-      setSuccess("Usuario convertido a profesor exitosamente");
-      setResultadosBusqueda(null);
-      setBuscarEmail("");
+  const handleConvertir = async () => {
+    if (!convertir) return;
+    setConvirtiendo(true);
+    const ok = await ejecutar(() => cambiarRolAProfesor(convertir.id), {
+      exito: `${convertir.nombre} ahora es profesor`,
+      error: "No se pudo cambiar el rol",
+    });
+    setConvirtiendo(false);
+    setConvertir(null);
+    if (ok) {
+      cerrarAgregar();
       fetchProfesores();
     }
-    setConvirtiendoId(null);
+  };
+
+  const cambiarPreview = (url: string | null) => {
+    setEditPreview((anterior) => {
+      if (anterior?.startsWith("blob:")) URL.revokeObjectURL(anterior);
+      return url;
+    });
   };
 
   const openEdit = (p: Profesor) => {
     setEditProfesor(p);
-    setEditForm({ nombre: p.nombre, email: p.email, telefono: p.telefono });
-    setEditFotoUrl(p.foto_url);
+    setEditForm({ nombre: p.nombre, email: p.email, telefono: p.telefono || "" });
+    setEditFotoUrl(p.foto_url || null);
     setEditFile(null);
-    setEditPreview(p.foto_url || null);
-    setError(null);
-    setSuccess(null);
+    cambiarPreview(p.foto_url || null);
+    setErrorEdit(null);
+  };
+
+  const cerrarEdit = () => {
+    setEditProfesor(null);
+    setEditFile(null);
+    cambiarPreview(null);
+    setErrorEdit(null);
+  };
+
+  const quitarFoto = () => {
+    setEditFile(null);
+    setEditFotoUrl(null);
+    cambiarPreview(null);
   };
 
   const uploadFile = async (file: File): Promise<string | null> => {
-    setFileUploading(true);
     try {
       const body = new FormData();
       body.append("file", file);
       const res = await fetch("/api/admin/upload", { method: "POST", body });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Error al subir imagen");
+        setErrorEdit(data.error || "Error al subir la foto");
         return null;
       }
       return data.url;
     } catch {
-      setError("Error de conexión al subir imagen");
+      setErrorEdit("Error de conexión al subir la foto");
       return null;
-    } finally {
-      setFileUploading(false);
     }
   };
 
   const handleEditSave = async () => {
     if (!editProfesor) return;
-    if (!editForm.nombre || !editForm.email) {
-      setError("Nombre y email son obligatorios");
-      return;
-    }
-    setSaving(true);
-    setError(null);
+    const nombre = editForm.nombre.trim();
+    const email = editForm.email.trim();
+    if (!nombre || !email) return setErrorEdit("Nombre y email son obligatorios");
+    // PRO-02: mismo formato que los alumnos; vacío borra el teléfono.
+    const telefono = telefonoParaGuardar(editForm.telefono);
+    if (telefono && typeof telefono === "object") return setErrorEdit(telefono.error);
 
+    setSaving(true);
+    setErrorEdit(null);
     let fotoUrl = editFotoUrl;
     if (editFile) {
-      const uploaded = await uploadFile(editFile);
-      if (!uploaded) {
-        setSaving(false);
-        return;
-      }
-      fotoUrl = uploaded;
+      fotoUrl = await uploadFile(editFile);
+      if (!fotoUrl) return setSaving(false);
     }
 
-    const res = await updateProfesor({
-      id: editProfesor.id,
-      nombre: editForm.nombre,
-      email: editForm.email,
-      telefono: editForm.telefono || undefined,
-      foto_url: fotoUrl || undefined,
-    });
-
-    if (!res.success) {
-      setError(res.error || "Error al guardar");
-    } else {
-      setEditProfesor(null);
-      setSuccess("Profesor actualizado exitosamente");
-      setProfesores((prev) =>
-        prev.map((p) =>
-          p.id === editProfesor.id
-            ? { ...p, nombre: editForm.nombre, email: editForm.email, telefono: editForm.telefono, foto_url: fotoUrl || p.foto_url }
-            : p
-        )
-      );
-    }
+    const res = await updateProfesor({ id: editProfesor.id, nombre, email, telefono, foto_url: fotoUrl });
     setSaving(false);
+    if (!res.success) return setErrorEdit(res.error || "Error al guardar");
+
+    const id = editProfesor.id;
+    setProfesores((prev) => prev.map((p) => (p.id === id ? { ...p, nombre, email, telefono: telefono ?? "", foto_url: fotoUrl ?? "" } : p)));
+    toast.exito("Profesor actualizado");
+    cerrarEdit();
   };
 
-  const handleDelete = async (id: string, _nombre: string) => {
-    setDeleteTarget(null);
-    setError(null);
-    setSuccess(null);
-    const res = await deleteProfesor(id);
-    if (!res.success) {
-      setError(res.error || "Error al eliminar");
+  const pedirAccion = (tipo: Accion["tipo"], p: Profesor) => {
+    // Con clases o cápsulas asignadas no se puede: la API lo rechaza igual (409).
+    if (asignado(p)) {
+      toast.error(
+        tipo === "quitar" ? "No se puede quitar el rol" : "No se puede eliminar la cuenta",
+        `${p.nombre} tiene ${plural(p.clases.length, "clase", "clases")} y ${plural(p.capsulas.length, "cápsula", "cápsulas")} asignadas. Reasígnalas primero.`
+      );
       return;
     }
-    setSuccess("Profesor eliminado exitosamente");
-    setProfesores((prev) => prev.filter((p) => p.id !== id));
+    setAccion({ tipo, profesor: p });
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
+  const handleAccion = async () => {
+    if (!accion) return;
+    const { tipo, profesor: p } = accion;
+    const anterior = profesores;
+    setEjecutando(true);
+    setProfesores((prev) => prev.filter((x) => x.id !== p.id));
+    await ejecutar(() => (tipo === "quitar" ? quitarRolProfesor(p.id) : deleteProfesor(p.id)), {
+      exito: tipo === "quitar" ? `${p.nombre} ya no es profesor: su cuenta sigue como jugador` : `Cuenta de ${p.nombre} eliminada`,
+      error: tipo === "quitar" ? "No se pudo quitar el rol" : "No se pudo eliminar la cuenta",
+      revertir: () => setProfesores(anterior),
+    });
+    setEjecutando(false);
+    setAccion(null);
   };
 
-  if (loading && profesores.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-5 h-5 animate-spin text-[#F28C28]" />
-      </div>
-    );
-  }
+  const asignacionesBoton = (p: Profesor) => (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setDetalle(p); }}
+      disabled={!asignado(p)}
+      className="inline-flex items-center gap-2 text-xs font-semibold disabled:cursor-default"
+      aria-label={`Ver clases y cápsulas de ${p.nombre}`}
+    >
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-lg"><BookOpen size={12} aria-hidden /> {plural(p.clases.length, "clase", "clases")}</span>
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-lg"><Video size={12} aria-hidden /> {plural(p.capsulas.length, "cápsula", "cápsulas")}</span>
+    </button>
+  );
+
+  const acciones = (p: Profesor) => (
+    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+      <button type="button" onClick={() => openEdit(p)} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar ${p.nombre}`}>
+        <Pencil size={16} />
+      </button>
+      <button type="button" onClick={() => pedirAccion("quitar", p)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg" title="Quitar rol de profesor" aria-label={`Quitar rol de profesor a ${p.nombre}`}>
+        <Ban size={16} />
+      </button>
+      <button type="button" onClick={() => pedirAccion("eliminar", p)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar cuenta" aria-label={`Eliminar cuenta de ${p.nombre}`}>
+        <Trash2 size={16} />
+      </button>
+    </div>
+  );
+
+  const columnas: Columna<Profesor>[] = [
+    {
+      id: "nombre",
+      encabezado: "Profesor",
+      celda: (p) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar p={p} />
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 truncate">{p.nombre}</p>
+            <p className="text-xs text-gray-500 truncate">{p.email}</p>
+          </div>
+        </div>
+      ),
+      valorOrden: (p) => p.nombre,
+    },
+    { id: "telefono", encabezado: "Teléfono", celda: (p) => <span className="whitespace-nowrap text-gray-600">{formatoTelefono(p.telefono)}</span> },
+    { id: "asignaciones", encabezado: "Asignaciones", celda: asignacionesBoton, valorOrden: (p) => p.clases.length + p.capsulas.length },
+    { id: "registro", encabezado: "Registro", celda: (p) => <span className="whitespace-nowrap text-gray-600">{fechaCorta(p.created_at)}</span>, valorOrden: (p) => p.created_at },
+    { id: "acciones", encabezado: "Acciones", celda: acciones },
+  ];
+
+  const quitando = accion?.tipo === "quitar";
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
-
-        {/* ─── HEADER ─── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900">Profesores</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Gestiona los profesores y entrenadores de la academia
-            </p>
+      <div className="w-full max-w-[1216px] mx-auto">
+        <PageHeader
+          titulo="Profesores"
+          descripcion="Profesores que dictan clases y cápsulas. Para agregar uno, busca su cuenta de jugador."
+          acciones={<Button icono={<UserPlus size={16} />} onClick={() => setAgregarAbierto(true)}>Agregar profesor</Button>}
+        >
+          <div className="relative w-full sm:max-w-xs">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+            <input type="search" aria-label="Buscar profesor" placeholder="Buscar por nombre o email..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
           </div>
-        </div>
+        </PageHeader>
 
-        {/* ─── BUSCAR USUARIO POR EMAIL ─── */}
-        <div className="bg-white border border-gray-200 p-4 sm:p-5">
-          <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <Plus size={16} />
-            Agregar profesor por email
-          </h2>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative w-full sm:max-w-md">
-              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="email"
-                placeholder="Buscar usuario por email..."
-                value={buscarEmail}
-                onChange={(e) => setBuscarEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleBuscar()}
-                className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-              />
-            </div>
-            <button
-              onClick={handleBuscar}
-              disabled={buscando}
-              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
-            >
-              {buscando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-              Buscar
-            </button>
-          </div>
-
-          {/* ─── RESULTADOS DE BÚSQUEDA ─── */}
-          {resultadosBusqueda !== null && resultadosBusqueda.length > 0 && (
-            <div className="mt-4 border border-gray-100 rounded-lg">
-              <table className="w-full text-sm">
-                <thead className="hidden md:table-header-group">
-                  <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-                    <th className="p-3 font-semibold">Nombre</th>
-                    <th className="p-3 font-semibold">Email</th>
-                    <th className="p-3 font-semibold">Rol actual</th>
-                    <th className="p-3 font-semibold">Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resultadosBusqueda.map((u) => (
-                    <Fragment key={u.id}>
-                      {/* MOBILE CARD */}
-                      <tr className="md:hidden border-b border-gray-100">
-                        <td colSpan={4} className="p-0">
-                          <div className="p-3 space-y-1.5">
-                            <p className="font-semibold text-gray-900 text-sm">{u.nombre}</p>
-                            <p className="text-[11px] text-gray-500">{u.email}</p>
-                            <div className="flex items-center justify-between">
-                              <span className="inline-flex items-center px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-lg text-[10px] font-semibold capitalize">{u.rol}</span>
-                              <button onClick={() => handleConvertir(u.id)} disabled={convertiendoId === u.id} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 disabled:opacity-50">
-                                {convertiendoId === u.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
-                                Convertir
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                      {/* DESKTOP ROW */}
-                      <tr className="hidden md:table-row border-b last:border-0 hover:bg-gray-50/50">
-                        <td className="p-3 font-medium text-gray-900 truncate max-w-[180px]">{u.nombre}</td>
-                        <td className="p-3 text-gray-600 truncate max-w-[200px]">{u.email}</td>
-                        <td className="p-3">
-                          <span className="inline-flex items-center px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-semibold capitalize">
-                            {u.rol}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <button
-                            onClick={() => handleConvertir(u.id)}
-                            disabled={convertiendoId === u.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 disabled:opacity-50"
-                          >
-                            {convertiendoId === u.id ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <Check size={14} />
-                            )}
-                            Convertir a Profesor
-                          </button>
-                        </td>
-                      </tr>
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* ─── MENSAJES ─── */}
-        {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm flex items-center gap-2">
-            {success}
-          </div>
-        )}
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-        )}
-
-        {/* ─── TABLA DE PROFESORES ─── */}
-        <div className="bg-white border border-gray-200">
-          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="relative w-full sm:max-w-xs">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar profesor..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-              />
-            </div>
-            <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} profesor{filtered.length !== 1 ? "es" : ""}</span>
-          </div>
-
-          <div className="md:overflow-x-auto">
-            <table className="w-full text-sm md:min-w-[800px]">
-              <thead className="hidden md:table-header-group">
-                <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-                  <th className="p-3 font-semibold">Nombre</th>
-                  <th className="p-3 font-semibold">Email</th>
-                  <th className="p-3 font-semibold">Teléfono</th>
-                  <th className="p-3 font-semibold">Clases</th>
-                  <th className="p-3 font-semibold">Cápsulas</th>
-                  <th className="p-3 font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-400">
-                      {search ? "No se encontraron profesores" : "No hay profesores registrados aún"}
-                    </td>
-                  </tr>
-                ) : filtered.map((p) => (
-                  <Fragment key={p.id}>
-                    {/* MOBILE CARD */}
-                    <tr className="md:hidden border-b border-gray-100">
-                      <td colSpan={6} className="p-0">
-                        <div className="p-3 space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            {p.foto_url ? (
-                              <img src={p.foto_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-[#F28C28]/10 flex items-center justify-center text-[#F28C28] font-bold text-xs shrink-0">{p.nombre.charAt(0).toUpperCase()}</div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
-                              <p className="text-[10px] text-gray-400 truncate">{p.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
-                            {p.telefono && <div><span className="text-gray-400">Tel: </span><span className="font-medium text-gray-700">{p.telefono}</span></div>}
-                            <div><span className="text-gray-400">Registro: </span><span className="font-medium text-gray-700">{new Date(p.created_at).toLocaleDateString("es-CL", { timeZone: "America/Santiago" })}</span></div>
-                          </div>
-                          <div className="flex gap-2 text-[11px]">
-                            <button onClick={() => toggleExpand(p.id)} className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-lg text-xs font-semibold">
-                              <BookOpen size={11} /> {p.clases.length} clase{p.clases.length !== 1 ? "s" : ""}
-                            </button>
-                            <button onClick={() => toggleExpand(p.id)} className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold">
-                              <Video size={11} /> {p.capsulas.length} cápsula{p.capsulas.length !== 1 ? "s" : ""}
-                            </button>
-                          </div>
-                          <div className="flex gap-2 pt-1 border-t border-gray-50">
-                            <button onClick={() => openEdit(p)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
-                            <button onClick={() => setDeleteTarget({ id: p.id, nombre: p.nombre })} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                    {/* DESKTOP ROW */}
-                    <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
-                      <td className="p-3 max-w-[200px]">
-                        <div className="flex items-center gap-3">
-                          {p.foto_url ? (
-                            <img src={p.foto_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className="w-9 h-9 rounded-full bg-[#F28C28]/10 flex items-center justify-center text-[#F28C28] font-bold text-sm shrink-0">
-                              {p.nombre.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <span className="font-semibold text-gray-900 truncate block">{p.nombre}</span>
-                            <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5 truncate">
-                              <Calendar size={10} />
-                              {new Date(p.created_at).toLocaleDateString("es-CL", { timeZone: "America/Santiago" })}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3 text-gray-600 truncate max-w-[200px]">{p.email}</td>
-                      <td className="p-3 text-gray-600">{p.telefono || <span className="text-gray-300">—</span>}</td>
-                      <td className="p-3">
-                        <button
-                          onClick={() => toggleExpand(p.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-xs font-semibold transition-colors"
-                        >
-                          <BookOpen size={12} />
-                          {p.clases.length} clase{p.clases.length !== 1 ? "s" : ""}
-                        </button>
-                      </td>
-                      <td className="p-3 font-semibold text-gray-700">
-                        <button
-                          onClick={() => toggleExpand(p.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-semibold transition-colors"
-                        >
-                          <Video size={12} />
-                          {p.capsulas.length} cápsula{p.capsulas.length !== 1 ? "s" : ""}
-                        </button>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openEdit(p)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                            title="Editar"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget({ id: p.id, nombre: p.nombre })}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {expandedId === p.id && (p.clases.length > 0 || p.capsulas.length > 0) && (
-                      <tr className="bg-gray-50/70 hidden md:table-row">
-                        <td colSpan={6} className="p-3 pl-4 md:pl-12">
-                          {p.clases.length > 0 && (
-                            <>
-                              <div className="text-xs font-semibold text-gray-500 mb-2">Clases que imparte:</div>
-                              <div className="flex flex-wrap gap-2 mb-3">
-                                {p.clases.map((clase) => (
-                                  <span key={clase.id} className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs">
-                                    <BookOpen size={11} /> {clase.titulo}
-                                  </span>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                          {p.capsulas.length > 0 && (
-                            <>
-                              <div className="text-xs font-semibold text-gray-500 mb-2">Cápsulas que dirige:</div>
-                              <div className="flex flex-wrap gap-2">
-                                {p.capsulas.map((capsula) => (
-                                  <span key={capsula.id} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded-md text-xs">
-                                    <Video size={11} /> {capsula.titulo}
-                                  </span>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── MODAL EDITAR ─── */}
-      {editProfesor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-lg p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Editar Profesor</h2>
-              <button onClick={() => { setEditProfesor(null); setError(null); }} className="p-1 hover:bg-gray-100 rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Nombre completo *</label>
-                <input
-                  type="text"
-                  value={editForm.nombre}
-                  onChange={(e) => setEditForm((p) => ({ ...p, nombre: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  placeholder="Ej: Juan Pérez"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Email *</label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  placeholder="profesor@email.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Teléfono</label>
-                <input
-                  type="text"
-                  value={editForm.telefono}
-                  onChange={(e) => setEditForm((p) => ({ ...p, telefono: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  placeholder="+56 9 1234 5678"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Foto de perfil</label>
-                <div className="flex items-center gap-4">
-                  <div className="shrink-0">
-                    {editPreview ? (
-                      <img src={editPreview} alt="Preview" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200">
-                        <Camera size={24} />
-                      </div>
-                    )}
-                  </div>
-                  <label className="flex-1 cursor-pointer">
-                    <div className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
-                      <Upload size={16} className="text-gray-500" />
-                      <span className="text-sm text-gray-600 truncate">
-                        {editFile ? editFile.name : "Seleccionar archivo..."}
-                      </span>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null;
-                        if (file) {
-                          setEditFile(file);
-                          setEditPreview(URL.createObjectURL(file));
-                          e.target.value = "";
-                        }
-                      }}
-                      className="hidden"
-                    />
-                  </label>
-                  {editPreview && (
-                    <button
-                      onClick={() => {
-                        setEditFile(null);
-                        setEditPreview(null);
-                        setEditFotoUrl("");
-                      }}
-                      className="text-xs text-red-500 hover:text-red-700 shrink-0"
-                    >
-                      Quitar
-                    </button>
-                  )}
+        <DataTable
+          etiqueta="Profesores"
+          filas={filtered}
+          columnas={columnas}
+          getId={(p) => p.id}
+          cargando={loading}
+          resetKey={search}
+          vacio={search ? "No se encontraron profesores" : "No hay profesores registrados aún"}
+          tarjetaMovil={(p) => (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Avatar p={p} size="w-8 h-8 text-xs" />
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-gray-900 truncate">{p.nombre}</p>
+                  <p className="text-xs text-gray-500 truncate">{p.email} · {formatoTelefono(p.telefono)}</p>
                 </div>
               </div>
-
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-              )}
+              {asignacionesBoton(p)}
+              {acciones(p)}
             </div>
+          )}
+        />
+      </div>
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-              <button
-                onClick={() => { setEditProfesor(null); setError(null); }}
-                disabled={saving || fileUploading}
-                className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleEditSave}
-                disabled={saving || fileUploading}
-                className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-              >
-                {(saving || fileUploading) && <Loader2 size={14} className="animate-spin" />}
-                {fileUploading ? "Subiendo..." : saving ? "Guardando..." : "Guardar"}
-              </button>
-            </div>
+      {/* Agregar profesor */}
+      <Modal
+        open={agregarAbierto}
+        onClose={cerrarAgregar}
+        title="Agregar profesor"
+        description="Busca la cuenta de un jugador por su email. Solo los jugadores pueden pasar a ser profesores."
+        footer={<Button variante="secundario" onClick={cerrarAgregar}>Cerrar</Button>}
+      >
+        <form
+          className="flex gap-2 items-end"
+          onSubmit={(e) => { e.preventDefault(); handleBuscar(); }}
+        >
+          <div className="flex-1">
+            <FormField label="Email">
+              {(p) => <input {...p} type="search" value={buscarEmail} onChange={(e) => setBuscarEmail(e.target.value)} placeholder="correo@ejemplo.com" className={CLASE_INPUT} />}
+            </FormField>
           </div>
-        </div>
-      )}
+          <Button type="submit" icono={<Search size={16} />} cargando={buscando} textoCargando="Buscando...">Buscar</Button>
+        </form>
+        {errorBusqueda && <p role="alert" className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{errorBusqueda}</p>}
+        {resultados && resultados.length > 0 && (
+          <ul className="mt-4 divide-y divide-gray-100 border border-gray-100 rounded-lg" aria-label="Jugadores encontrados">
+            {resultados.map((u) => (
+              <li key={u.id} className="flex items-center justify-between gap-3 p-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-gray-900 truncate">{u.nombre}</p>
+                  <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                </div>
+                <Button variante="secundario" icono={<UserPlus size={14} />} onClick={() => setConvertir(u)} aria-label={`Hacer profesor a ${u.nombre}`}>
+                  Hacer profesor
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Modal>
 
       <ConfirmDialog
-        open={deleteTarget !== null}
-        title="Eliminar profesor"
-        message={`¿Eliminar al profesor "${deleteTarget?.nombre}"?`}
-        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.nombre)}
-        onCancel={() => setDeleteTarget(null)}
+        open={convertir !== null}
+        variante="info"
+        title="Hacer profesor"
+        message={<>¿Dar el rol de profesor a <strong>{convertir?.nombre}</strong> ({convertir?.email})?</>}
+        consecuencias={[
+          "Podrá ser asignado a clases y cápsulas.",
+          "Entra al portal de profesor en vez del de jugador.",
+          "Sus membresías y reservas no cambian.",
+        ]}
+        confirmLabel="Hacer profesor"
+        textoCargando="Guardando..."
+        cargando={convirtiendo}
+        onConfirm={handleConvertir}
+        onCancel={() => setConvertir(null)}
+      />
+
+      {/* Clases y cápsulas asignadas */}
+      <Modal
+        open={detalle !== null}
+        onClose={() => setDetalle(null)}
+        title="Asignaciones"
+        description={detalle?.nombre}
+        cerrarConFondo
+        footer={<Button variante="secundario" onClick={() => setDetalle(null)}>Cerrar</Button>}
+      >
+        <div className="space-y-4">
+          {detalle && detalle.clases.length > 0 && (
+            <section>
+              <h3 className="text-xs font-semibold text-gray-500 mb-2">Clases que imparte</h3>
+              <ul className="flex flex-wrap gap-2">
+                {detalle.clases.map((c) => (
+                  <li key={c.id} className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs"><BookOpen size={11} aria-hidden /> {c.titulo}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {detalle && detalle.capsulas.length > 0 && (
+            <section>
+              <h3 className="text-xs font-semibold text-gray-500 mb-2">Cápsulas que dirige</h3>
+              <ul className="flex flex-wrap gap-2">
+                {detalle.capsulas.map((c) => (
+                  <li key={c.id} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded-md text-xs"><Video size={11} aria-hidden /> {c.titulo}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      </Modal>
+
+      {/* Editar */}
+      <Modal
+        open={editProfesor !== null}
+        onClose={cerrarEdit}
+        title="Editar profesor"
+        bloquearCierre={saving}
+        footer={
+          <>
+            <Button variante="secundario" onClick={cerrarEdit} disabled={saving}>Cancelar</Button>
+            <Button onClick={handleEditSave} cargando={saving} textoCargando="Guardando...">Guardar cambios</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="Nombre" required>
+            {(p) => <input {...p} type="text" value={editForm.nombre} onChange={(e) => setEditForm((f) => ({ ...f, nombre: e.target.value }))} className={CLASE_INPUT} />}
+          </FormField>
+          <FormField label="Email" required ayuda="También cambia el email con el que inicia sesión.">
+            {(p) => <input {...p} type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={CLASE_INPUT} />}
+          </FormField>
+          <FormField label="Teléfono" ayuda="Déjalo vacío para quitarlo.">
+            {(p) => <PhoneInput {...p} value={editForm.telefono} onChange={(t) => setEditForm((f) => ({ ...f, telefono: t }))} />}
+          </FormField>
+          <div>
+            <p className="block text-sm font-medium text-gray-700 mb-1">Foto</p>
+            <div className="flex items-center gap-4">
+              {editPreview ? (
+                <img src={editPreview} alt="Foto del profesor" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200" aria-hidden>
+                  <Camera size={24} />
+                </div>
+              )}
+              <label className="flex-1 min-w-0 cursor-pointer">
+                <span className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-lg hover:border-marca hover:bg-blue-50/50 transition-colors">
+                  <Upload size={16} className="text-gray-500 shrink-0" aria-hidden />
+                  <span className="text-sm text-gray-600 truncate">{editFile ? editFile.name : "Seleccionar imagen..."}</span>
+                </span>
+                <input
+                  type="file"
+                  aria-label="Subir foto"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setEditFile(file);
+                      cambiarPreview(URL.createObjectURL(file));
+                      e.target.value = "";
+                    }
+                  }}
+                  className="sr-only"
+                />
+              </label>
+              {editPreview && (
+                <Button variante="fantasma" onClick={quitarFoto}>Quitar foto</Button>
+              )}
+            </div>
+          </div>
+          {errorEdit && <p role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{errorEdit}</p>}
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={accion !== null}
+        variante={quitando ? "advertencia" : "peligro"}
+        title={quitando ? "Quitar rol de profesor" : "Eliminar cuenta"}
+        message={
+          quitando
+            ? <>¿Quitar el rol de profesor a <strong>{accion?.profesor.nombre}</strong>?</>
+            : <>¿Eliminar la cuenta de <strong>{accion?.profesor.nombre}</strong>? No se puede deshacer.</>
+        }
+        consecuencias={
+          quitando
+            ? ["Vuelve a ser jugador: conserva su cuenta, membresías y reservas.", "Ya no se le pueden asignar clases ni cápsulas."]
+            : [
+                "Se borra su cuenta y ya no puede iniciar sesión.",
+                "También se borran sus membresías, boletas, reservas y ficha médica.",
+                "Si solo debe dejar de ser profesor, usa “Quitar rol de profesor”.",
+              ]
+        }
+        confirmLabel={quitando ? "Quitar rol" : "Eliminar cuenta"}
+        textoCargando={quitando ? "Quitando..." : "Eliminando..."}
+        cargando={ejecutando}
+        onConfirm={handleAccion}
+        onCancel={() => setAccion(null)}
       />
     </div>
   );

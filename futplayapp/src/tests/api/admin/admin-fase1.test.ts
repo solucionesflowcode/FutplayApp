@@ -26,6 +26,7 @@ vi.mock("@/utils/supabase/admin", () => ({
 
 import { POST as POST_STUDENT, PUT as PUT_STUDENT } from "@/app/api/admin/students/route";
 import { POST as POST_PLAN, PUT as PUT_PLAN, DELETE as DELETE_PLAN } from "@/app/api/admin/planes/route";
+import { PUT as PUT_PROFESOR } from "@/app/api/admin/profesores/route";
 
 function req(url: string, method: string, body?: object): Request {
     return new Request(url, {
@@ -148,5 +149,59 @@ describe("/api/admin/planes — los planes se desactivan, no se eliminan (PLA-02
         expect(invalido.status).toBe(400);
         expect(vacio.status).toBe(400);
         expect(escrituras("plan", "update")).toEqual([]);
+    });
+});
+
+describe("PUT /api/admin/profesores — quitar rol y datos opcionales (PRO-01, PRO-02)", () => {
+    const URL_PROF = "http://localhost:3000/api/admin/profesores";
+
+    it("ADM-PRO-001: quitar el rol deja al profesor como jugador (conserva la cuenta)", async () => {
+        __setTableData("usuario", [{ id: "pr1", rol: "profesor", email: "pr1@test.cl" }]);
+
+        const res = await PUT_PROFESOR(req(URL_PROF, "PUT", { id: "pr1", rol: "jugador" }));
+
+        expect(res.status).toBe(200);
+        expect(escrituras("usuario", "update")).toEqual([{ rol: "jugador" }]);
+        expect(escrituras("usuario", "delete")).toEqual([]);
+        expect(ref.client.auth.admin.deleteUser).not.toHaveBeenCalled();
+    });
+
+    it("ADM-PRO-002: con clases o cápsulas asignadas no se quita el rol (409)", async () => {
+        __setTableData("usuario", [{ id: "pr1", rol: "profesor" }]);
+        __setTableData("clase", [{ id: "c1", profesor_id: "pr1" }]);
+        __setTableData("capsula", [{ id: "k1", profesor_id: "pr1" }, { id: "k2", profesor_id: "otro" }]);
+
+        const res = await PUT_PROFESOR(req(URL_PROF, "PUT", { id: "pr1", rol: "jugador" }));
+        const body = await res.json();
+
+        expect(res.status).toBe(409);
+        expect(body).toMatchObject({ clases_asociadas: 1, capsulas_asociadas: 1 });
+        expect(body.error).toContain("quitar el rol");
+        expect(escrituras("usuario", "update")).toEqual([]);
+    });
+
+    it("ADM-PRO-003: solo se le quita el rol a un profesor (no a un admin)", async () => {
+        __setTableData("usuario", [{ id: "a1", rol: "administrador" }]);
+
+        const res = await PUT_PROFESOR(req(URL_PROF, "PUT", { id: "a1", rol: "jugador" }));
+
+        expect(res.status).toBe(400);
+        expect(escrituras("usuario", "update")).toEqual([]);
+    });
+
+    it("ADM-PRO-004: teléfono normalizado; teléfono y foto en null se borran", async () => {
+        const normalizado = await PUT_PROFESOR(req(URL_PROF, "PUT", { id: "pr1", telefono: "9 7904 6977" }));
+        const borrado = await PUT_PROFESOR(req(URL_PROF, "PUT", { id: "pr1", telefono: null, foto_url: null }));
+
+        expect(normalizado.status).toBe(200);
+        expect(borrado.status).toBe(200);
+        expect(escrituras("usuario", "update")).toEqual([{ telefono: "+56979046977" }, { telefono: null, foto_url: null }]);
+    });
+
+    it("ADM-PRO-005: un teléfono inválido se rechaza sin tocar la BD", async () => {
+        const res = await PUT_PROFESOR(req(URL_PROF, "PUT", { id: "pr1", telefono: "12" }));
+
+        expect(res.status).toBe(400);
+        expect(escrituras("usuario", "update")).toEqual([]);
     });
 });

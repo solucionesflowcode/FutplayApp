@@ -107,7 +107,7 @@ describe("PUT /api/admin/profesores", () => {
         const res = await PUT(makeRequest("http://localhost:3000/api/admin/profesores", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: "p1", telefono: "999", especialidad: "Tennis" }),
+            body: JSON.stringify({ id: "p1", telefono: "+56912345678", especialidad: "Tennis" }),
         }));
 
         expect(res.status).toBe(200);

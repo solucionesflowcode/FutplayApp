@@ -244,7 +244,7 @@ flujo de perfil, skeletons y estados de error, contraste AA en textos grises.
 ## 6. Decisiones pendientes
 
 1. ~~**Planes:** ¿eliminar o solo desactivar?~~ **Decidido: solo se desactivan** (implementado en la fase 3).
-2. **Profesores:** ¿"quitar rol" deja al usuario como jugador sin membresía?
+2. ~~**Profesores:** ¿"quitar rol" deja al usuario como jugador sin membresía?~~ **Decidido: dos acciones.** "Quitar rol de profesor" lo deja como jugador y conserva su cuenta, membresías y reservas; "Eliminar cuenta" la borra. Ambas se bloquean si tiene clases o cápsulas asignadas (implementado en la fase 3).
 3. **Membresía inactiva (MEM-04):** ¿debe comportarse como "Congelar" (cancelar reservas con devolución) o bloquearse si tiene reservas futuras?
 4. **Cambio de hora de una clase (CLA-09):** ¿reenviar el recordatorio automáticamente o solo avisar?
-5. **Analíticas (ANA-01):** ¿renombrar la métrica o calcular retención real?
+5. ~~**Analíticas (ANA-01):** ¿renombrar la métrica o calcular retención real?~~ **Decidido: renombrarla a "% con plan activo".**

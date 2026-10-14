@@ -2,6 +2,29 @@ import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
 import { sincronizarEmailAuth } from "@/lib/auth-email";
+import { telefonoParaGuardar } from "@/lib/telefono";
+
+type AdminClient = Awaited<ReturnType<typeof getAdminClient>>;
+
+/** Clases y cápsulas asignadas: con alguna, no se le puede quitar el rol ni borrar la cuenta. */
+async function asignaciones(admin: AdminClient, id: string) {
+  const [{ count: clases }, { count: capsulas }] = await Promise.all([
+    admin.from("clase").select("*", { count: "exact", head: true }).eq("profesor_id", id),
+    admin.from("capsula").select("*", { count: "exact", head: true }).eq("profesor_id", id),
+  ]);
+  return { clases: clases || 0, capsulas: capsulas || 0 };
+}
+
+function respuestaAsignado(accion: string, a: { clases: number; capsulas: number }) {
+  return NextResponse.json(
+    {
+      error: `No se puede ${accion}: el profesor tiene ${a.clases} clase(s) y ${a.capsulas} cápsula(s) asociadas. Desasigna primero.`,
+      clases_asociadas: a.clases,
+      capsulas_asociadas: a.capsulas,
+    },
+    { status: 409 }
+  );
+}
 
 export async function GET(request: Request) {
   const user = await verifyAdmin();
@@ -206,10 +229,16 @@ export async function PUT(request: Request) {
     const updateData: Record<string, unknown> = {};
     if (body.nombre !== undefined) updateData.nombre = body.nombre;
     if (body.email !== undefined) updateData.email = String(body.email).toLowerCase().trim();
-    if (body.telefono !== undefined) updateData.telefono = body.telefono;
-    if (body.foto_url !== undefined) updateData.foto_url = body.foto_url;
+    if (body.telefono !== undefined) {
+      // PRO-02: mismo formato que los alumnos; vacío o null borra el teléfono.
+      const telefono = telefonoParaGuardar(body.telefono);
+      if (telefono && typeof telefono === "object") return NextResponse.json({ error: telefono.error }, { status: 400 });
+      updateData.telefono = telefono;
+    }
+    // null o "" quita la foto (antes no se podía).
+    if (body.foto_url !== undefined) updateData.foto_url = body.foto_url || null;
     if (body.rol !== undefined) {
-      if (body.rol !== "profesor") {
+      if (body.rol !== "profesor" && body.rol !== "jugador") {
         return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
       }
       const { data: currentUser } = await admin
@@ -220,13 +249,21 @@ export async function PUT(request: Request) {
       if (!currentUser) {
         return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
       }
-      if (currentUser.rol !== "jugador") {
+      if (body.rol === "profesor" && currentUser.rol !== "jugador") {
         return NextResponse.json(
           { error: "Solo se puede cambiar a profesor desde el rol jugador" },
           { status: 400 }
         );
       }
-      updateData.rol = "profesor";
+      // PRO-01: quitar el rol (vuelve a jugador y conserva su cuenta), en vez de borrarla.
+      if (body.rol === "jugador") {
+        if (currentUser.rol !== "profesor") {
+          return NextResponse.json({ error: "El usuario no es profesor" }, { status: 400 });
+        }
+        const a = await asignaciones(admin, body.id);
+        if (a.clases + a.capsulas > 0) return respuestaAsignado("quitar el rol", a);
+      }
+      updateData.rol = body.rol;
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -265,22 +302,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "El usuario no es profesor" }, { status: 400 });
     }
 
-    const [{ count: claseCount }, { count: capsulaCount }] = await Promise.all([
-      admin.from("clase").select("*", { count: "exact", head: true }).eq("profesor_id", id),
-      admin.from("capsula").select("*", { count: "exact", head: true }).eq("profesor_id", id),
-    ]);
-
-    const total = (claseCount || 0) + (capsulaCount || 0);
-    if (total > 0) {
-      return NextResponse.json(
-        {
-          error: `No se puede eliminar: el profesor tiene ${claseCount || 0} clase(s) y ${capsulaCount || 0} cápsula(s) asociadas. Desasigna primero.`,
-          clases_asociadas: claseCount || 0,
-          capsulas_asociadas: capsulaCount || 0,
-        },
-        { status: 409 }
-      );
-    }
+    const a = await asignaciones(admin, id);
+    if (a.clases + a.capsulas > 0) return respuestaAsignado("eliminar", a);
 
     const { error: authError } = await admin.auth.admin.deleteUser(id);
     if (authError && authError.status !== 404) {
