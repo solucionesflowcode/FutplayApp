@@ -12,6 +12,8 @@ export type Plan = {
     dias_vigencia?: number;
     tipo_plan?: TipoPlan;
     codigo_acceso?: string | null;
+    // false = desactivado por el admin: no se vende (los planes no se eliminan).
+    activo?: boolean;
 };
 
 export type TipoPlan = "normal" | "familiar" | "kids" | "liga";
@@ -29,6 +31,8 @@ export async function getPlanes(): Promise<Plan[]> {
         .from("plan")
         .select(PLAN_COLUMNAS_PUBLICAS)
         .or(FILTRO_CATALOGO)
+        // Planes desactivados por el admin no se venden (los planes no se eliminan).
+        .eq("activo", true)
         .order("precio", { ascending: true });
 
     if (error) {
@@ -46,6 +50,8 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
         .from("plan")
         .select(PLAN_COLUMNAS_PUBLICAS)
         .or(FILTRO_CATALOGO)
+        // Planes desactivados por el admin no se venden (los planes no se eliminan).
+        .eq("activo", true)
         .order("precio", { ascending: true })
         .limit(limit);
 
@@ -105,11 +111,19 @@ export async function updatePlanAdmin(data: {
     return { success: true };
 }
 
-export async function deletePlanAdmin(id: string): Promise<{ success: boolean; error?: string }> {
-    const res = await fetch(`/api/admin/planes?id=${id}`, { method: "DELETE" });
+/**
+ * Desactiva (o reactiva) un plan: deja de aparecer en el catálogo y no se puede
+ * comprar, pero sus membresías y compras quedan intactas. Los planes no se eliminan.
+ */
+export async function setPlanActivo(id: string, activo: boolean): Promise<{ success: boolean; error?: string }> {
+    const res = await fetch("/api/admin/planes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, activo }),
+    });
     if (!res.ok) {
-        const body = await res.json();
-        return { success: false, error: body.error };
+        const body = await res.json().catch(() => ({}));
+        return { success: false, error: body.error || "No se pudo cambiar el estado del plan" };
     }
     return { success: true };
 }

@@ -125,25 +125,28 @@ describe("/api/admin/planes — tipo de plan y Liga (PLA-03)", () => {
     });
 });
 
-describe("DELETE /api/admin/planes — plan en uso (PLA-02)", () => {
-    it("ADM-PLA-005: un plan con membresías o compras se rechaza (409) con el motivo, sin borrar", async () => {
-        __setTableData("membresia", [{ id: "m1", plan_id: "p1" }, { id: "m2", plan_id: "p1" }]);
-        __setTableData("boleta_item", [{ id: "bi1", plan_id: "p1" }]);
+describe("/api/admin/planes — los planes se desactivan, no se eliminan (PLA-02)", () => {
+    it("ADM-PLA-005: DELETE responde 405 y no borra nada (aunque el plan no tenga uso)", async () => {
+        const res = await DELETE_PLAN();
 
-        const res = await DELETE_PLAN(req("http://localhost:3000/api/admin/planes?id=p1", "DELETE"));
-
-        expect(res.status).toBe(409);
-        const json = await res.json();
-        expect(json.error).toContain("2 membresía(s) y 1 compra(s)");
+        expect(res.status).toBe(405);
+        expect((await res.json()).error).toContain("desactívalo");
         expect(escrituras("plan", "delete")).toEqual([]);
     });
 
-    it("ADM-PLA-006: un plan sin uso se elimina", async () => {
-        __setTableData("membresia", [{ id: "m1", plan_id: "otro" }]);
-
-        const res = await DELETE_PLAN(req("http://localhost:3000/api/admin/planes?id=p1", "DELETE"));
+    it("ADM-PLA-006: desactivar y reactivar con PUT { activo }", async () => {
+        const res = await PUT_PLAN(req("http://localhost:3000/api/admin/planes", "PUT", { id: "p1", activo: false }));
 
         expect(res.status).toBe(200);
-        expect(escrituras("plan", "delete")).toHaveLength(1);
+        expect(escrituras("plan", "update")).toEqual([{ activo: false }]);
+    });
+
+    it("ADM-PLA-007: activo debe ser booleano; un PUT sin campos se rechaza", async () => {
+        const invalido = await PUT_PLAN(req("http://localhost:3000/api/admin/planes", "PUT", { id: "p1", activo: "no" }));
+        const vacio = await PUT_PLAN(req("http://localhost:3000/api/admin/planes", "PUT", { id: "p1" }));
+
+        expect(invalido.status).toBe(400);
+        expect(vacio.status).toBe(400);
+        expect(escrituras("plan", "update")).toEqual([]);
     });
 });

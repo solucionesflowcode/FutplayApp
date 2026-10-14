@@ -50,6 +50,8 @@ export async function GET(request: Request) {
     .select("id, nombre, precio, tokens_mensuales, dias_vigencia, tipo_plan")
     .eq("codigo_acceso", token)
     .in("tipo_plan", ["familiar", "liga"])
+    // Un plan desactivado deja de venderse también por su link.
+    .eq("activo", true)
     .maybeSingle();
 
   if (error) {

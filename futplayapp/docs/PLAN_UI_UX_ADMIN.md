@@ -243,7 +243,7 @@ flujo de perfil, skeletons y estados de error, contraste AA en textos grises.
 
 ## 6. Decisiones pendientes
 
-1. **Planes:** ¿se permite eliminar, o solo desactivar (`plan.activo`)? Recomendado: solo desactivar si tiene uso.
+1. ~~**Planes:** ¿eliminar o solo desactivar?~~ **Decidido: solo se desactivan** (implementado en la fase 3).
 2. **Profesores:** ¿"quitar rol" deja al usuario como jugador sin membresía?
 3. **Membresía inactiva (MEM-04):** ¿debe comportarse como "Congelar" (cancelar reservas con devolución) o bloquearse si tiene reservas futuras?
 4. **Cambio de hora de una clase (CLA-09):** ¿reenviar el recordatorio automáticamente o solo avisar?

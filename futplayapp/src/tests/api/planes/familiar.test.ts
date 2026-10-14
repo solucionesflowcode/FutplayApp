@@ -62,6 +62,7 @@ const FAMILIAR_PLAN = {
     dias_vigencia: 30,
     tipo_plan: "familiar",
     codigo_acceso: "tok-familiar-123",
+    activo: true,
 };
 
 describe("GET /api/planes/familiar", () => {
@@ -117,6 +118,14 @@ describe("GET /api/planes/familiar", () => {
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json.tipo_plan).toBe("liga");
+    });
+
+    it("PLAN-FAM-INACT-001: el link de un plan desactivado deja de funcionar", async () => {
+        __setTableData("plan", [{ ...FAMILIAR_PLAN, activo: false }]);
+
+        const res = await GET(makeRequest("?token=tok-familiar-123"));
+
+        expect(res.status).toBe(404);
     });
 
     it("rechaza el token de un plan normal", async () => {

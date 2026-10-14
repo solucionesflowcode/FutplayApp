@@ -1,45 +1,40 @@
 "use client";
 
-import { useEffect, useState, useCallback, Fragment } from "react";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Loader2,
-  X,
-  Search,
-  Copy,
-  Check,
-} from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Plus, Pencil, Search, Copy, Check, Share2, Ban, RotateCcw } from "lucide-react";
 import {
   getPlanesAdmin,
   createPlanAdmin,
   updatePlanAdmin,
-  deletePlanAdmin,
+  setPlanActivo,
   PLANES_CON_LINK,
   type Plan,
   type TipoPlan,
 } from "@/data/plans";
-import ConfirmDialog from "@/components/admin/ConfirmDialog";
-
-type ModalMode = "create" | "edit" | null;
+import {
+  Button,
+  CLASE_INPUT,
+  ConfirmDialog,
+  DataTable,
+  FormField,
+  Modal,
+  NumberInput,
+  PageHeader,
+  useAdminMutation,
+  useToast,
+  type Columna,
+} from "@/components/admin/ui";
 
 type PlanForm = {
   id?: string;
   nombre: string;
-  precio: number;
-  tokens_mensuales: number;
-  dias: number;
+  precio: number | null;
+  tokens_mensuales: number | null;
+  dias: number | null;
   tipo_plan: TipoPlan;
 };
 
-const emptyForm: PlanForm = {
-  nombre: "",
-  precio: 0,
-  tokens_mensuales: 1,
-  dias: 30,
-  tipo_plan: "normal",
-};
+const emptyForm: PlanForm = { nombre: "", precio: null, tokens_mensuales: 4, dias: 30, tipo_plan: "normal" };
 
 const TIPOS_PLAN: { valor: TipoPlan; etiqueta: string; ayuda: string }[] = [
   { valor: "normal", etiqueta: "Normal", ayuda: "Aparece en el catálogo. Reserva entrenamientos y partidos." },
@@ -48,107 +43,120 @@ const TIPOS_PLAN: { valor: TipoPlan; etiqueta: string; ayuda: string }[] = [
   { valor: "liga", etiqueta: "Liga", ayuda: "Oculto, pago único sin tokens: se compra solo con el link de acceso." },
 ];
 
+type FiltroActivo = "activos" | "inactivos" | "todos";
+
 function formatPrice(n: number) {
   return "$" + n.toLocaleString("es-CL");
 }
 
 function TipoBadge({ tipo }: { tipo?: Plan["tipo_plan"] }) {
-  if (tipo === "familiar") {
-    return <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold">Familiar · oculto</span>;
-  }
-  if (tipo === "liga") {
-    return <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold">Liga · pago único · oculto</span>;
-  }
-  if (tipo === "kids") {
-    return <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">Kids</span>;
-  }
+  if (tipo === "familiar") return <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[11px] font-bold">Familiar · oculto</span>;
+  if (tipo === "liga") return <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[11px] font-bold">Liga · pago único · oculto</span>;
+  if (tipo === "kids") return <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">Kids</span>;
   return null;
 }
 
+const tieneLink = (p: Plan) => !!p.tipo_plan && PLANES_CON_LINK.includes(p.tipo_plan);
+
 export default function PlanesPage() {
+  const toast = useToast();
+  const { ejecutar } = useAdminMutation();
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [modal, setModal] = useState<ModalMode>(null);
+  const [filtroActivo, setFiltroActivo] = useState<FiltroActivo>("activos");
+  const [modal, setModal] = useState<"create" | "edit" | null>(null);
   const [form, setForm] = useState<PlanForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [errorForm, setErrorForm] = useState<string | null>(null);
+  const [cambioEstado, setCambioEstado] = useState<Plan | null>(null);
+  const [cambiando, setCambiando] = useState(false);
+  const [link, setLink] = useState<{ plan: Plan; url: string } | null>(null);
+  const [copiado, setCopiado] = useState(false);
+  const linkRef = useRef<HTMLInputElement>(null);
 
   const fetchPlanes = useCallback(async () => {
     const { planes, error } = await getPlanesAdmin();
     setPlanes(planes);
-    if (error) setError(error);
+    if (error) toast.error("No se pudieron cargar los planes", error);
     setLoading(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => { fetchPlanes(); }, [fetchPlanes]);
 
-  const filtered = planes.filter(
-    (p) => p.nombre.toLowerCase().includes(search.toLowerCase())
+  const activo = (p: Plan) => p.activo !== false;
+  const q = search.toLowerCase();
+  const porBusqueda = planes.filter((p) => p.nombre.toLowerCase().includes(q));
+  const filtered = porBusqueda.filter((p) =>
+    filtroActivo === "todos" ? true : filtroActivo === "activos" ? activo(p) : !activo(p)
   );
+  const conteo = (f: FiltroActivo) => porBusqueda.filter((p) => (f === "todos" ? true : f === "activos" ? activo(p) : !activo(p))).length;
 
-  const resetForm = () => { setForm(emptyForm); setError(null); };
+  const esLiga = form.tipo_plan === "liga";
+
+  const cerrarModal = () => {
+    setModal(null);
+    setForm(emptyForm);
+    setErrorForm(null);
+  };
 
   const openCreate = () => {
-    resetForm();
+    setForm(emptyForm);
+    setErrorForm(null);
     setModal("create");
   };
 
   const openEdit = (p: Plan) => {
-    setForm({
-      id: p.id,
-      nombre: p.nombre,
-      precio: p.precio,
-      tokens_mensuales: p.tokens_mensuales,
-      dias: p.dias ?? 30,
-      tipo_plan: p.tipo_plan ?? "normal",
-    });
+    setForm({ id: p.id, nombre: p.nombre, precio: p.precio, tokens_mensuales: p.tokens_mensuales, dias: p.dias ?? 30, tipo_plan: p.tipo_plan ?? "normal" });
+    setErrorForm(null);
     setModal("edit");
   };
 
-  const esLiga = form.tipo_plan === "liga";
-
   const handleSave = async () => {
-    // El plan Liga es un pago único sin tokens: antes "tokens > 0" impedía guardarlo.
-    if (!form.nombre || form.precio <= 0 || form.dias <= 0 || (!esLiga && form.tokens_mensuales <= 0)) {
-      setError(esLiga ? "Nombre, precio y días son obligatorios" : "Nombre, precio, tokens y días son obligatorios");
-      return;
-    }
-    setSaving(true);
-    setError(null);
+    // El plan Liga es un pago único sin tokens.
+    if (!form.nombre.trim()) return setErrorForm("El nombre es obligatorio");
+    if (form.precio === null || form.precio <= 0) return setErrorForm("El precio debe ser mayor a 0");
+    if (!esLiga && (form.tokens_mensuales === null || form.tokens_mensuales < 1)) return setErrorForm("El plan debe tener al menos 1 token");
+    if (form.dias === null || form.dias < 1 || form.dias > 365) return setErrorForm("La duración debe estar entre 1 y 365 días");
 
     const payload = {
-      nombre: form.nombre,
+      nombre: form.nombre.trim(),
       precio: form.precio,
-      tokens_mensuales: esLiga ? 0 : form.tokens_mensuales,
+      tokens_mensuales: esLiga ? 0 : form.tokens_mensuales!,
       dias: form.dias,
       tipo_plan: form.tipo_plan,
     };
-
-    const res = modal === "create"
-      ? await createPlanAdmin(payload)
-      : await updatePlanAdmin({ ...payload, id: form.id! });
-
-    if (!res.success) {
-      setError(res.error || "Error al guardar");
-      setSaving(false);
-      return;
-    }
-
+    setSaving(true);
+    setErrorForm(null);
+    const res = modal === "create" ? await createPlanAdmin(payload) : await updatePlanAdmin({ ...payload, id: form.id! });
     setSaving(false);
-    setModal(null);
-    resetForm();
-    // Se recarga también al editar: el tipo cambia el badge y el botón de link.
+    if (!res.success) return setErrorForm(res.error || "Error al guardar");
+    toast.exito(modal === "create" ? "Plan creado" : "Plan actualizado");
+    cerrarModal();
     fetchPlanes();
   };
 
-  // Copia el link de acceso del plan (familiar/liga). Si aún no tiene
-  // codigo_acceso lo genera; si ya tiene, reutiliza el existente para no
-  // invalidar links ya compartidos.
-  const handleCopyLink = async (p: Plan) => {
-    setError(null);
+  // Los planes no se eliminan: se desactivan (dejan de venderse) y se pueden reactivar.
+  const handleCambiarEstado = async () => {
+    if (!cambioEstado) return;
+    const p = cambioEstado;
+    const nuevo = !activo(p);
+    const anterior = planes;
+    setCambiando(true);
+    setPlanes((prev) => prev.map((x) => (x.id === p.id ? { ...x, activo: nuevo } : x)));
+    await ejecutar(() => setPlanActivo(p.id, nuevo), {
+      exito: nuevo ? `${p.nombre} vuelve a venderse` : `${p.nombre} desactivado: ya no se vende`,
+      error: nuevo ? "No se pudo reactivar el plan" : "No se pudo desactivar el plan",
+      revertir: () => setPlanes(anterior),
+    });
+    setCambiando(false);
+    setCambioEstado(null);
+  };
+
+  // Link de acceso de planes familiares/liga. Si aún no tiene codigo_acceso lo
+  // genera; si ya tiene, reutiliza el existente para no invalidar links compartidos.
+  // PLA-05: se muestra en un modal con botón Copiar (antes, window.prompt).
+  const abrirLink = async (p: Plan) => {
     let url: string;
     if (p.codigo_acceso) {
       url = `${window.location.origin}/planes/familiar/${p.codigo_acceso}`;
@@ -160,310 +168,199 @@ export default function PlanesPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.url) {
-        setError(body.error || "No se pudo generar el link");
+        toast.error("No se pudo generar el link", body.error);
         return;
       }
       url = body.url;
       setPlanes((prev) => prev.map((x) => (x.id === p.id ? { ...x, codigo_acceso: body.token } : x)));
     }
+    setCopiado(false);
+    setLink({ plan: p, url });
+  };
+
+  const copiarLink = async () => {
+    if (!link) return;
     try {
-      await navigator.clipboard.writeText(url);
-      setCopiedId(p.id);
-      setTimeout(() => setCopiedId((c) => (c === p.id ? null : c)), 2000);
+      await navigator.clipboard.writeText(link.url);
+      setCopiado(true);
     } catch {
-      window.prompt("Copia el link de acceso:", url);
+      // Sin permiso de portapapeles: el link queda seleccionado para copiarlo a mano.
+      linkRef.current?.select();
+      toast.info("Selecciona el link y cópialo con Ctrl+C");
     }
   };
 
-  const renderLinkButton = (p: Plan, size: number) => {
-    if (!p.tipo_plan || !PLANES_CON_LINK.includes(p.tipo_plan)) return null;
-    const copied = copiedId === p.id;
-    return (
-      <button
-        onClick={() => handleCopyLink(p)}
-        className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"
-        title={copied ? "Link copiado" : "Copiar link de acceso"}
-      >
-        {copied ? <Check size={size} /> : <Copy size={size} />}
+  const acciones = (p: Plan) => (
+    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+      {tieneLink(p) && activo(p) && (
+        <button type="button" onClick={() => abrirLink(p)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg" title="Link de acceso" aria-label={`Link de acceso de ${p.nombre}`}>
+          <Share2 size={16} />
+        </button>
+      )}
+      <button type="button" onClick={() => openEdit(p)} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar ${p.nombre}`}>
+        <Pencil size={16} />
       </button>
-    );
-  };
+      <button
+        type="button"
+        onClick={() => setCambioEstado(p)}
+        className={`p-1.5 rounded-lg ${activo(p) ? "text-amber-600 hover:bg-amber-50" : "text-green-600 hover:bg-green-50"}`}
+        title={activo(p) ? "Desactivar" : "Reactivar"}
+        aria-label={`${activo(p) ? "Desactivar" : "Reactivar"} ${p.nombre}`}
+      >
+        {activo(p) ? <Ban size={16} /> : <RotateCcw size={16} />}
+      </button>
+    </div>
+  );
 
-  const handleDelete = async (id: string) => {
-    // Ya se confirmó en el ConfirmDialog (antes además salía un confirm() nativo).
-    setDeleteId(null);
-    setError(null);
-    const anterior = planes;
-    setPlanes((prev) => prev.filter((p) => p.id !== id));
-    // Un plan con membresías o compras no se puede borrar: la API responde 409
-    // con el motivo y el plan vuelve a la lista (antes desaparecía y volvía al recargar).
-    const res = await deletePlanAdmin(id).catch(() => ({ success: false, error: "Error de conexión" }));
-    if (!res.success) {
-      setPlanes(anterior);
-      setError(res.error || "No se pudo eliminar el plan");
-    }
-  };
+  const columnas: Columna<Plan>[] = [
+    {
+      id: "nombre",
+      encabezado: "Plan",
+      celda: (p) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`font-semibold ${activo(p) ? "text-gray-900" : "text-gray-400 line-through"}`}>{p.nombre}</span>
+          <TipoBadge tipo={p.tipo_plan} />
+          {!activo(p) && <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-[11px] font-bold">Desactivado</span>}
+        </div>
+      ),
+      valorOrden: (p) => p.nombre,
+    },
+    { id: "precio", encabezado: "Precio", celda: (p) => <span className="font-semibold whitespace-nowrap">{formatPrice(p.precio)}</span>, valorOrden: (p) => p.precio },
+    { id: "tokens", encabezado: "Tokens", celda: (p) => (p.tipo_plan === "liga" ? "—" : `${p.tokens_mensuales}`), valorOrden: (p) => p.tokens_mensuales },
+    { id: "dias", encabezado: "Duración", celda: (p) => `${p.dias ?? 30} días`, valorOrden: (p) => p.dias ?? 30 },
+    { id: "acciones", encabezado: "Acciones", celda: acciones },
+  ];
 
-  if (loading && planes.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-5 h-5 animate-spin text-[#F28C28]" />
-      </div>
-    );
-  }
+  const desactivando = cambioEstado ? activo(cambioEstado) : false;
 
   return (
-    <>
-      <div className="p-4 sm:p-6">
-        <div className="flex flex-col gap-6 w-full mx-auto" style={{ maxWidth: "1216px" }}>
-
-          {/* HEADER */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-extrabold text-gray-900">Planes</h1>
-              <p className="text-gray-500 text-sm mt-1">Administra los planes de membresía</p>
+    <div className="p-4 sm:p-6">
+      <div className="w-full max-w-[1216px] mx-auto">
+        <PageHeader
+          titulo="Gestión de planes"
+          descripcion="Planes que se venden. Un plan no se elimina: se desactiva para que deje de venderse."
+          acciones={<Button icono={<Plus size={16} />} onClick={openCreate}>Nuevo plan</Button>}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative w-full sm:max-w-xs">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+              <input type="search" aria-label="Buscar plan" placeholder="Buscar plan..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={openCreate}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto"
-              >
-                <Plus size={16} />
-                Nuevo Plan
-              </button>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
+              {(["activos", "inactivos", "todos"] as FiltroActivo[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  aria-pressed={filtroActivo === f}
+                  onClick={() => setFiltroActivo(f)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${filtroActivo === f ? "bg-marca border-marca text-white" : "bg-white border-gray-200 text-gray-600 hover:border-marca"}`}
+                >
+                  {f === "activos" ? "En venta" : f === "inactivos" ? "Desactivados" : "Todos"}{" "}
+                  <span className={filtroActivo === f ? "text-white/70" : "text-gray-400"}>{conteo(f)}</span>
+                </button>
+              ))}
             </div>
           </div>
+        </PageHeader>
 
-          {error && !modal && (
-            <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+        <DataTable
+          etiqueta="Planes"
+          filas={filtered}
+          columnas={columnas}
+          getId={(p) => p.id}
+          cargando={loading}
+          resetKey={`${search}|${filtroActivo}`}
+          vacio={search ? "No se encontraron planes" : filtroActivo === "inactivos" ? "No hay planes desactivados" : "No hay planes"}
+          tarjetaMovil={(p) => (
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`font-semibold text-sm ${activo(p) ? "text-gray-900" : "text-gray-400 line-through"}`}>{p.nombre}</span>
+                <TipoBadge tipo={p.tipo_plan} />
+              </div>
+              <p className="text-xs text-gray-600">{formatPrice(p.precio)} · {p.tipo_plan === "liga" ? "sin tokens" : `${p.tokens_mensuales} tokens`} · {p.dias ?? 30} días</p>
+              {acciones(p)}
+            </div>
           )}
-
-          {/* LISTA */}
-          <div className="bg-white border border-gray-200">
-            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative w-full sm:max-w-xs">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar plan..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                />
-              </div>
-              <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} plan{filtered.length !== 1 ? "es" : ""}</span>
-            </div>
-
-            <div className="md:overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="hidden md:table-header-group">
-                  <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-                    <th className="p-3 font-semibold">Nombre</th>
-                    <th className="p-3 font-semibold">Precio</th>
-                    <th className="p-3 font-semibold">Tokens Mensuales</th>
-                    <th className="p-3 font-semibold">Duración</th>
-                    <th className="p-3 font-semibold">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-400">
-                        {search ? "No se encontraron planes" : "No hay planes creados aún"}
-                      </td>
-                    </tr>
-                  ) : filtered.map((p) => {
-                    return (
-                      <Fragment key={p.id}>
-                        {/* MOBILE CARD */}
-                        <tr className="md:hidden border-b border-gray-100">
-                          <td colSpan={5} className="p-0">
-                            <div className="p-3 space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <p className="font-semibold text-gray-900 truncate text-sm">{p.nombre}</p>
-                                <TipoBadge tipo={p.tipo_plan} />
-                              </div>
-                              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
-                                <div><span className="text-gray-400">Precio: </span><span className="font-semibold text-gray-900">{formatPrice(p.precio)}</span></div>
-                                <div><span className="text-gray-400">Tokens: </span><span className="font-semibold text-gray-700">{p.tokens_mensuales}</span><span className="text-gray-400"> sesiones</span></div>
-                                <div><span className="text-gray-400">Duración: </span><span className="font-semibold text-gray-700">{p.dias ?? 30}</span><span className="text-gray-400"> días</span></div>
-                              </div>
-                              <div className="flex gap-2 pt-1 border-t border-gray-50">
-                                <button onClick={() => openEdit(p)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
-                                {renderLinkButton(p, 14)}
-                                <button onClick={() => setDeleteId(p.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                        {/* DESKTOP ROW */}
-                        <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
-                          <td className="p-3 font-semibold text-gray-900 max-w-[260px]">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate">{p.nombre}</span>
-                              <TipoBadge tipo={p.tipo_plan} />
-                            </div>
-                          </td>
-                          <td className="p-3 font-semibold text-gray-900 whitespace-nowrap">{formatPrice(p.precio)}</td>
-                          <td className="p-3 text-gray-600">
-                            <span className="font-semibold">{p.tokens_mensuales}</span>
-                            <span className="text-gray-400"> sesiones</span>
-                          </td>
-                          <td className="p-3 text-gray-600">
-                            <span className="font-semibold">{p.dias ?? 30}</span>
-                            <span className="text-gray-400"> días</span>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => openEdit(p)}
-                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                title="Editar"
-                              >
-                                <Pencil size={16} />
-                              </button>
-                              {renderLinkButton(p, 16)}
-                              <button
-                                onClick={() => setDeleteId(p.id)}
-                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                                title="Eliminar"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-
-        {/* MODAL */}
-        {modal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-lg p-6 shadow-xl">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  {modal === "create" ? "Nuevo Plan" : "Editar Plan"}
-                </h2>
-                <button onClick={() => { setModal(null); resetForm(); }} className="p-1 hover:bg-gray-100 rounded-lg">
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Nombre */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Nombre *</label>
-                  <input
-                    type="text"
-                    value={form.nombre}
-                    onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    placeholder="Ej: Plan Premium"
-                  />
-                </div>
-
-                {/* Tipo: antes no se podía elegir desde el panel */}
-                <div>
-                  <label htmlFor="tipo-plan" className="block text-xs font-semibold text-gray-500 mb-1">Tipo de plan *</label>
-                  <select
-                    id="tipo-plan"
-                    value={form.tipo_plan}
-                    onChange={(e) => setForm((p) => ({ ...p, tipo_plan: e.target.value as TipoPlan }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  >
-                    {TIPOS_PLAN.map((t) => (
-                      <option key={t.valor} value={t.valor}>{t.etiqueta}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">{TIPOS_PLAN.find((t) => t.valor === form.tipo_plan)?.ayuda}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Precio */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Precio *</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">$</span>
-                      <input
-                        type="number"
-                        value={form.precio || ""}
-                        onChange={(e) => setForm((p) => ({ ...p, precio: parseInt(e.target.value) || 0 }))}
-                        className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                        min={0}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Tokens */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens Mensuales</label>
-                    <input
-                      type="number"
-                      value={esLiga ? 0 : form.tokens_mensuales || ""}
-                      onChange={(e) => setForm((p) => ({ ...p, tokens_mensuales: parseInt(e.target.value) || 1 }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400"
-                      min={1}
-                      disabled={esLiga}
-                    />
-                    {esLiga && <p className="text-xs text-gray-400 mt-1">El plan Liga no da tokens.</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Duración (días)</label>
-                  <input
-                    type="number"
-                    value={form.dias || ""}
-                    onChange={(e) => setForm((p) => ({ ...p, dias: parseInt(e.target.value) || 30 }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    min={1}
-                    max={365}
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Vigencia de la membresía desde la compra (ej: 30 o 90).</p>
-                </div>
-
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-                <button
-                  onClick={() => { setModal(null); resetForm(); }}
-                  disabled={saving}
-                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {saving && <Loader2 size={14} className="animate-spin" />}
-                  {modal === "create" ? "Crear Plan" : "Guardar Cambios"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        />
       </div>
 
+      <Modal
+        open={modal !== null}
+        onClose={cerrarModal}
+        title={modal === "create" ? "Nuevo plan" : "Editar plan"}
+        bloquearCierre={saving}
+        footer={
+          <>
+            <Button variante="secundario" onClick={cerrarModal} disabled={saving}>Cancelar</Button>
+            <Button onClick={handleSave} cargando={saving} textoCargando="Guardando...">{modal === "create" ? "Crear plan" : "Guardar cambios"}</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="Nombre" required>
+            {(p) => <input {...p} type="text" value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Plan Premium" className={CLASE_INPUT} />}
+          </FormField>
+          <FormField label="Tipo de plan" required ayuda={TIPOS_PLAN.find((t) => t.valor === form.tipo_plan)?.ayuda}>
+            {(p) => (
+              <select {...p} value={form.tipo_plan} onChange={(e) => setForm((f) => ({ ...f, tipo_plan: e.target.value as TipoPlan }))} className={CLASE_INPUT}>
+                {TIPOS_PLAN.map((t) => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
+              </select>
+            )}
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Precio (CLP)" required>
+              {(p) => <NumberInput {...p} value={form.precio} onChange={(n) => setForm((f) => ({ ...f, precio: n }))} placeholder="30000" />}
+            </FormField>
+            {/* PLA-04: los números se pueden vaciar (antes saltaban a 1 o 30 al borrar). */}
+            <FormField label="Tokens" required={!esLiga} ayuda={esLiga ? "El plan Liga no da tokens." : "Clases que puede reservar en el período."}>
+              {(p) => <NumberInput {...p} value={esLiga ? 0 : form.tokens_mensuales} disabled={esLiga} onChange={(n) => setForm((f) => ({ ...f, tokens_mensuales: n }))} />}
+            </FormField>
+          </div>
+          <FormField label="Duración (días)" required ayuda="Vigencia de la membresía desde la compra (ej: 30 o 90).">
+            {(p) => <NumberInput {...p} value={form.dias} onChange={(n) => setForm((f) => ({ ...f, dias: n }))} />}
+          </FormField>
+          {errorForm && <p role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{errorForm}</p>}
+        </div>
+      </Modal>
+
       <ConfirmDialog
-        open={deleteId !== null}
-        title="Eliminar plan"
-        message="¿Eliminar este plan? Solo se puede eliminar si nunca se vendió ni se asignó a un alumno; si no, la eliminación se rechaza."
-        onConfirm={() => deleteId && handleDelete(deleteId)}
-        onCancel={() => setDeleteId(null)}
+        open={cambioEstado !== null}
+        variante={desactivando ? "advertencia" : "info"}
+        title={desactivando ? "Desactivar plan" : "Reactivar plan"}
+        message={<>¿{desactivando ? "Desactivar" : "Reactivar"} <strong>{cambioEstado?.nombre}</strong>?</>}
+        consecuencias={
+          desactivando
+            ? [
+                "Deja de aparecer en el catálogo y no se puede comprar.",
+                ...(cambioEstado && tieneLink(cambioEstado) ? ["Su link de acceso deja de funcionar."] : []),
+                "Las membresías vigentes de este plan no cambian: los alumnos siguen usando sus tokens.",
+              ]
+            : ["Vuelve a aparecer en el catálogo y se puede comprar."]
+        }
+        confirmLabel={desactivando ? "Desactivar" : "Reactivar"}
+        textoCargando={desactivando ? "Desactivando..." : "Reactivando..."}
+        cargando={cambiando}
+        onConfirm={handleCambiarEstado}
+        onCancel={() => setCambioEstado(null)}
       />
-    </>
+
+      <Modal
+        open={link !== null}
+        onClose={() => setLink(null)}
+        title="Link de acceso"
+        description={`${link?.plan.nombre}: compártelo solo con quien debe comprar este plan.`}
+        cerrarConFondo
+        footer={
+          <>
+            <Button variante="secundario" onClick={() => setLink(null)}>Cerrar</Button>
+            <Button icono={copiado ? <Check size={16} /> : <Copy size={16} />} onClick={copiarLink}>{copiado ? "Copiado" : "Copiar link"}</Button>
+          </>
+        }
+      >
+        <FormField label="Link">
+          {(p) => <input {...p} ref={linkRef} readOnly value={link?.url ?? ""} onFocus={(e) => e.currentTarget.select()} className={`${CLASE_INPUT} font-mono text-xs`} />}
+        </FormField>
+      </Modal>
+    </div>
   );
 }

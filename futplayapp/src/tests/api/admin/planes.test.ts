@@ -298,45 +298,32 @@ describe("PUT /api/admin/planes", () => {
     });
 });
 
-describe("DELETE /api/admin/planes", () => {
+describe("DELETE /api/admin/planes (los planes no se eliminan)", () => {
     beforeEach(() => {
         __resetMocks();
         __setAuthUser({ id: "admin-1", email: "admin@test.cl" });
         __setTableData("usuario", { id: "admin-1", rol: "administrador" });
     });
 
-    it("API-ADM-PLANES-DEL-001: elimina un plan exitosamente", async () => {
+    it("API-ADM-PLANES-DEL-001: responde 405 e indica desactivar, sin borrar nada", async () => {
         __setTableData("plan", [{ id: "p1" }]);
 
-        const res = await DELETE(makeRequest("http://localhost:3000/api/admin/planes?id=p1"));
+        const res = await DELETE();
 
-        expect(res.status).toBe(200);
-        const json = await jsonResponse(res);
-        expect(json.success).toBe(true);
-    });
-
-    it("API-ADM-PLANES-DEL-002: retorna 400 si falta id", async () => {
-        const res = await DELETE(makeRequest("http://localhost:3000/api/admin/planes"));
-
-        expect(res.status).toBe(400);
-        const json = await jsonResponse(res);
-        expect(json.error).toContain("id");
+        expect(res.status).toBe(405);
+        expect((await jsonResponse(res)).error).toContain("desactívalo");
     });
 
     it("API-ADM-PLANES-DEL-003: retorna 403 si no está autenticado", async () => {
         __setAuthUser(null);
 
-        const res = await DELETE(makeRequest("http://localhost:3000/api/admin/planes?id=p1"));
-
-        expect(res.status).toBe(403);
+        expect((await DELETE()).status).toBe(403);
     });
 
     it("API-ADM-PLANES-DEL-004: retorna 403 si no es administrador", async () => {
         __setTableData("usuario", { id: "user-1", rol: "jugador" });
         __setAuthUser({ id: "user-1", email: "user@test.cl" });
 
-        const res = await DELETE(makeRequest("http://localhost:3000/api/admin/planes?id=p1"));
-
-        expect(res.status).toBe(403);
+        expect((await DELETE()).status).toBe(403);
     });
 });

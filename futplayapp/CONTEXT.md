@@ -68,6 +68,7 @@ futplayapp/
 
 - **Membresía vigente:** `estado` + no congelada + `fecha_inicio <= now <= fecha_vencimiento`. Las fechas son el **instante real** (`new Date()`). `ahoraChile()` se eliminó.
 - **Comprar un plan:** lo bloquea solo una membresía vigente **con tokens**. La regla es la función SQL `usuario_tiene_membresia_vigente`, que usan `create-order` (servidor), `/planes` y `/pagos` (cliente vía RPC).
+- **Planes no se eliminan, se desactivan** (`plan.activo = false`): salen del catálogo (`getPlanes`), su link familiar/liga deja de funcionar y `create-order` los rechaza (409). Las membresías vigentes no cambian. `DELETE /api/admin/planes` responde 405.
 - **Planes familiar y liga:** se compran solo con el link del admin (`codigo_acceso`, que no es legible por los usuarios). Liga es un pago único y no bloquea ni crea una membresía activa.
 - **Tokens:** los descuenta el trigger al inscribirse (los partidos no). Los devuelve `devolver_token` al cancelar con ≥ 3 h, salvo partidos: van a la otra membresía activa si el alumno compró una; si no, la membresía cerrada por tokens se reactiva.
 - **Plan ↔ clase:** kids solo reserva clases kids; normal no reserva kids. Lo valida la API y el trigger.

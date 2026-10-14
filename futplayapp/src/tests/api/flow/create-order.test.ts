@@ -109,6 +109,18 @@ describe("POST /api/flow/create-order", () => {
             const json = await res.json();
             expect(json.error).toBe("Plan no encontrado");
         });
+
+        it("API-FLOW-CREATE-INACT-001: un plan desactivado no se puede comprar (409), sin crear boleta", async () => {
+            __setAuthUser(TEST_USER);
+            __setTableData("usuario", TEST_USER);
+            __setTableData("plan", { ...TEST_PLAN, activo: false });
+
+            const res = await POST(makeRequest({ planId: "plan-1" }));
+
+            expect(res.status).toBe(409);
+            expect((await res.json()).error).toContain("ya no está disponible");
+            expect(createFlowOrder).not.toHaveBeenCalled();
+        });
     });
 
     describe("validación de membresía activa", () => {

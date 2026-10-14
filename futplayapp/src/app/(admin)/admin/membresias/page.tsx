@@ -417,7 +417,10 @@ export default function MembresiasPage() {
                 className={CLASE_INPUT}
               >
                 <option value="">Seleccionar plan</option>
-                {planes.map((pl) => <option key={pl.id} value={pl.id}>{pl.nombre}</option>)}
+                {/* Solo planes en venta; el actual se mantiene aunque se haya desactivado. */}
+                {planes
+                  .filter((pl) => pl.activo !== false || pl.id === form.plan_id)
+                  .map((pl) => <option key={pl.id} value={pl.id}>{pl.nombre}{pl.activo === false ? " (desactivado)" : ""}</option>)}
               </select>
             )}
           </FormField>

@@ -104,6 +104,15 @@ export async function PUT(request: Request) {
       }
       updateData.dias = Number(body.dias);
     }
+    // Desactivar/reactivar: los planes no se eliminan (las membresías y boletas los referencian).
+    if (body.activo !== undefined) {
+      if (typeof body.activo !== "boolean") return NextResponse.json({ error: "activo debe ser true o false" }, { status: 400 });
+      updateData.activo = body.activo;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
+    }
 
     const { error } = await admin.from("plan").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -114,43 +123,13 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+// Los planes no se eliminan, solo se desactivan (PUT { activo: false }): sus
+// membresías, compras y links quedan intactos y el plan deja de venderse.
+export async function DELETE() {
   const user = await verifyAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-
-  try {
-    const admin = await getAdminClient();
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
-
-    // membresia, boleta_item y recurrencia apuntan a plan sin cascada: la BD
-    // rechaza el borrado de un plan en uso. Antes la pantalla lo quitaba igual
-    // de la lista y volvía a aparecer al recargar.
-    const [membresias, boletas, recurrencias] = await Promise.all(
-      ["membresia", "boleta_item", "recurrencia"].map((tabla) =>
-        admin.from(tabla).select("*", { count: "exact", head: true }).eq("plan_id", id)
-      )
-    );
-    const nMembresias = membresias.count ?? 0;
-    const nBoletas = boletas.count ?? 0;
-    if (nMembresias + nBoletas + (recurrencias.count ?? 0) > 0) {
-      return NextResponse.json(
-        {
-          error: `No se puede eliminar: el plan tiene ${nMembresias} membresía(s) y ${nBoletas} compra(s) asociadas.`,
-          membresias: nMembresias,
-          boletas: nBoletas,
-        },
-        { status: 409 }
-      );
-    }
-
-    const { error } = await admin.from("plan").delete().eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  return NextResponse.json(
+    { error: "Los planes no se eliminan: desactívalo para que deje de venderse." },
+    { status: 405, headers: { Allow: "GET, POST, PUT" } }
+  );
 }

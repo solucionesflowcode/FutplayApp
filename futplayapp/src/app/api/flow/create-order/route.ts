@@ -82,6 +82,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
   }
 
+  // Desactivado por el admin: ya no se vende (aunque alguien tenga el id o una pestaña abierta).
+  if (plan.activo === false) {
+    return NextResponse.json({ error: "Este plan ya no está disponible." }, { status: 409 });
+  }
+
   // Plan Liga: pago único, comprable aunque haya membresía vigente.
   const esLiga = plan.tipo_plan === "liga";
 

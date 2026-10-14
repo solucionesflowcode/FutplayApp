@@ -64,6 +64,7 @@ export async function POST(request: Request) {
       const { data: planes } = await adminClient
         .from("plan")
         .select("*")
+        .eq("activo", true)
         .order("precio", { ascending: true })
         .limit(1);
 
