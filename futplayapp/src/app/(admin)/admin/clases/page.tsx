@@ -1,19 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, Fragment } from "react";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Loader2,
-  Search,
-  X,
-  Check,
-  ChevronLeft,
-  Users,
-  PersonStanding,
-  CalendarDays,
-} from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Plus, Pencil, Trash2, Search, Check, X, ChevronLeft, PersonStanding, CalendarDays, Users } from "lucide-react";
 import {
   getClases,
   getSedes,
@@ -28,28 +16,47 @@ import {
   type AsistenciaDetalleClase,
 } from "@/data/clases";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
-import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { claseEnFiltroFechas, errorFechaClase, fechaHoraChileAIso, fechaHoraChileDesdeIso, hoyChile } from "@/lib/fechas";
-
-type ViewMode = "list" | "asistencia-detalle";
+import {
+  Button,
+  CLASE_INPUT,
+  ConfirmDialog,
+  DataTable,
+  FormField,
+  Modal,
+  NumberInput,
+  PageHeader,
+  StatusBadge,
+  useAdminMutation,
+  useToast,
+  type Columna,
+} from "@/components/admin/ui";
 
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
-type ModalMode = "create" | "edit" | null;
+type Pestana = "proximas" | "pasadas" | "todas";
+const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
+  { valor: "proximas", etiqueta: "Próximas" },
+  { valor: "pasadas", etiqueta: "Pasadas" },
+  { valor: "todas", etiqueta: "Todas" },
+];
+
+type TipoEvento = "entrenamiento" | "partido" | "kids";
 
 type ClaseForm = {
   id?: string;
   titulo: string;
   descripcion: string;
   sede_id: string;
-  cupo_maximo: number;
+  cupo_maximo: number | null;
   profesor_id: string;
-  tipo_evento: "entrenamiento" | "partido" | "kids";
+  tipo_evento: TipoEvento;
   fecha: string;
   hora: string;
   // Al editar: si no cambian, no se exige que sean futuras (se puede corregir una clase pasada).
   fecha_original?: string;
   hora_original?: string;
+  inscritos?: number;
 };
 
 const emptyForm: ClaseForm = {
@@ -63,53 +70,77 @@ const emptyForm: ClaseForm = {
   hora: "",
 };
 
+const NOMBRE_TIPO: Record<TipoEvento, string> = { entrenamiento: "Entrenamiento", partido: "Partido", kids: "Kids" };
+
+function formatFecha(iso: string) {
+  return new Date(iso).toLocaleDateString("es-CL", { weekday: "short", day: "2-digit", month: "short", year: "numeric", timeZone: "America/Santiago" });
+}
+function formatHora(iso: string) {
+  return new Date(iso).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago" });
+}
+
+const yaOcurrio = (c: { fecha_hora: string | null }, ahora: number) =>
+  !!c.fecha_hora && new Date(c.fecha_hora).getTime() <= ahora;
+
 export default function ClasesPage() {
+  const toast = useToast();
+  const { ejecutar } = useAdminMutation();
   const [clases, setClases] = useState<ClaseConRelaciones[]>([]);
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [profesores, setProfesores] = useState<ProfesorDropdown[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<ViewMode>("list");
-  const [modal, setModal] = useState<ModalMode>(null);
-  const [form, setForm] = useState<ClaseForm>(emptyForm);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const [detalleClase, setDetalleClase] = useState<AsistenciaDetalleClase | null>(null);
+  const [pestana, setPestana] = useState<Pestana>("proximas");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [diasFiltro, setDiasFiltro] = useState<number[]>([]);
+  const [modal, setModal] = useState<"create" | "edit" | null>(null);
+  const [form, setForm] = useState<ClaseForm>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [errorForm, setErrorForm] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ClaseConRelaciones | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [detalle, setDetalle] = useState<AsistenciaDetalleClase | null>(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  // "Ahora" para separar próximas de pasadas: se toma al cargar (no en cada render).
+  const [ahora, setAhora] = useState(() => Date.now());
 
   const fetchClases = useCallback(async () => {
     const [c, s, p] = await Promise.all([getClases(), getSedes(), getProfesoresDropdown()]);
     setClases(c);
     setSedes(s);
     setProfesores(p);
+    setAhora(Date.now());
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchClases(); }, [fetchClases]);
 
+  const q = search.toLowerCase();
   const filtered = clases.filter((c) => {
-    const matchSearch =
-      (c.titulo || "").toLowerCase().includes(search.toLowerCase()) ||
-      c.sede_nombre.toLowerCase().includes(search.toLowerCase());
-    if (!matchSearch) return false;
+    const coincide = (c.titulo || "Partido").toLowerCase().includes(q) || c.sede_nombre.toLowerCase().includes(q) || c.profesor_nombre.toLowerCase().includes(q);
+    if (!coincide) return false;
+    // CLA-05: por defecto solo las próximas (antes se mezclaban con todo el historial).
+    if (pestana === "proximas" && yaOcurrio(c, ahora)) return false;
+    if (pestana === "pasadas" && !yaOcurrio(c, ahora)) return false;
     return claseEnFiltroFechas(c.fecha_hora, { desde: fechaDesde, hasta: fechaHasta, dias: diasFiltro });
   });
+  const hayFiltrosFecha = !!fechaDesde || !!fechaHasta || diasFiltro.length > 0;
 
-  const resetForm = () => { setForm(emptyForm); setError(null); };
+  const cerrarModal = () => {
+    setModal(null);
+    setForm(emptyForm);
+    setErrorForm(null);
+  };
 
   const openCreate = () => {
-    resetForm();
+    setForm(emptyForm);
+    setErrorForm(null);
     setModal("create");
   };
 
   const openEdit = (c: ClaseConRelaciones) => {
     const chile = c.fecha_hora ? fechaHoraChileDesdeIso(c.fecha_hora) : null;
-    const fecha = chile?.fecha || "";
-    const hora = chile?.hora || "";
     setForm({
       id: c.id,
       titulo: c.titulo || "",
@@ -118,37 +149,46 @@ export default function ClasesPage() {
       cupo_maximo: c.cupo_maximo ?? 15,
       profesor_id: c.profesor_id || "",
       tipo_evento: c.tipo_evento,
-      fecha: fecha,
-      hora: hora,
-      fecha_original: fecha,
-      hora_original: hora,
+      fecha: chile?.fecha || "",
+      hora: chile?.hora || "",
+      fecha_original: chile?.fecha || "",
+      hora_original: chile?.hora || "",
+      inscritos: c.inscritos,
     });
+    setErrorForm(null);
     setModal("edit");
   };
 
   const handleSave = async () => {
     if (form.tipo_evento !== "partido" && (!form.titulo || !form.sede_id)) {
-      setError("Título y sede son obligatorios");
+      setErrorForm("Tipo de entrenamiento y sede son obligatorios");
       return;
     }
     // Sin fecha y hora la clase queda "Sin horario": ni el bot ni el calendario la manejan.
     if (!form.fecha || !form.hora) {
-      setError("Fecha y hora son obligatorias");
+      setErrorForm("Fecha y hora son obligatorias");
+      return;
+    }
+    if (form.cupo_maximo === null || form.cupo_maximo < 1) {
+      setErrorForm("El cupo debe ser al menos 1");
+      return;
+    }
+    // CLA-08: un cupo menor a los inscritos deja la clase sobrevendida.
+    if (modal === "edit" && (form.inscritos ?? 0) > form.cupo_maximo) {
+      setErrorForm(`El cupo no puede ser menor a los ${form.inscritos} alumnos ya inscritos`);
       return;
     }
     const errorFecha = errorFechaClase(modal === "create", form);
     if (errorFecha) {
-      setError(errorFecha);
+      setErrorForm(errorFecha);
       return;
     }
-    setSaving(true);
-    setError(null);
 
-    const fecha_hora = form.fecha && form.hora ? fechaHoraChileAIso(form.fecha, form.hora) : undefined;
-    const fecha_hora_local: string | null = fecha_hora ?? null;
     const base: Parameters<typeof createClase>[0] = {
       tipo_evento: form.tipo_evento,
       descripcion: form.descripcion,
+      cupo_maximo: form.cupo_maximo,
+      fecha_hora: fechaHoraChileAIso(form.fecha, form.hora),
     };
     if (form.tipo_evento !== "partido") {
       base.titulo = form.titulo;
@@ -157,704 +197,409 @@ export default function ClasesPage() {
     } else if (form.sede_id) {
       base.sede_id = form.sede_id;
     }
-    base.cupo_maximo = form.cupo_maximo;
-    if (fecha_hora) base.fecha_hora = fecha_hora;
 
-    const res = modal === "create"
-      ? await createClase(base)
-      : await updateClase({ ...base, id: form.id! });
-
+    setSaving(true);
+    setErrorForm(null);
+    const res = modal === "create" ? await createClase(base) : await updateClase({ ...base, id: form.id! });
+    setSaving(false);
     if (!res.success) {
-      setError(res.error || "Error al guardar");
-      setSaving(false);
+      setErrorForm(res.error || "Error al guardar");
       return;
     }
-
-    setSaving(false);
-    setModal(null);
-    resetForm();
-    if (modal === "create") {
-      fetchClases();
-    } else {
-      setClases((prev) =>
-        prev.map((c) =>
-          c.id === form.id
-            ? {
-              ...c,
-              titulo: form.tipo_evento !== "partido" ? form.titulo : null,
-              descripcion: form.descripcion,
-              sede_id: form.tipo_evento !== "partido" ? form.sede_id : form.sede_id || null,
-              sede_nombre: form.sede_id ? (sedes.find(s => s.id === form.sede_id)?.nombre || "") : "",
-              cupo_maximo: form.cupo_maximo,
-              profesor_id: form.tipo_evento !== "partido" ? (form.profesor_id || null) : null,
-              profesor_nombre: form.tipo_evento !== "partido" ? (profesores.find(p => p.id === form.profesor_id)?.nombre || "") : "",
-              tipo_evento: form.tipo_evento,
-              fecha_hora: fecha_hora_local,
-            }
-            : c
-        )
-      );
-    }
+    toast.exito(modal === "create" ? "Clase creada" : "Clase actualizada");
+    cerrarModal();
+    fetchClases();
   };
 
-  const handleDelete = async (id: string) => {
-    setDeleteId(null);
-    setError(null);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const c = deleteTarget;
     const anterior = clases;
-    setClases((prev) => prev.filter((c) => c.id !== id));
-    // Antes no se revisaba el resultado: si fallaba, la clase desaparecía igual
-    // de la lista y volvía al recargar.
-    const res = await deleteClase(id).catch(() => ({ success: false, error: "Error de conexión" }));
-    if (!res.success) {
-      setClases(anterior);
-      setError(res.error || "No se pudo eliminar la clase");
+    setEliminando(true);
+    setClases((prev) => prev.filter((x) => x.id !== c.id));
+    await ejecutar(() => deleteClase(c.id), {
+      exito: "Clase eliminada",
+      error: "No se pudo eliminar la clase",
+      revertir: () => setClases(anterior),
+    });
+    setEliminando(false);
+    setDeleteTarget(null);
+  };
+
+  const abrirDetalle = async (c: ClaseConRelaciones) => {
+    setCargandoDetalle(true);
+    const data = await getAsistenciaPorClase(c.id);
+    setCargandoDetalle(false);
+    if (!data) {
+      toast.error("No se pudo cargar la asistencia de la clase");
+      return;
     }
+    setAhora(Date.now());
+    setDetalle(data);
   };
 
-  const handleAsistenciaClase = async (claseId: string) => {
-    setLoading(true);
-    const data = await getAsistenciaPorClase(claseId);
-    setDetalleClase(data);
-    setView("asistencia-detalle");
-    setLoading(false);
-  };
-
-  const toggleAsistencia = async (usuarioId: string, asistencia: boolean) => {
-    if (!detalleClase) return;
-    await registrarAsistencia(detalleClase.clase.id, usuarioId, asistencia);
-    setDetalleClase((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        inscripciones: prev.inscripciones.map((i) =>
-          i.usuario_id === usuarioId ? { ...i, asistencia: asistencia ? "asistio" : "no_asistio" } : i
-        ),
-      };
+  const marcarAsistencia = async (ins: InscripcionRow, presente: boolean) => {
+    if (!detalle) return;
+    const anterior = detalle;
+    const nueva = presente ? "asistio" : "no_asistio";
+    setDetalle({ ...detalle, inscripciones: detalle.inscripciones.map((i) => (i.id === ins.id ? { ...i, asistencia: nueva } : i)) });
+    // Antes no se revisaba el resultado: se marcaba en pantalla aunque fallara (CLA-10).
+    await ejecutar(() => registrarAsistencia(detalle.clase.id, ins.usuario_id, presente), {
+      error: `No se pudo registrar la asistencia de ${ins.usuario_nombre}`,
+      revertir: () => setDetalle(anterior),
     });
   };
 
-  const formatFecha = (f: string) => {
-    const d = new Date(f);
-    return d.toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Santiago" });
+  const volverALista = () => {
+    setDetalle(null);
+    fetchClases(); // los conteos de asistencia cambiaron
   };
 
-  const formatHora = (f: string) => {
-    const d = new Date(f);
-    return d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago" });
+  const columnaAsistencia = (c: ClaseConRelaciones) => {
+    // CLA-06: solo una clase ya ocurrida tiene asistencia por registrar (antes
+    // todas las futuras mostraban "N Pendientes" parpadeando).
+    if (!yaOcurrio(c, ahora)) return <span className="text-xs text-gray-400">—</span>;
+    if (c.pendientes > 0) {
+      return (
+        <span className="inline-flex px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold whitespace-nowrap">
+          {c.pendientes} por registrar
+        </span>
+      );
+    }
+    return <span className="text-xs text-gray-600 whitespace-nowrap"><span className="text-green-600 font-semibold">{c.presentes} ✓</span> · <span className="text-red-500 font-semibold">{c.ausentes} ✗</span></span>;
   };
 
-  if (loading && clases.length === 0 && view === "list") {
-    return (
-      <>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-5 h-5 animate-spin text-[#F28C28]" />
+  const inscritosTexto = (c: ClaseConRelaciones) => (
+    <span className={c.cupo_maximo != null && c.inscritos >= c.cupo_maximo ? "font-semibold text-red-600" : "text-gray-700"}>
+      {c.inscritos}{c.cupo_maximo != null ? ` / ${c.cupo_maximo}` : ""}
+    </span>
+  );
+
+  const acciones = (c: ClaseConRelaciones) => (
+    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+      <button type="button" onClick={() => openEdit(c)} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar clase ${c.titulo || "Partido"}`}>
+        <Pencil size={16} />
+      </button>
+      <button type="button" onClick={() => setDeleteTarget(c)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar" aria-label={`Eliminar clase ${c.titulo || "Partido"}`}>
+        <Trash2 size={16} />
+      </button>
+    </div>
+  );
+
+  const columnas: Columna<ClaseConRelaciones>[] = [
+    {
+      id: "clase",
+      encabezado: "Clase",
+      celda: (c) => (
+        <div className="min-w-0 max-w-[220px]">
+          <p className="font-semibold text-gray-900 truncate">{c.titulo || "Partido"}</p>
+          <p className="text-[11px] uppercase tracking-wide font-bold text-gray-400">{NOMBRE_TIPO[c.tipo_evento]}</p>
+          {c.descripcion && <p className="text-xs text-gray-400 truncate">{c.descripcion}</p>}
         </div>
+      ),
+      valorOrden: (c) => c.titulo || "Partido",
+    },
+    {
+      id: "fecha",
+      encabezado: "Fecha",
+      celda: (c) => (c.fecha_hora ? <div className="text-xs whitespace-nowrap"><span className="font-medium text-gray-700">{formatFecha(c.fecha_hora)}</span><br /><span className="text-gray-400">{formatHora(c.fecha_hora)}</span></div> : <span className="text-xs text-gray-400">Sin horario</span>),
+      valorOrden: (c) => c.fecha_hora,
+    },
+    {
+      id: "profesor",
+      encabezado: "Profesor",
+      celda: (c) => (c.profesor_nombre ? <span className="inline-flex items-center gap-1 text-sm"><PersonStanding size={14} className="text-acento" aria-hidden />{c.profesor_nombre}</span> : <span className="text-gray-300">—</span>),
+      valorOrden: (c) => c.profesor_nombre,
+    },
+    { id: "sede", encabezado: "Sede", celda: (c) => c.sede_nombre || "—", valorOrden: (c) => c.sede_nombre },
+    { id: "inscritos", encabezado: "Inscritos", celda: inscritosTexto, valorOrden: (c) => c.inscritos },
+    { id: "asistencia", encabezado: "Asistencia", celda: columnaAsistencia },
+    { id: "acciones", encabezado: "Acciones", celda: acciones },
+  ];
 
-        <ConfirmDialog
-          open={deleteId !== null}
-          title="Eliminar clase"
-          message="¿Eliminar esta clase? Se borran sus inscripciones y, si aún no ocurre, se devuelve el token a cada alumno inscrito (los partidos no descuentan token)."
-          onConfirm={() => deleteId && handleDelete(deleteId)}
-          onCancel={() => setDeleteId(null)}
-        />
-      </>
-    );
-  }
+  const fechaCambio = modal === "edit" && (form.fecha !== form.fecha_original || form.hora !== form.hora_original);
 
   return (
-    <>
-      <div className="p-4 sm:p-6">
-        <div className="flex flex-col gap-6 w-full mx-auto" style={{ maxWidth: "1216px" }}>
-
-          {/* ─── HEADER ─── */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-extrabold text-gray-900">Gestión de Clases</h1>
-              <p className="text-gray-500 text-sm mt-1">Administra clases, sedes y cupos</p>
-            </div>
-            <div className="flex gap-3">
-              {view !== "list" && (
-                <button
-                  onClick={() => { setView("list"); setDetalleClase(null); }}
-                  className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 w-full sm:w-auto"
-                >
-                  <ChevronLeft size={16} />
-                  Volver
-                </button>
-              )}
-              {view === "list" ? (
-                <button
-                  onClick={openCreate}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto"
-                >
-                  <Plus size={16} />
-                  Nueva Clase
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Errores fuera del modal (p. ej. al eliminar). */}
-          {error && !modal && (
-            <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-          )}
-
-          {/* ─── VIEW: LIST ─── */}
-          {view === "list" && (
-            <div className="bg-white border border-gray-200">
-              {/* ─── FILTROS ─── */}
-              <div className="p-4 border-b border-gray-100 space-y-3">
-                <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
-                  <div className="relative w-full sm:flex-1 sm:max-w-xs">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Buscar clase o sede..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <label className="text-gray-500 font-medium shrink-0">Desde:</label>
-                    <input
-                      type="date"
-                      value={fechaDesde}
-                      onChange={(e) => setFechaDesde(e.target.value)}
-                      className="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <label className="text-gray-500 font-medium shrink-0">Hasta:</label>
-                    <input
-                      type="date"
-                      value={fechaHasta}
-                      onChange={(e) => setFechaHasta(e.target.value)}
-                      className="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    />
-                  </div>
-                  {(fechaDesde || fechaHasta || diasFiltro.length > 0) && (
-                    <button
-                      onClick={() => { setFechaDesde(""); setFechaHasta(""); setDiasFiltro([]); }}
-                      className="text-xs text-red-500 hover:text-red-700 font-semibold"
-                    >
-                      Limpiar filtros
-                    </button>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <CalendarDays size={14} className="text-gray-400" />
-                  {DIAS.map((nombre, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() =>
-                        setDiasFiltro((prev) =>
-                          prev.includes(idx) ? prev.filter((d) => d !== idx) : [...prev, idx]
-                        )
-                      }
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${diasFiltro.includes(idx)
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-white text-gray-500 border-gray-200 hover:border-blue-300"
-                        }`}
-                    >
-                      {nombre}
-                    </button>
-                  ))}
-                  <span className="text-sm text-gray-400 ml-auto">{filtered.length} clase{filtered.length !== 1 ? "s" : ""}</span>
-                </div>
-              </div>
-
-              <div className="md:overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="hidden md:table-header-group">
-                    <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-                      <th className="p-3 font-semibold">Nombre</th>
-                      <th className="p-3 font-semibold">Profesor</th>
-                      <th className="p-3 font-semibold">Sede</th>
-                      <th className="p-3 font-semibold">Inscritos</th>
-                      <th className="p-3 font-semibold">Asistencia</th>
-                      <th className="p-3 font-semibold">Fecha</th>
-                      <th className="p-3 font-semibold">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="p-8 text-center text-gray-400">
-                          {search || fechaDesde || fechaHasta || diasFiltro.length > 0
-                            ? "No se encontraron clases con esos filtros"
-                            : "No hay clases creadas aún"}
-                        </td>
-                      </tr>
-                    ) : filtered.map((c) => {
-                      return (
-                        <Fragment key={c.id}>
-                          {/* MOBILE CARD */}
-                          <tr className="md:hidden border-b border-gray-100">
-                            <td colSpan={7} className="p-0">
-                              <div className="p-3 space-y-1.5" onClick={() => handleAsistenciaClase(c.id)}>
-                                <div className="flex items-start justify-between">
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-semibold text-gray-900 truncate text-sm">{c.titulo || "Partido"}</p>
-                                    {c.tipo_evento && (
-                                      <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">{c.tipo_evento === "partido" ? "Partido" : c.tipo_evento === "kids" ? "Kids" : "Entrenamiento"}</span>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] text-gray-500 shrink-0 ml-2 text-right leading-tight">
-                                    {c.fecha_hora ? <>{formatFecha(c.fecha_hora)}<br/>{formatHora(c.fecha_hora)}</> : "Sin horario"}
-                                  </span>
-                                </div>
-                                {c.descripcion && <p className="text-[11px] text-gray-400 truncate">{c.descripcion}</p>}
-                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
-                                  {c.profesor_nombre && <div><span className="text-gray-400">Prof: </span><span className="font-medium text-gray-700">{c.profesor_nombre}</span></div>}
-                                  {c.sede_nombre && <div><span className="text-gray-400">Sede: </span><span className="font-medium text-gray-700">{c.sede_nombre}</span></div>}
-                                  <div>
-                                    <span className="text-gray-400">Inscritos: </span>
-                                    <span className={`font-medium ${c.cupo_maximo != null && c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
-                                      {c.inscritos}{c.cupo_maximo != null ? `/${c.cupo_maximo}` : ""}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3 text-[11px]" onClick={(e) => e.stopPropagation()}>
-                                  <span className="text-green-600 font-semibold">{c.presentes} ✓</span>
-                                  <span className="text-red-500 font-semibold">{c.ausentes} ✗</span>
-                                  {c.pendientes > 0 ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold border border-amber-300 animate-pulse">{c.pendientes} Pendientes</span>
-                                  ) : <span className="text-gray-300 font-semibold">—</span>}
-                                </div>
-                                <div className="flex gap-2 pt-1 border-t border-gray-50" onClick={(e) => e.stopPropagation()}>
-                                  <button onClick={() => openEdit(c)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
-                                  <button onClick={() => setDeleteId(c.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                          {/* DESKTOP ROW */}
-                          <tr
-                            className="hidden md:table-row border-b hover:bg-blue-50/50 cursor-pointer transition-colors"
-                            onClick={() => handleAsistenciaClase(c.id)}
-                          >
-                            <td className="p-3 max-w-[200px]">
-                              <p className="font-semibold text-gray-900 truncate">{c.titulo || "Partido"}</p>
-                              {c.descripcion && (
-                                <p className="text-xs text-gray-400 truncate">{c.descripcion}</p>
-                              )}
-                              {c.tipo_evento && (
-                                <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
-                                  {c.tipo_evento === "partido" ? "Partido" : c.tipo_evento === "kids" ? "Kids" : "Entrenamiento"}
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-3 max-w-[150px]">
-                              {c.profesor_nombre ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold truncate max-w-full">
-                                  <PersonStanding size={12} />
-                                  <span className="truncate">{c.profesor_nombre}</span>
-                                </span>
-                              ) : (
-                                <span className="text-gray-300">—</span>
-                              )}
-                            </td>
-                            <td className="p-3 text-gray-600 truncate max-w-[120px]">{c.sede_nombre || "—"}</td>
-                            <td className="p-3">
-                              {c.cupo_maximo != null ? (
-                                <>
-                                  <span className={`font-semibold ${c.inscritos >= c.cupo_maximo ? "text-red-500" : "text-green-600"}`}>
-                                    {c.inscritos}
-                                  </span>
-                                  <span className="text-gray-400">/{c.cupo_maximo}</span>
-                                </>
-                              ) : (
-                                <span className="text-gray-400">{c.inscritos} inscritos</span>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <div className="flex items-center gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
-                                <span className="text-green-600 font-semibold">{c.presentes} ✓</span>
-                                <span className="text-red-500 font-semibold">{c.ausentes} ✗</span>
-                                {c.pendientes > 0 ? (
-                                  <button
-                                    onClick={() => handleAsistenciaClase(c.id)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold hover:bg-amber-200 hover:animate-none transition-colors border border-amber-300 animate-pulse"
-                                  >
-                                    {c.pendientes} Pendientes
-                                  </button>
-                                ) : (
-                                  <span className="text-gray-300 font-semibold">—</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              {c.fecha_hora ? (
-                                <div className="text-xs text-gray-600">
-                                  <span className="font-medium">{formatFecha(c.fecha_hora)}</span>
-                                  <br />
-                                  <span className="text-gray-400">{formatHora(c.fecha_hora)}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-400">Sin horario</span>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  onClick={() => openEdit(c)}
-                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                  title="Editar"
-                                >
-                                  <Pencil size={16} />
-                                </button>
-                                <button
-                                  onClick={() => setDeleteId(c.id)}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                                  title="Eliminar"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        </Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ─── VIEW: ASISTENCIA DETALLE ─── */}
-          {view === "asistencia-detalle" && detalleClase && (
-            <AsistenciaDetalle
-              data={detalleClase}
-              onToggle={toggleAsistencia}
-            />
-          )}
-
-        </div>
-
-        {/* ─── MODAL CREATE/EDIT ─── */}
-        {modal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-lg p-6 shadow-xl">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  {modal === "create" ? "Nueva Clase" : "Editar Clase"}
-                </h2>
-                <button onClick={() => { setModal(null); resetForm(); }} className="p-1 hover:bg-gray-100 rounded-lg">
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo</label>
-                    <select
-                      value={form.tipo_evento}
-                      onChange={(e) => setForm((p) => ({ ...p, tipo_evento: e.target.value as "entrenamiento" | "partido" | "kids" }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    >
-                      <option value="entrenamiento">Entrenamiento</option>
-                      <option value="partido">Partido</option>
-                      <option value="kids">Kids</option>
-                    </select>
-                  </div>
-                </div>
-
-                {form.tipo_evento !== "partido" && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Título (tipo de entrenamiento) *</label>
-                      <select
-                        value={form.titulo}
-                        onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                      >
-                        <option value="">Seleccionar tipo</option>
-                        <option value="Tecnico">Técnico</option>
-                        <option value="Tacticos">Tácticos</option>
-                        <option value="Fisico">Físico</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Profesor</label>
-                      <select
-                        value={form.profesor_id}
-                        onChange={(e) => setForm((p) => ({ ...p, profesor_id: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                      >
-                        <option value="">Sin profesor asignado</option>
-                        {profesores.map((pr) => (
-                          <option key={pr.id} value={pr.id}>{pr.nombre}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Cupo Máximo</label>
-                    <input
-                      type="number"
-                      value={form.cupo_maximo}
-                      onChange={(e) => setForm((p) => ({ ...p, cupo_maximo: parseInt(e.target.value) || 1 }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                      min={1}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">
-                    Sede {form.tipo_evento !== "partido" ? "*" : ""}
-                  </label>
-                  <select
-                    value={form.sede_id}
-                    onChange={(e) => setForm((p) => ({ ...p, sede_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+    <div className="p-4 sm:p-6">
+      <div className="w-full max-w-[1216px] mx-auto">
+        {detalle ? (
+          <AsistenciaDetalle data={detalle} ahora={ahora} onVolver={volverALista} onMarcar={marcarAsistencia} />
+        ) : (
+          <>
+            <PageHeader
+              titulo="Gestión de clases"
+              descripcion="Clases, cupos y asistencia. Haz clic en una clase para registrar la asistencia."
+              acciones={<Button icono={<Plus size={16} />} onClick={openCreate}>Nueva clase</Button>}
+            >
+              <div className="flex flex-wrap gap-2" role="tablist" aria-label="Clases por fecha">
+                {PESTANAS.map((p) => (
+                  <button
+                    key={p.valor}
+                    type="button"
+                    role="tab"
+                    aria-selected={pestana === p.valor}
+                    onClick={() => setPestana(p.valor)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-semibold border ${pestana === p.valor ? "bg-marca border-marca text-white" : "bg-white border-gray-200 text-gray-600 hover:border-marca"}`}
                   >
-                    <option value="">{form.tipo_evento === "partido" ? "Sin sede (opcional)" : "Seleccionar sede"}</option>
-                    {sedes.map((s) => (
-                      <option key={s.id} value={s.id}>{s.nombre}</option>
-                    ))}
-                  </select>
+                    {p.etiqueta}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row flex-wrap sm:items-end gap-3">
+                <div className="relative w-full sm:max-w-xs">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+                  <input type="search" aria-label="Buscar clase, sede o profesor" placeholder="Buscar clase, sede o profesor..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Descripción</label>
-                  <textarea
-                    value={form.descripcion}
-                    onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 resize-none"
-                    rows={2}
-                    placeholder={form.tipo_evento === "partido" ? "Ej: Partido amistoso vs..." : "Descripción opcional"}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha</label>
-                    <input
-                      type="date"
-                      value={form.fecha}
-                      // Día de hoy en Chile: el día UTC ya es "mañana" después de las 21:00.
-                      min={hoyChile()}
-                      onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Hora</label>
-                    <input
-                      type="time"
-                      value={form.hora}
-                      onChange={(e) => setForm((p) => ({ ...p, hora: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    />
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+                <FormField label="Desde">
+                  {(p) => <input {...p} type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className={`${CLASE_INPUT} py-2`} />}
+                </FormField>
+                <FormField label="Hasta">
+                  {(p) => <input {...p} type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className={`${CLASE_INPUT} py-2`} />}
+                </FormField>
+                {hayFiltrosFecha && (
+                  <Button variante="fantasma" onClick={() => { setFechaDesde(""); setFechaHasta(""); setDiasFiltro([]); }}>Limpiar filtros</Button>
                 )}
               </div>
-
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-                <button
-                  onClick={() => { setModal(null); resetForm(); }}
-                  disabled={saving}
-                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {saving && <Loader2 size={14} className="animate-spin" />}
-                  {modal === "create" ? "Crear Clase" : "Guardar Cambios"}
-                </button>
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por día de la semana">
+                <CalendarDays size={14} className="text-gray-400" aria-hidden />
+                {DIAS.map((nombre, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    aria-pressed={diasFiltro.includes(idx)}
+                    onClick={() => setDiasFiltro((prev) => (prev.includes(idx) ? prev.filter((d) => d !== idx) : [...prev, idx]))}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold border ${diasFiltro.includes(idx) ? "bg-marca text-white border-marca" : "bg-white text-gray-500 border-gray-200 hover:border-marca"}`}
+                  >
+                    {nombre}
+                  </button>
+                ))}
               </div>
-            </div>
-          </div>
+            </PageHeader>
+
+            <DataTable
+              // Remontar al cambiar de pestaña: próximas de la más cercana, pasadas de la más reciente.
+              key={pestana}
+              etiqueta="Clases"
+              filas={filtered}
+              columnas={columnas}
+              getId={(c) => c.id}
+              cargando={loading || cargandoDetalle}
+              resetKey={`${search}|${fechaDesde}|${fechaHasta}|${diasFiltro.join(",")}`}
+              ordenInicial={{ columna: "fecha", asc: pestana === "proximas" }}
+              onFilaClick={abrirDetalle}
+              vacio={search || hayFiltrosFecha ? "No se encontraron clases con esos filtros" : pestana === "proximas" ? "No hay clases próximas" : "No hay clases"}
+              tarjetaMovil={(c) => (
+                <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{c.titulo || "Partido"}</p>
+                      <p className="text-xs text-gray-500">{c.fecha_hora ? `${formatFecha(c.fecha_hora)} · ${formatHora(c.fecha_hora)}` : "Sin horario"}</p>
+                    </div>
+                    {columnaAsistencia(c)}
+                  </div>
+                  <p className="text-xs text-gray-500">{[c.profesor_nombre, c.sede_nombre].filter(Boolean).join(" · ")} · Inscritos {inscritosTexto(c)}</p>
+                  {acciones(c)}
+                </div>
+              )}
+            />
+          </>
         )}
       </div>
 
+      <Modal
+        open={modal !== null}
+        onClose={cerrarModal}
+        title={modal === "create" ? "Nueva clase" : "Editar clase"}
+        bloquearCierre={saving}
+        footer={
+          <>
+            <Button variante="secundario" onClick={cerrarModal} disabled={saving}>Cancelar</Button>
+            <Button onClick={handleSave} cargando={saving} textoCargando="Guardando...">{modal === "create" ? "Crear clase" : "Guardar cambios"}</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="Tipo" required>
+            {(p) => (
+              <select {...p} value={form.tipo_evento} onChange={(e) => setForm((f) => ({ ...f, tipo_evento: e.target.value as TipoEvento }))} className={CLASE_INPUT}>
+                <option value="entrenamiento">Entrenamiento</option>
+                <option value="partido">Partido</option>
+                <option value="kids">Kids</option>
+              </select>
+            )}
+          </FormField>
+
+          {form.tipo_evento !== "partido" && (
+            <>
+              <FormField label="Tipo de entrenamiento" required>
+                {(p) => (
+                  <select {...p} value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} className={CLASE_INPUT}>
+                    <option value="">Seleccionar</option>
+                    <option value="Tecnico">Técnico</option>
+                    <option value="Tacticos">Tácticos</option>
+                    <option value="Fisico">Físico</option>
+                  </select>
+                )}
+              </FormField>
+              <FormField label="Profesor">
+                {(p) => (
+                  <select {...p} value={form.profesor_id} onChange={(e) => setForm((f) => ({ ...f, profesor_id: e.target.value }))} className={CLASE_INPUT}>
+                    <option value="">Sin profesor asignado</option>
+                    {profesores.map((pr) => <option key={pr.id} value={pr.id}>{pr.nombre}</option>)}
+                  </select>
+                )}
+              </FormField>
+            </>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Sede" required={form.tipo_evento !== "partido"}>
+              {(p) => (
+                <select {...p} value={form.sede_id} onChange={(e) => setForm((f) => ({ ...f, sede_id: e.target.value }))} className={CLASE_INPUT}>
+                  <option value="">{form.tipo_evento === "partido" ? "Sin sede" : "Seleccionar sede"}</option>
+                  {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                </select>
+              )}
+            </FormField>
+            <FormField label="Cupo máximo" required ayuda={modal === "edit" && form.inscritos ? `${form.inscritos} inscritos` : undefined}>
+              {(p) => <NumberInput {...p} value={form.cupo_maximo} onChange={(n) => setForm((f) => ({ ...f, cupo_maximo: n }))} />}
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Fecha" required>
+              {/* Día de hoy en Chile: el día UTC ya es "mañana" después de las 21:00. */}
+              {(p) => <input {...p} type="date" min={modal === "create" ? hoyChile() : undefined} value={form.fecha} onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))} className={CLASE_INPUT} />}
+            </FormField>
+            <FormField label="Hora" required>
+              {(p) => <input {...p} type="time" value={form.hora} onChange={(e) => setForm((f) => ({ ...f, hora: e.target.value }))} className={CLASE_INPUT} />}
+            </FormField>
+          </div>
+          {/* CLA-09: el bot ya pudo mandarles el recordatorio con la hora anterior. */}
+          {fechaCambio && (form.inscritos ?? 0) > 0 && (
+            <p role="note" className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+              La clase tiene {form.inscritos} alumno{form.inscritos !== 1 ? "s" : ""} inscrito{form.inscritos !== 1 ? "s" : ""}. Si ya recibieron el recordatorio por WhatsApp, tenía la hora anterior: avísales del cambio.
+            </p>
+          )}
+
+          <FormField label="Descripción">
+            {(p) => <textarea {...p} rows={2} value={form.descripcion} onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))} placeholder={form.tipo_evento === "partido" ? "Ej: Partido amistoso vs..." : "Opcional"} className={CLASE_INPUT} />}
+          </FormField>
+
+          {errorForm && <p role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{errorForm}</p>}
+        </div>
+      </Modal>
+
       <ConfirmDialog
-        open={deleteId !== null}
+        open={deleteTarget !== null}
         title="Eliminar clase"
-        message="¿Eliminar esta clase? Se borran sus inscripciones y, si aún no ocurre, se devuelve el token a cada alumno inscrito (los partidos no descuentan token)."
-        onConfirm={() => deleteId && handleDelete(deleteId)}
-        onCancel={() => setDeleteId(null)}
+        message={<>¿Eliminar <strong>{deleteTarget?.titulo || "Partido"}</strong>{deleteTarget?.fecha_hora ? ` del ${formatFecha(deleteTarget.fecha_hora)} a las ${formatHora(deleteTarget.fecha_hora)}` : ""}?</>}
+        consecuencias={[
+          `Se borran sus ${deleteTarget?.inscritos ?? 0} inscripciones.`,
+          "Si la clase aún no ocurre, se devuelve el token a cada alumno inscrito (los partidos no descuentan token).",
+        ]}
+        confirmLabel="Eliminar"
+        textoCargando="Eliminando..."
+        cargando={eliminando}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
-    </>
+    </div>
   );
 }
 
-/* ─── ASISTENCIA DETALLE ─── */
-const ESTADOS_CANCELADOS = new Set(["cancelado", "cancelado_sin_reembolso"]);
+/* ─── Asistencia de una clase ─── */
 
-function esCancelada(asistencia: string | null | undefined): boolean {
-  return ESTADOS_CANCELADOS.has(asistencia ?? "");
-}
-
-function BadgeAsistencia({ asistencia }: { asistencia: string | null | undefined }) {
-  const a = asistencia ?? "";
-
-  if (a === "asistio") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-        <Check size={12} /> Presente
-      </span>
-    );
-  }
-  if (a === "confirmado_whatsapp") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
-        <Check size={12} /> Confirmado
-      </span>
-    );
-  }
-  if (a === "no_asistio") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
-        <X size={12} /> Ausente
-      </span>
-    );
-  }
-  if (a === "cancelado" || a === "cancelado_sin_reembolso") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full text-xs font-semibold">
-        <X size={12} />
-        {a === "cancelado_sin_reembolso" ? "Cancelada sin reembolso" : "Cancelada"}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">
-      Pendiente
-    </span>
-  );
-}
+const CANCELADAS = new Set(["cancelado", "cancelado_sin_reembolso"]);
 
 function AsistenciaDetalle({
   data,
-  onToggle,
+  ahora,
+  onVolver,
+  onMarcar,
 }: {
   data: AsistenciaDetalleClase;
-  onToggle: (usuarioId: string, asistencia: boolean) => void;
+  ahora: number;
+  onVolver: () => void;
+  onMarcar: (ins: InscripcionRow, presente: boolean) => void;
 }) {
   const { clase, inscripciones } = data;
-
-  const canceladas = inscripciones.filter((i: InscripcionRow) => esCancelada(i.asistencia)).length;
+  // CLA-10: la asistencia se registra desde que empieza la clase, no antes.
+  const empezo = yaOcurrio(clase, ahora);
+  const cuenta = (pred: (i: InscripcionRow) => boolean) => inscripciones.filter(pred).length;
+  const canceladas = cuenta((i) => CANCELADAS.has(i.asistencia ?? ""));
   const activas = inscripciones.length - canceladas;
-  const presentes = inscripciones.filter((i: InscripcionRow) => i.asistencia === "asistio").length;
-  const ausentes = inscripciones.filter((i: InscripcionRow) => i.asistencia === "no_asistio").length;
-  const confirmados = inscripciones.filter((i: InscripcionRow) => i.asistencia === "confirmado_whatsapp").length;
-  const pendientes = inscripciones.length - presentes - ausentes - confirmados - canceladas;
+
+  const botones = (ins: InscripcionRow) => {
+    if (CANCELADAS.has(ins.asistencia ?? "")) return <span className="text-xs text-gray-400">Canceló: no se registra asistencia</span>;
+    if (!empezo) return <span className="text-xs text-gray-400">Se registra desde el inicio de la clase</span>;
+    const presente = ins.asistencia === "asistio";
+    const ausente = ins.asistencia === "no_asistio";
+    return (
+      <div className="flex gap-2" role="group" aria-label={`Asistencia de ${ins.usuario_nombre}`}>
+        <button
+          type="button"
+          aria-pressed={presente}
+          onClick={() => onMarcar(ins, true)}
+          className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold border ${presente ? "bg-green-600 border-green-600 text-white" : "border-green-300 text-green-700 hover:bg-green-50"}`}
+        >
+          <Check size={14} aria-hidden /> Presente
+        </button>
+        <button
+          type="button"
+          aria-pressed={ausente}
+          onClick={() => onMarcar(ins, false)}
+          className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold border ${ausente ? "bg-red-600 border-red-600 text-white" : "border-red-300 text-red-700 hover:bg-red-50"}`}
+        >
+          <X size={14} aria-hidden /> Ausente
+        </button>
+      </div>
+    );
+  };
+
+  const columnas: Columna<InscripcionRow>[] = [
+    { id: "alumno", encabezado: "Alumno", celda: (i) => <span className="font-medium text-gray-900">{i.usuario_nombre}</span>, valorOrden: (i) => i.usuario_nombre },
+    // StatusBadge distingue "Sin confirmar" de "Recordatorio enviado" (antes ambos decían "Pendiente").
+    { id: "estado", encabezado: "Estado", celda: (i) => <StatusBadge estado={i.asistencia ?? "sin_confirmar"} />, valorOrden: (i) => i.asistencia },
+    { id: "acciones", encabezado: "Asistencia", celda: botones },
+  ];
 
   return (
-    <div className="bg-white border border-gray-200">
-      <div className="p-4 border-b border-gray-100">
-        <h2 className="text-lg font-bold text-gray-900">{clase.titulo || "Partido"}</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          {clase.cupo_maximo != null ? (
-            <>Cupo: {activas}/{clase.cupo_maximo} · {inscripciones.length} inscritos en total</>
-          ) : (
-            <>{inscripciones.length} inscritos</>
-          )}
-          {clase.fecha_hora ? (
-            <> · {new Date(clase.fecha_hora).toLocaleDateString("es-CL", {
-              day: "2-digit", month: "short", year: "numeric", timeZone: "America/Santiago",
-            })} {new Date(clase.fecha_hora).toLocaleTimeString("es-CL", {
-              hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago",
-            })}</>
-          ) : (
-            " · Sin horario"
-          )}
-        </p>
-      </div>
-
-      <div className="md:overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="hidden md:table-header-group">
-            <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-              <th className="p-3 font-semibold">Alumno</th>
-              <th className="p-3 font-semibold">Asistencia</th>
-              <th className="p-3 font-semibold">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {inscripciones.length === 0 ? (
-              <tr><td colSpan={3} className="p-8 text-center text-gray-400">No hay alumnos inscritos en esta clase</td></tr>
-            ) : inscripciones.map((ins: InscripcionRow) => (
-              <Fragment key={ins.id}>
-                {/* MOBILE CARD */}
-                <tr className="md:hidden border-b border-gray-100">
-                  <td colSpan={3} className="p-0">
-                    <div className="p-3 space-y-2">
-                      <p className="font-medium text-gray-900 text-sm">{ins.usuario_nombre}</p>
-                      <div className="flex items-center justify-between">
-                        <BadgeAsistencia asistencia={ins.asistencia} />
-                      </div>
-                      {esCancelada(ins.asistencia) ? (
-                        <p className="text-xs text-gray-400">Alumno cancelado: no se registra asistencia.</p>
-                      ) : (
-                        <div className="flex gap-2">
-                          <button onClick={() => onToggle(ins.usuario_id, true)} className="flex-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"><Check size={14} className="inline" /> Presente</button>
-                          <button onClick={() => onToggle(ins.usuario_id, false)} className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"><X size={14} className="inline" /> Ausente</button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-                {/* DESKTOP ROW */}
-                <tr key={ins.id} className="hidden md:table-row border-b hover:bg-gray-50/50">
-                  <td className="p-3 font-medium text-gray-900">{ins.usuario_nombre}</td>
-                  <td className="p-3">
-                    <BadgeAsistencia asistencia={ins.asistencia} />
-                  </td>
-                  <td className="p-3">
-                    {esCancelada(ins.asistencia) ? (
-                      <span className="text-xs text-gray-400">—</span>
-                    ) : (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => onToggle(ins.usuario_id, true)}
-                          className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 font-semibold"
-                        >
-                          <Check size={14} className="inline" /> Presente
-                        </button>
-                        <button
-                          onClick={() => onToggle(ins.usuario_id, false)}
-                          className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 font-semibold"
-                        >
-                          <X size={14} className="inline" /> Ausente
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="p-3 border-t border-gray-100 flex items-center gap-4 text-sm">
-        <Users size={16} className="text-gray-400" />
-        <span className="text-gray-600">
-          <strong className="text-green-600">{presentes}</strong> presentes ·{" "}
-          <strong className="text-red-500">{ausentes}</strong> ausentes ·{" "}
-          <strong className="text-emerald-600">{confirmados}</strong> confirmados ·{" "}
-          <strong className="text-gray-400">{pendientes}</strong> pendientes ·{" "}
-          <strong className="text-gray-500">{canceladas}</strong> canceladas
-        </span>
-      </div>
-    </div>
+    <>
+      <PageHeader
+        titulo={clase.titulo || "Partido"}
+        descripcion={
+          <>
+            {clase.fecha_hora ? `${formatFecha(clase.fecha_hora)} · ${formatHora(clase.fecha_hora)}` : "Sin horario"}
+            {" · "}
+            {clase.cupo_maximo != null ? `Cupo ${activas}/${clase.cupo_maximo}` : `${activas} inscritos`}
+          </>
+        }
+        acciones={<Button variante="secundario" icono={<ChevronLeft size={16} />} onClick={onVolver}>Volver a clases</Button>}
+      />
+      <DataTable
+        etiqueta="Asistencia"
+        filas={inscripciones}
+        columnas={columnas}
+        getId={(i) => i.id}
+        vacio="No hay alumnos inscritos en esta clase"
+        tarjetaMovil={(i) => (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium text-gray-900 text-sm">{i.usuario_nombre}</p>
+              <StatusBadge estado={i.asistencia ?? "sin_confirmar"} />
+            </div>
+            {botones(i)}
+          </div>
+        )}
+      />
+      <p className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-3">
+        <Users size={16} className="text-gray-400" aria-hidden />
+        <span><strong className="text-green-600">{cuenta((i) => i.asistencia === "asistio")}</strong> presentes</span> ·
+        <span><strong className="text-red-500">{cuenta((i) => i.asistencia === "no_asistio")}</strong> ausentes</span> ·
+        <span><strong className="text-emerald-600">{cuenta((i) => i.asistencia === "confirmado_whatsapp")}</strong> confirmados</span> ·
+        <span><strong className="text-gray-500">{canceladas}</strong> canceladas</span>
+      </p>
+    </>
   );
 }
