@@ -143,4 +143,48 @@ describe("Modal de confirmación de pago (DashboardClient)", () => {
         const salida = screen.getByRole("button", { name: /recargar y ver mi estado/i });
         expect(salida).toBeTruthy();
     });
+
+    // Bug real: Next.js sincroniza history.replaceState con useSearchParams. Al
+    // limpiar la URL cambiaba searchParams, el efecto se re-ejecutaba y su cleanup
+    // cancelaba el poll y el límite de 25 s: el modal quedaba pegado aunque el pago
+    // ya estuviera "pagado" y la membresía activa.
+    it("con Next sincronizando replaceState → searchParams, igual termina en '¡Pago exitoso!'", async () => {
+        mockSearchParams({ flowSuccess: "1", token: "tk-test" });
+        sessionStorage.setItem("flowBoletaId", "boleta-3");
+        mockSupabase();
+        global.fetch = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ estado: "pagado" }), { status: 200, headers: { "Content-Type": "application/json" } }),
+        ) as any;
+
+        const { rerender } = render(<DashboardClient />);
+        // Lo que hace Next al limpiar la URL: useSearchParams devuelve un objeto nuevo sin flowSuccess.
+        expect(window.history.replaceState).toHaveBeenCalled();
+        mockSearchParams({});
+        rerender(<DashboardClient />);
+
+        await waitFor(() => {
+            expect(screen.getByText("¡Pago exitoso!")).toBeTruthy();
+        }, { timeout: 3000 });
+        expect(screen.queryByText("Confirmando pago")).toBeNull();
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("tras el pago exitoso vuelve a consultar el plan (la membresía se creó después de cargar el dashboard)", async () => {
+        mockSearchParams({ flowSuccess: "1", token: "tk-test" });
+        sessionStorage.setItem("flowBoletaId", "boleta-4");
+        mockSupabase();
+        global.fetch = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ estado: "pagado" }), { status: 200, headers: { "Content-Type": "application/json" } }),
+        ) as any;
+
+        render(<DashboardClient />);
+        await waitFor(() => expect(screen.getByText("¡Pago exitoso!")).toBeTruthy(), { timeout: 3000 });
+
+        // Una consulta al cargar y otra después del pago: así el dashboard deja de mostrar "sin plan".
+        const supabase = (createClient as any).mock.results[0].value;
+        await waitFor(() => {
+            const consultasMembresia = supabase.from.mock.calls.filter((c: unknown[]) => c[0] === "membresia").length;
+            expect(consultasMembresia).toBe(2);
+        });
+    });
 });

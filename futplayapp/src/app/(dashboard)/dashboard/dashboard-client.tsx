@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, X, Loader2, Snowflake } from "lucide-react";
 import TopNavBarUser from "../../../components/navbars/TopNavBarUser";
@@ -27,9 +27,42 @@ export default function DashboardClient() {
     const [showFailure, setShowFailure] = useState(false);
     const [confirmIndeterminate, setConfirmIndeterminate] = useState(false);
     const [confirmingPayment, setConfirmingPayment] = useState(false);
+    // La confirmación corre una sola vez por regreso de Flow (ver el efecto).
+    const confirmacionIniciada = useRef(false);
+
+    const revisarPlan = useCallback(async () => {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const [tieneFichaData, membreciaResponse] = await Promise.all([
+            userHasFichaMedica(user.id),
+            supabase
+                .from("membresia")
+                .select("congelada")
+                .eq("usuario_id", user.id)
+                .eq("estado", true)
+                .lte("fecha_inicio", new Date().toISOString())
+                .gte("fecha_vencimiento", new Date().toISOString())
+                .order("fecha_vencimiento", { ascending: false })
+                .limit(1)
+                .maybeSingle()
+        ]);
+
+        setTieneFicha(tieneFichaData);
+        setTienePlanCongelado(membreciaResponse.data?.congelada === true);
+        setTienePlan(!!membreciaResponse.data && membreciaResponse.data.congelada !== true);
+        setPlanChecked(true);
+    }, []);
 
     useEffect(() => {
+        // Next.js sincroniza history.replaceState con useSearchParams: al limpiar
+        // la URL (abajo) searchParams cambia y este efecto se vuelve a ejecutar.
+        // Antes su cleanup cancelaba el poll y el límite de 25 s, y el modal
+        // "Confirmando pago" quedaba pegado aunque el pago ya estuviera aprobado.
+        // Por eso corre una sola vez y nada de lo de abajo se cancela al re-ejecutarse.
+        if (confirmacionIniciada.current) return;
         if (searchParams.get("flowSuccess") !== "1") return;
+        confirmacionIniciada.current = true;
 
         const token = searchParams.get("token");
         const params = new URLSearchParams(window.location.search);
@@ -44,7 +77,6 @@ export default function DashboardClient() {
         if (!boletaId) return;
         sessionStorage.removeItem("flowBoletaId");
 
-        let cancelled = false;
         setConfirmingPayment(true);
 
         const url = new URL("/api/flow/confirm", window.location.origin);
@@ -56,27 +88,34 @@ export default function DashboardClient() {
         // Límite de seguridad: nunca dejar el modal "Confirmando pago" por siempre.
         // Si el poll no resolvió nada dentro de este plazo, cerramos confirmando y
         // mostramos el aviso neutro (el pago puede completarse vía webhook en 2º plano).
-        const hardTimeout = setTimeout(() => {
-            if (cancelled) return;
+        let resuelto = false;
+        const terminar = (resultado: "pagado" | "rechazado" | "indeterminado") => {
+            if (resuelto) return;
+            resuelto = true;
+            clearTimeout(hardTimeout);
             setConfirmingPayment(false);
-            setConfirmIndeterminate(true);
-        }, 25000);
+            if (resultado === "pagado") {
+                setShowSuccess(true);
+                // La membresía se creó después de cargar el dashboard: actualizar el plan.
+                revisarPlan();
+            } else if (resultado === "rechazado") {
+                setShowFailure(true);
+            } else {
+                setConfirmIndeterminate(true);
+            }
+        };
+
+        const hardTimeout = setTimeout(() => terminar("indeterminado"), 25000);
 
         const poll = async (attempts: number): Promise<void> => {
-            if (cancelled) return;
+            if (resuelto) return;
             try {
                 const res = await fetch(url.toString(), {
                     signal: AbortSignal.timeout(8000),
                 });
                 const data = await res.json();
-                if (res.ok && data.estado === "pagado") {
-                    setShowSuccess(true);
-                    return;
-                }
-                if (data.estado === "rechazado" || data.estado === "anulado") {
-                    setShowFailure(true);
-                    return;
-                }
+                if (res.ok && data.estado === "pagado") return terminar("pagado");
+                if (data.estado === "rechazado" || data.estado === "anulado") return terminar("rechazado");
                 if (data.estado === "pendiente" && attempts < 6) {
                     await new Promise((r) => setTimeout(r, 2500));
                     return poll(attempts + 1);
@@ -85,48 +124,17 @@ export default function DashboardClient() {
                 // con "carga eterna", mostramos un aviso neutro: el pago pudo completarse
                 // (el webhook termina de sincronizar en segundo plano). El usuario puede
                 // recargar para ver el estado final.
-                if (!cancelled) setConfirmIndeterminate(true);
+                terminar("indeterminado");
             } catch {
-                if (!cancelled) setConfirmIndeterminate(true);
+                terminar("indeterminado");
             }
         };
-        poll(0).finally(() => {
-            if (!cancelled) setConfirmingPayment(false);
-        });
-
-        return () => {
-            cancelled = true;
-            clearTimeout(hardTimeout);
-            setShowSuccess(false);
-        };
-    }, [searchParams]);
+        poll(0);
+    }, [searchParams, revisarPlan]);
 
     useEffect(() => {
-        const check = async () => {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            const [tieneFichaData, membreciaResponse] = await Promise.all([
-                userHasFichaMedica(user.id),
-                supabase
-                    .from("membresia")
-                    .select("congelada")
-                    .eq("usuario_id", user.id)
-                    .eq("estado", true)
-                    .lte("fecha_inicio", new Date().toISOString())
-                    .gte("fecha_vencimiento", new Date().toISOString())
-                    .order("fecha_vencimiento", { ascending: false })
-                    .limit(1)
-                    .maybeSingle()
-            ]);
-
-            setTieneFicha(tieneFichaData);
-            setTienePlanCongelado(membreciaResponse.data?.congelada === true);
-            setTienePlan(!!membreciaResponse.data && membreciaResponse.data.congelada !== true);
-            setPlanChecked(true);
-        };
-        check();
-    }, []);
+        revisarPlan();
+    }, [revisarPlan]);
 
     const formattedUser = {
         ...usuario,

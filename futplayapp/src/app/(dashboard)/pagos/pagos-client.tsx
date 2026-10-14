@@ -1218,7 +1218,7 @@ export default function PagosClient() {
                                 Confirmando pago
                             </h3>
                             <p className="text-gray-500 text-sm">
-                                Estamos verificar el pago con Flow. Un momento por favor...
+                                Estamos verificando el pago con Flow. Un momento por favor...
                             </p>
                         </div>
                     ) : confirmPending ? (
