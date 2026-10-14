@@ -1,16 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, Fragment } from "react";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Loader2,
-  X,
-  Search,
-  Snowflake,
-  Play,
-} from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Plus, Pencil, Trash2, Search, Snowflake, Play } from "lucide-react";
 import {
   getMembresiasGestion,
   createMembresiaGestion,
@@ -22,7 +13,20 @@ import {
 } from "@/data/membresia";
 import { getUsers, getPlanesAdmin, type Plan } from "@/data/plans";
 import type { Student } from "@/components/admin/StudentsTable";
-import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import {
+  Button,
+  CLASE_INPUT,
+  ConfirmDialog,
+  DataTable,
+  FormField,
+  Modal,
+  NumberInput,
+  PageHeader,
+  StatusBadge,
+  useAdminMutation,
+  useToast,
+  type Columna,
+} from "@/components/admin/ui";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -30,22 +34,23 @@ type MembresiaForm = {
   id?: string;
   usuario_id: string;
   plan_id: string;
-  boleta_id: string;
-  tokens_totales: number;
-  tokens_usados: number;
+  boleta_id: string | null;
+  tokens_totales: number | null;
+  tokens_usados: number | null;
   fecha_inicio: string;
   fecha_vencimiento: string;
   // ISO completos al abrir la edición: si el día no cambia, se reenvían tal cual.
   fecha_inicio_original?: string;
   fecha_vencimiento_original?: string;
   estado: boolean;
+  estado_original?: boolean;
 };
 
 const emptyForm: MembresiaForm = {
   usuario_id: "",
   plan_id: "",
-  boleta_id: "",
-  tokens_totales: 0,
+  boleta_id: null,
+  tokens_totales: null,
   tokens_usados: 0,
   fecha_inicio: "",
   fecha_vencimiento: "",
@@ -62,17 +67,20 @@ function dateToIso(date: string): string {
 
 function formatFecha(iso: string): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Santiago" });
 }
 
 type EstadoMembresia = "activa" | "inactiva" | "sin_tokens" | "congelada";
 
-// Mismo orden de prioridad que EstadoBadge: el filtro y la etiqueta coinciden.
+// Mismo orden de prioridad que la etiqueta: el filtro y el badge coinciden.
 function estadoDe(m: MembresiaGestion): EstadoMembresia {
   if (m.congelada) return "congelada";
   if (m.sin_tokens) return "sin_tokens";
   return m.estado ? "activa" : "inactiva";
 }
+
+const AYUDA_SIN_TOKENS =
+  "Se cerró al agotarse los tokens. El alumno puede comprar el plan siguiente. Si cancela a tiempo, el token devuelto la reactiva sola (o va a su membresía nueva, si ya compró otra).";
 
 const FILTROS_ESTADO: { valor: EstadoMembresia | "todas"; etiqueta: string }[] = [
   { valor: "todas", etiqueta: "Todas" },
@@ -82,32 +90,15 @@ const FILTROS_ESTADO: { valor: EstadoMembresia | "todas"; etiqueta: string }[] =
   { valor: "congelada", etiqueta: "Congeladas" },
 ];
 
-function EstadoBadge({ m }: { m: MembresiaGestion }) {
-  if (m.congelada) {
-    return (
-      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
-        Congelada
-      </span>
-    );
-  }
-  if (m.sin_tokens) {
-    return (
-      <span
-        className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700"
-        title="Se cerró al agotarse los tokens. El alumno puede comprar el plan siguiente. Si cancela a tiempo, el token devuelto la reactiva sola (o va a su membresía nueva, si ya compró otra)."
-      >
-        Sin tokens
-      </span>
-    );
-  }
-  return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.estado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-      {m.estado ? "Activa" : "Inactiva"}
-    </span>
-  );
+// "2 usados · 2 disponibles" (antes "2/4": no se sabía si eran usados o restantes).
+function textoTokens(m: Pick<MembresiaGestion, "tokens_usados" | "tokens_totales">): string {
+  const disponibles = Math.max(0, m.tokens_totales - m.tokens_usados);
+  return `${m.tokens_usados} usados · ${disponibles} disponible${disponibles !== 1 ? "s" : ""}`;
 }
 
 export default function MembresiasPage() {
+  const toast = useToast();
+  const { ejecutar } = useAdminMutation();
   const [membresias, setMembresias] = useState<MembresiaGestion[]>([]);
   const [usuarios, setUsuarios] = useState<Student[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
@@ -117,10 +108,10 @@ export default function MembresiasPage() {
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<MembresiaForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [exito, setExito] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [freezeAction, setFreezeAction] = useState<{ id: string; action: "congelar" | "reactivar" } | null>(null);
+  const [errorForm, setErrorForm] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MembresiaGestion | null>(null);
+  const [freezeAction, setFreezeAction] = useState<{ m: MembresiaGestion; action: "congelar" | "reactivar" } | null>(null);
+  const [accionEnCurso, setAccionEnCurso] = useState(false);
 
   const fetchData = useCallback(async () => {
     const [m, u, planesResult] = await Promise.all([
@@ -129,17 +120,18 @@ export default function MembresiasPage() {
       getPlanesAdmin(),
     ]);
     setMembresias(m);
-    setUsuarios(u.filter((user) => user.role !== "Admin"));
+    // Solo alumnos: antes también aparecían los profesores (MEM-05).
+    setUsuarios(u.filter((user) => user.role === "Alumno"));
     setPlanes(planesResult.planes);
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const coincideBusqueda = (m: MembresiaGestion) =>
-    m.usuario_nombre.toLowerCase().includes(search.toLowerCase()) ||
-    m.plan_nombre.toLowerCase().includes(search.toLowerCase());
-  const porBusqueda = membresias.filter(coincideBusqueda);
+  const q = search.toLowerCase();
+  const porBusqueda = membresias.filter((m) =>
+    m.usuario_nombre.toLowerCase().includes(q) || m.plan_nombre.toLowerCase().includes(q)
+  );
   const filtered = filtroEstado === "todas"
     ? porBusqueda
     : porBusqueda.filter((m) => estadoDe(m) === filtroEstado);
@@ -147,10 +139,15 @@ export default function MembresiasPage() {
   const conteoEstado = (valor: EstadoMembresia | "todas") =>
     valor === "todas" ? porBusqueda.length : porBusqueda.filter((m) => estadoDe(m) === valor).length;
 
-  const resetForm = () => { setForm(emptyForm); setError(null); };
+  const cerrarModal = () => {
+    setModal(null);
+    setForm(emptyForm);
+    setErrorForm(null);
+  };
 
   const openCreate = () => {
-    resetForm();
+    setForm(emptyForm);
+    setErrorForm(null);
     setModal("create");
   };
 
@@ -159,7 +156,7 @@ export default function MembresiasPage() {
       id: m.id,
       usuario_id: m.usuario_id,
       plan_id: m.plan_id,
-      boleta_id: m.boleta_id || "",
+      boleta_id: m.boleta_id ?? null,
       tokens_totales: m.tokens_totales,
       tokens_usados: m.tokens_usados,
       fecha_inicio: isoToDate(m.fecha_inicio),
@@ -167,487 +164,353 @@ export default function MembresiasPage() {
       fecha_inicio_original: m.fecha_inicio,
       fecha_vencimiento_original: m.fecha_vencimiento,
       estado: m.estado,
+      estado_original: m.estado,
     });
+    setErrorForm(null);
     setModal("edit");
   };
 
   const handleSave = async () => {
+    const totales = form.tokens_totales;
+    const usados = form.tokens_usados ?? 0;
     if (!form.usuario_id || !form.plan_id) {
-      setError("Usuario y plan son obligatorios");
+      setErrorForm("Alumno y plan son obligatorios");
+      return;
+    }
+    if (totales === null || totales < 0) {
+      setErrorForm("Indica los tokens totales (0 o más)");
       return;
     }
     if (modal === "edit") {
       if (!form.fecha_inicio || !form.fecha_vencimiento) {
-        setError("Fecha de inicio y vencimiento son obligatorias");
+        setErrorForm("Fecha de inicio y vencimiento son obligatorias");
         return;
       }
       if (form.fecha_vencimiento < form.fecha_inicio) {
-        setError("La fecha de vencimiento no puede ser anterior a la de inicio");
+        setErrorForm("La fecha de vencimiento no puede ser anterior a la de inicio");
         return;
       }
-      if (form.tokens_usados < 0 || form.tokens_usados > form.tokens_totales) {
-        setError("Los tokens usados deben estar entre 0 y los tokens totales");
+      if (usados < 0 || usados > totales) {
+        setErrorForm("Los tokens usados deben estar entre 0 y los tokens totales");
         return;
       }
     }
     setSaving(true);
-    setError(null);
+    setErrorForm(null);
 
     const isCreate = modal === "create";
     const planSel = planes.find((pl) => pl.id === form.plan_id);
     const diasVigencia = planSel?.dias_vigencia ?? planSel?.dias ?? 30;
-    const ahora = new Date();
     // Si el admin no cambió la fecha, se reenvía la original: dateToIso la
     // dejaba a medianoche y una membresía que vencía a las 05:15 perdía horas.
     const fechaEditada = (dia: string, original?: string) =>
       original && isoToDate(original) === dia ? original : dateToIso(dia);
-    const fecha_inicio = isCreate ? ahora.toISOString() : fechaEditada(form.fecha_inicio, form.fecha_inicio_original);
-    const fecha_vencimiento = isCreate
-      ? new Date(ahora.getTime() + diasVigencia * 24 * 60 * 60 * 1000).toISOString()
-      : fechaEditada(form.fecha_vencimiento, form.fecha_vencimiento_original);
 
-    const boleta_id = form.boleta_id.trim() || null;
-
+    // La boleta no se edita (MEM-06): la crea el pago. Al crear a mano queda sin boleta.
     const res = isCreate
       ? await createMembresiaGestion({
           usuario_id: form.usuario_id,
           plan_id: form.plan_id,
-          boleta_id,
-          tokens_totales: form.tokens_totales,
+          boleta_id: null,
+          tokens_totales: totales,
           dias: diasVigencia,
         })
       : await updateMembresiaGestion(form.id!, {
           usuario_id: form.usuario_id,
           plan_id: form.plan_id,
-          boleta_id,
-          tokens_totales: form.tokens_totales,
-          tokens_usados: form.tokens_usados,
-          fecha_inicio,
-          fecha_vencimiento,
+          tokens_totales: totales,
+          tokens_usados: usados,
+          fecha_inicio: fechaEditada(form.fecha_inicio, form.fecha_inicio_original),
+          fecha_vencimiento: fechaEditada(form.fecha_vencimiento, form.fecha_vencimiento_original),
           estado: form.estado,
         });
 
+    setSaving(false);
     if (!res.ok) {
-      // El motivo real (p. ej. "El alumno ya tiene una membresía vigente").
-      setError(res.error);
-      setSaving(false);
+      // En el modal, junto al formulario (p. ej. "El alumno ya tiene una membresía vigente").
+      setErrorForm(res.error);
       return;
     }
-
-    setSaving(false);
-    setModal(null);
-    resetForm();
+    toast.exito(isCreate ? "Membresía creada" : "Membresía actualizada");
+    cerrarModal();
     fetchData();
   };
 
-  const handleDelete = async (id: string) => {
-    setDeleteId(null);
-    setMembresias((prev) => prev.filter((m) => m.id !== id));
-    const res = await deleteMembresiaGestion(id);
-    if (!res.ok) {
-      setError(res.error);
-      fetchData();
-    }
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const m = deleteTarget;
+    const anterior = membresias;
+    setAccionEnCurso(true);
+    setMembresias((prev) => prev.filter((x) => x.id !== m.id));
+    await ejecutar(() => deleteMembresiaGestion(m.id), {
+      exito: `Membresía de ${m.usuario_nombre} eliminada`,
+      error: "No se pudo eliminar la membresía",
+      revertir: () => setMembresias(anterior),
+    });
+    setAccionEnCurso(false);
+    setDeleteTarget(null);
   };
 
   const handleFreezeAction = async () => {
     if (!freezeAction) return;
-    setSaving(true);
-    setError(null);
-    setExito(null);
-    const result = freezeAction.action === "congelar"
-      ? await congelarMembresia(freezeAction.id)
-      : await reactivarMembresia(freezeAction.id);
-    const action = freezeAction.action;
-    const id = freezeAction.id;
+    const { m, action } = freezeAction;
+    setAccionEnCurso(true);
+    const result = action === "congelar" ? await congelarMembresia(m.id) : await reactivarMembresia(m.id);
+    setAccionEnCurso(false);
     setFreezeAction(null);
-    setSaving(false);
     if (!result.ok) {
-      setError(result.error || "Error al ejecutar la acción");
+      toast.error(action === "congelar" ? "No se pudo congelar" : "No se pudo reactivar", result.error);
       return;
     }
-    const nombre = membresias.find((m) => m.id === id)?.usuario_nombre ?? "";
-    const canceladas = result.reservasCanceladas ?? 0;
-    setExito(action === "congelar"
-      ? `Membresía de ${nombre} congelada correctamente. Los días quedan pausados.` +
-        (canceladas > 0
-          ? ` Se cancelaron ${canceladas} reserva${canceladas !== 1 ? "s" : ""} futura${canceladas !== 1 ? "s" : ""} y se devolvieron sus tokens.`
-          : "")
-      : `Membresía de ${nombre} reactivada correctamente. Nuevo vencimiento: ${formatFecha(result.fecha_vencimiento ?? "")}`);
+    if (action === "congelar") {
+      const canceladas = result.reservasCanceladas ?? 0;
+      toast.exito(
+        `Membresía de ${m.usuario_nombre} congelada.` +
+          (canceladas > 0 ? ` Se cancelaron ${canceladas} reserva${canceladas !== 1 ? "s" : ""} y se devolvieron sus tokens.` : "")
+      );
+    } else {
+      toast.exito(`Membresía de ${m.usuario_nombre} reactivada. Nuevo vencimiento: ${formatFecha(result.fecha_vencimiento ?? "")}`);
+    }
     fetchData();
   };
 
-  if (loading && membresias.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-5 h-5 animate-spin text-[#F28C28]" />
-      </div>
-    );
-  }
+  const acciones = (m: MembresiaGestion, tamano: number) => (
+    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+      {!m.congelada && m.estado && (
+        <button type="button" onClick={() => setFreezeAction({ m, action: "congelar" })} className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg" title="Congelar" aria-label={`Congelar membresía de ${m.usuario_nombre}`}>
+          <Snowflake size={tamano} />
+        </button>
+      )}
+      {m.congelada && (
+        <button type="button" onClick={() => setFreezeAction({ m, action: "reactivar" })} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Reactivar" aria-label={`Reactivar membresía de ${m.usuario_nombre}`}>
+          <Play size={tamano} />
+        </button>
+      )}
+      <button type="button" onClick={() => openEdit(m)} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar membresía de ${m.usuario_nombre}`}>
+        <Pencil size={tamano} />
+      </button>
+      <button type="button" onClick={() => setDeleteTarget(m)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar" aria-label={`Eliminar membresía de ${m.usuario_nombre}`}>
+        <Trash2 size={tamano} />
+      </button>
+    </div>
+  );
+
+  const badge = (m: MembresiaGestion) => (
+    <StatusBadge estado={estadoDe(m)} title={m.sin_tokens && !m.congelada ? AYUDA_SIN_TOKENS : undefined} />
+  );
+
+  const columnas: Columna<MembresiaGestion>[] = [
+    { id: "alumno", encabezado: "Alumno", celda: (m) => <span className="font-semibold text-gray-900">{m.usuario_nombre}</span>, valorOrden: (m) => m.usuario_nombre },
+    { id: "plan", encabezado: "Plan", celda: (m) => m.plan_nombre, valorOrden: (m) => m.plan_nombre },
+    { id: "tokens", encabezado: "Tokens", celda: (m) => <span className="whitespace-nowrap">{textoTokens(m)}</span>, valorOrden: (m) => m.tokens_totales - m.tokens_usados },
+    { id: "inicio", encabezado: "Inicio", celda: (m) => formatFecha(m.fecha_inicio), valorOrden: (m) => m.fecha_inicio, className: "whitespace-nowrap" },
+    { id: "vence", encabezado: "Vencimiento", celda: (m) => formatFecha(m.fecha_vencimiento), valorOrden: (m) => m.fecha_vencimiento, className: "whitespace-nowrap" },
+    { id: "estado", encabezado: "Estado", celda: badge, valorOrden: (m) => estadoDe(m) },
+    { id: "acciones", encabezado: "Acciones", celda: (m) => acciones(m, 16) },
+  ];
+
+  // Al editar una membresía de alguien que ya no figura como alumno, se mantiene en la lista.
+  const opcionesUsuario = form.usuario_id && !usuarios.some((u) => u.id === form.usuario_id)
+    ? [...usuarios, { id: form.usuario_id, name: membresias.find((m) => m.usuario_id === form.usuario_id)?.usuario_nombre ?? "Usuario actual" } as Student]
+    : usuarios;
+  const planSeleccionado = planes.find((pl) => pl.id === form.plan_id);
+  const pasaAInactiva = modal === "edit" && form.estado_original === true && form.estado === false;
 
   return (
-    <>
-      <div className="p-4 sm:p-6">
-        <div className="flex flex-col gap-6 w-full mx-auto" style={{ maxWidth: "1216px" }}>
-
-          {/* HEADER */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-extrabold text-gray-900">Membresías</h1>
-              <p className="text-gray-500 text-sm mt-1">Administra las membresías de los usuarios</p>
+    <div className="p-4 sm:p-6">
+      <div className="w-full max-w-[1216px] mx-auto">
+        <PageHeader
+          titulo="Gestión de membresías"
+          descripcion="Planes de los alumnos: tokens, vigencia y congelamientos"
+          acciones={<Button icono={<Plus size={16} />} onClick={openCreate}>Nueva membresía</Button>}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative w-full sm:max-w-xs">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+              <input
+                type="search"
+                aria-label="Buscar por alumno o plan"
+                placeholder="Buscar por alumno o plan..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={`${CLASE_INPUT} pl-9 py-2`}
+              />
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={openCreate}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto"
-              >
-                <Plus size={16} />
-                Nueva Membresía
-              </button>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
+              {FILTROS_ESTADO.map(({ valor, etiqueta }) => {
+                const activo = filtroEstado === valor;
+                return (
+                  <button
+                    key={valor}
+                    type="button"
+                    onClick={() => setFiltroEstado(valor)}
+                    aria-pressed={activo}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                      activo ? "bg-marca border-marca text-white" : "bg-white border-gray-200 text-gray-600 hover:border-marca"
+                    }`}
+                  >
+                    {etiqueta} <span className={activo ? "text-white/70" : "text-gray-400"}>{conteoEstado(valor)}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+        </PageHeader>
 
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+        <DataTable
+          etiqueta="Membresías"
+          filas={filtered}
+          columnas={columnas}
+          getId={(m) => m.id}
+          cargando={loading}
+          resetKey={`${search}|${filtroEstado}`}
+          vacio={search || filtroEstado !== "todas" ? "No se encontraron membresías" : "No hay membresías creadas aún"}
+          tarjetaMovil={(m) => (
+            <div className="space-y-1.5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold text-gray-900 text-sm">{m.usuario_nombre}</p>
+                {badge(m)}
+              </div>
+              <p className="text-xs text-gray-600">{m.plan_nombre} · {textoTokens(m)}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Vence {formatFecha(m.fecha_vencimiento)}</span>
+                {acciones(m, 16)}
+              </div>
+            </div>
           )}
-          {exito && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">{exito}</div>
-          )}
-
-          {/* LISTA */}
-          <div className="bg-white border border-gray-200">
-            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative w-full sm:max-w-xs">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar por usuario o plan..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
-                {FILTROS_ESTADO.map(({ valor, etiqueta }) => {
-                  const activo = filtroEstado === valor;
-                  return (
-                    <button
-                      key={valor}
-                      type="button"
-                      onClick={() => setFiltroEstado(valor)}
-                      aria-pressed={activo}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                        activo
-                          ? "bg-blue-600 border-blue-600 text-white"
-                          : "bg-white border-gray-200 text-gray-600 hover:border-blue-400"
-                      }`}
-                    >
-                      {etiqueta} <span className={activo ? "text-white/70" : "text-gray-400"}>{conteoEstado(valor)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="text-sm text-gray-500 self-end sm:self-auto sm:ml-auto">{filtered.length} membresía{filtered.length !== 1 ? "s" : ""}</span>
-            </div>
-
-            <div className="md:overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="hidden md:table-header-group">
-                  <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-                    <th className="p-3 font-semibold">Usuario</th>
-                    <th className="p-3 font-semibold">Plan</th>
-                    <th className="p-3 font-semibold">Tokens</th>
-                    <th className="p-3 font-semibold">Inicio</th>
-                    <th className="p-3 font-semibold">Vencimiento</th>
-                    <th className="p-3 font-semibold">Estado</th>
-                    <th className="p-3 font-semibold">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="p-8 text-center text-gray-400">
-                        {search || filtroEstado !== "todas" ? "No se encontraron membresías" : "No hay membresías creadas aún"}
-                      </td>
-                    </tr>
-                  ) : filtered.map((m) => (
-                    <Fragment key={m.id}>
-                      {/* MOBILE CARD */}
-                      <tr className="md:hidden border-b border-gray-100">
-                        <td colSpan={7} className="p-0">
-                          <div className="p-3 space-y-1.5">
-                            <p className="font-semibold text-gray-900 truncate text-sm">{m.usuario_nombre}</p>
-                            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
-                              <div><span className="text-gray-400">Plan: </span><span className="font-semibold text-gray-900">{m.plan_nombre}</span></div>
-                              <div><span className="text-gray-400">Tokens: </span><span className="font-semibold text-gray-700">{m.tokens_usados}/{m.tokens_totales}</span></div>
-                              <div><span className="text-gray-400">Vence: </span><span className="font-semibold text-gray-700">{formatFecha(m.fecha_vencimiento)}</span></div>
-                            </div>
-                            <div className="flex items-center justify-between pt-1 border-t border-gray-50">
-                              <EstadoBadge m={m} />
-                              <div className="flex gap-2">
-                                {(!m.congelada && m.estado) && (
-                                  <button onClick={() => setFreezeAction({ id: m.id, action: "congelar" })} className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg" title="Congelar"><Snowflake size={14} /></button>
-                                )}
-                                {m.congelada && (
-                                  <button onClick={() => setFreezeAction({ id: m.id, action: "reactivar" })} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Reactivar"><Play size={14} /></button>
-                                )}
-                                <button onClick={() => openEdit(m)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
-                                <button onClick={() => setDeleteId(m.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                      {/* DESKTOP ROW */}
-                      <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
-                        <td className="p-3 font-semibold text-gray-900 truncate max-w-[200px]">{m.usuario_nombre}</td>
-                        <td className="p-3 text-gray-600">
-                          <span className="font-semibold">{m.plan_nombre}</span>
-                        </td>
-                        <td className="p-3 text-gray-600 whitespace-nowrap">
-                          <span className="font-semibold text-gray-900">{m.tokens_usados}</span>
-                          <span className="text-gray-400"> / {m.tokens_totales}</span>
-                        </td>
-                        <td className="p-3 text-gray-600 whitespace-nowrap">{formatFecha(m.fecha_inicio)}</td>
-                        <td className="p-3 text-gray-600 whitespace-nowrap">{formatFecha(m.fecha_vencimiento)}</td>
-                        <td className="p-3">
-                          <EstadoBadge m={m} />
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
-                            {(!m.congelada && m.estado) && (
-                              <button
-                                onClick={() => setFreezeAction({ id: m.id, action: "congelar" })}
-                                className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg"
-                                title="Congelar"
-                              >
-                                <Snowflake size={16} />
-                              </button>
-                            )}
-                            {m.congelada && (
-                              <button
-                                onClick={() => setFreezeAction({ id: m.id, action: "reactivar" })}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
-                                title="Reactivar"
-                              >
-                                <Play size={16} />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => openEdit(m)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                              title="Editar"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={() => setDeleteId(m.id)}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                              title="Eliminar"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-
-        {/* MODAL */}
-        {modal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-lg p-6 shadow-xl max-h-[92vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  {modal === "create" ? "Nueva Membresía" : "Editar Membresía"}
-                </h2>
-                <button onClick={() => { setModal(null); resetForm(); }} className="p-1 hover:bg-gray-100 rounded-lg">
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Usuario */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Usuario *</label>
-                  <select
-                    value={form.usuario_id}
-                    onChange={(e) => setForm((p) => ({ ...p, usuario_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  >
-                    <option value="">Seleccionar usuario</option>
-                    {usuarios.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Plan */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Plan *</label>
-                  <select
-                    value={form.plan_id}
-                    onChange={(e) => {
-                      const plan = planes.find((pl) => pl.id === e.target.value);
-                      setForm((p) => ({
-                        ...p,
-                        plan_id: e.target.value,
-                        tokens_totales: plan?.tokens_mensuales || 0,
-                      }));
-                    }}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  >
-                    <option value="">Seleccionar plan</option>
-                    {planes.map((pl) => (
-                      <option key={pl.id} value={pl.id}>{pl.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Tokens Totales *</label>
-                    <input
-                      type="number"
-                      value={form.tokens_totales || ""}
-                      onChange={(e) => setForm((p) => ({ ...p, tokens_totales: parseInt(e.target.value) || 0 }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                      min={0}
-                    />
-                    <p className="text-[11px] text-gray-400 mt-1">Se autocompleta según el plan seleccionado</p>
-                  </div>
-                  {/* Antes no existía: no había forma de corregir el saldo de un alumno. */}
-                  {modal === "edit" && (
-                    <div>
-                      <label htmlFor="tokens-usados" className="block text-xs font-semibold text-gray-500 mb-1">Tokens usados</label>
-                      <input
-                        id="tokens-usados"
-                        type="number"
-                        value={form.tokens_usados}
-                        onChange={(e) => setForm((p) => ({ ...p, tokens_usados: e.target.value === "" ? 0 : parseInt(e.target.value) }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                        min={0}
-                        max={form.tokens_totales}
-                      />
-                      <p className="text-[11px] text-gray-400 mt-1">
-                        Disponibles: {Math.max(0, form.tokens_totales - form.tokens_usados)}
-                        {form.tokens_usados >= form.tokens_totales && form.tokens_totales > 0 ? " · quedará sin tokens" : ""}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {modal === "create" ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Vigencia</label>
-                    <p className="px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-600">
-                      Inicia hoy y vence en {planes.find((pl) => pl.id === form.plan_id)?.dias_vigencia ?? 30} días exactos
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha Inicio *</label>
-                      <input
-                        type="date"
-                        value={form.fecha_inicio}
-                        onChange={(e) => setForm((p) => ({ ...p, fecha_inicio: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Fecha Vencimiento *</label>
-                      <input
-                        type="date"
-                        value={form.fecha_vencimiento}
-                        onChange={(e) => setForm((p) => ({ ...p, fecha_vencimiento: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Boleta */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Boleta ID</label>
-                  <input
-                    type="text"
-                    value={form.boleta_id}
-                    onChange={(e) => setForm((p) => ({ ...p, boleta_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                    placeholder="Opcional"
-                  />
-                </div>
-
-                {/* Estado */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Estado</label>
-                  <select
-                    value={form.estado ? "true" : "false"}
-                    onChange={(e) => setForm((p) => ({ ...p, estado: e.target.value === "true" }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  >
-                    <option value="true">Activa</option>
-                    <option value="false">Inactiva</option>
-                  </select>
-                </div>
-
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-                <button
-                  onClick={() => { setModal(null); resetForm(); }}
-                  disabled={saving}
-                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {saving && <Loader2 size={14} className="animate-spin" />}
-                  {modal === "create" ? "Crear Membresía" : "Guardar Cambios"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        />
       </div>
 
+      <Modal
+        open={modal !== null}
+        onClose={cerrarModal}
+        title={modal === "create" ? "Nueva membresía" : "Editar membresía"}
+        bloquearCierre={saving}
+        footer={
+          <>
+            <Button variante="secundario" onClick={cerrarModal} disabled={saving}>Cancelar</Button>
+            <Button onClick={handleSave} cargando={saving} textoCargando="Guardando...">
+              {modal === "create" ? "Crear membresía" : "Guardar cambios"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="Alumno" required>
+            {(p) => (
+              <select {...p} value={form.usuario_id} onChange={(e) => setForm((f) => ({ ...f, usuario_id: e.target.value }))} className={CLASE_INPUT}>
+                <option value="">Seleccionar alumno</option>
+                {opcionesUsuario.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            )}
+          </FormField>
+
+          <FormField label="Plan" required>
+            {(p) => (
+              <select
+                {...p}
+                value={form.plan_id}
+                onChange={(e) => {
+                  const plan = planes.find((pl) => pl.id === e.target.value);
+                  setForm((f) => ({ ...f, plan_id: e.target.value, tokens_totales: plan?.tokens_mensuales ?? f.tokens_totales }));
+                }}
+                className={CLASE_INPUT}
+              >
+                <option value="">Seleccionar plan</option>
+                {planes.map((pl) => <option key={pl.id} value={pl.id}>{pl.nombre}</option>)}
+              </select>
+            )}
+          </FormField>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Tokens totales" required ayuda="Se completa con el plan elegido">
+              {(p) => <NumberInput {...p} value={form.tokens_totales} onChange={(n) => setForm((f) => ({ ...f, tokens_totales: n }))} />}
+            </FormField>
+            {/* Antes no existía: no había forma de corregir el saldo de un alumno (MEM-01). */}
+            {modal === "edit" && (
+              <FormField
+                label="Tokens usados"
+                ayuda={`Disponibles: ${Math.max(0, (form.tokens_totales ?? 0) - (form.tokens_usados ?? 0))}${
+                  (form.tokens_usados ?? 0) >= (form.tokens_totales ?? 0) && (form.tokens_totales ?? 0) > 0 ? " · quedará sin tokens" : ""
+                }`}
+              >
+                {(p) => <NumberInput {...p} value={form.tokens_usados} onChange={(n) => setForm((f) => ({ ...f, tokens_usados: n }))} />}
+              </FormField>
+            )}
+          </div>
+
+          {modal === "create" ? (
+            <p className="px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-600">
+              Inicia hoy y vence en {planSeleccionado?.dias_vigencia ?? planSeleccionado?.dias ?? 30} días.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Fecha de inicio" required>
+                {(p) => <input {...p} type="date" value={form.fecha_inicio} onChange={(e) => setForm((f) => ({ ...f, fecha_inicio: e.target.value }))} className={CLASE_INPUT} />}
+              </FormField>
+              <FormField label="Fecha de vencimiento" required>
+                {(p) => <input {...p} type="date" value={form.fecha_vencimiento} onChange={(e) => setForm((f) => ({ ...f, fecha_vencimiento: e.target.value }))} className={CLASE_INPUT} />}
+              </FormField>
+            </div>
+          )}
+
+          {modal === "edit" && (
+            <FormField
+              label="Estado"
+              ayuda={form.boleta_id ? "Membresía pagada con Flow." : "Membresía asignada desde el panel."}
+              // MEM-04: al pasar a inactiva el trigger borra sus reservas futuras sin devolver tokens.
+              error={pasaAInactiva ? "Al dejarla inactiva se borran las reservas futuras sin confirmar del alumno (si no tiene otra membresía vigente) y no se devuelven sus tokens. Si solo quieres pausarla, usa Congelar." : null}
+            >
+              {(p) => (
+                <select {...p} value={form.estado ? "true" : "false"} onChange={(e) => setForm((f) => ({ ...f, estado: e.target.value === "true" }))} className={CLASE_INPUT}>
+                  <option value="true">Activa</option>
+                  <option value="false">Inactiva</option>
+                </select>
+              )}
+            </FormField>
+          )}
+
+          {errorForm && (
+            <p role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{errorForm}</p>
+          )}
+        </div>
+      </Modal>
+
       <ConfirmDialog
-        open={deleteId !== null}
+        open={deleteTarget !== null}
         title="Eliminar membresía"
-        message="¿Eliminar esta membresía? Esta acción no se puede deshacer."
-        onConfirm={() => deleteId && handleDelete(deleteId)}
-        onCancel={() => setDeleteId(null)}
+        message={<>¿Eliminar la membresía de <strong>{deleteTarget?.usuario_nombre}</strong> ({deleteTarget?.plan_nombre})? No se puede deshacer.</>}
+        consecuencias={[
+          "Si el alumno no tiene otra membresía vigente, se borran sus reservas futuras sin confirmar.",
+          "No se devuelven tokens ni se reembolsa el pago.",
+        ]}
+        confirmLabel="Eliminar"
+        textoCargando="Eliminando..."
+        cargando={accionEnCurso}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
 
       <ConfirmDialog
         open={freezeAction !== null}
+        variante={freezeAction?.action === "congelar" ? "advertencia" : "info"}
         title={freezeAction?.action === "congelar" ? "Congelar membresía" : "Reactivar membresía"}
-        message={freezeAction?.action === "congelar"
-          ? "¿Congelar esta membresía? El tiempo dejará de correr y el jugador no podrá reservar clases hasta reactivar. Sus reservas futuras se cancelarán y se le devolverán los tokens."
-          : "¿Reactivar esta membresía? El vencimiento se correrá por la cantidad de días que estuvo congelada."}
-        // Sin esto el botón decía "Eliminar" (el valor por defecto del diálogo).
+        message={
+          freezeAction?.action === "congelar"
+            ? <>¿Congelar la membresía de <strong>{freezeAction?.m.usuario_nombre}</strong>?</>
+            : <>¿Reactivar la membresía de <strong>{freezeAction?.m.usuario_nombre}</strong>?</>
+        }
+        consecuencias={
+          freezeAction?.action === "congelar"
+            ? ["El tiempo deja de correr y no puede reservar hasta reactivarla.", "Sus reservas futuras se cancelan y se le devuelven los tokens."]
+            : ["El vencimiento se corre por los días que estuvo congelada.", "Vuelve a poder reservar con sus tokens."]
+        }
         confirmLabel={freezeAction?.action === "congelar" ? "Congelar" : "Reactivar"}
-        loadingLabel={freezeAction?.action === "congelar" ? "Congelando..." : "Reactivando..."}
-        variant="warning"
-        // Deshabilita los botones mientras responde: evita el doble clic.
-        loading={saving}
+        textoCargando={freezeAction?.action === "congelar" ? "Congelando..." : "Reactivando..."}
+        cargando={accionEnCurso}
         onConfirm={handleFreezeAction}
         onCancel={() => setFreezeAction(null)}
       />
-    </>
+    </div>
   );
 }
