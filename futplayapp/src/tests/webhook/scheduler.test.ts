@@ -15,6 +15,10 @@ function crearDb(over: Record<string, unknown> = {}) {
         getHorariosPasados: vi.fn().mockResolvedValue([]),
         getHorariosPasados1h: vi.fn().mockResolvedValue([]),
         actualizarPorClaseYEstado: vi.fn().mockResolvedValue(undefined),
+        getAvisosCambioHoraPendientes: vi.fn().mockResolvedValue([]),
+        marcarAvisosProcesados: vi.fn().mockResolvedValue(undefined),
+        getClaseConHora: vi.fn(),
+        getInscripcionesAbiertas: vi.fn().mockResolvedValue([]),
         ...over,
     };
 }
@@ -134,6 +138,8 @@ describe("scheduler del bot", () => {
 
         const primero = tick();
         await tick(); // mientras el primero sigue corriendo: debe salir sin hacer nada
+        // El ciclo revisa antes la cola de avisos de cambio de hora: esperar a que llegue aquí.
+        await vi.waitFor(() => expect(db.getHorarios24h).toHaveBeenCalled());
         liberar();
         await primero;
 
@@ -186,5 +192,109 @@ describe("scheduler del bot", () => {
         await tick();
 
         expect(enviar).toHaveBeenCalledWith("56912345678@c.us", expect.any(String));
+    });
+});
+
+// Decisión 4 del plan UI/UX: al cambiar la hora de una clase se avisa a los inscritos.
+describe("scheduler — aviso de cambio de hora", () => {
+    const EN_H = (h: number) => new Date(Date.now() + h * 3600000).toISOString();
+    // Sin clases en las próximas 24 h: solo corre la regla 5.
+    const base = (over: Record<string, unknown>) => crearDb({ getHorarios24h: vi.fn().mockResolvedValue([]), ...over });
+
+    it("SCH-AVI-001: avisa a las reservas abiertas con la hora anterior y la nueva, y marca el aviso", async () => {
+        const anterior = EN_H(30);
+        const db = base({
+            getAvisosCambioHoraPendientes: vi.fn().mockResolvedValue([{ id: "a1", clase_id: "c1", fecha_anterior: anterior, fecha_nueva: EN_H(32) }]),
+            getClaseConHora: vi.fn().mockResolvedValue({ titulo: "Tecnico", fecha_hora: EN_H(32) }),
+            getInscripcionesAbiertas: vi.fn().mockResolvedValue([{ id: "i1", usuario_id: "u1" }, { id: "i2", usuario_id: "u2" }]),
+            getUsuario: vi.fn((id: string) => Promise.resolve(id === "u1" ? { nombre: "Ana", telefono: "+56912345678" } : { nombre: "Sin tel", telefono: null })),
+        });
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(enviar).toHaveBeenCalledTimes(1);
+        expect(enviar).toHaveBeenCalledWith("56912345678@c.us", expect.stringMatching(/Cambió el horario de "Tecnico".*ahora es el/));
+        expect(enviar.mock.calls[0][1]).toContain("Tu reserva se mantiene");
+        expect(db.marcarAvisosProcesados).toHaveBeenCalledWith(["a1"], 1);
+    });
+
+    it("SCH-AVI-002: varios cambios seguidos de la misma clase se avisan una sola vez", async () => {
+        const db = base({
+            getAvisosCambioHoraPendientes: vi.fn().mockResolvedValue([
+                { id: "a1", clase_id: "c1", fecha_anterior: EN_H(30), fecha_nueva: EN_H(31) },
+                { id: "a2", clase_id: "c1", fecha_anterior: EN_H(31), fecha_nueva: EN_H(33) },
+            ]),
+            getClaseConHora: vi.fn().mockResolvedValue({ titulo: "Tecnico", fecha_hora: EN_H(33) }),
+            getInscripcionesAbiertas: vi.fn().mockResolvedValue([{ id: "i1", usuario_id: "u1" }]),
+        });
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(enviar).toHaveBeenCalledTimes(1);
+        expect(db.marcarAvisosProcesados).toHaveBeenCalledWith(["a1", "a2"], 1);
+    });
+
+    it("SCH-AVI-003: si volvió a la hora original o la clase ya pasó, no avisa (pero cierra el aviso)", async () => {
+        const original = EN_H(30);
+        const db = base({
+            getAvisosCambioHoraPendientes: vi.fn().mockResolvedValue([
+                { id: "a1", clase_id: "c1", fecha_anterior: original, fecha_nueva: EN_H(31) },
+                { id: "a2", clase_id: "c2", fecha_anterior: EN_H(-5), fecha_nueva: EN_H(-2) },
+            ]),
+            getClaseConHora: vi.fn((id: string) => Promise.resolve(id === "c1" ? { titulo: "A", fecha_hora: original } : { titulo: "B", fecha_hora: EN_H(-2) })),
+            getInscripcionesAbiertas: vi.fn().mockResolvedValue([{ id: "i1", usuario_id: "u1" }]),
+        });
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(enviar).not.toHaveBeenCalled();
+        expect(db.marcarAvisosProcesados).toHaveBeenCalledWith(["a1"], 0);
+        expect(db.marcarAvisosProcesados).toHaveBeenCalledWith(["a2"], 0);
+    });
+
+    it("SCH-AVI-004: si fallan todos los envíos, el aviso queda en cola para reintentar", async () => {
+        const db = base({
+            getAvisosCambioHoraPendientes: vi.fn().mockResolvedValue([{ id: "a1", clase_id: "c1", fecha_anterior: EN_H(30), fecha_nueva: EN_H(32) }]),
+            getClaseConHora: vi.fn().mockResolvedValue({ titulo: "Tecnico", fecha_hora: EN_H(32) }),
+            getInscripcionesAbiertas: vi.fn().mockResolvedValue([{ id: "i1", usuario_id: "u1" }]),
+        });
+        const { tick, enviar } = crear(db);
+        enviar.mockRejectedValue(new Error("WhatsApp desconectado"));
+
+        await tick();
+
+        expect(db.marcarAvisosProcesados).not.toHaveBeenCalled();
+    });
+
+    it("SCH-AVI-005: el aviso sale antes que los recordatorios del mismo ciclo", async () => {
+        const orden: string[] = [];
+        const db = crearDb({
+            getAvisosCambioHoraPendientes: vi.fn().mockResolvedValue([{ id: "a1", clase_id: "c1", fecha_anterior: EN_H(8), fecha_nueva: EN_H(5) }]),
+            getClaseConHora: vi.fn().mockResolvedValue({ titulo: "Tecnico", fecha_hora: EN_H(5) }),
+            getInscripcionesAbiertas: vi.fn().mockResolvedValue([{ id: "insc-1", usuario_id: "u1" }]),
+        });
+        const { tick, enviar } = crear(db);
+        enviar.mockImplementation((_chat: string, texto: string) => {
+            orden.push(texto.includes("Cambió el horario") ? "aviso" : "recordatorio");
+            return Promise.resolve();
+        });
+
+        await tick();
+
+        expect(orden).toEqual(["aviso", "recordatorio"]);
+    });
+
+    it("SCH-AVI-006: si la cola de avisos falla, los recordatorios salen igual", async () => {
+        const db = crearDb({ getAvisosCambioHoraPendientes: vi.fn().mockRejectedValue(new Error("relation aviso_cambio_hora does not exist")) });
+        const { tick, enviar } = crear(db);
+        vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await tick();
+
+        expect(enviar).toHaveBeenCalledWith("56912345678@c.us", expect.stringContaining("Confirma tu asistencia"));
+        expect(db.setPendiente).toHaveBeenCalledWith("insc-1");
     });
 });

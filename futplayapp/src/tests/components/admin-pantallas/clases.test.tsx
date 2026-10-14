@@ -79,7 +79,7 @@ describe("Gestión de clases (fase 3)", () => {
         expect(updateClase).not.toHaveBeenCalled();
     });
 
-    it("ADM-CLA-004: al cambiar la hora de una clase con inscritos avisa del recordatorio enviado (CLA-09)", async () => {
+    it("ADM-CLA-004: al cambiar la hora de una clase con inscritos explica que el bot les avisa (CLA-09, decisión 4)", async () => {
         renderPagina();
         await within(tabla()).findByText("Tecnico");
 
@@ -89,6 +89,7 @@ describe("Gestión de clases (fase 3)", () => {
         fireEvent.change(within(dialogo).getByLabelText(/Hora/), { target: { value: "07:15" } });
 
         expect(within(dialogo).getByRole("note")).toHaveTextContent("6 alumnos inscritos");
+        expect(within(dialogo).getByRole("note")).toHaveTextContent("el bot les avisa por WhatsApp");
     });
 
     it("ADM-CLA-005: eliminar explica que devuelve tokens y revierte si falla", async () => {

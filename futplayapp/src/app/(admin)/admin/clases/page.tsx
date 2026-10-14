@@ -488,10 +488,10 @@ export default function ClasesPage() {
               {(p) => <input {...p} type="time" value={form.hora} onChange={(e) => setForm((f) => ({ ...f, hora: e.target.value }))} className={CLASE_INPUT} />}
             </FormField>
           </div>
-          {/* CLA-09: el bot ya pudo mandarles el recordatorio con la hora anterior. */}
+          {/* CLA-09 (decisión 4): el bot avisa del cambio por WhatsApp (cola aviso_cambio_hora). */}
           {fechaCambio && (form.inscritos ?? 0) > 0 && (
             <p role="note" className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
-              La clase tiene {form.inscritos} alumno{form.inscritos !== 1 ? "s" : ""} inscrito{form.inscritos !== 1 ? "s" : ""}. Si ya recibieron el recordatorio por WhatsApp, tenía la hora anterior: avísales del cambio.
+              La clase tiene {form.inscritos} alumno{form.inscritos !== 1 ? "s" : ""} inscrito{form.inscritos !== 1 ? "s" : ""}. Al guardar, el bot les avisa por WhatsApp la hora anterior y la nueva. Sus reservas se mantienen.
             </p>
           )}
 

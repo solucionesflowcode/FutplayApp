@@ -37,6 +37,18 @@ function buildReminderMessage(usuario, clase, fechaHora) {
   return `Hola ${usuario.nombre}! Confirma tu asistencia a "${titulo}" el ${fecha} a las ${hora}. Responde *1* para confirmar o *2* para cancelar.`;
 }
 
+function formatoFechaHora(fechaHora) {
+  const d = new Date(fechaHora);
+  const fecha = d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Santiago' }).replace(',', '');
+  const hora = d.toLocaleString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Santiago' });
+  return `${fecha} a las ${hora}`;
+}
+
+function buildCambioHoraMessage(usuario, clase, fechaAnterior, fechaNueva) {
+  const titulo = clase?.titulo || 'tu clase';
+  return `Hola ${usuario.nombre}! Cambió el horario de "${titulo}": era el ${formatoFechaHora(fechaAnterior)} y ahora es el *${formatoFechaHora(fechaNueva)}*. Tu reserva se mantiene. Si no puedes asistir, cancélala desde "Mis clases" en la página.`;
+}
+
 async function recargarPagina(whatsapp) {
   try {
     if (!whatsapp?.puppeteer?.page) return;
@@ -190,4 +202,4 @@ async function procesarMensajeWhatsApp(telefono, texto, db, opts = {}) {
   return null;
 }
 
-module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, interpretarRespuesta, telefonoDesdeContacto, horasHasta, parseFechaHoraChile, buildReminderMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };
+module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, interpretarRespuesta, telefonoDesdeContacto, horasHasta, parseFechaHoraChile, buildReminderMessage, buildCambioHoraMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };

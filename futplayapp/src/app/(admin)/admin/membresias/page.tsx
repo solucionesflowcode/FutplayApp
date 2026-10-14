@@ -472,9 +472,10 @@ export default function MembresiasPage() {
           {modal === "edit" && (
             <FormField
               label="Estado"
-              ayuda={form.boleta_id ? "Membresía pagada con Flow." : "Membresía asignada desde el panel."}
-              // MEM-04: al pasar a inactiva el trigger borra sus reservas futuras sin devolver tokens.
-              error={pasaAInactiva ? "Al dejarla inactiva se borran las reservas futuras sin confirmar del alumno (si no tiene otra membresía vigente) y no se devuelven sus tokens. Si solo quieres pausarla, usa Congelar." : null}
+              // MEM-04 (decisión 3): dejarla inactiva no cancela reservas; solo impide reservar nuevas.
+              ayuda={pasaAInactiva
+                ? "Al dejarla inactiva el alumno no puede reservar nuevas clases. Sus reservas futuras se mantienen. Si quieres pausarla y devolver los tokens de esas reservas, usa Congelar."
+                : form.boleta_id ? "Membresía pagada con Flow." : "Membresía asignada desde el panel."}
             >
               {(p) => (
                 <select {...p} value={form.estado ? "true" : "false"} onChange={(e) => setForm((f) => ({ ...f, estado: e.target.value === "true" }))} className={CLASE_INPUT}>

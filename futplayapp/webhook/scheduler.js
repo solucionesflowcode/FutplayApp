@@ -1,4 +1,4 @@
-const { parseFechaHoraChile, buildReminderMessage } = require('./handlers');
+const { parseFechaHoraChile, buildReminderMessage, buildCambioHoraMessage } = require('./handlers');
 
 // Anticipación mínima para mandar el recordatorio: deja al menos 1 h para
 // responder antes del cierre de 1 h previo a la clase.
@@ -32,6 +32,11 @@ const MARGEN_RECORDATORIO_MS = 2 * 60 * 60 * 1000;
  *  3. Clase pasada: 'pendiente' → 'cancelado_sin_reembolso'.
  *  4. 1 h después de la clase: 'confirmado_whatsapp' → 'no_asistio'
  *     (el profesor puede corregirlo a 'asistio').
+ *  5. Cambio de hora de una clase futura (cola aviso_cambio_hora, la llena un
+ *     trigger): se avisa por WhatsApp a las reservas abiertas con la hora que
+ *     conocían y la nueva. Varios cambios seguidos se avisan una vez; si volvió
+ *     a la hora original o la clase ya pasó, no se avisa. Si fallan todos los
+ *     envíos de una clase, el aviso queda en cola para el siguiente ciclo.
  */
 function crearScheduler(deps) {
   const {
@@ -79,6 +84,51 @@ function crearScheduler(deps) {
     }
   }
 
+  async function avisarCambiosDeHora() {
+    const avisos = await db.getAvisosCambioHoraPendientes();
+    if (!avisos.length) return;
+
+    const porClase = new Map();
+    for (const a of avisos) {
+      if (!porClase.has(a.clase_id)) porClase.set(a.clase_id, []);
+      porClase.get(a.clase_id).push(a);
+    }
+
+    for (const [claseId, lista] of porClase) {
+      const ids = lista.map((a) => a.id);
+      // La hora que conocían los alumnos es la anterior al primer cambio.
+      const anterior = parseFechaHoraChile(lista[0].fecha_anterior);
+      const clase = await db.getClaseConHora(claseId);
+      const nueva = clase ? parseFechaHoraChile(clase.fecha_hora) : null;
+
+      if (!nueva || nueva.getTime() <= Date.now() || nueva.getTime() === anterior.getTime()) {
+        await db.marcarAvisosProcesados(ids, 0);
+        continue;
+      }
+
+      let enviados = 0;
+      let fallidos = 0;
+      for (const insc of await db.getInscripcionesAbiertas(claseId)) {
+        const usuario = await db.getUsuario(insc.usuario_id);
+        if (!usuario?.telefono) continue;
+        const telefono = usuario.telefono.replace(/\D/g, '');
+        try {
+          await enviar(`${telefono}@c.us`, buildCambioHoraMessage(usuario, clase, anterior, nueva));
+          enviados++;
+          console.log(`[Scheduler] Aviso de cambio de hora enviado a ${usuario.nombre}`);
+        } catch (err) {
+          fallidos++;
+          console.error(`[Scheduler] Error al avisar cambio de hora a ${usuario.nombre}:`, err.message);
+        }
+        if (esperaEntreEnviosMs > 0) await new Promise((r) => setTimeout(r, esperaEntreEnviosMs));
+      }
+
+      // Si no salió ninguno (WhatsApp caído a mitad de ciclo) se reintenta después.
+      if (fallidos > 0 && enviados === 0) continue;
+      await db.marcarAvisosProcesados(ids, enviados);
+    }
+  }
+
   async function cerrarConfirmaciones() {
     for (const h of await db.getHorariosProximos1h()) {
       await db.actualizarPorClaseYEstado(h.id, 'pendiente', 'cancelado_sin_reembolso');
@@ -101,6 +151,13 @@ function crearScheduler(deps) {
     }
     corriendo = true;
     try {
+      // Antes que los recordatorios: quien recibe uno ya ve la hora nueva.
+      // Aislado: si falla (p. ej. falta la tabla), los recordatorios siguen.
+      try {
+        await avisarCambiosDeHora();
+      } catch (err) {
+        console.error('[Scheduler] Error en avisos de cambio de hora:', err.message);
+      }
       await enviarRecordatorios();
       await cerrarConfirmaciones();
     } catch (err) {

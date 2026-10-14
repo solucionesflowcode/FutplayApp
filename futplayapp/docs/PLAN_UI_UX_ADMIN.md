@@ -277,6 +277,6 @@ flujo de perfil, skeletons y estados de error, contraste AA en textos grises.
 
 1. ~~**Planes:** ¿eliminar o solo desactivar?~~ **Decidido: solo se desactivan** (implementado en la fase 3).
 2. ~~**Profesores:** ¿"quitar rol" deja al usuario como jugador sin membresía?~~ **Decidido: dos acciones.** "Quitar rol de profesor" lo deja como jugador y conserva su cuenta, membresías y reservas; "Eliminar cuenta" la borra. Ambas se bloquean si tiene clases o cápsulas asignadas (implementado en la fase 3).
-3. **Membresía inactiva (MEM-04):** ¿debe comportarse como "Congelar" (cancelar reservas con devolución) o bloquearse si tiene reservas futuras?
-4. **Cambio de hora de una clase (CLA-09):** ¿reenviar el recordatorio automáticamente o solo avisar?
+3. ~~**Membresía inactiva (MEM-04):** ¿debe comportarse como "Congelar" (cancelar reservas con devolución) o bloquearse si tiene reservas futuras?~~ **Decidido: no cancela ninguna reserva futura**; solo impide reservar nuevas. Se eliminó el trigger `trg_membresia_estado_false`.
+4. ~~**Cambio de hora de una clase (CLA-09):** ¿reenviar el recordatorio automáticamente o solo avisar?~~ **Decidido: el bot avisa** por WhatsApp a los inscritos (cola `aviso_cambio_hora`, regla 5 del scheduler).
 5. ~~**Analíticas (ANA-01):** ¿renombrar la métrica o calcular retención real?~~ **Decidido: renombrarla a "% con plan activo".**

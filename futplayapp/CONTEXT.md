@@ -71,6 +71,7 @@ futplayapp/
 - **Planes no se eliminan, se desactivan** (`plan.activo = false`): salen del catálogo (`getPlanes`), su link familiar/liga deja de funcionar y `create-order` los rechaza (409). Las membresías vigentes no cambian. `DELETE /api/admin/planes` responde 405.
 - **Planes familiar y liga:** se compran solo con el link del admin (`codigo_acceso`, que no es legible por los usuarios). Liga es un pago único y no bloquea ni crea una membresía activa.
 - **Tokens:** los descuenta el trigger al inscribirse (los partidos no). Los devuelve `devolver_token` al cancelar con ≥ 3 h, salvo partidos: van a la otra membresía activa si el alumno compró una; si no, la membresía cerrada por tokens se reactiva.
+- **Membresía inactiva no cancela reservas:** dejarla inactiva (a mano o al vencer) solo impide reservar nuevas clases; las reservas futuras se mantienen (sus tokens ya se descontaron). Se eliminó el trigger `trg_membresia_estado_false`. Borrar la membresía sí borra las reservas futuras `sin_confirmar` (`trg_membresia_delete`). Para pausar y devolver tokens está Congelar.
 - **Plan ↔ clase:** kids solo reserva clases kids; normal no reserva kids. Lo valida la API y el trigger.
 - **Cancelar:** ≥ 3 h → `cancelado` + token; 1–3 h → `cancelado_sin_reembolso`; < 1 h → no se permite. La fecha se lee de la BD.
 - **Borrar una clase:** devuelve tokens solo a reservas activas de clases que aún no ocurren.
@@ -121,6 +122,7 @@ Autenticación por grupo: **admin** = `verifyAdmin()` + service_role; **user** =
   1. Manda los recordatorios 24 h antes (`sin_confirmar` → `pendiente`), salvo si la clase empieza en menos de 2 h.
   2. 1 h antes de la clase, solo `pendiente` (avisado y sin responder) pasa a `cancelado_sin_reembolso`. Las reservas `sin_confirmar` (nunca avisadas) no se cancelan.
   3. 1 h después de la clase, `confirmado_whatsapp` pasa a `no_asistio` (el profesor lo corrige a `asistio`).
+  4. **Cambio de hora:** el trigger `trg_clase_cambio_hora` registra en `aviso_cambio_hora` cada cambio de `fecha_hora` de una clase futura. En cada ciclo (antes que los recordatorios) el bot avisa a las reservas abiertas la hora anterior y la nueva, una vez por clase aunque haya varios cambios. No avisa si volvió a la hora original o ya pasó; si fallan todos los envíos, reintenta. Las reservas no cambian de estado.
 - **Encendidos cortos** (`webhook/mensajes.js`): al conectarse lee las respuestas recibidas con el bot apagado (desde `estado-bot.json`, máx. 7 días) y las aplica con la hora real del mensaje. El scheduler no corre hasta terminar; si un mensaje falla (BD caída) reintenta hasta 5 veces antes de seguir, y deja un piso en `estado-bot.json` para releerlo al próximo encendido. Los barridos post-clase también miran 7 días.
 - Sin `SUPABASE_SERVICE_ROLE_KEY` el bot **no arranca**. Despliegue: `webhook/DESPLIEGUE.md`.
 - Incluye un watchdog de reconexión y limpieza de Chrome colgado (`limpieza.js`). La sesión se guarda en un volumen de Docker.

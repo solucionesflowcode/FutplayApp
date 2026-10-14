@@ -88,6 +88,9 @@ function crearBd() {
         async getHorariosPasados() {
             return clases.filter((c) => ms(c) >= ahora() - VENTANA_PASADAS && ms(c) < ahora()).map(horario);
         },
+        async getAvisosCambioHoraPendientes() {
+            return [];
+        },
         async getHorariosPasados1h() {
             return clases.filter((c) => ms(c) >= ahora() - VENTANA_PASADAS && ms(c) <= ahora() - H).map(horario);
         },

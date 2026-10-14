@@ -92,14 +92,14 @@ describe("Gestión de membresías (fase 3)", () => {
         expect(screen.queryByLabelText(/Boleta/)).toBeNull();
     });
 
-    it("ADM-MEM-005: al pasar a Inactiva avisa que se borran reservas sin devolver tokens (MEM-04)", async () => {
+    it("ADM-MEM-005: al pasar a Inactiva explica que las reservas futuras se mantienen (MEM-04, decisión 3)", async () => {
         renderPagina();
         await within(tabla()).findByText("Ana Activa");
 
         fireEvent.click(within(tabla()).getByRole("button", { name: "Editar membresía de Ana Activa" }));
         fireEvent.change(screen.getByLabelText(/Estado/), { target: { value: "false" } });
 
-        expect(screen.getByLabelText(/Estado/)).toHaveAccessibleDescription(/no se devuelven sus tokens/);
+        expect(screen.getByLabelText(/Estado/)).toHaveAccessibleDescription(/Sus reservas futuras se mantienen/);
     });
 
     it("ADM-MEM-006: el error de la API se muestra dentro del formulario y el modal no se cierra", async () => {

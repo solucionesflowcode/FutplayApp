@@ -326,6 +326,47 @@ async function getProximaClaseUsuarioActioned(usuarioId, desde = new Date(), est
   };
 }
 
+// ─── Avisos de cambio de hora (decisión 4 del plan UI/UX del admin) ───
+// El trigger trg_clase_cambio_hora registra cada cambio de fecha_hora de una
+// clase futura en aviso_cambio_hora; el scheduler avisa a los inscritos.
+
+async function getAvisosCambioHoraPendientes() {
+  const { data, error } = await supabase
+    .from('aviso_cambio_hora')
+    .select('id, clase_id, fecha_anterior, fecha_nueva')
+    .is('procesado_at', null)
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(`aviso_cambio_hora: ${error.message}`);
+  return data ?? [];
+}
+
+async function marcarAvisosProcesados(ids, enviados) {
+  if (!ids.length) return;
+  await supabase
+    .from('aviso_cambio_hora')
+    .update({ procesado_at: new Date().toISOString(), enviados })
+    .in('id', ids);
+}
+
+async function getClaseConHora(claseId) {
+  const { data } = await supabase
+    .from('clase')
+    .select('titulo, fecha_hora')
+    .eq('id', claseId)
+    .maybeSingle();
+  return data;
+}
+
+// Reservas vigentes: las canceladas o ya cerradas no se avisan.
+async function getInscripcionesAbiertas(claseId) {
+  const { data } = await supabase
+    .from('clase_usuario')
+    .select('id, usuario_id')
+    .eq('clase_id', claseId)
+    .or('asistencia.is.null,asistencia.in.(sin_confirmar,pendiente,confirmado_whatsapp)');
+  return data ?? [];
+}
+
 module.exports = {
   init,
   getClient,
@@ -350,4 +391,8 @@ module.exports = {
   _setTestClient,
   usuarioTienePendienteAntes,
   getProximaClaseUsuarioActioned,
+  getAvisosCambioHoraPendientes,
+  marcarAvisosProcesados,
+  getClaseConHora,
+  getInscripcionesAbiertas,
 };
