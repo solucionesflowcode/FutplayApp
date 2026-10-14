@@ -13,13 +13,17 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { getAdminMembresias, type MembresiaConPlan } from "@/data/membresia";
 import { getPlanesAdmin, type Plan } from "@/data/plans";
-import { getChileMonthBounds } from "@/lib/fechas";
+import { getChileMonthBounds, hoyChile } from "@/lib/fechas";
+import { membresiaVigente, porcentajeConPlanActivo } from "@/lib/analiticas";
+import { PageHeader, StatCard } from "@/components/admin/ui";
 
 type Resumen = {
   totalAlumnos: number;
-  ingresosMes: number;
+  /** null si la API de ingresos falló (ANA-02): no se inventa el número. */
+  ingresosMes: number | null;
   membresiasActivas: number;
-  retencion: number;
+  /** ANA-01: % de alumnos con un plan vigente (no es retención). */
+  conPlanActivo: number;
 };
 
 type MembresiaPorMes = {
@@ -58,13 +62,13 @@ const MESES = [
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ];
 
-async function getIngresosMensuales(): Promise<IngresoMensual[]> {
+async function getIngresosMensuales(): Promise<{ datos: IngresoMensual[]; error: boolean }> {
   try {
     const res = await fetch("/api/admin/analiticas/mensual");
-    if (!res.ok) return [];
-    return await res.json();
+    if (!res.ok) return { datos: [], error: true };
+    return { datos: await res.json(), error: false };
   } catch {
-    return [];
+    return { datos: [], error: true };
   }
 }
 
@@ -74,8 +78,9 @@ export default function AnaliticasPage() {
     totalAlumnos: 0,
     ingresosMes: 0,
     membresiasActivas: 0,
-    retencion: 0,
+    conPlanActivo: 0,
   });
+  const [errorIngresos, setErrorIngresos] = useState(false);
   const [membresias, setMembresias] = useState<MembresiaConPlan[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [ingresosMensuales, setIngresosMensuales] = useState<IngresoMensual[]>([]);
@@ -90,36 +95,33 @@ export default function AnaliticasPage() {
       try {
         const supabase = createClient();
 
-        const { data: usuarios } = await supabase.from("usuario").select("id, rol");
+        const { data: usuarios, error: errorUsuarios } = await supabase.from("usuario").select("id, rol");
+        if (errorUsuarios) throw errorUsuarios;
 
-        const [membresiasData, planesResult, ingresosData] = await Promise.all([
+        const [membresiasData, planesResult, ingresosResult] = await Promise.all([
           getAdminMembresias(),
           getPlanesAdmin(),
           getIngresosMensuales(),
         ]);
 
+        const ingresosData = ingresosResult.datos;
         setMembresias(membresiasData);
         setPlanes(planesResult.planes);
         setIngresosMensuales(ingresosData);
+        setErrorIngresos(ingresosResult.error);
 
-        const jugadores = (usuarios || []).filter((u) => u.rol === "jugador");
-        const totalAlumnos = jugadores.length;
+        const alumnoIds = new Set((usuarios || []).filter((u) => u.rol === "jugador").map((u) => u.id as string));
+        const totalAlumnos = alumnoIds.size;
 
-        const { startISO, endISO } = getChileMonthBounds();
+        const { startISO } = getChileMonthBounds();
+        const hoy = hoyChile();
+        const membresiasActivas = membresiasData.filter((m) => membresiaVigente(m, hoy)).length;
 
-        const activas = membresiasData.filter((m) => m.tokens_restantes > 0);
-        const membresiasActivas = activas.length;
+        // ANA-02: si la API de ingresos falla se muestra el error; antes se
+        // estimaba sumando precios de planes (incluidas membresías regaladas).
+        const ingresosMes = ingresosResult.error ? null : ingresosData.find((i) => i.mes === startISO.slice(0, 7))?.ingresos ?? 0;
 
-        const membresiasMesActual = membresiasData.filter((m) => m.fecha_inicio && m.fecha_inicio >= startISO && m.fecha_inicio < endISO);
-        const ingresosMesLocal = membresiasMesActual.reduce((sum, m) => sum + (Number(m.precio) || 0), 0);
-        const apiIngresoMes = ingresosData.find((i) => i.mes === startISO.slice(0, 7));
-        const ingresosMes = apiIngresoMes?.ingresos ?? ingresosMesLocal;
-
-        const retencion = totalAlumnos > 0
-          ? Math.round((membresiasActivas / totalAlumnos) * 100)
-          : 0;
-
-        setResumen({ totalAlumnos, ingresosMes, membresiasActivas, retencion });
+        setResumen({ totalAlumnos, ingresosMes, membresiasActivas, conPlanActivo: porcentajeConPlanActivo(membresiasData, alumnoIds, hoy) });
       } catch (err) {
         console.error("Error fetching analytics:", err);
         setError("Error al cargar las analíticas");
@@ -249,20 +251,13 @@ export default function AnaliticasPage() {
     return membresias.filter((m) => m.fecha_inicio?.startsWith(selectedMonth));
   }, [membresias, selectedMonth]);
 
-  const filteredResumen = useMemo(() => {
+  // Alumnos, membresías vigentes y % con plan son del estado actual; el mes
+  // elegido solo cambia los ingresos (antes mezclaba membresías del mes con alumnos de hoy).
+  const filteredResumen = useMemo<Resumen>(() => {
     if (!selectedMonth) return resumen;
-    const apiIngreso = ingresosMensuales.find((i) => i.mes === selectedMonth);
-    const ingresos = apiIngreso?.ingresos ?? 0;
-    const activas = filteredMembresias.filter((m) => m.tokens_restantes > 0);
-    return {
-      totalAlumnos: resumen.totalAlumnos,
-      ingresosMes: ingresos,
-      membresiasActivas: activas.length,
-      retencion: resumen.totalAlumnos > 0
-        ? Math.round((activas.length / resumen.totalAlumnos) * 100)
-        : 0,
-    };
-  }, [filteredMembresias, resumen, selectedMonth, ingresosMensuales]);
+    const ingresosMes = errorIngresos ? null : ingresosMensuales.find((i) => i.mes === selectedMonth)?.ingresos ?? 0;
+    return { ...resumen, ingresosMes };
+  }, [resumen, selectedMonth, ingresosMensuales, errorIngresos]);
 
   const filteredMesesData = useMemo(() => {
     if (!selectedMonth) return mesesData;
@@ -336,65 +331,28 @@ export default function AnaliticasPage() {
         style={{ maxWidth: "1216px" }}
       >
         {/* Section 0: Header */}
-        <div className="flex-none self-stretch flex items-center justify-between z-0">
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900">Analíticas</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Estadísticas y métricas de rendimiento de la academia
-            </p>
-          </div>
+        <div className="self-stretch">
+          <PageHeader titulo="Analíticas" descripcion="Estadísticas y métricas de rendimiento de la academia." />
         </div>
 
         {/* Section 1: Stat Cards */}
-        <div className="flex-none self-stretch z-0">
-          <div className="grid grid-cols-4 gap-1 sm:gap-4 md:gap-6">
-            {/* Total Alumnos */}
-            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-              <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-blue-600 to-[#00305B]" />
-              <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
-                <Users className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00305B]" />
-              </div>
-              <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Alumnos</span>
-              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.totalAlumnos.toString()}</p>
-              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">estudiantes</p>
-            </div>
-
-            {/* Ingresos del Mes */}
-            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-              <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-teal-400 to-emerald-500" />
-              <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
-                <DollarSign className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#00A86B]" />
-              </div>
-              <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Ingresos del Mes</span>
-              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{formatCLP(filteredResumen.ingresosMes)}</p>
-              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">facturación</p>
-            </div>
-
-            {/* Membresías Activas */}
-            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-              <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-[#F39200]" />
-              <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
-                <CreditCard className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#F39200]" />
-              </div>
-              <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Membresías Activas</span>
-              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.membresiasActivas.toString()}</p>
-              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">al día</p>
-            </div>
-
-            {/* Tasa de Retención */}
-            <div className="relative bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center text-center p-1 sm:p-4 rounded-full aspect-square w-full mx-auto overflow-hidden group hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200 transition-all duration-300">
-              <div className="absolute top-0 sm:top-2 left-1/2 -translate-x-1/2 w-3 sm:w-10 h-px sm:h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-600" />
-              <div className="w-3 h-3 sm:w-9 sm:h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-0 sm:mb-2 transition-colors group-hover:bg-slate-100">
-                <TrendingUp className="w-1.5 h-1.5 sm:w-4 sm:h-4 text-[#8B5CF6]" />
-              </div>
-              <div className="hidden sm:block w-3 sm:w-6 h-px sm:h-[2px] bg-slate-100 mb-0 sm:mb-1.5 rounded-full" />
-              <span className="text-[6px] leading-[1.1] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400">Tasa de Retención</span>
-              <p className="text-[10px] sm:text-base md:text-lg font-black text-[#00305B] leading-none my-0 sm:my-1 truncate max-w-full px-0 sm:px-1">{filteredResumen.retencion}%</p>
-              <p className="text-[6px] sm:text-[9px] text-slate-500 font-medium mt-0">fidelización</p>
-            </div>
+        <div className="self-stretch space-y-3">
+          {errorIngresos && (
+            <p role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              No se pudieron cargar los ingresos: los montos no están disponibles. Recarga la página para reintentar.
+            </p>
+          )}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <StatCard etiqueta="Total alumnos" valor={filteredResumen.totalAlumnos} detalle="cuentas de jugador" icono={<Users size={18} />} />
+            <StatCard
+              etiqueta={selectedMonth ? "Ingresos del mes elegido" : "Ingresos del mes"}
+              valor={filteredResumen.ingresosMes === null ? "No disponible" : formatCLP(filteredResumen.ingresosMes)}
+              detalle="boletas pagadas"
+              icono={<DollarSign size={18} />}
+              tono={filteredResumen.ingresosMes === null ? "peligro" : "exito"}
+            />
+            <StatCard etiqueta="Membresías vigentes" valor={filteredResumen.membresiasActivas} detalle="activas, con tokens y sin vencer" icono={<CreditCard size={18} />} tono="alerta" />
+            <StatCard etiqueta="% con plan activo" valor={`${filteredResumen.conPlanActivo}%`} detalle="de los alumnos tiene un plan vigente hoy" icono={<TrendingUp size={18} />} />
           </div>
         </div>
 
@@ -465,7 +423,7 @@ export default function AnaliticasPage() {
             </div>
             {filteredMesesData.length === 0 ? (
               <p className="text-gray-400 text-sm text-center py-8">
-                No hay datos de ingresos aún
+                {errorIngresos ? "Ingresos no disponibles: no se pudo consultar la API." : "No hay datos de ingresos aún"}
               </p>
             ) : (
               <>
@@ -691,6 +649,7 @@ export default function AnaliticasPage() {
               <h2 className="text-lg font-bold text-gray-900 mb-6">
                 Ingresos por Plan
               </h2>
+              <p className="text-xs text-gray-500 -mt-5 mb-5">Estimado con el precio de lista del plan de cada membresía (incluye las asignadas por el admin).</p>
               {filteredIngresosPorPlan.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center py-8">
                   {selectedMonth ? "No hay ingresos para este mes" : "No hay membresías activas este mes"}

@@ -228,6 +228,21 @@ Orden por uso diario del club:
 *Criterio de salida por pantalla:* usa `PageHeader`, `DataTable`, `Modal` y `Toast`; sin
 `alert`/`confirm`/`prompt`; revisada en escritorio y a 375 px de ancho.
 
+**Estado (14/10/2026): implementada**, un commit por pantalla, con pruebas en
+`src/tests/components/admin-pantallas/`. Falta la revisión visual a 375 px (no se levantó local).
+Además de lo planificado:
+- **Planes:** `DELETE` responde 405; el checkout y el link familiar rechazan planes desactivados.
+- **Profesores:** "Hacer profesor" se busca en un modal y pide confirmación.
+- **Módulos:** un módulo con cápsulas avisa antes de abrir la confirmación de borrado.
+- **Cápsulas:** un video subido y no guardado (cancelado, reemplazado o con subida fallida) se
+  borra de Bunny; borrar un documento borra también su archivo; el PDF actual se quita al
+  guardar y no al instante; la duración se valida.
+- **Analíticas:** "% con plan activo" cuenta alumnos distintos con membresía activa, no
+  congelada, con tokens y sin vencer; el filtro de mes solo cambia los ingresos.
+
+Pendiente detectado: la cápsula destacada se guarda en `.data/capsula-destacada.json`
+(`lib/capsula-destacada.ts`), que no persiste en Vercel. Moverla a la BD.
+
 ### Fase 4 — Pulido y accesibilidad (≈ 1–2 días)
 GEN-04…08: colores de marca, menú lateral (tooltips, estado guardado, `aria-label`), un solo
 flujo de perfil, skeletons y estados de error, contraste AA en textos grises.
