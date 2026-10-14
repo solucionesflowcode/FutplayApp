@@ -27,7 +27,7 @@ export async function getProfesores(): Promise<Profesor[]> {
   const res = await fetch("/api/admin/profesores");
   if (!res.ok) {
     console.error("Error fetching profesores:", await res.text());
-    return [];
+    throw new Error("No se pudieron cargar los profesores");
   }
   return res.json();
 }

@@ -43,6 +43,11 @@ export default function ModulosPage() {
   const [modulos, setModulos] = useState<Modulo[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const reintentar = () => {
+    setLoading(true);
+    fetchModulos();
+  };
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
@@ -52,9 +57,14 @@ export default function ModulosPage() {
   const [eliminando, setEliminando] = useState(false);
 
   const fetchModulos = useCallback(async () => {
-    const [m, c] = await Promise.all([getModulos(), getCategorias()]);
-    setModulos(m);
-    setCategorias(c);
+    try {
+      const [m, c] = await Promise.all([getModulos(), getCategorias()]);
+      setModulos(m);
+      setCategorias(c);
+      setErrorCarga(null);
+    } catch (err) {
+      setErrorCarga(err instanceof Error ? err.message : "No se pudieron cargar los datos");
+    }
     setLoading(false);
   }, []);
 
@@ -149,7 +159,7 @@ export default function ModulosPage() {
         <BookOpen size={12} aria-hidden /> {m.categoria_nombre}
       </span>
     ) : (
-      <span className="text-xs text-gray-400">Sin categoría</span>
+      <span className="text-xs text-gray-500">Sin categoría</span>
     );
 
   const columnas: Columna<Modulo>[] = [
@@ -157,7 +167,7 @@ export default function ModulosPage() {
     {
       id: "descripcion",
       encabezado: "Descripción",
-      celda: (m) => (m.descripcion ? <span className="text-gray-500 line-clamp-2 max-w-[320px]">{m.descripcion}</span> : <span className="text-gray-300">—</span>),
+      celda: (m) => (m.descripcion ? <span className="text-gray-500 line-clamp-2 max-w-[320px]">{m.descripcion}</span> : <span className="text-gray-500">—</span>),
     },
     { id: "categoria", encabezado: "Categoría", celda: categoriaBadge, valorOrden: (m) => (m.categoria_id ? m.categoria_nombre : "") },
     {
@@ -178,7 +188,7 @@ export default function ModulosPage() {
           acciones={<Button icono={<Plus size={16} />} onClick={openCreate}>Nuevo módulo</Button>}
         >
           <div className="relative w-full sm:max-w-xs">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
             <input type="search" aria-label="Buscar módulo" placeholder="Buscar módulo o categoría..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
           </div>
         </PageHeader>
@@ -189,6 +199,8 @@ export default function ModulosPage() {
           columnas={columnas}
           getId={(m) => m.id}
           cargando={loading}
+          error={errorCarga}
+          onReintentar={reintentar}
           resetKey={search}
           vacio={search ? "No se encontraron módulos" : "No hay módulos creados aún"}
           tarjetaMovil={(m) => (

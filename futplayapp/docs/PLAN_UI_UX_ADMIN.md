@@ -247,6 +247,23 @@ Pendiente detectado: la cápsula destacada se guarda en `.data/capsula-destacada
 GEN-04…08: colores de marca, menú lateral (tooltips, estado guardado, `aria-label`), un solo
 flujo de perfil, skeletons y estados de error, contraste AA en textos grises.
 
+**Estado (14/10/2026): implementada.** Pruebas en `src/tests/components/admin-ui/fase4.test.tsx`.
+- **GEN-04:** clases `#F28C28`/`#00305B` → tokens `acento`/`marca`; sin `blue-600` en el admin.
+  Texto `text-gray-400` (≈ 2,5:1 sobre blanco) → `text-gray-500` (≈ 4,8:1). El texto naranja sobre
+  fondo claro pasa a `orange-800`, y el ítem activo del menú usa texto oscuro sobre naranja (el
+  blanco no llegaba a AA).
+- **GEN-05:** tooltips y nombre accesible con el menú colapsado, estado guardado en
+  `localStorage`, `aria-current`, `aria-expanded`/`aria-controls`, Escape cierra el menú en móvil.
+  En móvil el menú se ve siempre completo (antes heredaba el ancho colapsado).
+- **GEN-06:** el menú del avatar lleva a `/admin/perfil`, que ahora tiene la foto. Se quitó el
+  modal propio del menú.
+- **GEN-07:** el `AuthGuard` duplicado se quitó en la fase 3; `AuthProvider` queda solo en el layout del admin.
+- **GEN-08:** `getUsers`, `getAdminMembresias`, `getMembresiasGestion`, `getClases`,
+  `getProfesores`, `getModulos` y `getCapsulasAdmin` lanzan en vez de devolver `[]`;
+  `DataTable` acepta `error` + `onReintentar`, y cada pantalla muestra el motivo con "Reintentar".
+  Si fallaban las membresías, `getUsers` mostraba a todos los alumnos "Sin plan" sin aviso.
+- Un solo `h1` por página (el encabezado móvil usaba otro). Se borró `components/admin/ConfirmDialog`.
+
 ---
 
 ## 5. Verificación

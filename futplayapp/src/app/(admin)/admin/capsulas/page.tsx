@@ -184,6 +184,11 @@ export default function CapsulasPage() {
   const [modulos, setModulos] = useState<ModuloOption[]>([]);
   const [profesores, setProfesores] = useState<ProfesorDropdown[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const reintentar = () => {
+    setLoading(true);
+    fetchData();
+  };
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
@@ -220,10 +225,15 @@ export default function CapsulasPage() {
   const subiendo = subidaVideo !== null || subidaMiniatura !== null || subidaDocumento !== null;
 
   const fetchData = useCallback(async () => {
-    const [c, m, p] = await Promise.all([getCapsulasAdmin(), getModulosOptions(), getProfesoresDropdown()]);
-    setCapsulas(c);
-    setModulos(m);
-    setProfesores(p);
+    try {
+      const [c, m, p] = await Promise.all([getCapsulasAdmin(), getModulosOptions(), getProfesoresDropdown()]);
+      setCapsulas(c);
+      setModulos(m);
+      setProfesores(p);
+      setErrorCarga(null);
+    } catch (err) {
+      setErrorCarga(err instanceof Error ? err.message : "No se pudieron cargar los datos");
+    }
     setLoading(false);
   }, []);
 
@@ -624,7 +634,7 @@ export default function CapsulasPage() {
       encabezado: "Módulo",
       celda: (c) => c.modulo_nombre
         ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold whitespace-nowrap"><BookOpen size={12} aria-hidden /> {c.modulo_nombre}</span>
-        : <span className="text-xs text-gray-400">Sin módulo</span>,
+        : <span className="text-xs text-gray-500">Sin módulo</span>,
       valorOrden: (c) => c.modulo_nombre,
     },
     {
@@ -632,10 +642,10 @@ export default function CapsulasPage() {
       encabezado: "Profesor",
       celda: (c) => c.profesor_nombre
         ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold whitespace-nowrap"><PersonStanding size={12} aria-hidden /> {c.profesor_nombre}</span>
-        : <span className="text-xs text-gray-400">Sin profesor</span>,
+        : <span className="text-xs text-gray-500">Sin profesor</span>,
       valorOrden: (c) => c.profesor_nombre,
     },
-    { id: "duracion", encabezado: "Duración", celda: (c) => c.duracion || <span className="text-gray-300">—</span>, valorOrden: (c) => c.duracion ?? "" },
+    { id: "duracion", encabezado: "Duración", celda: (c) => c.duracion || <span className="text-gray-500">—</span>, valorOrden: (c) => c.duracion ?? "" },
     { id: "orden", encabezado: "Orden", celda: (c) => c.order_index ?? 0, valorOrden: (c) => c.order_index ?? 0 },
     { id: "destacada", encabezado: "Destacada", celda: botonDestacada, valorOrden: (c) => (c.destacada ? 1 : 0) },
     { id: "acciones", encabezado: "Acciones", celda: acciones },
@@ -656,7 +666,7 @@ export default function CapsulasPage() {
           acciones={<Button icono={<Plus size={16} />} onClick={openCreate}>Nueva cápsula</Button>}
         >
           <div className="relative w-full sm:max-w-xs">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
             <input type="search" aria-label="Buscar cápsula" placeholder="Buscar cápsula o módulo..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
           </div>
         </PageHeader>
@@ -667,6 +677,8 @@ export default function CapsulasPage() {
           columnas={columnas}
           getId={(c) => c.id}
           cargando={loading}
+          error={errorCarga}
+          onReintentar={reintentar}
           resetKey={search}
           vacio={search ? "No se encontraron cápsulas" : "No hay cápsulas creadas aún"}
           tarjetaMovil={(c) => (

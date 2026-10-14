@@ -103,6 +103,11 @@ export default function MembresiasPage() {
   const [usuarios, setUsuarios] = useState<Student[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const reintentar = () => {
+    setLoading(true);
+    fetchData();
+  };
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<EstadoMembresia | "todas">("todas");
   const [modal, setModal] = useState<ModalMode>(null);
@@ -114,15 +119,20 @@ export default function MembresiasPage() {
   const [accionEnCurso, setAccionEnCurso] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const [m, u, planesResult] = await Promise.all([
-      getMembresiasGestion(),
-      getUsers(),
-      getPlanesAdmin(),
-    ]);
-    setMembresias(m);
-    // Solo alumnos: antes también aparecían los profesores (MEM-05).
-    setUsuarios(u.filter((user) => user.role === "Alumno"));
-    setPlanes(planesResult.planes);
+    try {
+      const [m, u, planesResult] = await Promise.all([
+        getMembresiasGestion(),
+        getUsers(),
+        getPlanesAdmin(),
+      ]);
+      setMembresias(m);
+      // Solo alumnos: antes también aparecían los profesores (MEM-05).
+      setUsuarios(u.filter((user) => user.role === "Alumno"));
+      setPlanes(planesResult.planes);
+      setErrorCarga(null);
+    } catch (err) {
+      setErrorCarga(err instanceof Error ? err.message : "No se pudieron cargar los datos");
+    }
     setLoading(false);
   }, []);
 
@@ -326,7 +336,7 @@ export default function MembresiasPage() {
         >
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="relative w-full sm:max-w-xs">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
               <input
                 type="search"
                 aria-label="Buscar por alumno o plan"
@@ -349,7 +359,7 @@ export default function MembresiasPage() {
                       activo ? "bg-marca border-marca text-white" : "bg-white border-gray-200 text-gray-600 hover:border-marca"
                     }`}
                   >
-                    {etiqueta} <span className={activo ? "text-white/70" : "text-gray-400"}>{conteoEstado(valor)}</span>
+                    {etiqueta} <span className={activo ? "text-white/70" : "text-gray-500"}>{conteoEstado(valor)}</span>
                   </button>
                 );
               })}
@@ -363,6 +373,8 @@ export default function MembresiasPage() {
           columnas={columnas}
           getId={(m) => m.id}
           cargando={loading}
+          error={errorCarga}
+          onReintentar={reintentar}
           resetKey={`${search}|${filtroEstado}`}
           vacio={search || filtroEstado !== "todas" ? "No se encontraron membresías" : "No hay membresías creadas aún"}
           tarjetaMovil={(m) => (

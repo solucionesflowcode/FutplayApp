@@ -17,16 +17,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Mobile Header Bar */}
           <header className="flex items-center justify-between bg-[#001529] text-white px-4 py-3 md:hidden sticky top-0 z-30 shadow-md">
             <div>
-              <h1 className="text-lg font-bold">FutPlay</h1>
-              <p className="text-[9px] text-gray-400 uppercase tracking-wider">Admin Panel</p>
+              {/* Un solo h1 por página: el de PageHeader. */}
+              <p className="text-lg font-bold">FutPlay</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Admin Panel</p>
             </div>
             <div className="flex items-center gap-3">
               <ProfileDropdown />
               <button
+                type="button"
                 onClick={() => setMobileOpen(true)}
+                aria-label="Abrir menú"
+                aria-expanded={mobileOpen}
+                aria-controls="admin-menu"
                 className="p-2 hover:bg-white/10 rounded-lg text-white"
               >
-                <Menu size={24} />
+                <Menu size={24} aria-hidden />
               </button>
             </div>
           </header>

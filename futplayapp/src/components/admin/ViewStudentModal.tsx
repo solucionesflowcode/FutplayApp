@@ -40,7 +40,7 @@ export default function ViewStudentModal({ student, open, onClose }: Props) {
           </div>
         ))}
         <div className="py-2.5">
-          <dt className="text-xs text-gray-400">ID</dt>
+          <dt className="text-xs text-gray-500">ID</dt>
           <dd className="text-xs text-gray-500 break-all font-mono">{student.id}</dd>
         </div>
       </dl>

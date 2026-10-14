@@ -270,13 +270,12 @@ describe("getUsers", () => {
         expect(result).toEqual([]);
     });
 
-    it("DATA-GETUSERS-003: retorna [] si hay error en supabase", async () => {
+    // GEN-08: antes devolvía [] y la pantalla mostraba "0 registros" sin explicar el error.
+    it("DATA-GETUSERS-003: si falla supabase, lanza (la pantalla muestra el error)", async () => {
         __setTableData("usuario", null, { message: "Connection refused" });
         vi.mocked(getAdminMembresias).mockResolvedValue([]);
 
-        const result = await getUsers();
-
-        expect(result).toEqual([]);
+        await expect(getUsers()).rejects.toThrow("No se pudieron cargar los usuarios");
     });
 
     it("DATA-GETUSERS-005: un alumno congelado figura 'Congelado' (no 'Activo' con 0 tokens)", async () => {

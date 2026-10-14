@@ -29,7 +29,7 @@ export default function StatCard({ etiqueta, valor, detalle, icono, tono = "neut
     <>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{etiqueta}</span>
-        {icono && <span className="text-gray-400" aria-hidden>{icono}</span>}
+        {icono && <span className="text-gray-500" aria-hidden>{icono}</span>}
       </div>
       <p className={`text-2xl font-black mt-1 ${TONOS[tono]}`}>{valor}</p>
       {detalle && <p className="text-xs text-gray-500 mt-0.5">{detalle}</p>}

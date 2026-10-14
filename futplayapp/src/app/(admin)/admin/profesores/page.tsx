@@ -38,7 +38,7 @@ function Avatar({ p, size = "w-9 h-9 text-sm" }: { p: { nombre: string; foto_url
   return p.foto_url ? (
     <img src={p.foto_url} alt="" className={`${size} rounded-full object-cover shrink-0`} />
   ) : (
-    <div className={`${size} rounded-full bg-acento/10 flex items-center justify-center text-acento font-bold shrink-0`} aria-hidden>
+    <div className={`${size} rounded-full bg-acento/10 flex items-center justify-center text-orange-800 font-bold shrink-0`} aria-hidden>
       {p.nombre.charAt(0).toUpperCase()}
     </div>
   );
@@ -51,6 +51,11 @@ export default function ProfesoresPage() {
   const { ejecutar } = useAdminMutation();
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const reintentar = () => {
+    setLoading(true);
+    fetchProfesores();
+  };
   const [search, setSearch] = useState("");
   const [detalle, setDetalle] = useState<Profesor | null>(null);
 
@@ -77,8 +82,13 @@ export default function ProfesoresPage() {
   const [ejecutando, setEjecutando] = useState(false);
 
   const fetchProfesores = useCallback(async () => {
-    const data = await getProfesores();
-    setProfesores(data);
+    try {
+      const data = await getProfesores();
+      setProfesores(data);
+      setErrorCarga(null);
+    } catch (err) {
+      setErrorCarga(err instanceof Error ? err.message : "No se pudieron cargar los datos");
+    }
     setLoading(false);
   }, []);
 
@@ -280,12 +290,12 @@ export default function ProfesoresPage() {
     <div className="p-4 sm:p-6">
       <div className="w-full max-w-[1216px] mx-auto">
         <PageHeader
-          titulo="Profesores"
+          titulo="Gestión de profesores"
           descripcion="Profesores que dictan clases y cápsulas. Para agregar uno, busca su cuenta de jugador."
           acciones={<Button icono={<UserPlus size={16} />} onClick={() => setAgregarAbierto(true)}>Agregar profesor</Button>}
         >
           <div className="relative w-full sm:max-w-xs">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
             <input type="search" aria-label="Buscar profesor" placeholder="Buscar por nombre o email..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
           </div>
         </PageHeader>
@@ -296,6 +306,8 @@ export default function ProfesoresPage() {
           columnas={columnas}
           getId={(p) => p.id}
           cargando={loading}
+          error={errorCarga}
+          onReintentar={reintentar}
           resetKey={search}
           vacio={search ? "No se encontraron profesores" : "No hay profesores registrados aún"}
           tarjetaMovil={(p) => (
@@ -430,7 +442,7 @@ export default function ProfesoresPage() {
               {editPreview ? (
                 <img src={editPreview} alt="Foto del profesor" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
               ) : (
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200" aria-hidden>
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-200" aria-hidden>
                   <Camera size={24} />
                 </div>
               )}

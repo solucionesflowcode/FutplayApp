@@ -442,20 +442,17 @@ describe("getAdminMembresias", () => {
         expect(result[0].plan_nombre).toBe("Pro");
     });
 
-    it("DATA-MEMB-ADMIN-002: retorna array vacío si fetch falla", async () => {
+    // GEN-08: antes devolvía [] y todos los alumnos figuraban "Sin plan" sin aviso.
+    it("DATA-MEMB-ADMIN-002: si la API falla, lanza con el motivo", async () => {
         mockFetch({ error: "No autorizado" }, 403);
 
-        const result = await getAdminMembresias();
-
-        expect(result).toEqual([]);
+        await expect(getAdminMembresias()).rejects.toThrow("No autorizado");
     });
 
-    it("DATA-MEMB-ADMIN-003: retorna array vacío si fetch lanza error", async () => {
+    it("DATA-MEMB-ADMIN-003: sin conexión, lanza un error legible", async () => {
         vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
 
-        const result = await getAdminMembresias();
-
-        expect(result).toEqual([]);
+        await expect(getAdminMembresias()).rejects.toThrow("Sin conexión");
     });
 });
 

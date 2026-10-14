@@ -18,7 +18,7 @@ type Props = {
 };
 
 export const CLASE_INPUT =
-  "w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-marca focus:ring-1 focus:ring-marca aria-[invalid=true]:border-red-400 disabled:bg-gray-50 disabled:text-gray-400";
+  "w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-marca focus:ring-1 focus:ring-marca aria-[invalid=true]:border-red-400 disabled:bg-gray-50 disabled:text-gray-500";
 
 /**
  * Campo de formulario (USR-11): label visible asociado al control, ayuda y
@@ -42,7 +42,7 @@ export default function FormField({ label, required, ayuda, error, children }: P
         {required && <span className="text-red-500" aria-hidden> *</span>}
       </label>
       {children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
-      {ayuda && <p id={idAyuda} className="text-xs text-gray-400 mt-1">{ayuda}</p>}
+      {ayuda && <p id={idAyuda} className="text-xs text-gray-500 mt-1">{ayuda}</p>}
       {error && <p id={idError} className="text-xs text-red-600 mt-1">{error}</p>}
     </div>
   );

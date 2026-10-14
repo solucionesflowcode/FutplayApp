@@ -89,6 +89,11 @@ export default function ClasesPage() {
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [profesores, setProfesores] = useState<ProfesorDropdown[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const reintentar = () => {
+    setLoading(true);
+    fetchClases();
+  };
   const [search, setSearch] = useState("");
   const [pestana, setPestana] = useState<Pestana>("proximas");
   const [fechaDesde, setFechaDesde] = useState("");
@@ -106,12 +111,18 @@ export default function ClasesPage() {
   const [ahora, setAhora] = useState(() => Date.now());
 
   const fetchClases = useCallback(async () => {
-    const [c, s, p] = await Promise.all([getClases(), getSedes(), getProfesoresDropdown()]);
-    setClases(c);
-    setSedes(s);
-    setProfesores(p);
-    setAhora(Date.now());
-    setLoading(false);
+    try {
+      const [c, s, p] = await Promise.all([getClases(), getSedes(), getProfesoresDropdown()]);
+      setClases(c);
+      setSedes(s);
+      setProfesores(p);
+      setErrorCarga(null);
+    } catch (err) {
+      setErrorCarga(err instanceof Error ? err.message : "No se pudieron cargar los datos");
+    } finally {
+      setAhora(Date.now());
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchClases(); }, [fetchClases]);
@@ -258,7 +269,7 @@ export default function ClasesPage() {
   const columnaAsistencia = (c: ClaseConRelaciones) => {
     // CLA-06: solo una clase ya ocurrida tiene asistencia por registrar (antes
     // todas las futuras mostraban "N Pendientes" parpadeando).
-    if (!yaOcurrio(c, ahora)) return <span className="text-xs text-gray-400">—</span>;
+    if (!yaOcurrio(c, ahora)) return <span className="text-xs text-gray-500">—</span>;
     if (c.pendientes > 0) {
       return (
         <span className="inline-flex px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold whitespace-nowrap">
@@ -293,8 +304,8 @@ export default function ClasesPage() {
       celda: (c) => (
         <div className="min-w-0 max-w-[220px]">
           <p className="font-semibold text-gray-900 truncate">{c.titulo || "Partido"}</p>
-          <p className="text-[11px] uppercase tracking-wide font-bold text-gray-400">{NOMBRE_TIPO[c.tipo_evento]}</p>
-          {c.descripcion && <p className="text-xs text-gray-400 truncate">{c.descripcion}</p>}
+          <p className="text-[11px] uppercase tracking-wide font-bold text-gray-500">{NOMBRE_TIPO[c.tipo_evento]}</p>
+          {c.descripcion && <p className="text-xs text-gray-500 truncate">{c.descripcion}</p>}
         </div>
       ),
       valorOrden: (c) => c.titulo || "Partido",
@@ -302,13 +313,13 @@ export default function ClasesPage() {
     {
       id: "fecha",
       encabezado: "Fecha",
-      celda: (c) => (c.fecha_hora ? <div className="text-xs whitespace-nowrap"><span className="font-medium text-gray-700">{formatFecha(c.fecha_hora)}</span><br /><span className="text-gray-400">{formatHora(c.fecha_hora)}</span></div> : <span className="text-xs text-gray-400">Sin horario</span>),
+      celda: (c) => (c.fecha_hora ? <div className="text-xs whitespace-nowrap"><span className="font-medium text-gray-700">{formatFecha(c.fecha_hora)}</span><br /><span className="text-gray-500">{formatHora(c.fecha_hora)}</span></div> : <span className="text-xs text-gray-500">Sin horario</span>),
       valorOrden: (c) => c.fecha_hora,
     },
     {
       id: "profesor",
       encabezado: "Profesor",
-      celda: (c) => (c.profesor_nombre ? <span className="inline-flex items-center gap-1 text-sm"><PersonStanding size={14} className="text-acento" aria-hidden />{c.profesor_nombre}</span> : <span className="text-gray-300">—</span>),
+      celda: (c) => (c.profesor_nombre ? <span className="inline-flex items-center gap-1 text-sm"><PersonStanding size={14} className="text-acento" aria-hidden />{c.profesor_nombre}</span> : <span className="text-gray-500">—</span>),
       valorOrden: (c) => c.profesor_nombre,
     },
     { id: "sede", encabezado: "Sede", celda: (c) => c.sede_nombre || "—", valorOrden: (c) => c.sede_nombre },
@@ -347,7 +358,7 @@ export default function ClasesPage() {
               </div>
               <div className="flex flex-col sm:flex-row flex-wrap sm:items-end gap-3">
                 <div className="relative w-full sm:max-w-xs">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
                   <input type="search" aria-label="Buscar clase, sede o profesor" placeholder="Buscar clase, sede o profesor..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
                 </div>
                 <FormField label="Desde">
@@ -361,7 +372,7 @@ export default function ClasesPage() {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por día de la semana">
-                <CalendarDays size={14} className="text-gray-400" aria-hidden />
+                <CalendarDays size={14} className="text-gray-500" aria-hidden />
                 {DIAS.map((nombre, idx) => (
                   <button
                     key={idx}
@@ -384,6 +395,8 @@ export default function ClasesPage() {
               columnas={columnas}
               getId={(c) => c.id}
               cargando={loading || cargandoDetalle}
+              error={errorCarga}
+              onReintentar={reintentar}
               resetKey={`${search}|${fechaDesde}|${fechaHasta}|${diasFiltro.join(",")}`}
               ordenInicial={{ columna: "fecha", asc: pestana === "proximas" }}
               onFilaClick={abrirDetalle}
@@ -531,8 +544,8 @@ function AsistenciaDetalle({
   const activas = inscripciones.length - canceladas;
 
   const botones = (ins: InscripcionRow) => {
-    if (CANCELADAS.has(ins.asistencia ?? "")) return <span className="text-xs text-gray-400">Canceló: no se registra asistencia</span>;
-    if (!empezo) return <span className="text-xs text-gray-400">Se registra desde el inicio de la clase</span>;
+    if (CANCELADAS.has(ins.asistencia ?? "")) return <span className="text-xs text-gray-500">Canceló: no se registra asistencia</span>;
+    if (!empezo) return <span className="text-xs text-gray-500">Se registra desde el inicio de la clase</span>;
     const presente = ins.asistencia === "asistio";
     const ausente = ins.asistencia === "no_asistio";
     return (
@@ -594,7 +607,7 @@ function AsistenciaDetalle({
         )}
       />
       <p className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-3">
-        <Users size={16} className="text-gray-400" aria-hidden />
+        <Users size={16} className="text-gray-500" aria-hidden />
         <span><strong className="text-green-600">{cuenta((i) => i.asistencia === "asistio")}</strong> presentes</span> ·
         <span><strong className="text-red-500">{cuenta((i) => i.asistencia === "no_asistio")}</strong> ausentes</span> ·
         <span><strong className="text-emerald-600">{cuenta((i) => i.asistencia === "confirmado_whatsapp")}</strong> confirmados</span> ·

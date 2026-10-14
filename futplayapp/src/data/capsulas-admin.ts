@@ -38,7 +38,7 @@ export async function getCapsulasAdmin(): Promise<CapsulaAdmin[]> {
   const res = await fetch("/api/admin/capsulas");
   if (!res.ok) {
     console.error("Error fetching capsulas:", await res.text());
-    return [];
+    throw new Error("No se pudieron cargar las cápsulas");
   }
   return res.json();
 }

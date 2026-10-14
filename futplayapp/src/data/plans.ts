@@ -167,7 +167,7 @@ export async function getUsers(): Promise<Student[]> {
 
     if (error) {
         console.error("Error fetching users:", error.message);
-        return [];
+        throw new Error("No se pudieron cargar los usuarios");
     }
 
     const membresiasByUser = new Map(membresias.map((m) => [m.usuario_id, m]));

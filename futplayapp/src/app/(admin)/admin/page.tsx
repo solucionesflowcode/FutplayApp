@@ -42,14 +42,24 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [filtro, setFiltro] = useState<Filtro>(null);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const reintentar = () => {
+    setLoading(true);
+    fetchUsers();
+  };
   const [viewStudent, setViewStudent] = useState<Student | null>(null);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
   const [eliminando, setEliminando] = useState(false);
 
   const fetchUsers = useCallback(async () => {
-    const data = await getUsers();
-    setStudents(data);
+    try {
+      const data = await getUsers();
+      setStudents(data);
+      setErrorCarga(null);
+    } catch (err) {
+      setErrorCarga(err instanceof Error ? err.message : "No se pudieron cargar los datos");
+    }
     setLoading(false);
   }, []);
 
@@ -100,7 +110,7 @@ export default function AdminPage() {
           descripcion={`${students.length} usuarios registrados`}
         >
           <div className="relative w-full sm:max-w-sm">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
             <input
               type="search"
               aria-label="Buscar usuarios"
@@ -138,6 +148,8 @@ export default function AdminPage() {
         <StudentsTable
           students={filtered}
           cargando={loading}
+          error={errorCarga}
+          onReintentar={reintentar}
           resetKey={`${search}|${filtro?.campo ?? ""}:${filtro?.valor ?? ""}`}
           onView={setViewStudent}
           onEdit={setEditStudent}

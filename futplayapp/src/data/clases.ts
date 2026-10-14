@@ -101,7 +101,7 @@ export async function getClases(): Promise<ClaseConRelaciones[]> {
   const res = await fetch("/api/admin/clases");
   if (!res.ok) {
     console.error("Error fetching clases:", await res.text());
-    return [];
+    throw new Error("No se pudieron cargar las clases");
   }
   return res.json();
 }

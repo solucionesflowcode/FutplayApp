@@ -307,7 +307,7 @@ export default function AnaliticasPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex items-center gap-2">
-          <Loader2 className="w-5 h-5 animate-spin text-[#F28C28]" />
+          <Loader2 className="w-5 h-5 animate-spin text-acento" />
           <p className="text-gray-500">Cargando analíticas...</p>
         </div>
       </div>
@@ -397,7 +397,7 @@ export default function AnaliticasPage() {
                         <button
                           key={m.mes}
                           onClick={() => handleSelectMonth(m.mes)}
-                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${selectedMonth === m.mes ? "bg-orange-50 text-[#F28C28] font-bold" : "text-gray-700"}`}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${selectedMonth === m.mes ? "bg-orange-50 text-orange-800 font-bold" : "text-gray-700"}`}
                         >
                           {m.label}
                         </button>
@@ -422,7 +422,7 @@ export default function AnaliticasPage() {
               })()}
             </div>
             {filteredMesesData.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">
+              <p className="text-gray-500 text-sm text-center py-8">
                 {errorIngresos ? "Ingresos no disponibles: no se pudo consultar la API." : "No hay datos de ingresos aún"}
               </p>
             ) : (
@@ -443,7 +443,7 @@ export default function AnaliticasPage() {
                       "from-cyan-500 to-cyan-400",
                     ];
                     const barColor = isLast
-                      ? "from-[#F28C28] to-[#F5A623]"
+                      ? "from-acento to-[#F5A623]"
                       : "from-blue-500 to-blue-400";
                     return (
                       <div key={item.mes} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
@@ -497,13 +497,13 @@ export default function AnaliticasPage() {
                                       <p className="font-semibold text-gray-900 text-sm">{item.label}</p>
                                     </div>
                                     {isLast && (
-                                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] animate-pulse shrink-0 ml-2" />
+                                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-acento animate-pulse shrink-0 ml-2" />
                                     )}
                                   </div>
                                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
-                                    <div><span className="text-gray-400">Ingresos: </span><span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span></div>
-                                    <div><span className="text-gray-400">Ventas: </span><span className="font-medium text-gray-700">{item.transacciones}</span></div>
-                                    <div><span className="text-gray-400">Membresías: </span><span className="font-medium text-gray-700">{item.membresias}</span></div>
+                                    <div><span className="text-gray-500">Ingresos: </span><span className="font-bold text-gray-900">{formatCLP(item.ingresos)}</span></div>
+                                    <div><span className="text-gray-500">Ventas: </span><span className="font-medium text-gray-700">{item.transacciones}</span></div>
+                                    <div><span className="text-gray-500">Membresías: </span><span className="font-medium text-gray-700">{item.membresias}</span></div>
                                   </div>
                                   <div className="flex items-center justify-between pt-0.5">
                                     <div>
@@ -519,7 +519,7 @@ export default function AnaliticasPage() {
                                       )}
                                     </div>
                                     <div className="text-right">
-                                      <span className="text-gray-400 text-[10px]">Acumulado: </span>
+                                      <span className="text-gray-500 text-[10px]">Acumulado: </span>
                                       <span className="font-semibold text-gray-900 text-[11px]">{formatCLP(item.acumulado)}</span>
                                     </div>
                                   </div>
@@ -530,7 +530,7 @@ export default function AnaliticasPage() {
                             <tr onClick={() => handleSelectMonth(item.mes)} className={`hidden md:table-row border-b border-gray-100 last:border-0 hover:bg-white transition-colors cursor-pointer ${isLast ? "bg-amber-50/40" : ""}`}>
                               <td className="p-3 pl-4 font-medium text-gray-900 whitespace-nowrap">
                                 {isLast && (
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F28C28] mr-2 animate-pulse" />
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-acento mr-2 animate-pulse" />
                                 )}
                                 {item.label}
                               </td>
@@ -558,7 +558,7 @@ export default function AnaliticasPage() {
                                     {Math.abs(item.vsAnterior)}%
                                   </div>
                                 ) : (
-                                  <span className="text-gray-300">—</span>
+                                  <span className="text-gray-500">—</span>
                                 )}
                               </td>
                               <td className="p-3 pr-4 text-right">
@@ -611,7 +611,7 @@ export default function AnaliticasPage() {
                 Alumnos por Plan
               </h2>
               {filteredPlanDist.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">
+                <p className="text-gray-500 text-sm text-center py-8">
                   {selectedMonth ? "No hay miembros para este mes" : "No hay miembros con plan aún"}
                 </p>
               ) : (
@@ -651,7 +651,7 @@ export default function AnaliticasPage() {
               </h2>
               <p className="text-xs text-gray-500 -mt-5 mb-5">Estimado con el precio de lista del plan de cada membresía (incluye las asignadas por el admin).</p>
               {filteredIngresosPorPlan.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">
+                <p className="text-gray-500 text-sm text-center py-8">
                   {selectedMonth ? "No hay ingresos para este mes" : "No hay membresías activas este mes"}
                 </p>
               ) : (
@@ -704,7 +704,7 @@ export default function AnaliticasPage() {
               Planes Disponibles
             </h2>
             {planes.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">
+              <p className="text-gray-500 text-sm text-center py-4">
                 No hay planes configurados
               </p>
             ) : (

@@ -192,18 +192,18 @@ export async function getAllMembresiasConPlan(): Promise<MembresiaConPlan[]> {
 }
 
 export async function getAdminMembresias(): Promise<MembresiaConPlan[]> {
+    let res: Response;
     try {
-        const res = await fetch("/api/admin/membresias");
-        if (!res.ok) {
-            const body = await res.json();
-            console.error("Error fetching admin membresias:", body.error);
-            return [];
-        }
-        return await res.json();
-    } catch (err) {
-        console.error("Error calling admin membresias API:", err);
-        return [];
+        res = await fetch("/api/admin/membresias");
+    } catch {
+        throw new Error("Sin conexión: no se pudieron cargar las membresías");
     }
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error("Error fetching admin membresias:", body.error);
+        throw new Error(body.error || "No se pudieron cargar las membresías");
+    }
+    return res.json();
 }
 
 export async function createMembresia(
@@ -324,18 +324,19 @@ export async function reactivarMembresia(id: string): Promise<AccionCongelar> {
 }
 
 export async function getMembresiasGestion(): Promise<MembresiaGestion[]> {
+  // GEN-08: lanza en vez de devolver []: la pantalla muestra el error y "Reintentar".
+  let res: Response;
   try {
-    const res = await fetch("/api/admin/membresias/gestion", { cache: "no-store" });
-    if (!res.ok) {
-      const body = await res.json();
-      console.error("Error fetching membresias gestion:", body.error);
-      return [];
-    }
-    return await res.json();
-  } catch (err) {
-    console.error("Error calling admin membresias gestion API:", err);
-    return [];
+    res = await fetch("/api/admin/membresias/gestion", { cache: "no-store" });
+  } catch {
+    throw new Error("Sin conexión: no se pudieron cargar las membresías");
   }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    console.error("Error fetching membresias gestion:", body.error);
+    throw new Error(body.error || "No se pudieron cargar las membresías");
+  }
+  return res.json();
 }
 
 export async function createMembresiaGestion(data: {

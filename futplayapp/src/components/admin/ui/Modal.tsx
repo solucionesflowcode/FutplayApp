@@ -124,7 +124,7 @@ export default function Modal({
             disabled={bloquearCierre}
             aria-label="Cerrar"
             data-modal-cerrar
-            className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 shrink-0"
+            className="p-1 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 shrink-0"
           >
             <X size={20} />
           </button>

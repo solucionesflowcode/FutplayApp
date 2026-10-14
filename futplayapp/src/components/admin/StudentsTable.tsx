@@ -30,6 +30,8 @@ type Props = {
   // Cambia cuando cambia el filtro (p. ej. el texto buscado): vuelve a la página 1.
   resetKey?: string;
   cargando?: boolean;
+  error?: string | null;
+  onReintentar?: () => void;
   onView?: (student: Student) => void;
   onEdit?: (student: Student) => void;
   onDelete?: (student: Student) => void;
@@ -47,7 +49,7 @@ export function formatoTelefono(telefono?: string): string {
   return d.length === 8 ? `+569 ${d.slice(0, 4)} ${d.slice(4)}` : telefono || "—";
 }
 
-export default function StudentsTable({ students, resetKey, cargando = false, onView, onEdit, onDelete }: Props) {
+export default function StudentsTable({ students, resetKey, cargando = false, error, onReintentar, onView, onEdit, onDelete }: Props) {
   const [ficha, setFicha] = useState<FichaModalState>({ alumno: null, loading: false, error: null, data: null });
 
   const openFicha = async (alumno: Student) => {
@@ -85,7 +87,7 @@ export default function StudentsTable({ students, resetKey, cargando = false, on
       celda: (s) => (
         <div className="min-w-0">
           <p className="font-semibold text-gray-900 truncate max-w-[220px]">{s.name}</p>
-          {s.email && <p className="text-xs text-gray-400 truncate max-w-[220px]">{s.email}</p>}
+          {s.email && <p className="text-xs text-gray-500 truncate max-w-[220px]">{s.email}</p>}
         </div>
       ),
       valorOrden: (s) => s.name,
@@ -110,6 +112,8 @@ export default function StudentsTable({ students, resetKey, cargando = false, on
         getId={(s) => s.id}
         resetKey={resetKey}
         cargando={cargando}
+        error={error}
+        onReintentar={onReintentar}
         vacio="No se encontraron usuarios"
         tarjetaMovil={(s) => (
           <div className="space-y-1.5">

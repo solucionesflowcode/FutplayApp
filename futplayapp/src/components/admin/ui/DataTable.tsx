@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, TriangleAlert, RotateCcw } from "lucide-react";
 import { acotarPagina, paginasVisibles } from "@/lib/paginacion";
 
 export type Columna<T> = {
@@ -22,6 +22,9 @@ type Props<T> = {
   porPagina?: number;
   vacio?: ReactNode;
   cargando?: boolean;
+  /** GEN-08: si la carga falló, se muestra en vez de "No hay registros". */
+  error?: ReactNode;
+  onReintentar?: () => void;
   /** Al cambiar (p. ej. el texto buscado) vuelve a la página 1. */
   resetKey?: string;
   onFilaClick?: (fila: T) => void;
@@ -58,6 +61,8 @@ export default function DataTable<T>({
   porPagina = 20,
   vacio = "No hay registros",
   cargando = false,
+  error,
+  onReintentar,
   resetKey,
   onFilaClick,
   ordenInicial,
@@ -87,7 +92,24 @@ export default function DataTable<T>({
     setPagina(1);
   };
 
-  const filasTabla = cargando
+  const avisoError = error ? (
+    <div role="alert" className="flex flex-col items-center gap-3 text-red-700">
+      <p className="flex items-center gap-2 font-semibold"><TriangleAlert size={16} aria-hidden /> {error}</p>
+      {onReintentar && (
+        <button type="button" onClick={onReintentar} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-marca border border-gray-200 rounded-lg hover:bg-gray-50">
+          <RotateCcw size={14} aria-hidden /> Reintentar
+        </button>
+      )}
+    </div>
+  ) : null;
+
+  const filasTabla = error && !cargando
+    ? [
+        <tr key="error">
+          <td colSpan={columnas.length} className="p-8 text-center">{avisoError}</td>
+        </tr>,
+      ]
+    : cargando
     ? Array.from({ length: 5 }, (_, i) => (
         <tr key={`esqueleto-${i}`} className="border-b border-gray-100" aria-hidden>
           {columnas.map((c) => (
@@ -98,7 +120,7 @@ export default function DataTable<T>({
     : visibles.length === 0
       ? [
           <tr key="vacio">
-            <td colSpan={columnas.length} className="p-8 text-center text-gray-400">{vacio}</td>
+            <td colSpan={columnas.length} className="p-8 text-center text-gray-500">{vacio}</td>
           </tr>,
         ]
       : visibles.map((fila) => (
@@ -151,10 +173,14 @@ export default function DataTable<T>({
 
       {tarjetaMovil && (
         <ul className="md:hidden divide-y divide-gray-100">
-          {cargando ? (
-            <li className="p-4"><div className="h-12 bg-gray-100 rounded animate-pulse" /></li>
+          {error && !cargando ? (
+            <li className="p-8 text-center">{avisoError}</li>
+          ) : cargando ? (
+            Array.from({ length: 4 }, (_, i) => (
+              <li key={`esqueleto-${i}`} className="p-4" aria-hidden><div className="h-12 bg-gray-100 rounded animate-pulse" /></li>
+            ))
           ) : visibles.length === 0 ? (
-            <li className="p-8 text-center text-gray-400">{vacio}</li>
+            <li className="p-8 text-center text-gray-500">{vacio}</li>
           ) : (
             visibles.map((fila) => (
               <li
@@ -187,7 +213,7 @@ export default function DataTable<T>({
             </button>
             {paginasVisibles(pagina, totalPaginas).map((n, i) =>
               n === "…" ? (
-                <span key={`salto-${i}`} className="px-1 text-gray-400">…</span>
+                <span key={`salto-${i}`} className="px-1 text-gray-500">…</span>
               ) : (
                 <button
                   key={n}

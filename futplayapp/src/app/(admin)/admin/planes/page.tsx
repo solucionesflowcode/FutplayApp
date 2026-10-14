@@ -63,6 +63,11 @@ export default function PlanesPage() {
   const { ejecutar } = useAdminMutation();
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const reintentar = () => {
+    setLoading(true);
+    fetchPlanes();
+  };
   const [search, setSearch] = useState("");
   const [filtroActivo, setFiltroActivo] = useState<FiltroActivo>("activos");
   const [modal, setModal] = useState<"create" | "edit" | null>(null);
@@ -78,9 +83,9 @@ export default function PlanesPage() {
   const fetchPlanes = useCallback(async () => {
     const { planes, error } = await getPlanesAdmin();
     setPlanes(planes);
-    if (error) toast.error("No se pudieron cargar los planes", error);
+    setErrorCarga(error ? "No se pudieron cargar los planes" : null);
     setLoading(false);
-  }, [toast]);
+  }, []);
 
   useEffect(() => { fetchPlanes(); }, [fetchPlanes]);
 
@@ -218,7 +223,7 @@ export default function PlanesPage() {
       encabezado: "Plan",
       celda: (p) => (
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`font-semibold ${activo(p) ? "text-gray-900" : "text-gray-400 line-through"}`}>{p.nombre}</span>
+          <span className={`font-semibold ${activo(p) ? "text-gray-900" : "text-gray-500 line-through"}`}>{p.nombre}</span>
           <TipoBadge tipo={p.tipo_plan} />
           {!activo(p) && <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-[11px] font-bold">Desactivado</span>}
         </div>
@@ -243,7 +248,7 @@ export default function PlanesPage() {
         >
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="relative w-full sm:max-w-xs">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
               <input type="search" aria-label="Buscar plan" placeholder="Buscar plan..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
             </div>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
@@ -256,7 +261,7 @@ export default function PlanesPage() {
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${filtroActivo === f ? "bg-marca border-marca text-white" : "bg-white border-gray-200 text-gray-600 hover:border-marca"}`}
                 >
                   {f === "activos" ? "En venta" : f === "inactivos" ? "Desactivados" : "Todos"}{" "}
-                  <span className={filtroActivo === f ? "text-white/70" : "text-gray-400"}>{conteo(f)}</span>
+                  <span className={filtroActivo === f ? "text-white/70" : "text-gray-500"}>{conteo(f)}</span>
                 </button>
               ))}
             </div>
@@ -269,12 +274,14 @@ export default function PlanesPage() {
           columnas={columnas}
           getId={(p) => p.id}
           cargando={loading}
+          error={errorCarga}
+          onReintentar={reintentar}
           resetKey={`${search}|${filtroActivo}`}
           vacio={search ? "No se encontraron planes" : filtroActivo === "inactivos" ? "No hay planes desactivados" : "No hay planes"}
           tarjetaMovil={(p) => (
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`font-semibold text-sm ${activo(p) ? "text-gray-900" : "text-gray-400 line-through"}`}>{p.nombre}</span>
+                <span className={`font-semibold text-sm ${activo(p) ? "text-gray-900" : "text-gray-500 line-through"}`}>{p.nombre}</span>
                 <TipoBadge tipo={p.tipo_plan} />
               </div>
               <p className="text-xs text-gray-600">{formatPrice(p.precio)} · {p.tipo_plan === "liga" ? "sin tokens" : `${p.tokens_mensuales} tokens`} · {p.dias ?? 30} días</p>

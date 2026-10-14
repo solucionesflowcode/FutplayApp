@@ -16,7 +16,7 @@ export async function getModulos(): Promise<Modulo[]> {
   const res = await fetch("/api/admin/modulos");
   if (!res.ok) {
     console.error("Error fetching modulos:", await res.text());
-    return [];
+    throw new Error("No se pudieron cargar los módulos");
   }
   return res.json();
 }
