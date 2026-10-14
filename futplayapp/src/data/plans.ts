@@ -120,6 +120,7 @@ type UsuarioRow = {
     rol: "jugador" | "profesor" | "administrador";
     rut: string | null;
     telefono: string | null;
+    email: string | null;
 };
 
 function mapRol(rol: string): string {
@@ -144,7 +145,7 @@ export async function getUsers(): Promise<Student[]> {
     const supabase = createClient();
 
     const [usuariosResult, membresias] = await Promise.all([
-        supabase.from("usuario").select("id, nombre, rol, rut, telefono").order("nombre"),
+        supabase.from("usuario").select("id, nombre, rol, rut, telefono, email").order("nombre"),
         getAdminMembresias(),
     ]);
 
@@ -166,6 +167,7 @@ export async function getUsers(): Promise<Student[]> {
             role: mapRol(user.rol),
             rut: user.rut || "",
             phone: user.telefono || "",
+            email: user.email || "",
             plan: m?.plan_nombre || "Sin plan",
             tokens: m?.tokens_restantes || 0,
             status: getStatus(m),

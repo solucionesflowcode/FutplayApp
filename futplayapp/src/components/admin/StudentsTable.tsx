@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, Fragment } from "react";
-import { acotarPagina, paginasVisibles } from "@/lib/paginacion";
-import { Eye, Pencil, Trash2, Heart, X, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Eye, Pencil, Trash2, Heart, Loader2 } from "lucide-react";
 import { getFichaMedicaByUser, calcularEdad, type FichaMedicaData } from "@/data/fichaMedica";
+import { DataTable, Modal, Button, StatusBadge, digitosMovil, type Columna } from "@/components/admin/ui";
 
 export type Student = {
   id: string;
@@ -11,22 +11,15 @@ export type Student = {
   role: string;
   rut?: string;
   phone?: string;
+  email?: string;
   plan: string;
   tokens: number;
   status: string;
   medicalFileUrl?: string;
 };
 
-function colorEstado(status: string): string {
-  if (status === "Activo") return "bg-green-100 text-green-600";
-  if (status === "Inactivo") return "bg-yellow-100 text-yellow-600";
-  // Mismo color que la etiqueta "Congelada" de Membresías.
-  if (status === "Congelado") return "bg-amber-100 text-amber-700";
-  return "bg-red-100 text-red-600";
-}
-
 type FichaModalState = {
-  open: boolean;
+  alumno: Student | null;
   loading: boolean;
   error: string | null;
   data: (FichaMedicaData & { usuario_id: string }) | null;
@@ -36,338 +29,148 @@ type Props = {
   students: Student[];
   // Cambia cuando cambia el filtro (p. ej. el texto buscado): vuelve a la página 1.
   resetKey?: string;
+  cargando?: boolean;
   onView?: (student: Student) => void;
   onEdit?: (student: Student) => void;
   onDelete?: (student: Student) => void;
 };
 
-export default function StudentsTable({ students, resetKey, onView, onEdit, onDelete }: Props) {
+const COLOR_ROL: Record<string, string> = {
+  Alumno: "bg-blue-100 text-blue-700",
+  Profesor: "bg-purple-100 text-purple-700",
+  Admin: "bg-gray-200 text-gray-700",
+};
 
-  const [paginaElegida, setPage] = useState(1);
-  const [fichaModal, setFichaModal] = useState<FichaModalState>({
-    open: false, loading: false, error: null, data: null,
-  });
-  // Antes eran 4: con ~75 usuarios quedaban 19 páginas.
-  const itemsPerPage = 20;
+/** +56979046977 → "+569 7904 6977" (antes se mostraba tal como estaba guardado). */
+export function formatoTelefono(telefono?: string): string {
+  const d = digitosMovil(telefono ?? "");
+  return d.length === 8 ? `+569 ${d.slice(0, 4)} ${d.slice(4)}` : telefono || "—";
+}
 
-  // Al buscar se vuelve a la primera página (antes se quedaba en la 5 y la
-  // tabla salía vacía con "Mostrando 17 a 3 de 3"). Se ajusta en el render
-  // al cambiar la clave, como recomienda React (sin useEffect).
-  const [claveAnterior, setClaveAnterior] = useState(resetKey);
-  if (resetKey !== claveAnterior) {
-    setClaveAnterior(resetKey);
-    setPage(1);
-  }
+export default function StudentsTable({ students, resetKey, cargando = false, onView, onEdit, onDelete }: Props) {
+  const [ficha, setFicha] = useState<FichaModalState>({ alumno: null, loading: false, error: null, data: null });
 
-  const totalPages = Math.max(1, Math.ceil(students.length / itemsPerPage));
-  const page = acotarPagina(paginaElegida, totalPages);
+  const openFicha = async (alumno: Student) => {
+    setFicha({ alumno, loading: true, error: null, data: null });
+    const data = await getFichaMedicaByUser(alumno.id);
+    setFicha({ alumno, loading: false, error: data ? null : "No tiene ficha médica registrada.", data });
+  };
+  const closeFicha = () => setFicha({ alumno: null, loading: false, error: null, data: null });
 
-  const currentData = students.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage
+  const acciones = (s: Student) => (
+    <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
+      {/* Solo los alumnos tienen ficha médica (USR-09). */}
+      {s.role === "Alumno" && (
+        <button type="button" onClick={() => openFicha(s)} className="flex items-center gap-1 text-purple-600 text-xs border border-purple-200 px-2 py-1 rounded hover:bg-purple-50" aria-label={`Ficha médica de ${s.name}`}>
+          <Heart size={14} aria-hidden /> Ficha
+        </button>
+      )}
+      <button type="button" onClick={() => onView?.(s)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg" title="Ver detalle" aria-label={`Ver detalle de ${s.name}`}>
+        <Eye size={16} />
+      </button>
+      <button type="button" onClick={() => onEdit?.(s)} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar a ${s.name}`}>
+        <Pencil size={16} />
+      </button>
+      <button type="button" onClick={() => onDelete?.(s)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar" aria-label={`Eliminar a ${s.name}`}>
+        <Trash2 size={16} />
+      </button>
+    </div>
   );
 
-  const openFicha = async (userId: string) => {
-    setFichaModal({ open: true, loading: true, error: null, data: null });
-    const data = await getFichaMedicaByUser(userId);
-    if (data) {
-      setFichaModal({ open: true, loading: false, error: null, data });
-    } else {
-      setFichaModal({ open: true, loading: false, error: "No tiene ficha médica registrada.", data: null });
-    }
-  };
-
-  const closeFicha = () => {
-    setFichaModal({ open: false, loading: false, error: null, data: null });
-  };
-
-  return (
-    <div className="bg-white shadow-sm rounded-lg w-full p-4 mt-6">
-
-      {/* TABLA */}
-      <div className="md:overflow-x-auto">
-        <table className="w-full text-sm md:min-w-[800px]">
-
-          <thead className="hidden md:table-header-group">
-            <tr className="text-left text-gray-500 border-b">
-              <th className="p-3">Nombre</th>
-              <th className="p-3">Usuario</th>
-              <th className="p-3">RUT</th>
-              <th className="p-3">Teléfono</th>
-              <th className="p-3">Plan</th>
-              <th className="p-3">Tokens</th>
-              <th className="p-3">Estado</th>
-              <th className="p-3">Acciones</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {currentData.length === 0 && (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-400">
-                  No se encontraron usuarios
-                </td>
-              </tr>
-            )}
-            {currentData.map((student) => (
-              <Fragment key={student.id}>
-                {/* MOBILE CARD */}
-                <tr className="md:hidden border-b border-gray-100">
-                  <td colSpan={8} className="p-0">
-                    <div className="p-3 space-y-2">
-                      <div className="flex items-start justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-black truncate text-sm">{student.name}</p>
-                          <p className="text-[10px] text-gray-400 truncate">{student.id}</p>
-                        </div>
-                        <span className={`shrink-0 ml-2 px-2 py-0.5 rounded text-[10px] font-medium ${colorEstado(student.status)}`}>{student.status}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
-                        {student.rut && <div><span className="text-gray-400">RUT: </span><span className="font-medium text-gray-700">{student.rut}</span></div>}
-                        {student.phone && <div><span className="text-gray-400">Tel: </span><span className="font-medium text-gray-700">{student.phone}</span></div>}
-                        <div><span className="text-gray-400">Plan: </span><span className="font-medium text-gray-700">{student.plan}</span></div>
-                        <div><span className="text-gray-400">Tokens: </span><span className="font-medium text-gray-700">{student.tokens}</span></div>
-                        <div><span className="text-gray-400">Rol: </span><span className={`font-medium ${
-                          student.role === "Alumno" ? "text-blue-700" : "text-purple-700"
-                        }`}>{student.role}</span></div>
-                      </div>
-                      <div className="flex gap-2 items-center pt-1.5 border-t border-gray-50">
-                        <button onClick={() => openFicha(student.id)} className="flex items-center gap-1 text-purple-600 text-[10px] border px-2 py-1 rounded hover:bg-purple-100">
-                          <Heart size={11} /> Ficha
-                        </button>
-                        <button onClick={() => onView?.(student)} className="text-blue-500 hover:scale-110 p-1"><Eye size={14} /></button>
-                        <button onClick={() => onEdit?.(student)} className="text-green-500 hover:scale-110 p-1"><Pencil size={14} /></button>
-                        <button onClick={() => onDelete?.(student)} className="text-red-500 hover:scale-110 p-1"><Trash2 size={14} /></button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-                {/* DESKTOP ROW */}
-                <tr className="hidden md:table-row border-b hover:bg-gray-50">
-
-                  <td className="p-3 max-w-[200px]">
-                    <div className="font-semibold text-black truncate">
-                      {student.name}
-                    </div>
-                    <div className="text-xs text-gray-400 truncate">
-                      {student.id}
-                    </div>
-                  </td>
-
-                  <td className="p-3">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        student.role === "Alumno"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-purple-100 text-purple-700"
-                      }`}
-                    >
-                      {student.role}
-                    </span>
-                  </td>
-
-                  <td className="p-3 text-gray-900 font-medium">
-                    {student.rut}
-                  </td>
-
-                  <td className="p-3 text-gray-900 font-medium">
-                    {student.phone}
-                  </td>
-
-                  <td className="p-3 text-gray-900 font-medium">
-                    {student.plan}
-                  </td>
-
-                  <td className="p-3 text-gray-900 font-medium">
-                    {student.tokens}
-                  </td>
-
-                  <td className="p-3">
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${colorEstado(student.status)}`}
-                    >
-                      {student.status}
-                    </span>
-                  </td>
-
-                  <td className="p-3 flex gap-2 items-center">
-
-                    <button
-                      onClick={() => openFicha(student.id)}
-                      className="flex items-center gap-1 text-purple-600 text-xs border px-2 py-1 rounded hover:bg-purple-100"
-                    >
-                      <Heart size={14} />
-                      Ficha
-                    </button>
-
-                    <button onClick={() => onView?.(student)} className="text-blue-500 hover:scale-110">
-                      <Eye size={16} />
-                    </button>
-
-                    <button onClick={() => onEdit?.(student)} className="text-green-500 hover:scale-110">
-                      <Pencil size={16} />
-                    </button>
-
-                    <button onClick={() => onDelete?.(student)} className="text-red-500 hover:scale-110">
-                      <Trash2 size={16} />
-                    </button>
-
-                  </td>
-
-                </tr>
-              </Fragment>
-            ))}
-          </tbody>
-
-        </table>
-      </div>
-
-      {/* FICHA MÉDICA MODAL */}
-      {fichaModal.open && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-t-2 border-t-[#F28C28] shadow-xl ring-1 ring-inset ring-black/[0.03] w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Ficha Médica</h2>
-              <button onClick={closeFicha} className="text-gray-400 hover:text-gray-600">
-                <X size={20} />
-              </button>
-            </div>
-
-            {fichaModal.loading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#F39200]" />
-              </div>
-            )}
-
-            {fichaModal.error && (
-              <div className="p-4 bg-gray-50 rounded text-center text-gray-500">
-                {fichaModal.error}
-              </div>
-            )}
-
-            {fichaModal.data && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <p className="text-xs text-gray-500">Edad</p>
-                    <p className="font-semibold text-gray-900">{calcularEdad(fichaModal.data.fecha_nacimiento)} años</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <p className="text-xs text-gray-500">Peso</p>
-                    <p className="font-semibold text-gray-900">{fichaModal.data.peso_kg} kg</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <p className="text-xs text-gray-500">Estatura</p>
-                    <p className="font-semibold text-gray-900">{fichaModal.data.estatura_cm} cm</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <p className="text-xs text-gray-500">IMC</p>
-                    <p className="font-semibold text-gray-900">{fichaModal.data.imc}</p>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Enfermedades</p>
-                  <p className="font-medium text-gray-900">{fichaModal.data.enfermedades || "Ninguna"}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Alergias</p>
-                  <p className="font-medium text-gray-900">{fichaModal.data.alergias || "Ninguna"}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Medicamentos</p>
-                  <p className="font-medium text-gray-900">{fichaModal.data.medicamentos || "Ninguno"}</p>
-                </div>
-                {fichaModal.data.observaciones && (
-                  <div className="p-3 bg-gray-50 rounded">
-                    <p className="text-xs text-gray-500">Observaciones</p>
-                    <p className="font-medium text-gray-900">{fichaModal.data.observaciones}</p>
-                  </div>
-                )}
-
-                <button
-                  onClick={closeFicha}
-                  className="w-full mt-2 py-2 rounded bg-gray-900 text-white font-medium hover:bg-gray-800"
-                >
-                  Cerrar
-                </button>
-              </div>
-            )}
-          </div>
+  const columnas: Columna<Student>[] = [
+    {
+      id: "nombre",
+      encabezado: "Nombre",
+      // Sin el UUID debajo del nombre (USR-06): queda en "Ver detalle".
+      celda: (s) => (
+        <div className="min-w-0">
+          <p className="font-semibold text-gray-900 truncate max-w-[220px]">{s.name}</p>
+          {s.email && <p className="text-xs text-gray-400 truncate max-w-[220px]">{s.email}</p>}
         </div>
-      )}
+      ),
+      valorOrden: (s) => s.name,
+    },
+    // Antes la columna se llamaba "Usuario" y mostraba el rol (USR-06).
+    { id: "rol", encabezado: "Rol", celda: (s) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${COLOR_ROL[s.role] ?? COLOR_ROL.Admin}`}>{s.role}</span>, valorOrden: (s) => s.role },
+    { id: "rut", encabezado: "RUT", celda: (s) => s.rut || "—", className: "whitespace-nowrap" },
+    { id: "telefono", encabezado: "Teléfono", celda: (s) => formatoTelefono(s.phone), className: "whitespace-nowrap" },
+    { id: "plan", encabezado: "Plan", celda: (s) => s.plan, valorOrden: (s) => s.plan },
+    { id: "tokens", encabezado: "Tokens", celda: (s) => s.tokens, valorOrden: (s) => s.tokens },
+    { id: "estado", encabezado: "Estado", celda: (s) => <StatusBadge estado={s.status} />, valorOrden: (s) => s.status },
+    { id: "acciones", encabezado: "Acciones", celda: acciones },
+  ];
 
-      {/* FOOTER */}
-      <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-3">
+  const d = ficha.data;
+  return (
+    <>
+      <DataTable
+        etiqueta="Usuarios"
+        filas={students}
+        columnas={columnas}
+        getId={(s) => s.id}
+        resetKey={resetKey}
+        cargando={cargando}
+        vacio="No se encontraron usuarios"
+        tarjetaMovil={(s) => (
+          <div className="space-y-1.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 text-sm truncate">{s.name}</p>
+                <p className="text-xs text-gray-500">{s.role} · {s.plan} · {s.tokens} tokens</p>
+              </div>
+              <StatusBadge estado={s.status} />
+            </div>
+            <p className="text-xs text-gray-500">{formatoTelefono(s.phone)}{s.rut ? ` · ${s.rut}` : ""}</p>
+            {acciones(s)}
+          </div>
+        )}
+      />
 
-        <span className="text-sm text-gray-500">
-          {students.length === 0
-            ? "Sin registros"
-            : `Mostrando ${(page - 1) * itemsPerPage + 1} a ${Math.min(page * itemsPerPage, students.length)} de ${students.length} registros`}
-        </span>
-
-        <nav className="flex flex-wrap gap-2 items-center" aria-label="Paginación">
-
-  {/* ANTERIOR */}
-  <button
-    onClick={() => setPage(page - 1)}
-    disabled={page === 1}
-    className="
-      px-4 py-2 rounded-lg font-medium
-      bg-white border border-gray-300
-      text-gray-700
-      hover:bg-blue-50 hover:text-blue-600
-      disabled:opacity-40 disabled:cursor-not-allowed
-      transition-all
-    "
-  >
-    Anterior
-  </button>
-
-  {/* NÚMEROS: primera, última y vecinas de la actual */}
-  {paginasVisibles(page, totalPages).map((num, i) =>
-    num === "…" ? (
-      <span key={`salto-${i}`} className="px-1 text-gray-400">…</span>
-    ) : (
-      <button
-        key={num}
-        onClick={() => setPage(num)}
-        aria-current={page === num ? "page" : undefined}
-        className={`
-          px-4 py-2 rounded-lg font-semibold
-          border transition-all
-          ${
-            page === num
-              ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-              : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-600"
-          }
-        `}
+      <Modal
+        open={ficha.alumno !== null}
+        onClose={closeFicha}
+        title="Ficha médica"
+        description={ficha.alumno?.name}
+        cerrarConFondo
+        footer={<Button variante="secundario" onClick={closeFicha}>Cerrar</Button>}
       >
-        {num}
-      </button>
-    )
-  )}
-
-  {/* SIGUIENTE */}
-  <button
-    onClick={() => setPage(page + 1)}
-    disabled={page >= totalPages}
-    className="
-      px-4 py-2 rounded-lg font-medium
-      bg-white border border-gray-300
-      text-gray-700
-      hover:bg-blue-50 hover:text-blue-600
-      disabled:opacity-40 disabled:cursor-not-allowed
-      transition-all
-    "
-  >
-    Siguiente
-  </button>
-
-</nav>
-
-      </div>
-
-    </div>
+        {ficha.loading && (
+          <div className="flex items-center justify-center py-12" role="status" aria-label="Cargando ficha">
+            <Loader2 className="w-8 h-8 animate-spin text-acento" aria-hidden />
+          </div>
+        )}
+        {ficha.error && <p className="p-4 bg-gray-50 rounded text-center text-gray-500">{ficha.error}</p>}
+        {d && (
+          <div className="space-y-3">
+            <dl className="grid grid-cols-2 gap-3">
+              {[
+                ["Edad", `${calcularEdad(d.fecha_nacimiento)} años`],
+                ["Peso", `${d.peso_kg} kg`],
+                ["Estatura", `${d.estatura_cm} cm`],
+                ["IMC", String(d.imc)],
+              ].map(([etiqueta, valor]) => (
+                <div key={etiqueta} className="p-3 bg-gray-50 rounded">
+                  <dt className="text-xs text-gray-500">{etiqueta}</dt>
+                  <dd className="font-semibold text-gray-900">{valor}</dd>
+                </div>
+              ))}
+            </dl>
+            <dl className="space-y-3">
+              {[
+                ["Enfermedades", d.enfermedades || "Ninguna"],
+                ["Alergias", d.alergias || "Ninguna"],
+                ["Medicamentos", d.medicamentos || "Ninguno"],
+                ...(d.observaciones ? [["Observaciones", d.observaciones]] : []),
+              ].map(([etiqueta, valor]) => (
+                <div key={etiqueta} className="p-3 bg-gray-50 rounded">
+                  <dt className="text-xs text-gray-500">{etiqueta}</dt>
+                  <dd className="font-medium text-gray-900">{valor}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }
