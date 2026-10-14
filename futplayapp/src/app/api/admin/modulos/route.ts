@@ -96,9 +96,17 @@ export async function PUT(request: Request) {
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
     const updateData: Record<string, unknown> = {};
-    if (body.nombre !== undefined) updateData.nombre = body.nombre;
-    if (body.descripcion !== undefined) updateData.descripcion = body.descripcion;
-    if (body.categoria_id !== undefined) updateData.categoria_id = body.categoria_id;
+    if (body.nombre !== undefined) {
+      const nombre = String(body.nombre).trim();
+      if (!nombre) return NextResponse.json({ error: "El nombre del módulo es obligatorio" }, { status: 400 });
+      updateData.nombre = nombre;
+    }
+    if (body.descripcion !== undefined) updateData.descripcion = body.descripcion || "";
+    // MOD-01: "" o null deja el módulo sin categoría.
+    if (body.categoria_id !== undefined) updateData.categoria_id = body.categoria_id || null;
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
+    }
 
     const { error } = await admin.from("modulo").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });

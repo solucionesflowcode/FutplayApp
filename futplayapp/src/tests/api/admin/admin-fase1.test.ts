@@ -27,6 +27,7 @@ vi.mock("@/utils/supabase/admin", () => ({
 import { POST as POST_STUDENT, PUT as PUT_STUDENT } from "@/app/api/admin/students/route";
 import { POST as POST_PLAN, PUT as PUT_PLAN, DELETE as DELETE_PLAN } from "@/app/api/admin/planes/route";
 import { PUT as PUT_PROFESOR } from "@/app/api/admin/profesores/route";
+import { PUT as PUT_MODULO } from "@/app/api/admin/modulos/route";
 
 function req(url: string, method: string, body?: object): Request {
     return new Request(url, {
@@ -203,5 +204,25 @@ describe("PUT /api/admin/profesores — quitar rol y datos opcionales (PRO-01, P
 
         expect(res.status).toBe(400);
         expect(escrituras("usuario", "update")).toEqual([]);
+    });
+});
+
+describe("PUT /api/admin/modulos — categoría opcional (MOD-01)", () => {
+    const URL_MOD = "http://localhost:3000/api/admin/modulos";
+
+    it("ADM-MOD-001: categoria_id vacío deja el módulo sin categoría (null, no \"\")", async () => {
+        const res = await PUT_MODULO(req(URL_MOD, "PUT", { id: "m1", nombre: "Técnica", categoria_id: "" }));
+
+        expect(res.status).toBe(200);
+        expect(escrituras("modulo", "update")).toEqual([{ nombre: "Técnica", categoria_id: null }]);
+    });
+
+    it("ADM-MOD-002: nombre vacío o PUT sin campos se rechazan", async () => {
+        const sinNombre = await PUT_MODULO(req(URL_MOD, "PUT", { id: "m1", nombre: "  " }));
+        const vacio = await PUT_MODULO(req(URL_MOD, "PUT", { id: "m1" }));
+
+        expect(sinNombre.status).toBe(400);
+        expect(vacio.status).toBe(400);
+        expect(escrituras("modulo", "update")).toEqual([]);
     });
 });

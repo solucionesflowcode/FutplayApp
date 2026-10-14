@@ -91,7 +91,7 @@ describe("PUT /api/admin/modulos", () => {
         const res = await PUT(makeRequest("http://localhost:3000/api/admin/modulos", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: "m1", titulo: "Actualizado" }),
+            body: JSON.stringify({ id: "m1", nombre: "Actualizado" }),
         }));
 
         expect(res.status).toBe(200);
