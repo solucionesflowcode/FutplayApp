@@ -3,6 +3,10 @@ import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { getCapsulaDestacadaId } from "@/lib/capsula-destacada";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { traducirError } from "@/lib/errores";
+import { borrarArchivosDocumentos, borrarVideoSiNoSeUsa } from "@/lib/limpieza-capsula";
+
+/** CAP-04: los campos opcionales vacíos se guardan como null (antes no se podían vaciar). */
+const OPCIONALES = ["imagen", "creado", "duracion", "modulo_id", "profesor_id", "bunny_video_id", "descripcion"] as const;
 
 
 export async function GET(request: Request) {
@@ -134,15 +138,21 @@ export async function PUT(request: Request) {
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
     const updateData: Record<string, unknown> = {};
-    if (body.titulo !== undefined) updateData.titulo = body.titulo;
-    if (body.imagen !== undefined) updateData.imagen = body.imagen;
-    if (body.creado !== undefined) updateData.creado = body.creado;
-    if (body.duracion !== undefined) updateData.duracion = body.duracion;
-    if (body.modulo_id !== undefined) updateData.modulo_id = body.modulo_id;
-    if (body.bunny_video_id !== undefined) updateData.bunny_video_id = body.bunny_video_id;
-    if (body.order_index !== undefined) updateData.order_index = body.order_index;
-    if (body.profesor_id !== undefined) updateData.profesor_id = body.profesor_id;
-    if (body.descripcion !== undefined) updateData.descripcion = body.descripcion;
+    if (body.titulo !== undefined) {
+      const titulo = String(body.titulo).trim();
+      if (!titulo) return NextResponse.json({ error: "El título es obligatorio" }, { status: 400 });
+      updateData.titulo = titulo;
+    }
+    for (const campo of OPCIONALES) {
+      if (body[campo] !== undefined) {
+        const valor = typeof body[campo] === "string" ? body[campo].trim() : body[campo];
+        updateData[campo] = valor || null;
+      }
+    }
+    if (body.order_index !== undefined) updateData.order_index = body.order_index ?? 0;
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
+    }
 
     const { error } = await admin.from("capsula").update(updateData).eq("id", body.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -165,10 +175,22 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
+    const { data: capsula } = await admin.from("capsula").select("id, bunny_video_id").eq("id", id).maybeSingle();
+    if (!capsula) return NextResponse.json({ error: "Cápsula no encontrada" }, { status: 404 });
+    const { data: documentos } = await admin.from("documento").select("url_archivo").eq("capsula_id", id);
+
+    // Los documentos y comentarios se borran en cascada.
     const { error } = await admin.from("capsula").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    return NextResponse.json({ success: true });
+    // CAP-05: antes quedaban huérfanos el video en Bunny y el PDF en el storage.
+    // La cápsula ya se borró: un fallo aquí solo se avisa.
+    const avisos = (await Promise.all([
+      borrarArchivosDocumentos(admin, (documentos || []).map((d) => d.url_archivo as string)),
+      borrarVideoSiNoSeUsa(admin, capsula.bunny_video_id as string | null, id),
+    ])).filter((a): a is string => !!a);
+
+    return NextResponse.json({ success: true, avisos });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
     return NextResponse.json({ error: message }, { status: 500 });

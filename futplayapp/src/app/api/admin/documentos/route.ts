@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
+import { borrarArchivosDocumentos } from "@/lib/limpieza-capsula";
 
 export async function GET(request: Request) {
   const user = await verifyAdmin();
@@ -69,9 +70,12 @@ export async function DELETE(request: Request) {
 
   try {
     const admin = await getAdminClient();
+    const { data: doc } = await admin.from("documento").select("url_archivo").eq("id", id).maybeSingle();
     const { error } = await admin.from("documento").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true });
+    // CAP-05: también el archivo; si falla, el documento ya no se muestra y solo se avisa.
+    const aviso = doc ? await borrarArchivosDocumentos(admin, [doc.url_archivo as string]) : null;
+    return NextResponse.json({ success: true, avisos: aviso ? [aviso] : [] });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno";
     return NextResponse.json({ error: message }, { status: 500 });

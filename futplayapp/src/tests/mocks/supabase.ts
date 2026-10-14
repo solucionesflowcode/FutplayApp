@@ -280,6 +280,7 @@ export function createMockServerClient() {
             createBucket: vi.fn(() => Promise.resolve({ error: null })),
             from: vi.fn(() => ({
                 upload: vi.fn(() => Promise.resolve({ error: null })),
+                remove: vi.fn(() => Promise.resolve({ data: [], error: null })),
                 getPublicUrl: vi.fn(() => ({ data: { publicUrl: "https://test.supabase.co/storage/v1/object/public/test/file.jpg" } })),
             })),
         },

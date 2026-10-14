@@ -1,42 +1,49 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Fragment } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Plus,
   Pencil,
   Trash2,
   Loader2,
   Search,
-  X,
-  Video,
+  Image as ImageIcon,
   BookOpen,
-  Image,
-  Hash,
-  ExternalLink,
   PersonStanding,
   Upload,
   CheckCircle2,
   AlertCircle,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Check,
+  TriangleAlert,
 } from "lucide-react";
 import {
   getCapsulasAdmin,
   getModulosOptions,
-  getCategoriasOptions,
   createCapsula,
   updateCapsula,
   deleteCapsula,
+  descartarVideoSubido,
   setCapsulaDestacada,
   type CapsulaAdmin,
   type ModuloOption,
-  type CategoriaOption,
 } from "@/data/capsulas-admin";
 import { getProfesoresDropdown, type ProfesorDropdown } from "@/data/profesores";
 import { getDocumentosByCapsula, createDocumento, deleteDocumento } from "@/data/documentos-admin";
-import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import {
+  Button,
+  CLASE_INPUT,
+  ConfirmDialog,
+  DataTable,
+  FormField,
+  Modal,
+  NumberInput,
+  PageHeader,
+  useAdminMutation,
+  useToast,
+  type Columna,
+} from "@/components/admin/ui";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -49,7 +56,7 @@ type FormData = {
   modulo_id: string;
   profesor_id: string;
   bunny_video_id: string;
-  order_index: number;
+  order_index: number | null;
   descripcion: string;
 };
 
@@ -65,135 +72,221 @@ const emptyForm: FormData = {
   descripcion: "",
 };
 
-const allowedExtensions = [".mp4", ".mov", ".webm", ".avi", ".mkv", ".ogg", ".wmv"];
-const allowedMimePrefix = "video/";
+type Subida = { progreso: number; estado: string } | null;
+type DocPendiente = { filePath: string; nombre: string };
+type DocExistente = { id: string; nombre: string };
+
+const EXTENSIONES_VIDEO = [".mp4", ".mov", ".webm", ".avi", ".mkv", ".ogg", ".wmv"];
+const IMAGENES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const DURACION = /^\d{1,2}(:\d{2}){1,2}$/;
+const PASOS = ["Información", "Video y material", "Configuración"];
+
+/** Error de una subida cancelada a propósito: no se muestra. */
+class SubidaCancelada extends Error {}
+
+function extraerIdBunny(input: string): string | null {
+  const texto = input.trim();
+  const guid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  return texto.match(guid)?.[0] ?? null;
+}
+
+/**
+ * Sube con XHR para tener el progreso. El XHR queda en `ref` para poder
+ * abortarlo al cerrar el formulario (CAP-02).
+ */
+function subirConXhr(
+  ref: { current: XMLHttpRequest | null },
+  metodo: "POST" | "PUT",
+  url: string,
+  cuerpo: XMLHttpRequestBodyInit,
+  onProgreso: (n: number) => void,
+): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    ref.current = xhr;
+    xhr.open(metodo, url, true);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgreso(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      ref.current = null;
+      let data: Record<string, unknown> = {};
+      try { data = JSON.parse(xhr.responseText || "{}"); } catch { /* respuesta vacía */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(new Error((data.error as string) || `Error en la subida (código ${xhr.status})`));
+    };
+    xhr.onerror = () => { ref.current = null; reject(new Error("Error de red durante la subida")); };
+    xhr.onabort = () => { ref.current = null; reject(new SubidaCancelada()); };
+    xhr.send(cuerpo);
+  });
+}
+
+function Estrella({ llena, size }: { llena: boolean; size: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill={llena ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
+function BarraSubida({ subida, color = "bg-marca" }: { subida: NonNullable<Subida>; color?: string }) {
+  return (
+    <div className="bg-blue-50/50 border border-blue-200 rounded p-5 text-center space-y-3" role="status">
+      <Loader2 className="animate-spin text-marca mx-auto" size={24} aria-hidden />
+      <p className="text-sm font-semibold text-blue-900">{subida.estado}</p>
+      <div className="max-w-md mx-auto bg-gray-200 rounded-full h-2.5 overflow-hidden">
+        <div className={`${color} h-2.5 rounded-full transition-all duration-300`} style={{ width: `${subida.progreso}%` }} />
+      </div>
+      <p className="text-xs text-marca font-bold">{subida.progreso}% subido</p>
+    </div>
+  );
+}
+
+function ZonaArchivo({ id, accept, titulo, ayuda, onArchivo }: { id: string; accept: string; titulo: string; ayuda: string; onArchivo: (f: File) => void }) {
+  const [arrastrando, setArrastrando] = useState(false);
+  return (
+    <div
+      onDragEnter={(e) => { e.preventDefault(); setArrastrando(true); }}
+      onDragOver={(e) => { e.preventDefault(); setArrastrando(true); }}
+      onDragLeave={(e) => { e.preventDefault(); setArrastrando(false); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setArrastrando(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) onArchivo(f);
+      }}
+      className={`border-2 border-dashed rounded p-6 text-center transition-all ${arrastrando ? "border-marca bg-blue-50/50" : "border-gray-300 hover:border-marca bg-gray-50/30"}`}
+    >
+      <input
+        type="file"
+        id={id}
+        accept={accept}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onArchivo(f);
+          e.target.value = "";
+        }}
+        className="sr-only"
+      />
+      <label htmlFor={id} className="cursor-pointer flex flex-col items-center gap-2">
+        <span className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-marca"><Upload size={20} aria-hidden /></span>
+        <span className="text-sm font-bold text-gray-700">{titulo}</span>
+        <span className="text-xs text-gray-500">{ayuda}</span>
+      </label>
+    </div>
+  );
+}
 
 export default function CapsulasPage() {
+  const toast = useToast();
+  const { ejecutar } = useAdminMutation();
   const [capsulas, setCapsulas] = useState<CapsulaAdmin[]>([]);
   const [modulos, setModulos] = useState<ModuloOption[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaOption[]>([]);
   const [profesores, setProfesores] = useState<ProfesorDropdown[]>([]);
-  const [categoriaFiltro, setCategoriaFiltro] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [fetchingThumbnail, setFetchingThumbnail] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [showManualId, setShowManualId] = useState(false);
+  const [confirmarCierre, setConfirmarCierre] = useState(false);
 
-  // Estados del Wizard & Upload
-  const [currentStep, setCurrentStep] = useState<number>(1);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [uploadStatus, setUploadStatus] = useState<string>("");
-  const [videoProcessing, setVideoProcessing] = useState<boolean>(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; titulo: string } | null>(null);
+  // Subidas
+  const [subidaVideo, setSubidaVideo] = useState<Subida>(null);
+  const [subidaMiniatura, setSubidaMiniatura] = useState<Subida>(null);
+  const [subidaDocumento, setSubidaDocumento] = useState<Subida>(null);
+  const [videoProcessing, setVideoProcessing] = useState(false);
+  const [encodeProgress, setEncodeProgress] = useState(0);
+  const xhrVideo = useRef<XMLHttpRequest | null>(null);
+  const xhrMiniatura = useRef<XMLHttpRequest | null>(null);
+  const xhrDocumento = useRef<XMLHttpRequest | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // CAP-02: video subido en este formulario que aún no se guarda. Si se cancela
+  // o se reemplaza, se borra de Bunny para no dejarlo huérfano.
+  const videoSinGuardar = useRef<string | null>(null);
+
+  // Documento PDF: el actual solo se borra al guardar (antes se borraba al
+  // instante, aunque después se cancelara el formulario).
+  const [pendingDoc, setPendingDoc] = useState<DocPendiente | null>(null);
+  const [existingDoc, setExistingDoc] = useState<DocExistente | null>(null);
+  const [docAEliminar, setDocAEliminar] = useState<string | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<CapsulaAdmin | null>(null);
+  const [eliminando, setEliminando] = useState(false);
   const [togglingDestacada, setTogglingDestacada] = useState<string | null>(null);
-  const [encodeProgress, setEncodeProgress] = useState<number>(0);
-  const [videoStatus, setVideoStatus] = useState<number | null>(null);
-  const [showManualId, setShowManualId] = useState<boolean>(false);
-  const [isDragActive, setIsDragActive] = useState<boolean>(false);
 
-  // Estados para Miniatura (S3)
-  const [miniaturaFile, setMiniaturaFile] = useState<File | null>(null);
-  const [miniaturaUploading, setMiniaturaUploading] = useState<boolean>(false);
-  const [miniaturaProgress, setMiniaturaProgress] = useState<number>(0);
-  const [miniaturaStatus, setMiniaturaStatus] = useState<string>("");
-  const [isDragMiniActive, setIsDragMiniActive] = useState<boolean>(false);
-
-  // Estados para Documento (PDF S3 — tabla documento)
-  const [documentoFile, setDocumentoFile] = useState<File | null>(null);
-  const [documentoUploading, setDocumentoUploading] = useState<boolean>(false);
-  const [documentoProgress, setDocumentoProgress] = useState<number>(0);
-  const [documentoStatus, setDocumentoStatus] = useState<string>("");
-  const [isDragDocActive, setIsDragDocActive] = useState<boolean>(false);
-  const [pendingDoc, setPendingDoc] = useState<{ filePath: string; nombre: string } | null>(null);
-  const [existingDoc, setExistingDoc] = useState<{ id: string; nombre: string; url_archivo: string } | null>(null);
-  const docIdToDeleteRef = useRef<string | null>(null);
-
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const subiendo = subidaVideo !== null || subidaMiniatura !== null || subidaDocumento !== null;
 
   const fetchData = useCallback(async () => {
-    const [c, m, cat, p] = await Promise.all([
-      getCapsulasAdmin(),
-      getModulosOptions(),
-      getCategoriasOptions(),
-      getProfesoresDropdown(),
-    ]);
+    const [c, m, p] = await Promise.all([getCapsulasAdmin(), getModulosOptions(), getProfesoresDropdown()]);
     setCapsulas(c);
     setModulos(m);
-    setCategorias(cat);
     setProfesores(p);
     setLoading(false);
   }, []);
 
+  const detenerPolling = () => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = null;
+  };
+
   useEffect(() => {
     fetchData();
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
+    return () => detenerPolling();
   }, [fetchData]);
 
-  function extractBunnyVideoId(input: string): string | null {
-    const trimmed = input.trim();
-    const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (guidPattern.test(trimmed)) return trimmed;
-    try {
-      const url = new URL(trimmed);
-      const segments = url.pathname.split("/").filter(Boolean);
-      for (const segment of segments.reverse()) {
-        if (guidPattern.test(segment)) return segment;
-      }
-    } catch { }
-    const match = trimmed.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-    return match ? match[0] : null;
-  }
+  // CAP-02: avisar antes de salir de la página con una subida en curso o un video sin guardar.
+  const hayTrabajoSinGuardar = subiendo || (modal !== null && form.bunny_video_id !== "" && form.bunny_video_id === videoSinGuardar.current);
+  useEffect(() => {
+    if (!hayTrabajoSinGuardar) return;
+    const avisar = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [hayTrabajoSinGuardar]);
 
-  const modulosFiltrados = categoriaFiltro
-    ? modulos.filter((m) => m.categoria_id === categoriaFiltro)
-    : modulos;
-
-  const filtered = capsulas.filter(
-    (c) =>
-      c.titulo.toLowerCase().includes(search.toLowerCase()) ||
-      c.modulo_nombre.toLowerCase().includes(search.toLowerCase())
-  );
+  const q = search.toLowerCase().trim();
+  const filtered = capsulas.filter((c) => c.titulo.toLowerCase().includes(q) || c.modulo_nombre.toLowerCase().includes(q));
 
   const resetForm = () => {
     setForm(emptyForm);
     setError(null);
-    setCategoriaFiltro("");
     setCurrentStep(1);
-    setVideoFile(null);
-    setUploadProgress(0);
-    setUploading(false);
-    setUploadStatus("");
+    setShowManualId(false);
+    setConfirmarCierre(false);
+    setSubidaVideo(null);
+    setSubidaMiniatura(null);
+    setSubidaDocumento(null);
     setVideoProcessing(false);
     setEncodeProgress(0);
-    setVideoStatus(null);
-    setShowManualId(false);
-    setIsDragActive(false);
-    setMiniaturaFile(null);
-    setMiniaturaUploading(false);
-    setMiniaturaProgress(0);
-    setMiniaturaStatus("");
-    setIsDragMiniActive(false);
-    setDocumentoFile(null);
-    setDocumentoUploading(false);
-    setDocumentoProgress(0);
-    setDocumentoStatus("");
-    setIsDragDocActive(false);
     setPendingDoc(null);
     setExistingDoc(null);
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
+    setDocAEliminar(null);
+    videoSinGuardar.current = null;
+    detenerPolling();
+  };
+
+  /** Descarta el formulario: aborta las subidas y borra el video no guardado. */
+  const descartarFormulario = () => {
+    xhrVideo.current?.abort();
+    xhrMiniatura.current?.abort();
+    xhrDocumento.current?.abort();
+    if (videoSinGuardar.current) descartarVideoSubido(videoSinGuardar.current);
+    resetForm();
+    setModal(null);
+  };
+
+  const cerrarWizard = () => {
+    if (saving) return;
+    if (subiendo) {
+      setConfirmarCierre(true);
+      return;
     }
+    descartarFormulario();
   };
 
   const openCreate = () => {
@@ -203,7 +296,6 @@ export default function CapsulasPage() {
 
   const openEdit = async (c: CapsulaAdmin) => {
     resetForm();
-    const modulo = modulos.find((m) => m.id === c.modulo_id);
     setForm({
       id: c.id,
       titulo: c.titulo,
@@ -216,1380 +308,634 @@ export default function CapsulasPage() {
       order_index: c.order_index ?? 0,
       descripcion: c.descripcion || "",
     });
-    setCategoriaFiltro(modulo?.categoria_id || "");
-    setModal("edit");
     setShowManualId(true);
+    setModal("edit");
     const docs = await getDocumentosByCapsula(c.id);
-    if (docs.length > 0) {
-      setExistingDoc({ id: docs[0].id, nombre: docs[0].nombre, url_archivo: docs[0].url_archivo });
-      docIdToDeleteRef.current = null;
-    }
-  };
-
-  const validateVideoFile = (file: File): { isValid: boolean; error?: string } => {
-    const fileName = file.name.toLowerCase();
-    const hasValidExt = allowedExtensions.some(ext => fileName.endsWith(ext));
-    const hasValidMime = file.type.startsWith(allowedMimePrefix);
-
-    if (!hasValidExt && !hasValidMime) {
-      return {
-        isValid: false,
-        error: `Archivo no permitido. Selecciona un video válido (${allowedExtensions.join(", ")})`
-      };
-    }
-    return { isValid: true };
+    if (docs.length > 0) setExistingDoc({ id: docs[0].id, nombre: docs[0].nombre });
   };
 
   const startPollingVideoStatus = (videoId: string) => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
+    detenerPolling();
     setVideoProcessing(true);
     setEncodeProgress(0);
-
-    pollingIntervalRef.current = setInterval(async () => {
+    pollingRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/bunny/get-video?videoId=${videoId}`);
         if (!res.ok) return;
         const data = await res.json();
-        setVideoStatus(data.status);
         setEncodeProgress(data.encodeProgress || 0);
-
         if (data.status === 4 || data.status === 8) {
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
+          detenerPolling();
           setVideoProcessing(false);
         } else if (data.status === 5 || data.status === 6) {
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
+          detenerPolling();
           setVideoProcessing(false);
-          setError("Error en el procesamiento del video en Bunny Stream.");
+          setError("Bunny Stream no pudo procesar el video. Elimínalo y súbelo de nuevo.");
         }
       } catch (err) {
-        console.error("Error polling video status", err);
+        console.error("Error consultando el estado del video", err);
       }
     }, 4000);
   };
 
-  const handleUploadVideo = async (file: File) => {
-    setUploading(true);
-    setUploadProgress(0);
-    setUploadStatus("Iniciando subida a Bunny...");
-    setError(null);
+  /** Quita el video del formulario; si se subió aquí y no se guardó, lo borra de Bunny. */
+  const quitarVideo = () => {
+    xhrVideo.current?.abort();
+    if (form.bunny_video_id && form.bunny_video_id === videoSinGuardar.current) {
+      descartarVideoSubido(form.bunny_video_id);
+      videoSinGuardar.current = null;
+    }
+    setForm((p) => ({ ...p, bunny_video_id: "" }));
+    setVideoProcessing(false);
+    detenerPolling();
+  };
 
+  const handleUploadVideo = async (file: File) => {
+    const nombre = file.name.toLowerCase();
+    if (!EXTENSIONES_VIDEO.some((ext) => nombre.endsWith(ext)) && !file.type.startsWith("video/")) {
+      setError(`Archivo no permitido. Selecciona un video (${EXTENSIONES_VIDEO.join(", ")})`);
+      return;
+    }
+    setError(null);
+    setSubidaVideo({ progreso: 0, estado: "Creando el video en Bunny..." });
+    let videoId: string | null = null;
     try {
       const createRes = await fetch("/api/bunny/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: form.titulo || file.name }),
       });
+      const creado = await createRes.json().catch(() => ({}));
+      if (!createRes.ok) throw new Error(creado.error || "No se pudo crear el video en Bunny");
+      videoId = creado.videoId as string;
+      videoSinGuardar.current = videoId;
+      setForm((p) => ({ ...p, bunny_video_id: videoId! }));
 
-      if (!createRes.ok) {
-        const data = await createRes.json();
-        throw new Error(data.error || "No se pudo crear el registro de video en Bunny");
-      }
-
-      const { videoId } = await createRes.json();
-      setForm(p => ({ ...p, bunny_video_id: videoId }));
-
-      setUploadStatus("Subiendo archivo binario...");
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", `/api/bunny/upload?videoId=${videoId}`, true);
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            try {
-              const errData = JSON.parse(xhr.responseText);
-              reject(new Error(errData.error || `Error en la subida: ${xhr.statusText}`));
-            } catch {
-              reject(new Error(`Error en la subida con código ${xhr.status}`));
-            }
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Error de red durante la subida."));
-        xhr.send(file);
-      });
-
-      setUploadStatus("¡Subida completada!");
-      setUploadProgress(100);
+      setSubidaVideo({ progreso: 0, estado: "Subiendo el video..." });
+      await subirConXhr(xhrVideo, "PUT", `/api/bunny/upload?videoId=${videoId}`, file, (n) =>
+        setSubidaVideo({ progreso: n, estado: "Subiendo el video..." }),
+      );
+      setSubidaVideo(null);
       startPollingVideoStatus(videoId);
-
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Error inesperado al subir el video";
-      console.error(err);
-      setError(message);
-      setUploadStatus("Fallo en la subida");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setIsDragActive(true);
-    } else if (e.type === "dragleave") {
-      setIsDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const validation = validateVideoFile(file);
-      if (!validation.isValid) {
-        setError(validation.error || "Archivo no válido");
-        return;
+      setSubidaVideo(null);
+      // El registro creado en Bunny quedó vacío: se borra.
+      if (videoId && videoSinGuardar.current === videoId) {
+        descartarVideoSubido(videoId);
+        videoSinGuardar.current = null;
+        setForm((p) => (p.bunny_video_id === videoId ? { ...p, bunny_video_id: "" } : p));
       }
-      setVideoFile(file);
-      handleUploadVideo(file);
+      if (!(err instanceof SubidaCancelada)) setError(err instanceof Error ? err.message : "Error inesperado al subir el video");
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const validation = validateVideoFile(file);
-      if (!validation.isValid) {
-        setError(validation.error || "Archivo no válido");
-        return;
-      }
-      setVideoFile(file);
-      handleUploadVideo(file);
-    }
-  };
-
-  // ─── Miniatura Upload ──────────────────────────────
   const handleUploadMiniatura = async (file: File) => {
-    setMiniaturaUploading(true);
-    setMiniaturaProgress(0);
-    setMiniaturaStatus("Subiendo miniatura...");
+    if (!IMAGENES.includes(file.type)) return setError("Formato no permitido. Usa JPG, PNG, WebP o GIF");
+    if (file.size > 2 * 1024 * 1024) return setError("La imagen no debe superar 2 MB");
     setError(null);
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/admin/upload-miniatura", true);
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setMiniaturaProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              setForm((p) => ({ ...p, imagen: data.url }));
-              resolve();
-            } catch {
-              reject(new Error("Error al procesar la respuesta"));
-            }
-          } else {
-            try {
-              const errData = JSON.parse(xhr.responseText);
-              reject(new Error(errData.error || "Error al subir miniatura"));
-            } catch {
-              reject(new Error(`Error en la subida: ${xhr.statusText}`));
-            }
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Error de red durante la subida"));
-
-        const formData = new FormData();
-        formData.append("file", file);
-        xhr.send(formData);
-      });
-
-      setMiniaturaStatus("¡Miniatura subida!");
-      setMiniaturaProgress(100);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Error al subir miniatura";
-      console.error(err);
-      setError(message);
-      setMiniaturaStatus("Fallo en la subida");
-    } finally {
-      setMiniaturaUploading(false);
-    }
-  };
-
-  const handleDragMini = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setIsDragMiniActive(true);
-    } else if (e.type === "dragleave") {
-      setIsDragMiniActive(false);
-    }
-  };
-
-  const handleDropMini = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragMiniActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-      if (!allowed.includes(file.type)) {
-        setError("Formato no permitido. Usa JPG, PNG, WebP o GIF");
-        return;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        setError("La imagen no debe superar 2MB");
-        return;
-      }
-      setMiniaturaFile(file);
-      handleUploadMiniatura(file);
-    }
-  };
-
-  const handleMiniaturaFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-      if (!allowed.includes(file.type)) {
-        setError("Formato no permitido. Usa JPG, PNG, WebP o GIF");
-        return;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        setError("La imagen no debe superar 2MB");
-        return;
-      }
-      setMiniaturaFile(file);
-      handleUploadMiniatura(file);
-    }
-  };
-
-  // ─── Documento (PDF) Upload ───────────────────────
-  const handleUploadDocumento = async (file: File) => {
-    setDocumentoUploading(true);
-    setDocumentoProgress(0);
-    setDocumentoStatus("Subiendo documento...");
-    setError(null);
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/admin/upload-documento", true);
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setDocumentoProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              if (existingDoc) {
-                docIdToDeleteRef.current = existingDoc.id;
-              }
-              setPendingDoc({ filePath: data.filePath, nombre: data.nombre });
-              setExistingDoc(null);
-              resolve();
-            } catch {
-              reject(new Error("Error al procesar la respuesta"));
-            }
-          } else {
-            try {
-              const errData = JSON.parse(xhr.responseText);
-              reject(new Error(errData.error || "Error al subir documento"));
-            } catch {
-              reject(new Error(`Error en la subida: ${xhr.statusText}`));
-            }
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Error de red durante la subida"));
-
-        const formData = new FormData();
-        formData.append("file", file);
-        xhr.send(formData);
-      });
-
-      setDocumentoStatus("¡Documento subido!");
-      setDocumentoProgress(100);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Error al subir documento";
-      console.error(err);
-      setError(message);
-      setDocumentoStatus("Fallo en la subida");
-    } finally {
-      setDocumentoUploading(false);
-    }
-  };
-
-  const handleDragDoc = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setIsDragDocActive(true);
-    } else if (e.type === "dragleave") {
-      setIsDragDocActive(false);
-    }
-  };
-
-  const handleDropDoc = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragDocActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type !== "application/pdf") {
-        setError("Solo se permiten archivos PDF");
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        setError("El PDF no debe superar 10MB");
-        return;
-      }
-      setDocumentoFile(file);
-      handleUploadDocumento(file);
-    }
-  };
-
-  const handleDocumentoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.type !== "application/pdf") {
-        setError("Solo se permiten archivos PDF");
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        setError("El PDF no debe superar 10MB");
-        return;
-      }
-      setDocumentoFile(file);
-      handleUploadDocumento(file);
-    }
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setError(null);
+    setSubidaMiniatura({ progreso: 0, estado: "Subiendo miniatura..." });
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/admin/upload-capsula", { method: "POST", body: fd });
-      const data = await res.json();
-      if (res.ok) {
-        setForm((p) => ({ ...p, imagen: data.url }));
-      } else {
-        setError(data.error || "Error al subir imagen");
-      }
-    } catch {
-      setError("Error al subir imagen");
+      const data = await subirConXhr(xhrMiniatura, "POST", "/api/admin/upload-miniatura", fd, (n) =>
+        setSubidaMiniatura({ progreso: n, estado: "Subiendo miniatura..." }),
+      );
+      setForm((p) => ({ ...p, imagen: data.url as string }));
+    } catch (err: unknown) {
+      if (!(err instanceof SubidaCancelada)) setError(err instanceof Error ? err.message : "Error al subir la miniatura");
+    } finally {
+      setSubidaMiniatura(null);
     }
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleFetchThumbnail = async () => {
-    const videoId = extractBunnyVideoId(form.bunny_video_id);
-    if (!videoId) return;
-    setFetchingThumbnail(true);
+  const handleUploadDocumento = async (file: File) => {
+    if (file.type !== "application/pdf") return setError("Solo se permiten archivos PDF");
+    if (file.size > 10 * 1024 * 1024) return setError("El PDF no debe superar 10 MB");
     setError(null);
+    setSubidaDocumento({ progreso: 0, estado: "Subiendo documento..." });
     try {
-      const res = await fetch(`/api/bunny/thumbnail?videoId=${encodeURIComponent(videoId)}`);
-      const data = await res.json();
-      if (res.ok && data.thumbnailUrl) {
-        setForm((p) => ({ ...p, imagen: data.thumbnailUrl }));
-      } else {
-        setError(data.error || "No se pudo obtener la portada del video");
-      }
-    } catch {
-      setError("Error al obtener portada del video");
+      const fd = new FormData();
+      fd.append("file", file);
+      const data = await subirConXhr(xhrDocumento, "POST", "/api/admin/upload-documento", fd, (n) =>
+        setSubidaDocumento({ progreso: n, estado: "Subiendo documento..." }),
+      );
+      // El documento actual se reemplaza al guardar.
+      if (existingDoc) setDocAEliminar(existingDoc.id);
+      setExistingDoc(null);
+      setPendingDoc({ filePath: data.filePath as string, nombre: data.nombre as string });
+    } catch (err: unknown) {
+      if (!(err instanceof SubidaCancelada)) setError(err instanceof Error ? err.message : "Error al subir el documento");
+    } finally {
+      setSubidaDocumento(null);
     }
-    setFetchingThumbnail(false);
+  };
+
+  const validarPaso = (paso: number): string | null => {
+    if (paso >= 1 && !form.titulo.trim()) return "El título de la cápsula es obligatorio";
+    if (paso >= 2 && !form.bunny_video_id.trim()) return "Sube un video o ingresa su ID de Bunny antes de continuar";
+    if (paso >= 2 && showManualId && !extraerIdBunny(form.bunny_video_id)) return "El ID de Bunny no es válido (debe ser un GUID)";
+    if (paso >= 3 && form.duracion.trim() && !DURACION.test(form.duracion.trim())) return "La duración debe tener el formato MM:SS o HH:MM:SS";
+    return null;
   };
 
   const handleSave = async () => {
-    if (!form.titulo) {
-      setError("El título de la cápsula es obligatorio");
-      return;
-    }
+    const invalido = validarPaso(3);
+    if (invalido) return setError(invalido);
     setSaving(true);
     setError(null);
 
-    // Si no se especifica imagen y tenemos bunny_video_id, usamos el thumbnail por defecto de Bunny Stream
+    // Sin imagen, la portada es la miniatura automática de Bunny.
+    const bunnyVideoId = extraerIdBunny(form.bunny_video_id) || form.bunny_video_id.trim();
     const libraryId = process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
-    const finalImagen = form.imagen || (libraryId && form.bunny_video_id ? `https://vz-${libraryId}.b-cdn.net/${form.bunny_video_id}/thumbnail.jpg` : "");
-    const bunnyVideoId = extractBunnyVideoId(form.bunny_video_id) || form.bunny_video_id || undefined;
+    const imagen = form.imagen.trim() || (libraryId && bunnyVideoId ? `https://vz-${libraryId}.b-cdn.net/${bunnyVideoId}/thumbnail.jpg` : "");
 
-    const payload: {
-      titulo: string;
-      imagen?: string;
-      creado?: string;
-      duracion?: string;
-      modulo_id?: string;
-      profesor_id?: string;
-      bunny_video_id?: string;
-      order_index?: number;
-      descripcion?: string;
-    } = {
-      titulo: form.titulo,
-      imagen: finalImagen || undefined,
-      creado: form.creado || undefined,
-      duracion: form.duracion || undefined,
-      modulo_id: form.modulo_id || undefined,
-      profesor_id: form.profesor_id || undefined,
-      bunny_video_id: bunnyVideoId,
-      order_index: form.order_index || undefined,
-      descripcion: form.descripcion || undefined,
+    // CAP-04: los opcionales vacíos se envían como null para poder borrarlos.
+    const campos = {
+      titulo: form.titulo.trim(),
+      imagen: imagen || null,
+      creado: form.creado.trim() || null,
+      duracion: form.duracion.trim() || null,
+      modulo_id: form.modulo_id || null,
+      profesor_id: form.profesor_id || null,
+      bunny_video_id: bunnyVideoId || null,
+      order_index: form.order_index ?? 0,
+      descripcion: form.descripcion.trim() || null,
     };
 
-    let savedCapsulaId = form.id;
+    let capsulaId = form.id;
     if (modal === "create") {
-      const res = await createCapsula(payload);
+      const res = await createCapsula({
+        ...campos,
+        imagen: campos.imagen ?? undefined,
+        creado: campos.creado ?? undefined,
+        duracion: campos.duracion ?? undefined,
+        modulo_id: campos.modulo_id ?? undefined,
+        profesor_id: campos.profesor_id ?? undefined,
+        bunny_video_id: campos.bunny_video_id ?? undefined,
+        descripcion: campos.descripcion ?? undefined,
+      });
       if (!res.success) {
-        setError(res.error || "Error al guardar");
         setSaving(false);
-        return;
+        return setError(res.error || "Error al guardar");
       }
-      savedCapsulaId = res.data?.id || savedCapsulaId;
+      capsulaId = res.data?.id;
     } else {
-      const res = await updateCapsula({ ...payload, id: form.id! });
+      const res = await updateCapsula({ ...campos, id: form.id! });
       if (!res.success) {
-        setError(res.error || "Error al guardar");
         setSaving(false);
-        return;
+        return setError(res.error || "Error al guardar");
       }
     }
+    // El video ya quedó guardado en la cápsula: no se descarta al cerrar.
+    videoSinGuardar.current = null;
 
-    // Antes un fallo al adjuntar el PDF solo quedaba en la consola y el admin
-    // creía que se había guardado.
+    // CAP-01: un fallo al adjuntar el PDF se avisa (antes solo iba a la consola).
     let errorDocumento: string | null = null;
-    if (pendingDoc && savedCapsulaId) {
-      if (docIdToDeleteRef.current) {
-        await deleteDocumento(docIdToDeleteRef.current);
-        docIdToDeleteRef.current = null;
-      }
-      const docRes = await createDocumento({
-        capsula_id: savedCapsulaId,
-        nombre: pendingDoc.nombre,
-        url_archivo: pendingDoc.filePath,
-      });
-      if (!docRes.success) {
-        console.error("Error al guardar documento:", docRes.error);
-        errorDocumento = `La cápsula se guardó, pero no se pudo adjuntar el PDF "${pendingDoc.nombre}"${docRes.error ? `: ${docRes.error}` : ""}. Edítala y vuelve a subirlo.`;
-      }
+    if (capsulaId && docAEliminar) await deleteDocumento(docAEliminar);
+    if (capsulaId && pendingDoc) {
+      const docRes = await createDocumento({ capsula_id: capsulaId, nombre: pendingDoc.nombre, url_archivo: pendingDoc.filePath });
+      if (!docRes.success) errorDocumento = `No se pudo adjuntar el PDF "${pendingDoc.nombre}"${docRes.error ? `: ${docRes.error}` : ""}. Edita la cápsula y vuelve a subirlo.`;
     }
 
     setSaving(false);
-    setModal(null);
-    resetForm();
-    // Después de resetForm (que limpia el error), para que se vea en la página.
-    if (errorDocumento) setError(errorDocumento);
     if (modal === "create") {
       fetchData();
     } else {
-      setCapsulas((prev) =>
-        prev.map((c) =>
-          c.id === form.id
-            ? {
-              ...c,
-              titulo: form.titulo,
-              imagen: form.imagen,
-              creado: form.creado,
-              duracion: form.duracion || null,
-              modulo_id: form.modulo_id || null,
-              profesor_id: form.profesor_id || null,
-              bunny_video_id: form.bunny_video_id || null,
-              order_index: form.order_index,
-            }
-            : c
-        )
-      );
+      // CAP-03: la tabla mostraba la imagen, el módulo y el profesor anteriores.
+      const id = form.id;
+      setCapsulas((prev) => prev.map((c) => (c.id === id ? {
+        ...c,
+        titulo: campos.titulo,
+        imagen: campos.imagen ?? "",
+        creado: campos.creado ?? "",
+        duracion: campos.duracion,
+        modulo_id: campos.modulo_id,
+        modulo_nombre: modulos.find((m) => m.id === campos.modulo_id)?.nombre ?? "",
+        profesor_id: campos.profesor_id,
+        profesor_nombre: profesores.find((p) => p.id === campos.profesor_id)?.nombre ?? "",
+        bunny_video_id: campos.bunny_video_id,
+        order_index: campos.order_index,
+        descripcion: campos.descripcion,
+      } : c)));
     }
+    if (errorDocumento) toast.error("La cápsula se guardó, pero falta el PDF", errorDocumento);
+    else toast.exito(modal === "create" ? "Cápsula creada" : "Cápsula actualizada");
+    resetForm();
+    setModal(null);
   };
 
   const handleToggleDestacada = async (c: CapsulaAdmin) => {
+    const nuevoId = c.destacada ? null : c.id;
+    const anterior = capsulas;
     setTogglingDestacada(c.id);
-    setError(null);
-    const newId = c.destacada ? null : c.id;
-    const res = await setCapsulaDestacada(newId);
-    if (!res.success) {
-      setError(res.error || "Error al cambiar cápsula destacada");
-      setTogglingDestacada(null);
-      return;
-    }
-    setCapsulas((prev) =>
-      prev.map((x) => ({ ...x, destacada: x.id === newId }))
-    );
+    setCapsulas((prev) => prev.map((x) => ({ ...x, destacada: x.id === nuevoId })));
+    await ejecutar(() => setCapsulaDestacada(nuevoId), {
+      exito: nuevoId ? `${c.titulo} es la cápsula destacada` : "Ya no hay cápsula destacada",
+      error: "No se pudo cambiar la cápsula destacada",
+      revertir: () => setCapsulas(anterior),
+    });
     setTogglingDestacada(null);
   };
 
-  const handleDelete = async (id: string, _titulo: string) => {
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const c = deleteTarget;
+    const anterior = capsulas;
+    setEliminando(true);
+    setCapsulas((prev) => prev.filter((x) => x.id !== c.id));
+    let avisos: string[] = [];
+    const ok = await ejecutar(async () => {
+      const res = await deleteCapsula(c.id);
+      avisos = res.avisos ?? [];
+      return res;
+    }, {
+      exito: `Cápsula ${c.titulo} eliminada`,
+      error: "No se pudo eliminar la cápsula",
+      revertir: () => setCapsulas(anterior),
+    });
+    if (ok && avisos.length > 0) toast.error("La cápsula se eliminó, pero quedó algo por limpiar", avisos.join(" "));
+    setEliminando(false);
     setDeleteTarget(null);
-    setError(null);
-
-    const res = await deleteCapsula(id);
-    if (!res.success) {
-      setError(res.error || "Error al eliminar");
-      return;
-    }
-    setCapsulas((prev) => prev.filter((c) => c.id !== id));
   };
 
   const nextStep = () => {
-    if (currentStep === 1 && !form.titulo.trim()) {
-      setError("Por favor ingresa un título");
-      return;
-    }
-    if (currentStep === 2 && !form.bunny_video_id.trim()) {
-      setError("Debes subir un video o ingresar un ID de Bunny antes de continuar");
-      return;
-    }
+    const invalido = validarPaso(currentStep);
+    if (invalido) return setError(invalido);
     setError(null);
-    setCurrentStep(prev => prev + 1);
+    setCurrentStep((p) => p + 1);
   };
 
   const prevStep = () => {
     setError(null);
-    setCurrentStep(prev => prev - 1);
+    setCurrentStep((p) => p - 1);
   };
 
-  if (loading && capsulas.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-5 h-5 animate-spin text-[#F28C28]" />
-      </div>
-    );
-  }
+  const acciones = (c: CapsulaAdmin) => (
+    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+      <button type="button" onClick={() => openEdit(c)} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar ${c.titulo}`}>
+        <Pencil size={16} />
+      </button>
+      <button type="button" onClick={() => setDeleteTarget(c)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar" aria-label={`Eliminar ${c.titulo}`}>
+        <Trash2 size={16} />
+      </button>
+    </div>
+  );
+
+  const botonDestacada = (c: CapsulaAdmin) => (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); handleToggleDestacada(c); }}
+      disabled={togglingDestacada !== null}
+      aria-pressed={c.destacada}
+      aria-label={`Destacar ${c.titulo}`}
+      title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
+      className={`p-1.5 rounded-lg ${c.destacada ? "text-yellow-500 hover:bg-yellow-50" : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"}`}
+    >
+      {togglingDestacada === c.id ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Estrella llena={c.destacada} size={16} />}
+    </button>
+  );
+
+  const miniatura = (c: CapsulaAdmin, tam = "w-12 h-8") => (
+    <div className={`${tam} rounded bg-gray-100 overflow-hidden shrink-0`}>
+      {c.imagen ? <img src={c.imagen} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon size={14} aria-hidden /></div>}
+    </div>
+  );
+
+  const columnas: Columna<CapsulaAdmin>[] = [
+    {
+      id: "titulo",
+      encabezado: "Cápsula",
+      celda: (c) => (
+        <div className="flex items-center gap-3 min-w-0">
+          {miniatura(c)}
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 truncate">{c.titulo}</p>
+            <p className="text-xs text-gray-500 truncate">
+              {c.creado || "Sin coach"}
+              {!c.bunny_video_id && <span className="ml-2 text-amber-700 font-semibold">· Sin video</span>}
+            </p>
+          </div>
+        </div>
+      ),
+      valorOrden: (c) => c.titulo,
+    },
+    {
+      id: "modulo",
+      encabezado: "Módulo",
+      celda: (c) => c.modulo_nombre
+        ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold whitespace-nowrap"><BookOpen size={12} aria-hidden /> {c.modulo_nombre}</span>
+        : <span className="text-xs text-gray-400">Sin módulo</span>,
+      valorOrden: (c) => c.modulo_nombre,
+    },
+    {
+      id: "profesor",
+      encabezado: "Profesor",
+      celda: (c) => c.profesor_nombre
+        ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold whitespace-nowrap"><PersonStanding size={12} aria-hidden /> {c.profesor_nombre}</span>
+        : <span className="text-xs text-gray-400">Sin profesor</span>,
+      valorOrden: (c) => c.profesor_nombre,
+    },
+    { id: "duracion", encabezado: "Duración", celda: (c) => c.duracion || <span className="text-gray-300">—</span>, valorOrden: (c) => c.duracion ?? "" },
+    { id: "orden", encabezado: "Orden", celda: (c) => c.order_index ?? 0, valorOrden: (c) => c.order_index ?? 0 },
+    { id: "destacada", encabezado: "Destacada", celda: botonDestacada, valorOrden: (c) => (c.destacada ? 1 : 0) },
+    { id: "acciones", encabezado: "Acciones", celda: acciones },
+  ];
+
+  const urlDocumento = existingDoc
+    ? `/api/download-documento?id=${existingDoc.id}`
+    : pendingDoc
+      ? `/api/download-documento?filePath=${encodeURIComponent(pendingDoc.filePath)}&nombre=${encodeURIComponent(pendingDoc.nombre)}`
+      : null;
 
   return (
-    <>
-      <div className="p-4 sm:p-6">
-        <div className="flex flex-col gap-6 w-full max-w-[1216px] mx-auto">
-
-          {/* ─── HEADER ─── */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-extrabold text-gray-900">Gestión de Cápsulas</h1>
-              <p className="text-gray-500 text-sm mt-1">
-                Administra las cápsulas de video y contenido E-learning
-              </p>
-            </div>
-            <button
-              onClick={openCreate}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto"
-            >
-              <Plus size={16} />
-              Nueva Cápsula
-            </button>
+    <div className="p-4 sm:p-6">
+      <div className="w-full max-w-[1216px] mx-auto">
+        <PageHeader
+          titulo="Gestión de cápsulas"
+          descripcion="Cápsulas de video y material de apoyo del E-learning."
+          acciones={<Button icono={<Plus size={16} />} onClick={openCreate}>Nueva cápsula</Button>}
+        >
+          <div className="relative w-full sm:max-w-xs">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+            <input type="search" aria-label="Buscar cápsula" placeholder="Buscar cápsula o módulo..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${CLASE_INPUT} pl-9 py-2`} />
           </div>
+        </PageHeader>
 
-          {/* ─── TABLE ─── */}
-          {/* Errores fuera del modal (p. ej. el PDF que no se pudo adjuntar), arriba para que se vean. */}
-          {error && !modal && (
-            <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{error}</div>
+        <DataTable
+          etiqueta="Cápsulas"
+          filas={filtered}
+          columnas={columnas}
+          getId={(c) => c.id}
+          cargando={loading}
+          resetKey={search}
+          vacio={search ? "No se encontraron cápsulas" : "No hay cápsulas creadas aún"}
+          tarjetaMovil={(c) => (
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                {miniatura(c, "w-10 h-7")}
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-sm text-gray-900 truncate">{c.titulo}</p>
+                  <p className="text-xs text-gray-500">{[c.modulo_nombre, c.profesor_nombre, c.duracion].filter(Boolean).join(" · ") || "Sin módulo"}</p>
+                </div>
+                {botonDestacada(c)}
+              </div>
+              {acciones(c)}
+            </div>
           )}
+        />
+      </div>
 
-          <div className="bg-white border border-gray-200">
-            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="relative w-full sm:max-w-xs">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar cápsula o módulo..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                />
-              </div>
-              <span className="text-sm text-gray-500 self-end sm:self-auto">{filtered.length} cápsula{filtered.length !== 1 ? "s" : ""}</span>
-            </div>
+      {/* Formulario por pasos */}
+      <Modal
+        open={modal !== null}
+        onClose={cerrarWizard}
+        title={modal === "create" ? "Nueva cápsula" : "Editar cápsula"}
+        description={`Paso ${currentStep} de 3: ${PASOS[currentStep - 1]}`}
+        size="lg"
+        bloquearCierre={saving}
+        footer={
+          <>
+            {currentStep > 1 && (
+              <Button variante="secundario" icono={<ChevronLeft size={16} />} onClick={prevStep} disabled={saving} className="mr-auto">Anterior</Button>
+            )}
+            <Button variante="secundario" onClick={cerrarWizard} disabled={saving}>Cancelar</Button>
+            {currentStep < 3 ? (
+              <Button onClick={nextStep} disabled={subidaVideo !== null}>Siguiente <ChevronRight size={16} aria-hidden /></Button>
+            ) : (
+              <Button onClick={handleSave} cargando={saving} textoCargando="Guardando..." disabled={subiendo}>
+                {modal === "create" ? "Crear cápsula" : "Guardar cambios"}
+              </Button>
+            )}
+          </>
+        }
+      >
+        {/* Pasos */}
+        <ol className="flex items-center gap-2 mb-6 bg-gray-50 p-2 sm:p-3 rounded border border-gray-100" aria-label="Pasos">
+          {PASOS.map((nombre, i) => {
+            const n = i + 1;
+            return (
+              <li key={nombre} className="flex-1 flex items-center justify-center gap-2" aria-current={currentStep === n ? "step" : undefined}>
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${currentStep === n ? "bg-marca text-white" : currentStep > n ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"}`}>
+                  {currentStep > n ? <Check size={14} aria-hidden /> : n}
+                </span>
+                <span className={`text-xs font-bold hidden sm:inline ${currentStep === n ? "text-marca" : "text-gray-500"}`}>{nombre}</span>
+              </li>
+            );
+          })}
+        </ol>
 
-            <div className="md:overflow-x-auto">
-              <table className="w-full text-sm md:min-w-[800px]">
-                <thead className="hidden md:table-header-group">
-                  <tr className="text-left text-gray-500 border-b bg-gray-50/50">
-                    <th className="p-3 font-semibold">Título</th>
-                    <th className="p-3 font-semibold">Coach</th>
-                    <th className="p-3 font-semibold">Duración</th>
-                    <th className="p-3 font-semibold">Módulo</th>
-                    <th className="p-3 font-semibold">Profesor</th>
-                    <th className="p-3 font-semibold">Video ID</th>
-                    <th className="p-3 font-semibold">Orden</th>
-                    <th className="p-3 font-semibold">Destacar</th>
-                    <th className="p-3 font-semibold">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="p-8 text-center text-gray-400">
-                        {search ? "No se encontraron cápsulas" : "No hay cápsulas creadas aún"}
-                      </td>
-                    </tr>
-                  ) : filtered.map((c) => (
-                    <Fragment key={c.id}>
-                      {/* MOBILE CARD */}
-                      <tr className="md:hidden border-b border-gray-100">
-                        <td colSpan={9} className="p-0">
-                          <div className="p-3 space-y-1.5">
-                            <div className="flex items-start gap-2">
-                              <div className="w-8 h-6 rounded bg-gray-100 overflow-hidden shrink-0">
-                                {c.imagen ? <img src={c.imagen} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><Image size={11} /></div>}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="font-semibold text-gray-900 truncate text-sm">{c.titulo}</p>
-                                <p className="text-[10px] text-gray-400">{c.creado || ""}{c.duracion ? ` · ${c.duracion}` : ""}</p>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button onClick={() => handleToggleDestacada(c)} disabled={togglingDestacada === c.id} className={`p-1 rounded-lg ${c.destacada ? "text-yellow-500" : "text-gray-300"}`} title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}>
-                                  {togglingDestacada === c.id ? <Loader2 size={14} className="animate-spin" /> : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
-                              {c.modulo_nombre && <div><span className="text-gray-400">Módulo: </span><span className="font-medium text-gray-700">{c.modulo_nombre}</span></div>}
-                              {c.profesor_nombre && <div><span className="text-gray-400">Prof: </span><span className="font-medium text-gray-700">{c.profesor_nombre}</span></div>}
-                              {c.bunny_video_id && <div><span className="text-gray-400">Video ID: </span><span className="font-medium text-gray-500 font-mono">{c.bunny_video_id.slice(0, 8)}...</span></div>}
-                              <div><span className="text-gray-400">Orden: </span><span className="font-medium text-gray-700">{c.order_index ?? 0}</span></div>
-                            </div>
-                            <div className="flex gap-2 pt-1 border-t border-gray-50">
-                              <button onClick={() => openEdit(c)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar"><Pencil size={14} /></button>
-                              <button onClick={() => setDeleteTarget({ id: c.id, titulo: c.titulo })} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar"><Trash2 size={14} /></button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                      {/* DESKTOP ROW */}
-                      <tr className="hidden md:table-row border-b hover:bg-gray-50/50">
-                        <td className="p-3 max-w-[200px]">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-7 rounded bg-gray-100 overflow-hidden shrink-0">
-                              {c.imagen ? (
-                                <img src={c.imagen} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                  <Image size={14} />
-                                </div>
-                              )}
-                            </div>
-                            <span className="font-semibold text-gray-900 truncate">{c.titulo}</span>
-                          </div>
-                        </td>
-                        <td className="p-3 text-gray-600">{c.creado || <span className="text-gray-300">—</span>}</td>
-                        <td className="p-3 text-gray-600">{c.duracion || <span className="text-gray-300">—</span>}</td>
-                        <td className="p-3">
-                          {c.modulo_nombre ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold">
-                              <BookOpen size={12} />
-                              {c.modulo_nombre}
-                            </span>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          {c.profesor_nombre ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold">
-                              <PersonStanding size={12} />
-                              {c.profesor_nombre}
-                            </span>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          {c.bunny_video_id ? (
-                            <a
-                              href={`https://dash.bunny.net/stream/library/${c.bunny_video_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-mono"
-                            >
-                              <Video size={12} />
-                              {c.bunny_video_id.slice(0, 8)}...
-                              <ExternalLink size={10} />
-                            </a>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <span className="inline-flex items-center gap-1 text-gray-500 text-xs">
-                            <Hash size={12} />
-                            {c.order_index ?? 0}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => handleToggleDestacada(c)}
-                            disabled={togglingDestacada === c.id}
-                            className={`p-1.5 rounded-lg ${c.destacada
-                              ? "text-yellow-500 hover:bg-yellow-50"
-                              : "text-gray-300 hover:text-yellow-500 hover:bg-yellow-50"
-                              }`}
-                            title={c.destacada ? "Quitar destacada" : "Marcar como destacada"}
-                          >
-                            {togglingDestacada === c.id ? (
-                              <Loader2 size={16} className="animate-spin" />
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={c.destacada ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                              </svg>
-                            )}
-                          </button>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => openEdit(c)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                              title="Editar"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget({ id: c.id, titulo: c.titulo })}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                              title="Eliminar"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-
-        {/* ─── MODAL WIZARD ─── */}
-        {modal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white border-t-2 border-t-[#F28C28] w-full max-w-2xl p-4 sm:p-6 shadow-xl max-h-[95vh] flex flex-col">
-
-              {/* Modal Header */}
-              <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-3">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {modal === "create" ? "Nueva Cápsula" : "Editar Cápsula"}
-                  </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Organiza tu cápsula en sencillos pasos</p>
-                </div>
-                <button onClick={() => { setModal(null); resetForm(); }} className="p-1 hover:bg-gray-100 rounded-lg">
-                  <X size={20} />
-                </button>
-              </div>
-
-
-              {/* Stepper Progress Indicator */}
-              <div className="flex justify-between items-center mb-6 bg-gray-50 p-2 sm:p-3 rounded border border-gray-100">
-                <div className="flex-1 flex items-center justify-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${currentStep === 1 ? "bg-blue-600 text-white animate-pulse" : currentStep > 1 ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"}`}>
-                    {currentStep > 1 ? <Check size={14} /> : "1"}
-                  </div>
-                  <span className={`text-xs font-bold hidden sm:inline ${currentStep === 1 ? "text-blue-600" : "text-gray-500"}`}>Información</span>
-                </div>
-                <div className="h-[1px] w-4 sm:w-8 bg-gray-200 shrink-0" />
-                <div className="flex-1 flex items-center justify-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${currentStep === 2 ? "bg-blue-600 text-white" : currentStep > 2 ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"}`}>
-                    {currentStep > 2 ? <Check size={14} /> : "2"}
-                  </div>
-                  <span className={`text-xs font-bold hidden sm:inline ${currentStep === 2 ? "text-blue-600" : "text-gray-500"}`}>Video, Miniatura y Documento</span>
-                </div>
-                <div className="h-[1px] w-4 sm:w-8 bg-gray-200 shrink-0" />
-                <div className="flex-1 flex items-center justify-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${currentStep === 3 ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-500"}`}>
-                    {currentStep === 3 ? <Settings size={14} className="text-white" /> : "3"}
-                  </div>
-                  <span className={`text-xs font-bold hidden sm:inline ${currentStep === 3 ? "text-blue-600" : "text-gray-500"}`}>Configuración</span>
-                </div>
-              </div>
-
-              {/* Modal Scrollable Body */}
-              <div className="flex-1 overflow-y-auto pr-1 space-y-5">
-
-                {/* STEP 1: Información básica */}
-                {currentStep === 1 && (
-                  <div className="space-y-4 animate-fadeIn">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Título *</label>
-                      <input
-                        type="text"
-                        value={form.titulo}
-                        onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                        placeholder="Ej: Técnicas de Regate"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Descripción</label>
-                      <textarea
-                        value={form.descripcion}
-                        onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 min-h-[80px] resize-y"
-                        placeholder="Describe el contenido de la cápsula..."
-                        rows={3}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Coach / Instructor</label>
-                      <input
-                        type="text"
-                        value={form.creado}
-                        onChange={(e) => setForm((p) => ({ ...p, creado: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                        placeholder="Ej: Coach Juan Pérez"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Módulo</label>
-                      <select
-                        value={form.modulo_id}
-                        onChange={(e) => setForm((p) => ({ ...p, modulo_id: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                      >
-                        <option value="">Sin módulo</option>
-                        {modulos.map((m) => (
-                          <option key={m.id} value={m.id}>{m.nombre}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Profesor</label>
-                      <select
-                        value={form.profesor_id}
-                        onChange={(e) => setForm((p) => ({ ...p, profesor_id: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                      >
-                        <option value="">Sin profesor asignado</option>
-                        {profesores.map((pr) => (
-                          <option key={pr.id} value={pr.id}>{pr.nombre}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {/* STEP 2: Video & Multimedia */}
-                {currentStep === 2 && (
-                  <div className="space-y-5 animate-fadeIn">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">Cargar Video</label>
-                      <button
-                        type="button"
-                        onClick={() => setShowManualId(!showManualId)}
-                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
-                      >
-                        {showManualId ? "Usar cargador directo" : "Ingresar ID manualmente"}
-                      </button>
-                    </div>
-
-                    {showManualId ? (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Bunny Video ID</label>
-                        <input
-                          type="text"
-                          value={form.bunny_video_id}
-                          onChange={(e) => setForm((p) => ({ ...p, bunny_video_id: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 font-mono"
-                          placeholder="GUID del video en Bunny Stream (ej: a83b2...)"
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        {/* Caso 1: Subiendo archivo */}
-                        {uploading && (
-                          <div className="bg-blue-50/50 border border-blue-200 rounded p-6 text-center space-y-3">
-                            <Loader2 className="animate-spin text-blue-600 mx-auto" size={24} />
-                            <div className="text-sm font-semibold text-blue-900">{uploadStatus}</div>
-                            <div className="max-w-md mx-auto bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                              <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                            </div>
-                            <div className="text-xs text-blue-500 font-bold">{uploadProgress}% subido</div>
-                          </div>
-                        )}
-
-                        {/* Caso 2: Procesamiento/Polling */}
-                        {!uploading && form.bunny_video_id && (
-                          <div className="bg-green-50/50 border border-green-200 rounded p-5 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-bold text-green-900 flex items-center gap-1.5">
-                                {videoProcessing ? (
-                                  <Loader2 className="animate-spin text-green-600" size={16} />
-                                ) : (
-                                  <CheckCircle2 className="text-green-500" size={16} />
-                                )}
-                                {videoProcessing ? `Procesando video en Bunny (${encodeProgress}%)` : "Video listo para reproducir"}
-                              </span>
-                              <span className="text-xs font-mono text-gray-500">ID: {form.bunny_video_id.slice(0, 8)}...</span>
-                            </div>
-
-                            {videoProcessing && (
-                              <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
-                                <div className="bg-green-600 h-2 rounded-full transition-all duration-300" style={{ width: `${encodeProgress}%` }} />
-                              </div>
-                            )}
-
-                            <div className="flex justify-between items-center pt-2">
-                              <span className="text-xs text-gray-400">Thumbnail automático de Bunny configurado</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setForm(p => ({ ...p, bunny_video_id: "" }));
-                                  setVideoFile(null);
-                                  setUploadProgress(0);
-                                  setVideoProcessing(false);
-                                  if (pollingIntervalRef.current) {
-                                    clearInterval(pollingIntervalRef.current);
-                                    pollingIntervalRef.current = null;
-                                  }
-                                }}
-                                className="text-xs text-red-600 hover:text-red-800 font-semibold hover:underline"
-                              >
-                                Eliminar y subir otro
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Caso 3: Zona de Dropbox */}
-                        {!uploading && !form.bunny_video_id && (
-                          <div
-                            onDragEnter={handleDrag}
-                            onDragOver={handleDrag}
-                            onDragLeave={handleDrag}
-                            onDrop={handleDrop}
-                            className={`border-2 border-dashed rounded p-8 text-center transition-all ${isDragActive
-                              ? "border-blue-500 bg-blue-50/50"
-                              : "border-gray-300 hover:border-blue-400 bg-gray-50/30"
-                              }`}
-                          >
-                            <input
-                              type="file"
-                              id="video-upload-input"
-                              accept="video/*"
-                              onChange={handleFileChange}
-                              className="hidden"
-                            />
-                            <label htmlFor="video-upload-input" className="cursor-pointer flex flex-col items-center gap-3">
-                              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                                <Upload size={24} />
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-gray-700">Arrastra tu video aquí o haz clic para buscar</p>
-                                <p className="text-xs text-gray-400 mt-1">Archivos soportados: .mp4, .mov, .webm, .avi, etc. Sin límite de tamaño.</p>
-                              </div>
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Campo de imagen/thumbnail */}
-                    <div>
-                      <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Imagen de Portada (URL manual)</label>
-                      <div className="flex gap-3 items-center">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={form.imagen}
-                            onChange={(e) => setForm((p) => ({ ...p, imagen: e.target.value }))}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 font-mono"
-                            placeholder="https://..."
-                          />
-                        </div>
-                        {form.imagen ? (
-                          <div className="w-16 h-10 rounded border border-gray-200 bg-gray-100 overflow-hidden shrink-0">
-                            <img src={form.imagen} alt="Preview" className="w-full h-full object-cover" />
-                          </div>
-                        ) : form.bunny_video_id && process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID ? (
-                          <div className="w-16 h-10 rounded border border-blue-200 bg-blue-50 overflow-hidden shrink-0 flex flex-col items-center justify-center p-0.5 text-center leading-none">
-                            <span className="font-extrabold text-[7px] text-blue-600 uppercase tracking-tighter">PORTADA</span>
-                            <span className="text-[7px] text-blue-500 font-medium">BUNNY AUTO</span>
-                          </div>
-                        ) : null}
-                      </div>
-                      {(!form.imagen && form.bunny_video_id) && (
-                        <p className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
-                          <AlertCircle size={10} className="text-blue-500" />
-                          No has especificado una URL de imagen. Usaremos automáticamente la portada autogenerada por Bunny Stream.
-                        </p>
-                      )}
-                    </div>
-
-                    {/* ─── MINIATURA UPLOAD (S3) ─── */}
-                    <div className="border-t border-gray-100 pt-5">
-                      <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Miniatura (Subir a S3)</label>
-
-                      {miniaturaUploading ? (
-                        <div className="bg-blue-50/50 border border-blue-200 rounded p-5 text-center space-y-3">
-                          <Loader2 className="animate-spin text-blue-600 mx-auto" size={24} />
-                          <div className="text-sm font-semibold text-blue-900">{miniaturaStatus}</div>
-                          <div className="max-w-xs mx-auto bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${miniaturaProgress}%` }} />
-                          </div>
-                          <div className="text-xs text-blue-500 font-bold">{miniaturaProgress}% subido</div>
-                        </div>
-                      ) : form.imagen ? (
-                        <div className="bg-green-50/50 border border-green-200 rounded p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-14 h-10 rounded border border-green-300 bg-white overflow-hidden shrink-0">
-                                <img src={form.imagen} alt="Miniatura" className="w-full h-full object-cover" />
-                              </div>
-                              <div>
-                                <span className="text-sm font-bold text-green-900 flex items-center gap-1.5">
-                                  <CheckCircle2 size={16} className="text-green-500" />
-                                  Miniatura lista
-                                </span>
-                                <p className="text-xs text-gray-400 mt-0.5">Subida a S3 correctamente</p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setForm((p) => ({ ...p, imagen: "" }));
-                                setMiniaturaFile(null);
-                                setMiniaturaProgress(0);
-                                setMiniaturaStatus("");
-                              }}
-                              className="text-xs text-red-600 hover:text-red-800 font-semibold hover:underline"
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div
-                          onDragEnter={handleDragMini}
-                          onDragOver={handleDragMini}
-                          onDragLeave={handleDragMini}
-                          onDrop={handleDropMini}
-                          className={`border-2 border-dashed rounded p-6 text-center transition-all ${isDragMiniActive
-                            ? "border-blue-500 bg-blue-50/50"
-                            : "border-gray-300 hover:border-blue-400 bg-gray-50/30"
-                            }`}
-                        >
-                          <input
-                            type="file"
-                            id="miniatura-upload-input"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            onChange={handleMiniaturaFileChange}
-                            className="hidden"
-                          />
-                          <label htmlFor="miniatura-upload-input" className="cursor-pointer flex flex-col items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                              <Upload size={20} />
-                            </div>
-                            <p className="text-sm font-bold text-gray-700">Arrastra una imagen o haz clic para buscar</p>
-                            <p className="text-xs text-gray-400">JPG, PNG, WebP o GIF · Máx 2MB</p>
-                          </label>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ─── DOCUMENTO (PDF) S3 → tabla documento ─── */}
-                    <div className="border-t border-gray-100 pt-5">
-                      <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Documento PDF (Material de apoyo)</label>
-
-                      {documentoUploading ? (
-                        <div className="bg-blue-50/50 border border-blue-200 rounded p-5 text-center space-y-3">
-                          <Loader2 className="animate-spin text-blue-600 mx-auto" size={24} />
-                          <div className="text-sm font-semibold text-blue-900">{documentoStatus}</div>
-                          <div className="max-w-xs mx-auto bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${documentoProgress}%` }} />
-                          </div>
-                          <div className="text-xs text-blue-500 font-bold">{documentoProgress}% subido</div>
-                        </div>
-                      ) : pendingDoc ? (
-                        <div className="bg-green-50/50 border border-green-200 rounded p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                                <span className="text-xs font-black text-red-600">PDF</span>
-                              </div>
-                              <div>
-                                <span className="text-sm font-bold text-green-900 flex items-center gap-1.5">
-                                  <CheckCircle2 size={16} className="text-green-500" />
-                                  Documento listo (pendiente de guardar)
-                                </span>
-                                <p className="text-xs text-gray-400 mt-0.5">{pendingDoc.nombre}</p>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <a
-                                href={`/api/download-documento?filePath=${encodeURIComponent(pendingDoc.filePath)}&nombre=${encodeURIComponent(pendingDoc.nombre)}`}
-                                className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
-                              >
-                                Ver
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPendingDoc(null);
-                                  setDocumentoFile(null);
-                                  setDocumentoProgress(0);
-                                  setDocumentoStatus("");
-                                }}
-                                className="text-xs text-red-600 hover:text-red-800 font-semibold hover:underline"
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : existingDoc ? (
-                        <div className="bg-gray-50 border border-gray-200 rounded p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                                <span className="text-xs font-black text-red-600">PDF</span>
-                              </div>
-                              <div>
-                                <span className="text-sm font-bold text-gray-800">{existingDoc.nombre}</span>
-                                <p className="text-xs text-gray-400 mt-0.5">Documento actual</p>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <a
-                                href={`/api/download-documento?id=${existingDoc.id}`}
-                                className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
-                              >
-                                Ver
-                              </a>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const delRes = await deleteDocumento(existingDoc.id);
-                                  if (delRes.success) {
-                                    setExistingDoc(null);
-                                  } else {
-                                    setError(delRes.error || "Error al eliminar documento");
-                                  }
-                                }}
-                                className="text-xs text-red-600 hover:text-red-800 font-semibold hover:underline"
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div
-                          onDragEnter={handleDragDoc}
-                          onDragOver={handleDragDoc}
-                          onDragLeave={handleDragDoc}
-                          onDrop={handleDropDoc}
-                          className={`border-2 border-dashed rounded p-6 text-center transition-all ${isDragDocActive
-                            ? "border-blue-500 bg-blue-50/50"
-                            : "border-gray-300 hover:border-blue-400 bg-gray-50/30"
-                            }`}
-                        >
-                          <input
-                            type="file"
-                            id="documento-upload-input"
-                            accept=".pdf,application/pdf"
-                            onChange={handleDocumentoFileChange}
-                            className="hidden"
-                          />
-                          <label htmlFor="documento-upload-input" className="cursor-pointer flex flex-col items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                              <Upload size={20} />
-                            </div>
-                            <p className="text-sm font-bold text-gray-700">Arrastra tu PDF aquí o haz clic para buscar</p>
-                            <p className="text-xs text-gray-400">Solo PDF · Máx 10MB</p>
-                          </label>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* STEP 3: Configuración final */}
-                {currentStep === 3 && (
-                  <div className="space-y-5 animate-fadeIn">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Duración (HH:MM:SS)</label>
-                        <input
-                          type="text"
-                          value={form.duracion}
-                          onChange={(e) => setForm((p) => ({ ...p, duracion: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                          placeholder="00:45:00"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Orden (Order Index)</label>
-                        <input
-                          type="number"
-                          value={form.order_index}
-                          onChange={(e) => setForm((p) => ({ ...p, order_index: parseInt(e.target.value) || 0 }))}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Resumen de la Cápsula */}
-                    <div className="bg-gray-50 border border-gray-150 rounded p-4 space-y-3">
-                      <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 pb-1.5">Resumen de Cápsula</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                        <div>
-                          <span className="text-gray-400">Título:</span>{" "}
-                          <span className="font-semibold text-gray-900">{form.titulo}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Instructor:</span>{" "}
-                          <span className="font-semibold text-gray-900">{form.creado || "No especificado"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Módulo:</span>{" "}
-                          <span className="font-semibold text-gray-900">
-                            {modulos.find(m => m.id === form.modulo_id)?.nombre || "Sin módulo"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Profesor:</span>{" "}
-                          <span className="font-semibold text-gray-900">
-                            {profesores.find(p => p.id === form.profesor_id)?.nombre || "Sin profesor"}
-                          </span>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <span className="text-gray-400">Descripción:</span>{" "}
-                          <span className="font-semibold text-gray-900 truncate block">
-                            {form.descripcion || "Sin descripción"}
-                          </span>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <span className="text-gray-400">Video Link ID:</span>{" "}
-                          <span className="font-mono text-blue-600 font-semibold">{form.bunny_video_id || "Ninguno"}</span>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <span className="text-gray-400">Imagen Portada:</span>{" "}
-                          <span className="font-semibold text-gray-900 truncate block">
-                            {form.imagen ? form.imagen : "Thumbnail automático de Bunny Stream"}
-                          </span>
-                        </div>
-                        {(pendingDoc || existingDoc) && (
-                          <div className="sm:col-span-2">
-                            <span className="text-gray-400">Documento PDF:</span>{" "}
-                            <a
-                              href={existingDoc ? `/api/download-documento?id=${existingDoc.id}` : `/api/download-documento?filePath=${encodeURIComponent(pendingDoc!.filePath)}&nombre=${encodeURIComponent(pendingDoc!.nombre)}`}
-                              className="font-semibold text-red-600 hover:underline"
-                            >
-                              {pendingDoc?.nombre || existingDoc?.nombre || "Ver PDF"}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Error view */}
-              {error && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs flex items-center gap-1.5">
-                  <AlertCircle size={14} className="shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Modal Footer Controls */}
-              <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100 shrink-0">
-                <div>
-                  {currentStep > 1 && (
-                    <button
-                      type="button"
-                      onClick={prevStep}
-                      disabled={saving || uploading}
-                      className="flex items-center gap-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                    >
-                      <ChevronLeft size={16} />
-                      Anterior
-                    </button>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => { setModal(null); resetForm(); }}
-                    disabled={saving || uploading}
-                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-
-                  {currentStep < 3 ? (
-                    <button
-                      type="button"
-                      onClick={nextStep}
-                      className="flex items-center gap-1 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
-                    >
-                      Siguiente
-                      <ChevronRight size={16} />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSave}
-                      disabled={saving || uploading || videoProcessing}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors font-semibold"
-                    >
-                      {saving && <Loader2 size={14} className="animate-spin" />}
-                      {modal === "create" ? "Crear Cápsula" : "Guardar Cambios"}
-                    </button>
-                  )}
-                </div>
-              </div>
-
+        {/* CAP-02: cerrar con una subida en curso pide confirmación. */}
+        {confirmarCierre && (
+          <div role="alertdialog" aria-label="Subida en curso" className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+            <p className="text-sm text-amber-900 flex items-start gap-2">
+              <TriangleAlert size={16} className="shrink-0 mt-0.5" aria-hidden />
+              Hay una subida en curso. Si cierras, se cancela y el video subido se borra de Bunny.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variante="secundario" onClick={() => setConfirmarCierre(false)}>Seguir subiendo</Button>
+              <Button variante="advertencia" onClick={descartarFormulario}>Cancelar subida y cerrar</Button>
             </div>
           </div>
         )}
-      </div>
+
+        {currentStep === 1 && (
+          <div className="space-y-4">
+            <FormField label="Título" required>
+              {(p) => <input {...p} type="text" value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Técnicas de regate" className={CLASE_INPUT} />}
+            </FormField>
+            <FormField label="Descripción">
+              {(p) => <textarea {...p} rows={3} value={form.descripcion} onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))} placeholder="Describe el contenido de la cápsula..." className={`${CLASE_INPUT} min-h-[80px] resize-y`} />}
+            </FormField>
+            <FormField label="Coach / instructor" ayuda="Nombre que ve el alumno. Déjalo vacío para no mostrarlo.">
+              {(p) => <input {...p} type="text" value={form.creado} onChange={(e) => setForm((f) => ({ ...f, creado: e.target.value }))} placeholder="Ej: Coach Juan Pérez" className={CLASE_INPUT} />}
+            </FormField>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Módulo">
+                {(p) => (
+                  <select {...p} value={form.modulo_id} onChange={(e) => setForm((f) => ({ ...f, modulo_id: e.target.value }))} className={CLASE_INPUT}>
+                    <option value="">Sin módulo</option>
+                    {modulos.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                  </select>
+                )}
+              </FormField>
+              <FormField label="Profesor">
+                {(p) => (
+                  <select {...p} value={form.profesor_id} onChange={(e) => setForm((f) => ({ ...f, profesor_id: e.target.value }))} className={CLASE_INPUT}>
+                    <option value="">Sin profesor asignado</option>
+                    {profesores.map((pr) => <option key={pr.id} value={pr.id}>{pr.nombre}</option>)}
+                  </select>
+                )}
+              </FormField>
+            </div>
+          </div>
+        )}
+
+        {currentStep === 2 && (
+          <div className="space-y-5">
+            <section className="space-y-2" aria-label="Video">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">Video</h3>
+                {!subidaVideo && !(form.bunny_video_id && !showManualId) && (
+                  <button type="button" onClick={() => setShowManualId((v) => !v)} className="text-xs text-marca hover:underline font-semibold">
+                    {showManualId ? "Subir un archivo" : "Ingresar ID de Bunny"}
+                  </button>
+                )}
+              </div>
+              {showManualId ? (
+                <FormField label="ID del video en Bunny" ayuda="El GUID del video o su URL de Bunny Stream.">
+                  {(p) => <input {...p} type="text" value={form.bunny_video_id} onChange={(e) => setForm((f) => ({ ...f, bunny_video_id: e.target.value }))} placeholder="a83b2c1d-..." className={`${CLASE_INPUT} font-mono`} />}
+                </FormField>
+              ) : subidaVideo ? (
+                <div className="space-y-2">
+                  <BarraSubida subida={subidaVideo} />
+                  <div className="text-right">
+                    <Button variante="fantasma" onClick={quitarVideo}>Cancelar subida</Button>
+                  </div>
+                </div>
+              ) : form.bunny_video_id ? (
+                <div className="bg-green-50/50 border border-green-200 rounded p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-bold text-green-900 flex items-center gap-1.5">
+                      {videoProcessing ? <Loader2 className="animate-spin text-green-600" size={16} aria-hidden /> : <CheckCircle2 className="text-green-600" size={16} aria-hidden />}
+                      {videoProcessing ? `Bunny está procesando el video (${encodeProgress}%)` : "Video listo"}
+                    </span>
+                    <span className="text-xs font-mono text-gray-500">ID: {form.bunny_video_id.slice(0, 8)}…</span>
+                  </div>
+                  {videoProcessing && (
+                    <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div className="bg-green-600 h-2 rounded-full transition-all duration-300" style={{ width: `${encodeProgress}%` }} />
+                    </div>
+                  )}
+                  <div className="text-right">
+                    <Button variante="fantasma" onClick={quitarVideo}>Quitar y subir otro</Button>
+                  </div>
+                </div>
+              ) : (
+                <ZonaArchivo id="video-upload-input" accept="video/*" titulo="Arrastra el video aquí o haz clic para buscarlo" ayuda=".mp4, .mov, .webm, .avi, .mkv…" onArchivo={handleUploadVideo} />
+              )}
+            </section>
+
+            <section className="border-t border-gray-100 pt-5 space-y-2" aria-label="Miniatura">
+              <h3 className="text-sm font-semibold text-gray-700">Miniatura</h3>
+              {subidaMiniatura ? (
+                <BarraSubida subida={subidaMiniatura} />
+              ) : form.imagen ? (
+                <div className="flex items-center justify-between gap-3 bg-green-50/50 border border-green-200 rounded p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img src={form.imagen} alt="Miniatura de la cápsula" className="w-16 h-10 rounded border border-green-300 object-cover shrink-0" />
+                    <span className="text-xs text-gray-500 truncate font-mono">{form.imagen}</span>
+                  </div>
+                  <Button variante="fantasma" onClick={() => setForm((f) => ({ ...f, imagen: "" }))}>Quitar</Button>
+                </div>
+              ) : (
+                <>
+                  <ZonaArchivo id="miniatura-upload-input" accept={IMAGENES.join(",")} titulo="Arrastra una imagen o haz clic para buscarla" ayuda="JPG, PNG, WebP o GIF · máx. 2 MB" onArchivo={handleUploadMiniatura} />
+                  <FormField label="O pega la URL de una imagen">
+                    {(p) => <input {...p} type="url" value={form.imagen} onChange={(e) => setForm((f) => ({ ...f, imagen: e.target.value }))} placeholder="https://..." className={`${CLASE_INPUT} font-mono`} />}
+                  </FormField>
+                  {form.bunny_video_id && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <AlertCircle size={12} className="text-marca" aria-hidden />
+                      Sin miniatura se usa la portada automática de Bunny.
+                    </p>
+                  )}
+                </>
+              )}
+            </section>
+
+            <section className="border-t border-gray-100 pt-5 space-y-2" aria-label="Documento PDF">
+              <h3 className="text-sm font-semibold text-gray-700">Documento PDF (material de apoyo)</h3>
+              {subidaDocumento ? (
+                <BarraSubida subida={subidaDocumento} />
+              ) : pendingDoc || existingDoc ? (
+                <div className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-200 rounded p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0 text-xs font-black text-red-600">PDF</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{pendingDoc?.nombre ?? existingDoc?.nombre}</p>
+                      <p className="text-xs text-gray-500">{pendingDoc ? "Se adjunta al guardar" : "Documento actual"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {urlDocumento && <a href={urlDocumento} className="text-xs text-marca font-semibold hover:underline px-2">Ver</a>}
+                    <Button
+                      variante="fantasma"
+                      onClick={() => {
+                        if (existingDoc) setDocAEliminar(existingDoc.id);
+                        setExistingDoc(null);
+                        setPendingDoc(null);
+                      }}
+                    >
+                      Quitar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <ZonaArchivo id="documento-upload-input" accept=".pdf,application/pdf" titulo="Arrastra el PDF aquí o haz clic para buscarlo" ayuda="Solo PDF · máx. 10 MB" onArchivo={handleUploadDocumento} />
+                  {docAEliminar && <p className="text-xs text-amber-700">El documento actual se borrará al guardar.</p>}
+                </>
+              )}
+            </section>
+          </div>
+        )}
+
+        {currentStep === 3 && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Duración" ayuda="MM:SS o HH:MM:SS. Vacío si no aplica.">
+                {(p) => <input {...p} type="text" inputMode="numeric" value={form.duracion} onChange={(e) => setForm((f) => ({ ...f, duracion: e.target.value }))} placeholder="00:45:00" className={CLASE_INPUT} />}
+              </FormField>
+              <FormField label="Orden" ayuda="Posición dentro del módulo (0 primero).">
+                {(p) => <NumberInput {...p} value={form.order_index} onChange={(n) => setForm((f) => ({ ...f, order_index: n }))} />}
+              </FormField>
+            </div>
+
+            <section className="bg-gray-50 border border-gray-200 rounded p-4" aria-label="Resumen">
+              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 pb-1.5 mb-3">Resumen</h3>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                <div><dt className="inline text-gray-500">Título: </dt><dd className="inline font-semibold text-gray-900">{form.titulo}</dd></div>
+                <div><dt className="inline text-gray-500">Coach: </dt><dd className="inline font-semibold text-gray-900">{form.creado || "No especificado"}</dd></div>
+                <div><dt className="inline text-gray-500">Módulo: </dt><dd className="inline font-semibold text-gray-900">{modulos.find((m) => m.id === form.modulo_id)?.nombre || "Sin módulo"}</dd></div>
+                <div><dt className="inline text-gray-500">Profesor: </dt><dd className="inline font-semibold text-gray-900">{profesores.find((p) => p.id === form.profesor_id)?.nombre || "Sin profesor"}</dd></div>
+                <div className="sm:col-span-2"><dt className="inline text-gray-500">Video: </dt><dd className="inline font-mono text-marca font-semibold break-all">{form.bunny_video_id || "Ninguno"}</dd></div>
+                <div className="sm:col-span-2"><dt className="inline text-gray-500">Miniatura: </dt><dd className="inline font-semibold text-gray-900 break-all">{form.imagen || "Portada automática de Bunny"}</dd></div>
+                <div className="sm:col-span-2"><dt className="inline text-gray-500">Documento: </dt><dd className="inline font-semibold text-gray-900">{pendingDoc?.nombre ?? existingDoc?.nombre ?? "Sin documento"}</dd></div>
+              </dl>
+            </section>
+            {videoProcessing && (
+              <p className="text-xs text-gray-500 flex items-center gap-1">
+                <Loader2 size={12} className="animate-spin" aria-hidden />
+                Bunny sigue procesando el video: puedes guardar igual, estará disponible cuando termine.
+              </p>
+            )}
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-start gap-1.5">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden />
+            {error}
+          </p>
+        )}
+      </Modal>
 
       <ConfirmDialog
         open={deleteTarget !== null}
+        variante="peligro"
         title="Eliminar cápsula"
-        message={`¿Eliminar la cápsula "${deleteTarget?.titulo}"?`}
-        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.titulo)}
+        message={<>¿Eliminar la cápsula <strong>{deleteTarget?.titulo}</strong>? No se puede deshacer.</>}
+        consecuencias={[
+          "Los alumnos dejan de verla.",
+          ...(deleteTarget?.bunny_video_id ? ["Se borra su video en Bunny (si ninguna otra cápsula lo usa)."] : []),
+          "Se borran su documento PDF y sus comentarios.",
+        ]}
+        confirmLabel="Eliminar"
+        textoCargando="Eliminando..."
+        cargando={eliminando}
+        onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
-    </>
+    </div>
   );
 }

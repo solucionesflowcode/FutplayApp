@@ -79,9 +79,10 @@ export async function createCapsula(data: {
 export async function updateCapsula(data: {
   id: string;
   titulo?: string;
-  imagen?: string;
-  creado?: string;
-  duracion?: string;
+  // null borra el dato (CAP-04)
+  imagen?: string | null;
+  creado?: string | null;
+  duracion?: string | null;
   modulo_id?: string | null;
   profesor_id?: string | null;
   bunny_video_id?: string | null;
@@ -113,11 +114,22 @@ export async function setCapsulaDestacada(capsulaId: string | null): Promise<{ s
   return { success: true };
 }
 
-export async function deleteCapsula(id: string): Promise<{ success: boolean; error?: string }> {
+/** avisos: el video o el PDF que no se pudieron borrar (la cápsula sí se borró). */
+export async function deleteCapsula(id: string): Promise<{ success: boolean; error?: string; avisos?: string[] }> {
   const res = await fetch(`/api/admin/capsulas?id=${id}`, { method: "DELETE" });
-  if (!res.ok) {
-    const body = await res.json();
-    return { success: false, error: body.error };
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) return { success: false, error: body.error || "No se pudo eliminar la cápsula" };
+  return { success: true, avisos: body.avisos ?? [] };
+}
+
+/**
+ * CAP-02: borra de Bunny un video subido en el formulario que no se llegó a
+ * guardar (se canceló o se reemplazó). Sin await en la UI: es limpieza.
+ */
+export async function descartarVideoSubido(videoId: string): Promise<void> {
+  try {
+    await fetch(`/api/bunny/delete?videoId=${encodeURIComponent(videoId)}`, { method: "DELETE" });
+  } catch {
+    // Sin conexión: queda en Bunny, no bloquea al admin.
   }
-  return { success: true };
 }
