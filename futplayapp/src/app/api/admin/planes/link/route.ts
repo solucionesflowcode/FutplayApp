@@ -3,11 +3,12 @@ import { randomUUID } from "crypto";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { getBaseUrl } from "@/lib/base-url";
 import { traducirError } from "@/lib/errores";
+import { requiereLink } from "@/lib/planes-link";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/admin/planes/link  { id }
-// Genera (o regenera) el codigo_acceso de un plan familiar o liga y devuelve
+// Genera (o regenera) el codigo_acceso de un plan familiar, liga u oculto y devuelve
 // la URL de acceso completa. Regenerar invalida el link anterior.
 export async function POST(request: Request) {
   const user = await verifyAdmin();
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
 
     const { data: plan, error: planError } = await admin
       .from("plan")
-      .select("id, nombre, tipo_plan")
+      .select("id, nombre, tipo_plan, oculto")
       .eq("id", body.id)
       .single();
 
@@ -31,9 +32,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
     }
 
-    if (plan.tipo_plan !== "familiar" && plan.tipo_plan !== "liga") {
+    if (!requiereLink(plan)) {
       return NextResponse.json(
-        { error: "Solo los planes familiares y liga tienen link de acceso" },
+        { error: "Solo los planes ocultos (familiar, liga u ocultados) tienen link de acceso" },
         { status: 400 }
       );
     }

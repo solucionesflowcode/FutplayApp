@@ -5,6 +5,7 @@ import { createFlowOrder } from "@/lib/flow";
 import { rateLimit } from "@/lib/rate-limit";
 import { getBaseUrl } from "@/lib/base-url";
 import { traducirError } from "@/lib/errores";
+import { requiereLink } from "@/lib/planes-link";
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
@@ -90,9 +91,9 @@ export async function POST(request: Request) {
   // Plan Liga: pago único, comprable aunque haya membresía vigente.
   const esLiga = plan.tipo_plan === "liga";
 
-  // Los planes familiares y liga solo se pueden comprar con el link del admin:
-  // exigir el codigo_acceso correcto (verificación server-side).
-  if (plan.tipo_plan === "familiar" || esLiga) {
+  // Los planes familiares, liga y ocultos solo se pueden comprar con el link
+  // del admin: exigir el codigo_acceso correcto (verificación server-side).
+  if (requiereLink(plan)) {
     if (!tokenAcceso || tokenAcceso !== plan.codigo_acceso) {
       return NextResponse.json(
         { error: "Este plan solo puede comprarse con un link de acceso válido." },

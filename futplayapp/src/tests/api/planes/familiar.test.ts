@@ -128,7 +128,16 @@ describe("GET /api/planes/familiar", () => {
         expect(res.status).toBe(404);
     });
 
-    it("rechaza el token de un plan normal", async () => {
+    it("PLAN-OCU-001: acepta el link de un plan normal o kids que el admin ocultó", async () => {
+        __setTableData("plan", [{ ...FAMILIAR_PLAN, id: "plan-kids", tipo_plan: "kids", oculto: true }]);
+
+        const res = await GET(makeRequest("?token=tok-familiar-123"));
+
+        expect(res.status).toBe(200);
+        expect((await res.json()).id).toBe("plan-kids");
+    });
+
+    it("rechaza el token de un plan normal (que está en el catálogo)", async () => {
         __setTableData("plan", [{ ...FAMILIAR_PLAN, tipo_plan: "normal" }]);
 
         const res = await GET(makeRequest("?token=tok-familiar-123"));

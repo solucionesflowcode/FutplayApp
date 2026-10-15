@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
+import { tieneBoleta } from "@/lib/analiticas";
 
 export async function GET(request: NextRequest) {
   const user = await verifyAdmin();
@@ -15,9 +16,9 @@ export async function GET(request: NextRequest) {
 
   const adminClient = await getAdminClient();
 
-  const { data: membresias, error } = await adminClient
+  const { data: todas, error } = await adminClient
     .from("membresia")
-    .select("id, usuario_id, plan_id, fecha_inicio")
+    .select("id, usuario_id, plan_id, fecha_inicio, boleta_id, numero_boleta")
     .gte("fecha_inicio", `${mes}-01T00:00:00.000Z`)
     .lt("fecha_inicio", new Date(new Date(`${mes}-01T00:00:00.000Z`).getTime() + 32 * 24 * 60 * 60 * 1000).toISOString().slice(0, 7) + "-01T00:00:00.000Z")
     .order("fecha_inicio", { ascending: false });
@@ -25,6 +26,9 @@ export async function GET(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Solo cuentan las membresías con boleta (Flow o N° de boleta externa).
+  const membresias = (todas || []).filter(tieneBoleta);
 
   if (!membresias || membresias.length === 0) {
     return NextResponse.json({

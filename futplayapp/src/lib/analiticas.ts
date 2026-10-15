@@ -1,5 +1,14 @@
 import type { MembresiaConPlan } from "@/data/membresia";
 
+/**
+ * Regla única de las analíticas: solo cuenta una membresía con boleta, sea de
+ * Flow (boleta_id) o un N° de boleta externo que anotó el admin. Las asignadas
+ * desde el panel sin boleta (regaladas, pruebas) no cuentan.
+ */
+export function tieneBoleta(m: { boleta_id?: string | null; numero_boleta?: string | null }): boolean {
+  return !!m.boleta_id || !!m.numero_boleta?.trim();
+}
+
 /** Vigente hoy: activa, no congelada, con tokens y sin vencer. */
 export function membresiaVigente(m: MembresiaConPlan, hoy: string): boolean {
   return m.estado && !m.congelada && !m.sin_tokens && !!m.fecha_vencimiento && m.fecha_vencimiento.slice(0, 10) >= hoy;

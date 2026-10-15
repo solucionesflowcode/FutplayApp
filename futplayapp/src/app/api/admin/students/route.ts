@@ -5,13 +5,24 @@ import { sincronizarEmailAuth } from "@/lib/auth-email";
 import { telefonoParaGuardar } from "@/lib/telefono";
 import { traducirError } from "@/lib/errores";
 
+// Sede principal: id de una sede existente, o null/"" para dejarla sin asignar.
+// Devuelve el valor a guardar o un error.
+async function sedeParaGuardar(
+  admin: Awaited<ReturnType<typeof getAdminClient>>,
+  valor: unknown,
+): Promise<{ sede_id: string | null } | { error: string }> {
+  if (valor === null || valor === undefined || valor === "") return { sede_id: null };
+  if (typeof valor !== "string") return { error: "Sede inválida" };
+  const { data } = await admin.from("sede").select("id").eq("id", valor).maybeSingle();
+  return data ? { sede_id: data.id } : { error: "La sede no existe" };
+}
 
 export async function POST(request: Request) {
   const user = await verifyAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const body = await request.json();
-  const { email, nombre, rol, rut, telefono, plan_id } = body;
+  const { email, nombre, rol, rut, telefono, plan_id, sede_id } = body;
 
   if (!email || !nombre || !rol) {
     return NextResponse.json(
@@ -34,6 +45,9 @@ export async function POST(request: Request) {
   }
 
   const adminClient = await getAdminClient();
+
+  const sede = await sedeParaGuardar(adminClient, sede_id);
+  if ("error" in sede) return NextResponse.json({ error: sede.error }, { status: 400 });
 
   const tempPassword = crypto.randomUUID().slice(0, 10) + "Aa1!";
 
@@ -61,6 +75,7 @@ export async function POST(request: Request) {
       rol,
       rut: rut || null,
       telefono: telefonoNormalizado,
+      sede_id: sede.sede_id,
     });
 
   if (usuarioError) {
@@ -140,6 +155,11 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: telefono.error }, { status: 400 });
       }
       updateData.telefono = telefono;
+    }
+    if (body.sede_id !== undefined) {
+      const sede = await sedeParaGuardar(admin, body.sede_id);
+      if ("error" in sede) return NextResponse.json({ error: sede.error }, { status: 400 });
+      updateData.sede_id = sede.sede_id;
     }
 
     if (Object.keys(updateData).length === 0) {

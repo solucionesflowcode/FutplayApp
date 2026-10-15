@@ -16,7 +16,7 @@ vi.mock("@/data/plans", () => ({
 }));
 
 import {
-    getMembresiasGestion, deleteMembresiaGestion, updateMembresiaGestion, congelarMembresia,
+    getMembresiasGestion, deleteMembresiaGestion, updateMembresiaGestion, congelarMembresia, createMembresiaGestion,
 } from "@/data/membresia";
 import { getUsers, getPlanesAdmin } from "@/data/plans";
 import { ToastProvider } from "@/components/admin/ui";
@@ -80,7 +80,7 @@ describe("Gestión de membresías (fase 3)", () => {
         expect(within(tabla()).getByText("Ana Activa")).toBeInTheDocument();
     });
 
-    it("ADM-MEM-004: el selector de alumno no incluye profesores (MEM-05) y no hay campo de boleta (MEM-06)", async () => {
+    it("ADM-MEM-004: el selector de alumno no incluye profesores (MEM-05) y la boleta de Flow no se edita (MEM-06)", async () => {
         renderPagina();
         await within(tabla()).findByText("Ana Activa");
 
@@ -89,7 +89,38 @@ describe("Gestión de membresías (fase 3)", () => {
 
         expect(within(select).queryByText("Pepe Profesor")).toBeNull();
         expect(within(select).getByText("Ana Activa")).toBeInTheDocument();
-        expect(screen.queryByLabelText(/Boleta/)).toBeNull();
+        // Solo el N° de una boleta externa, no el id de la boleta de Flow.
+        expect(screen.queryByLabelText(/^Boleta/)).toBeNull();
+    });
+
+    it("ADM-MEM-BOL-001: al crear se puede anotar el N° de boleta, que viaja a la API", async () => {
+        vi.mocked(createMembresiaGestion).mockResolvedValue({ ok: true });
+        renderPagina();
+        await within(tabla()).findByText("Ana Activa");
+
+        fireEvent.click(screen.getByRole("button", { name: /Nueva membresía/ }));
+        const dialogo = screen.getByRole("dialog", { name: "Nueva membresía" });
+        expect(within(dialogo).getByLabelText(/N° de boleta/)).toHaveAccessibleDescription(/Solo las membresías con boleta cuentan en las analíticas/);
+        fireEvent.change(within(dialogo).getByLabelText(/Alumno/), { target: { value: "u1" } });
+        fireEvent.change(within(dialogo).getByLabelText(/Plan/), { target: { value: "p1" } });
+        fireEvent.change(within(dialogo).getByLabelText(/N° de boleta/), { target: { value: "12345" } });
+        fireEvent.click(within(dialogo).getByRole("button", { name: "Crear membresía" }));
+
+        await waitFor(() => expect(createMembresiaGestion).toHaveBeenCalledWith(expect.objectContaining({ usuario_id: "u1", numero_boleta: "12345" })));
+    });
+
+    it("ADM-MEM-BOL-002: la tabla dice de dónde viene la boleta; una de Flow no muestra el campo al editar", async () => {
+        vi.mocked(getMembresiasGestion).mockResolvedValue([
+            { ...MEMBRESIAS[0], boleta_id: "b-flow" },
+            { ...MEMBRESIAS[1], numero_boleta: "777" },
+        ] as never);
+        renderPagina();
+        await within(tabla()).findByText("Ana Activa");
+
+        expect(within(tabla()).getByText("Flow")).toBeInTheDocument();
+        expect(within(tabla()).getByText("N° 777")).toBeInTheDocument();
+        fireEvent.click(within(tabla()).getByRole("button", { name: "Editar membresía de Ana Activa" }));
+        expect(screen.queryByLabelText(/N° de boleta/)).toBeNull();
     });
 
     it("ADM-MEM-005: al pasar a Inactiva explica que las reservas futuras se mantienen (MEM-04, decisión 3)", async () => {

@@ -1,16 +1,24 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
-import { membresiaVigente, porcentajeConPlanActivo } from "@/lib/analiticas";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { membresiaVigente, porcentajeConPlanActivo, tieneBoleta } from "@/lib/analiticas";
 import type { MembresiaConPlan } from "@/data/membresia";
+
+const USUARIOS = [
+    { id: "u1", rol: "jugador", sede_id: "s1" },
+    { id: "u2", rol: "jugador", sede_id: "s1" },
+    { id: "u3", rol: "jugador", sede_id: null },
+    { id: "a1", rol: "administrador", sede_id: null },
+];
+const SEDES = [{ id: "s1", nombre: "Las Condes" }, { id: "s2", nombre: "Ñuñoa" }];
 
 vi.mock("@/utils/supabase/client", () => ({
     createClient: () => ({
-        from: () => ({
-            select: () => Promise.resolve({
-                data: [{ id: "u1", rol: "jugador" }, { id: "u2", rol: "jugador" }, { id: "u3", rol: "jugador" }, { id: "a1", rol: "administrador" }],
-                error: null,
-            }),
+        from: (tabla: string) => ({
+            select: () =>
+                tabla === "sede"
+                    ? { order: () => Promise.resolve({ data: SEDES, error: null }) }
+                    : Promise.resolve({ data: USUARIOS, error: null }),
         }),
     }),
 }));
@@ -86,5 +94,45 @@ describe("Analíticas (fase 3)", () => {
         const tarjeta = screen.getByText("Ingresos del mes").parentElement!.parentElement!;
         expect(tarjeta).toHaveTextContent("No disponible");
         expect(tarjeta).not.toHaveTextContent("$60.000");
+    });
+});
+
+describe("Analíticas: solo membresías con boleta y filtro por sede", () => {
+    it("ANA-BOL-001: cuenta la boleta de Flow o un N° de boleta externo; sin boleta no cuenta", () => {
+        expect(tieneBoleta({ boleta_id: "b1" })).toBe(true);
+        expect(tieneBoleta({ boleta_id: null, numero_boleta: "12345" })).toBe(true);
+        expect(tieneBoleta({ boleta_id: null, numero_boleta: "   " })).toBe(false);
+        expect(tieneBoleta({})).toBe(false);
+    });
+
+    it("ANA-BOL-002: la página pide solo las membresías con boleta", async () => {
+        vi.mocked(getAdminMembresias).mockResolvedValue([]);
+        vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => [] })));
+        render(<AnaliticasPage />);
+
+        await screen.findByText("% con plan activo");
+        expect(getAdminMembresias).toHaveBeenCalledWith({ conBoleta: true });
+    });
+
+    it("ANA-SEDE-001: al elegir una sede cambian los alumnos, el % y los ingresos se piden de esa sede", async () => {
+        vi.mocked(getAdminMembresias).mockResolvedValue([
+            membresia({ usuario_id: "u1", sede_id: "s1", fecha_vencimiento: "2099-01-01" }),
+            membresia({ usuario_id: "u3", membresia_id: "z", sede_id: null, fecha_vencimiento: "2099-01-01" }),
+        ]);
+        const fetchMock = vi.fn(async (_url: string) => ({ ok: true, json: async () => [] }));
+        vi.stubGlobal("fetch", fetchMock);
+        render(<AnaliticasPage />);
+
+        // Todas las sedes: 3 alumnos, 2 con plan → 67%.
+        expect(await screen.findByText("67%")).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText("Filtrar por sede"), { target: { value: "s1" } });
+
+        // Sede s1: u1 y u2, solo u1 con plan → 50%.
+        expect(await screen.findByText("50%")).toBeInTheDocument();
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/analiticas/mensual?sede=s1"));
+
+        fireEvent.change(screen.getByLabelText("Filtrar por sede"), { target: { value: "sin" } });
+        // Sin sede: solo u3, con plan → 100%.
+        expect(await screen.findByText("100%")).toBeInTheDocument();
     });
 });

@@ -11,6 +11,7 @@ type MembresiaGestionRow = {
   plan_id: string;
   plan_nombre: string;
   boleta_id: string | null;
+  numero_boleta: string | null;
   tokens_totales: number;
   tokens_usados: number;
   fecha_inicio: string;
@@ -21,6 +22,12 @@ type MembresiaGestionRow = {
   fecha_congelamiento: string | null;
   created_at: string | null;
 };
+
+// N° de boleta externa: texto libre; vacío → null (la membresía no cuenta en analíticas).
+function numeroBoleta(valor: unknown): string | null {
+  if (valor === null || valor === undefined) return null;
+  return String(valor).trim().slice(0, 64) || null;
+}
 
 export async function GET() {
   const user = await verifyAdmin();
@@ -60,6 +67,7 @@ export async function GET() {
       plan_id: m.plan_id,
       plan_nombre: planesMap.get(m.plan_id) || "Sin plan",
       boleta_id: m.boleta_id,
+      numero_boleta: m.numero_boleta ?? null,
       tokens_totales: m.tokens_totales,
       tokens_usados: m.tokens_usados,
       fecha_inicio: m.fecha_inicio,
@@ -101,6 +109,7 @@ export async function POST(request: Request) {
       usuario_id: body.usuario_id,
       plan_id: body.plan_id,
       boleta_id: body.boleta_id || null,
+      numero_boleta: numeroBoleta(body.numero_boleta),
       tokens_totales,
       tokens_usados,
       fecha_inicio: body.fecha_inicio,
@@ -134,6 +143,7 @@ export async function PUT(request: Request) {
     if (body.usuario_id !== undefined) updateData.usuario_id = body.usuario_id;
     if (body.plan_id !== undefined) updateData.plan_id = body.plan_id;
     if (body.boleta_id !== undefined) updateData.boleta_id = body.boleta_id;
+    if (body.numero_boleta !== undefined) updateData.numero_boleta = numeroBoleta(body.numero_boleta);
     if (body.tokens_totales !== undefined) updateData.tokens_totales = body.tokens_totales;
     if (body.tokens_usados !== undefined) updateData.tokens_usados = body.tokens_usados;
     if (body.fecha_inicio !== undefined) updateData.fecha_inicio = body.fecha_inicio;

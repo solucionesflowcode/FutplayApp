@@ -404,3 +404,35 @@ describe("POST /api/flow/create-order", () => {
         });
     });
 });
+
+describe("POST /api/flow/create-order — plan oculto por el admin", () => {
+    const OCULTO = { id: "plan-kids", nombre: "Kids x1", precio: 30000, tokens_mensuales: 4, tipo_plan: "kids", oculto: true, codigo_acceso: "tok-kids" };
+
+    beforeEach(() => {
+        resetRateLimit();
+        __resetMocks();
+        __setRpcResponse("usuario_tiene_membresia_vigente", false);
+        vi.mocked(createFlowOrder).mockReset();
+        vi.mocked(createFlowOrder).mockResolvedValue({ url: "https://sandbox.flow.cl/checkout", token: "tkn_mock", flowOrder: 999 });
+        __setAuthUser(TEST_USER);
+        __setTableData("usuario", TEST_USER);
+        __setTableData("plan", [OCULTO]);
+        __setTableData("membresia", null);
+        __setTableData("boleta", { id: "boleta-1", usuario_id: "user-1", estado: "pendiente", total: 30000, recurrencia_id: null });
+        __setTableData("boleta_item", { id: "item-1" });
+    });
+
+    it("API-FLOW-CREATE-OCU-001: sin el código del link no se puede comprar (403), ni con /pagos?id= directo", async () => {
+        const res = await POST(makeRequest({ planId: "plan-kids" }));
+
+        expect(res.status).toBe(403);
+        expect(createFlowOrder).not.toHaveBeenCalled();
+    });
+
+    it("API-FLOW-CREATE-OCU-002: con el código del link se compra", async () => {
+        const res = await POST(makeRequest({ planId: "plan-kids", acceso: "tok-kids" }));
+
+        expect(res.status).toBe(200);
+        expect(createFlowOrder).toHaveBeenCalledOnce();
+    });
+});

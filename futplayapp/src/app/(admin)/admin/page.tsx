@@ -7,6 +7,8 @@ import EditStudentModal from "@/components/admin/EditStudentModal";
 import ViewStudentModal from "@/components/admin/ViewStudentModal";
 import { CLASE_INPUT, ConfirmDialog, PageHeader, StatCard, useAdminMutation } from "@/components/admin/ui";
 import { getUsers } from "@/data/plans";
+import { getSedes, type Sede } from "@/data/sedes";
+import { coincideSede, SIN_SEDE, type FiltroSede } from "@/lib/sedes";
 
 // El layout del admin ya protege la ruta con AuthGuard (antes se repetía aquí).
 
@@ -41,6 +43,8 @@ export default function AdminPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [filtro, setFiltro] = useState<Filtro>(null);
+  const [sedes, setSedes] = useState<Sede[]>([]);
+  const [filtroSede, setFiltroSede] = useState<FiltroSede>(null);
   const [loading, setLoading] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const reintentar = () => {
@@ -64,6 +68,7 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => { getSedes().then(setSedes); }, []);
 
   const handleDelete = async () => {
     if (!deleteStudent) return;
@@ -84,7 +89,7 @@ export default function AdminPage() {
     setDeleteStudent(null);
   };
 
-  const filtered = students.filter((s) => coincideBusqueda(s, search) && coincideFiltro(s, filtro));
+  const filtered = students.filter((s) => coincideBusqueda(s, search) && coincideFiltro(s, filtro) && coincideSede(s.sedeId, filtroSede));
   const alumnos = students.filter((s) => s.role === "Alumno");
   const cuenta = (pred: (s: Student) => boolean, lista = students) => lista.filter(pred).length;
   const alternar = (f: NonNullable<Filtro>) =>
@@ -109,16 +114,28 @@ export default function AdminPage() {
           titulo="Gestión de usuarios"
           descripcion={`${students.length} usuarios registrados`}
         >
-          <div className="relative w-full sm:max-w-sm">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
-            <input
-              type="search"
-              aria-label="Buscar usuarios"
-              placeholder="Buscar por nombre, email, RUT, teléfono o plan..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={`${CLASE_INPUT} pl-9 py-2`}
-            />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative w-full sm:max-w-sm">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden />
+              <input
+                type="search"
+                aria-label="Buscar usuarios"
+                placeholder="Buscar por nombre, email, RUT, teléfono o plan..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={`${CLASE_INPUT} pl-9 py-2`}
+              />
+            </div>
+            <select
+              aria-label="Filtrar por sede"
+              value={filtroSede ?? ""}
+              onChange={(e) => setFiltroSede(e.target.value || null)}
+              className={`${CLASE_INPUT} py-2 w-full sm:w-56`}
+            >
+              <option value="">Todas las sedes</option>
+              {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+              <option value={SIN_SEDE}>Sin sede asignada</option>
+            </select>
           </div>
         </PageHeader>
 
@@ -150,7 +167,7 @@ export default function AdminPage() {
           cargando={loading}
           error={errorCarga}
           onReintentar={reintentar}
-          resetKey={`${search}|${filtro?.campo ?? ""}:${filtro?.valor ?? ""}`}
+          resetKey={`${search}|${filtro?.campo ?? ""}:${filtro?.valor ?? ""}|${filtroSede ?? ""}`}
           onView={setViewStudent}
           onEdit={setEditStudent}
           onDelete={setDeleteStudent}
@@ -175,6 +192,7 @@ export default function AdminPage() {
 
       <EditStudentModal
         student={editStudent}
+        sedes={sedes}
         open={editStudent !== null}
         onClose={() => setEditStudent(null)}
         onSaved={fetchUsers}

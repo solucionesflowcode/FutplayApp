@@ -86,3 +86,33 @@ describe("GET /api/admin/membresias", () => {
         expect(res.status).toBe(403);
     });
 });
+
+describe("GET /api/admin/membresias?conBoleta=1 (analíticas)", () => {
+    beforeEach(() => {
+        __resetMocks();
+        __setAuthUser({ id: "admin-1", email: "admin@test.cl" });
+        __setTableData("usuario", [
+            { id: "admin-1", rol: "administrador", sede_id: null },
+            { id: "u1", rol: "jugador", sede_id: "s1" },
+        ]);
+    });
+
+    const base = { plan_id: "p1", tokens_totales: 4, estado: true, congelada: false, fecha_inicio: "2026-10-01T00:00:00.000Z", fecha_vencimiento: "2099-01-01T00:00:00.000Z" };
+
+    it("API-ADM-MEMBRESIAS-BOL-001: descarta las sin boleta ANTES de elegir una por alumno, y trae la sede", async () => {
+        __setTableData("membresia", [
+            // Regalada desde el panel, con más tokens: sin el filtro ganaría.
+            { ...base, id: "regalada", usuario_id: "u1", tokens_usados: 0, boleta_id: null, numero_boleta: null },
+            { ...base, id: "pagada", usuario_id: "u1", tokens_usados: 3, boleta_id: null, numero_boleta: "1234" },
+        ]);
+
+        const conBoleta = await (await GET(makeRequest("http://localhost:3000/api/admin/membresias?conBoleta=1"))).json();
+        expect(conBoleta).toHaveLength(1);
+        expect(conBoleta[0].membresia_id).toBe("pagada");
+        expect(conBoleta[0].sede_id).toBe("s1");
+
+        // Sin el parámetro (Gestión de usuarios) no cambia: gana la de más tokens.
+        const todas = await (await GET(makeRequest("http://localhost:3000/api/admin/membresias"))).json();
+        expect(todas[0].membresia_id).toBe("regalada");
+    });
+});

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
+import { PLANES_CON_LINK, type TipoPlanLink } from "@/lib/planes-link";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,17 @@ export async function PUT(request: Request) {
     if (body.activo !== undefined) {
       if (typeof body.activo !== "boolean") return NextResponse.json({ error: "activo debe ser true o false" }, { status: 400 });
       updateData.activo = body.activo;
+    }
+    // Ocultar/mostrar en el catálogo. Familiar y Liga siempre están ocultos.
+    if (body.oculto !== undefined) {
+      if (typeof body.oculto !== "boolean") return NextResponse.json({ error: "oculto debe ser true o false" }, { status: 400 });
+      const { data: actual } = await admin.from("plan").select("tipo_plan").eq("id", body.id).maybeSingle();
+      if (!actual) return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
+      const tipo = (updateData.tipo_plan ?? actual.tipo_plan) as TipoPlanLink;
+      if (PLANES_CON_LINK.includes(tipo)) {
+        return NextResponse.json({ error: "Los planes familiares y liga siempre están ocultos: se compran solo con su link." }, { status: 400 });
+      }
+      updateData.oculto = body.oculto;
     }
 
     if (Object.keys(updateData).length === 0) {

@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Plus, Pencil, Search, Copy, Check, Share2, Ban, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Search, Copy, Check, Share2, Ban, RotateCcw, Eye, EyeOff } from "lucide-react";
 import {
   getPlanesAdmin,
   createPlanAdmin,
   updatePlanAdmin,
   setPlanActivo,
+  setPlanOculto,
   PLANES_CON_LINK,
+  requiereLink,
   type Plan,
   type TipoPlan,
 } from "@/data/plans";
@@ -37,8 +39,8 @@ type PlanForm = {
 const emptyForm: PlanForm = { nombre: "", precio: null, tokens_mensuales: 4, dias: 30, tipo_plan: "normal" };
 
 const TIPOS_PLAN: { valor: TipoPlan; etiqueta: string; ayuda: string }[] = [
-  { valor: "normal", etiqueta: "Normal", ayuda: "Aparece en el catálogo. Reserva entrenamientos y partidos." },
-  { valor: "kids", etiqueta: "Kids", ayuda: "Aparece en el catálogo. Solo reserva clases Kids." },
+  { valor: "normal", etiqueta: "Normal", ayuda: "Aparece en el catálogo salvo que lo ocultes. Reserva entrenamientos y partidos." },
+  { valor: "kids", etiqueta: "Kids", ayuda: "Aparece en el catálogo salvo que lo ocultes. Solo reserva clases Kids." },
   { valor: "familiar", etiqueta: "Familiar", ayuda: "Oculto: se compra solo con el link de acceso." },
   { valor: "liga", etiqueta: "Liga", ayuda: "Oculto, pago único sin tokens: se compra solo con el link de acceso." },
 ];
@@ -49,14 +51,23 @@ function formatPrice(n: number) {
   return "$" + n.toLocaleString("es-CL");
 }
 
-function TipoBadge({ tipo }: { tipo?: Plan["tipo_plan"] }) {
+function TipoBadge({ tipo, oculto }: { tipo?: Plan["tipo_plan"]; oculto?: boolean }) {
+  if (oculto && tipo !== "familiar" && tipo !== "liga") {
+    return (
+      <>
+        {tipo === "kids" && <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">Kids</span>}
+        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[11px] font-bold">Oculto · solo link</span>
+      </>
+    );
+  }
   if (tipo === "familiar") return <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[11px] font-bold">Familiar · oculto</span>;
   if (tipo === "liga") return <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[11px] font-bold">Liga · pago único · oculto</span>;
   if (tipo === "kids") return <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">Kids</span>;
   return null;
 }
 
-const tieneLink = (p: Plan) => !!p.tipo_plan && PLANES_CON_LINK.includes(p.tipo_plan);
+// Familiar y Liga siempre están ocultos; el resto se puede ocultar a mano.
+const siempreOculto = (p: Plan) => !!p.tipo_plan && PLANES_CON_LINK.includes(p.tipo_plan);
 
 export default function PlanesPage() {
   const toast = useToast();
@@ -76,6 +87,7 @@ export default function PlanesPage() {
   const [errorForm, setErrorForm] = useState<string | null>(null);
   const [cambioEstado, setCambioEstado] = useState<Plan | null>(null);
   const [cambiando, setCambiando] = useState(false);
+  const [cambioVisibilidad, setCambioVisibilidad] = useState<Plan | null>(null);
   const [link, setLink] = useState<{ plan: Plan; url: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
   const linkRef = useRef<HTMLInputElement>(null);
@@ -158,7 +170,24 @@ export default function PlanesPage() {
     setCambioEstado(null);
   };
 
-  // Link de acceso de planes familiares/liga. Si aún no tiene codigo_acceso lo
+  // Ocultar: sale del catálogo y solo se compra con su link (como los familiares).
+  const handleCambiarVisibilidad = async () => {
+    if (!cambioVisibilidad) return;
+    const p = cambioVisibilidad;
+    const nuevo = !p.oculto;
+    const anterior = planes;
+    setCambiando(true);
+    setPlanes((prev) => prev.map((x) => (x.id === p.id ? { ...x, oculto: nuevo } : x)));
+    await ejecutar(() => setPlanOculto(p.id, nuevo), {
+      exito: nuevo ? `${p.nombre} oculto: solo se compra con su link` : `${p.nombre} vuelve al catálogo`,
+      error: nuevo ? "No se pudo ocultar el plan" : "No se pudo mostrar el plan",
+      revertir: () => setPlanes(anterior),
+    });
+    setCambiando(false);
+    setCambioVisibilidad(null);
+  };
+
+  // Link de acceso de planes familiares/liga/ocultos. Si aún no tiene codigo_acceso lo
   // genera; si ya tiene, reutiliza el existente para no invalidar links compartidos.
   // PLA-05: se muestra en un modal con botón Copiar (antes, window.prompt).
   const abrirLink = async (p: Plan) => {
@@ -197,9 +226,20 @@ export default function PlanesPage() {
 
   const acciones = (p: Plan) => (
     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-      {tieneLink(p) && activo(p) && (
+      {requiereLink(p) && activo(p) && (
         <button type="button" onClick={() => abrirLink(p)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg" title="Link de acceso" aria-label={`Link de acceso de ${p.nombre}`}>
           <Share2 size={16} />
+        </button>
+      )}
+      {!siempreOculto(p) && (
+        <button
+          type="button"
+          onClick={() => setCambioVisibilidad(p)}
+          className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"
+          title={p.oculto ? "Mostrar en catálogo" : "Ocultar (solo link)"}
+          aria-label={`${p.oculto ? "Mostrar en catálogo" : "Ocultar"} ${p.nombre}`}
+        >
+          {p.oculto ? <Eye size={16} /> : <EyeOff size={16} />}
         </button>
       )}
       <button type="button" onClick={() => openEdit(p)} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar ${p.nombre}`}>
@@ -224,7 +264,7 @@ export default function PlanesPage() {
       celda: (p) => (
         <div className="flex flex-wrap items-center gap-2">
           <span className={`font-semibold ${activo(p) ? "text-gray-900" : "text-gray-500 line-through"}`}>{p.nombre}</span>
-          <TipoBadge tipo={p.tipo_plan} />
+          <TipoBadge tipo={p.tipo_plan} oculto={p.oculto} />
           {!activo(p) && <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-[11px] font-bold">Desactivado</span>}
         </div>
       ),
@@ -282,7 +322,7 @@ export default function PlanesPage() {
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`font-semibold text-sm ${activo(p) ? "text-gray-900" : "text-gray-500 line-through"}`}>{p.nombre}</span>
-                <TipoBadge tipo={p.tipo_plan} />
+                <TipoBadge tipo={p.tipo_plan} oculto={p.oculto} />
               </div>
               <p className="text-xs text-gray-600">{formatPrice(p.precio)} · {p.tipo_plan === "liga" ? "sin tokens" : `${p.tokens_mensuales} tokens`} · {p.dias ?? 30} días</p>
               {acciones(p)}
@@ -339,16 +379,36 @@ export default function PlanesPage() {
           desactivando
             ? [
                 "Deja de aparecer en el catálogo y no se puede comprar.",
-                ...(cambioEstado && tieneLink(cambioEstado) ? ["Su link de acceso deja de funcionar."] : []),
+                ...(cambioEstado && requiereLink(cambioEstado) ? ["Su link de acceso deja de funcionar."] : []),
                 "Las membresías vigentes de este plan no cambian: los alumnos siguen usando sus tokens.",
               ]
-            : ["Vuelve a aparecer en el catálogo y se puede comprar."]
+            : [cambioEstado && requiereLink(cambioEstado) ? "Se vuelve a poder comprar con su link." : "Vuelve a aparecer en el catálogo y se puede comprar."]
         }
         confirmLabel={desactivando ? "Desactivar" : "Reactivar"}
         textoCargando={desactivando ? "Desactivando..." : "Reactivando..."}
         cargando={cambiando}
         onConfirm={handleCambiarEstado}
         onCancel={() => setCambioEstado(null)}
+      />
+
+      <ConfirmDialog
+        open={cambioVisibilidad !== null}
+        variante="info"
+        title={cambioVisibilidad?.oculto ? "Mostrar en el catálogo" : "Ocultar plan"}
+        message={<>¿{cambioVisibilidad?.oculto ? "Mostrar" : "Ocultar"} <strong>{cambioVisibilidad?.nombre}</strong>?</>}
+        consecuencias={
+          cambioVisibilidad?.oculto
+            ? ["Vuelve a aparecer en el catálogo para todos.", "Su link de acceso deja de funcionar (ya no hace falta)."]
+            : [
+                "Sale del catálogo: solo se compra con su link de acceso (botón Link).",
+                "Las membresías vigentes de este plan no cambian.",
+              ]
+        }
+        confirmLabel={cambioVisibilidad?.oculto ? "Mostrar" : "Ocultar"}
+        textoCargando="Guardando..."
+        cargando={cambiando}
+        onConfirm={handleCambiarVisibilidad}
+        onCancel={() => setCambioVisibilidad(null)}
       />
 
       <Modal

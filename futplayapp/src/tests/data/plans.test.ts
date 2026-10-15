@@ -14,9 +14,9 @@ import { getAdminMembresias } from "@/data/membresia";
 import { getPlanes, getPlanesLimit, getPlanesAdmin, createPlanAdmin, updatePlanAdmin, setPlanActivo, getUsers } from "@/data/plans";
 
 const MOCK_PLANS = [
-    { id: "p1", nombre: "básico", tokens_mensuales: 10, precio: 15000, activo: true },
-    { id: "p2", nombre: "pro", tokens_mensuales: 25, precio: 25000, activo: true },
-    { id: "p3", nombre: "premium", tokens_mensuales: 50, precio: 40000, activo: true },
+    { id: "p1", nombre: "básico", tokens_mensuales: 10, precio: 15000, activo: true, oculto: false },
+    { id: "p2", nombre: "pro", tokens_mensuales: 25, precio: 25000, activo: true, oculto: false },
+    { id: "p3", nombre: "premium", tokens_mensuales: 50, precio: 40000, activo: true, oculto: false },
 ];
 
 function mockFetch(response: object, status = 200) {
@@ -44,11 +44,18 @@ describe("getPlanes", () => {
     });
 
     it("DATA-PLANES-INACT-001: un plan desactivado no aparece en el catálogo", async () => {
-        __setTableData("plan", [...MOCK_PLANS, { id: "p4", nombre: "viejo", tokens_mensuales: 4, precio: 9000, activo: false }]);
+        __setTableData("plan", [...MOCK_PLANS, { id: "p4", nombre: "viejo", tokens_mensuales: 4, precio: 9000, activo: false, oculto: false }]);
 
         const result = await getPlanes();
 
         expect(result.map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+    });
+
+    it("DATA-PLANES-OCU-001: un plan oculto no aparece en el catálogo (solo se compra con su link)", async () => {
+        __setTableData("plan", [...MOCK_PLANS, { id: "p5", nombre: "Kids x1", tokens_mensuales: 4, precio: 30000, activo: true, oculto: true }]);
+
+        expect((await getPlanes()).map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+        expect((await getPlanesLimit(10)).map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
     });
 
     it("retorna array vacío si hay error", async () => {

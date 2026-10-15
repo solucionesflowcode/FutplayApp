@@ -35,6 +35,7 @@ type MembresiaForm = {
   usuario_id: string;
   plan_id: string;
   boleta_id: string | null;
+  numero_boleta: string;
   tokens_totales: number | null;
   tokens_usados: number | null;
   fecha_inicio: string;
@@ -50,6 +51,7 @@ const emptyForm: MembresiaForm = {
   usuario_id: "",
   plan_id: "",
   boleta_id: null,
+  numero_boleta: "",
   tokens_totales: null,
   tokens_usados: 0,
   fecha_inicio: "",
@@ -167,6 +169,7 @@ export default function MembresiasPage() {
       usuario_id: m.usuario_id,
       plan_id: m.plan_id,
       boleta_id: m.boleta_id ?? null,
+      numero_boleta: m.numero_boleta ?? "",
       tokens_totales: m.tokens_totales,
       tokens_usados: m.tokens_usados,
       fecha_inicio: isoToDate(m.fecha_inicio),
@@ -216,12 +219,14 @@ export default function MembresiasPage() {
     const fechaEditada = (dia: string, original?: string) =>
       original && isoToDate(original) === dia ? original : dateToIso(dia);
 
-    // La boleta no se edita (MEM-06): la crea el pago. Al crear a mano queda sin boleta.
+    // La boleta de Flow no se edita (MEM-06): la crea el pago. A mano se anota
+    // el N° de una boleta externa; sin él la membresía no cuenta en analíticas.
     const res = isCreate
       ? await createMembresiaGestion({
           usuario_id: form.usuario_id,
           plan_id: form.plan_id,
           boleta_id: null,
+          numero_boleta: form.numero_boleta,
           tokens_totales: totales,
           dias: diasVigencia,
         })
@@ -233,6 +238,7 @@ export default function MembresiasPage() {
           fecha_inicio: fechaEditada(form.fecha_inicio, form.fecha_inicio_original),
           fecha_vencimiento: fechaEditada(form.fecha_vencimiento, form.fecha_vencimiento_original),
           estado: form.estado,
+          ...(form.boleta_id ? {} : { numero_boleta: form.numero_boleta }),
         });
 
     setSaving(false);
@@ -305,6 +311,15 @@ export default function MembresiasPage() {
     </div>
   );
 
+  const boleta = (m: MembresiaGestion) =>
+    m.boleta_id ? (
+      <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[11px] font-bold whitespace-nowrap">Flow</span>
+    ) : m.numero_boleta ? (
+      <span className="text-xs text-gray-700 whitespace-nowrap">N° {m.numero_boleta}</span>
+    ) : (
+      <span className="text-xs text-gray-500 whitespace-nowrap" title="No cuenta en las analíticas">Sin boleta</span>
+    );
+
   const badge = (m: MembresiaGestion) => (
     <StatusBadge estado={estadoDe(m)} title={m.sin_tokens && !m.congelada ? AYUDA_SIN_TOKENS : undefined} />
   );
@@ -315,6 +330,7 @@ export default function MembresiasPage() {
     { id: "tokens", encabezado: "Tokens", celda: (m) => <span className="whitespace-nowrap">{textoTokens(m)}</span>, valorOrden: (m) => m.tokens_totales - m.tokens_usados },
     { id: "inicio", encabezado: "Inicio", celda: (m) => formatFecha(m.fecha_inicio), valorOrden: (m) => m.fecha_inicio, className: "whitespace-nowrap" },
     { id: "vence", encabezado: "Vencimiento", celda: (m) => formatFecha(m.fecha_vencimiento), valorOrden: (m) => m.fecha_vencimiento, className: "whitespace-nowrap" },
+    { id: "boleta", encabezado: "Boleta", celda: boleta, valorOrden: (m) => (m.boleta_id ? "0" : m.numero_boleta ? `1${m.numero_boleta}` : "2") },
     { id: "estado", encabezado: "Estado", celda: badge, valorOrden: (m) => estadoDe(m) },
     { id: "acciones", encabezado: "Acciones", celda: (m) => acciones(m, 16) },
   ];
@@ -384,6 +400,7 @@ export default function MembresiasPage() {
                 {badge(m)}
               </div>
               <p className="text-xs text-gray-600">{m.plan_nombre} · {textoTokens(m)}</p>
+              <p className="text-xs">{boleta(m)}</p>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500">Vence {formatFecha(m.fecha_vencimiento)}</span>
                 {acciones(m, 16)}
@@ -467,6 +484,24 @@ export default function MembresiasPage() {
                 {(p) => <input {...p} type="date" value={form.fecha_vencimiento} onChange={(e) => setForm((f) => ({ ...f, fecha_vencimiento: e.target.value }))} className={CLASE_INPUT} />}
               </FormField>
             </div>
+          )}
+
+          {/* Las de Flow ya traen su boleta; a mano se anota el folio de una boleta externa. */}
+          {!form.boleta_id && (
+            <FormField label="N° de boleta" ayuda="Opcional. Solo las membresías con boleta cuentan en las analíticas.">
+              {(p) => (
+                <input
+                  {...p}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={64}
+                  value={form.numero_boleta}
+                  onChange={(e) => setForm((f) => ({ ...f, numero_boleta: e.target.value }))}
+                  placeholder="Ej: 12345"
+                  className={CLASE_INPUT}
+                />
+              )}
+            </FormField>
           )}
 
           {modal === "edit" && (

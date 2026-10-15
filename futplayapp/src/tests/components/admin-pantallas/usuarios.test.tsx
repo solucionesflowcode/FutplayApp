@@ -4,6 +4,7 @@ import { render, screen, fireEvent, within, cleanup } from "@testing-library/rea
 
 vi.mock("@/data/plans", () => ({ getUsers: vi.fn() }));
 vi.mock("@/data/fichaMedica", () => ({ getFichaMedicaByUser: vi.fn(), calcularEdad: () => 30 }));
+vi.mock("@/data/sedes", () => ({ getSedes: vi.fn(() => Promise.resolve([{ id: "s1", nombre: "Las Condes", activa: true }])) }));
 
 import { getUsers } from "@/data/plans";
 import { ToastProvider } from "@/components/admin/ui";
@@ -11,7 +12,7 @@ import AdminPage from "@/app/(admin)/admin/page";
 import { formatoTelefono } from "@/components/admin/StudentsTable";
 
 const USUARIOS = [
-    { id: "u1", name: "Ana Alumna", role: "Alumno", email: "ana@mail.cl", rut: "11.111.111-1", phone: "+56979046977", plan: "Plan Basico", tokens: 2, status: "Activo" },
+    { id: "u1", name: "Ana Alumna", role: "Alumno", email: "ana@mail.cl", rut: "11.111.111-1", phone: "+56979046977", plan: "Plan Basico", tokens: 2, status: "Activo", sedeId: "s1", sede: "Las Condes" },
     { id: "u2", name: "Carla Congelada", role: "Alumno", email: "carla@mail.cl", rut: "", phone: "", plan: "Plan Pro", tokens: 0, status: "Congelado" },
     { id: "p1", name: "Pedro Profe", role: "Profesor", email: "pedro@mail.cl", rut: "", phone: "", plan: "Sin plan", tokens: 0, status: "Inactivo" },
 ];
@@ -115,5 +116,23 @@ describe("Gestión de usuarios (fase 3)", () => {
         await screen.findByRole("status");
         const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
         expect(body).toMatchObject({ id: "u2", email: "carla.nueva@mail.cl", telefono: "+56991234567", rut: null });
+    });
+});
+
+describe("Gestión de usuarios: sede principal", () => {
+    it("ADM-USR-SEDE-001: la tabla muestra la sede y se filtra por sede o por sin sede", async () => {
+        renderPagina();
+        await within(tabla()).findByText("Ana Alumna");
+        expect(within(tabla()).getByText("Las Condes")).toBeInTheDocument();
+
+        const filtro = screen.getByLabelText("Filtrar por sede");
+        await within(filtro).findByRole("option", { name: "Las Condes" });
+        fireEvent.change(filtro, { target: { value: "s1" } });
+        expect(within(tabla()).getByText("Ana Alumna")).toBeInTheDocument();
+        expect(within(tabla()).queryByText("Carla Congelada")).toBeNull();
+
+        fireEvent.change(filtro, { target: { value: "sin" } });
+        expect(within(tabla()).queryByText("Ana Alumna")).toBeNull();
+        expect(within(tabla()).getByText("Carla Congelada")).toBeInTheDocument();
     });
 });

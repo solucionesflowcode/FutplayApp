@@ -2,6 +2,9 @@ import { createClient } from "@/utils/supabase/client";
 import { PLAN_COLUMNAS_PUBLICAS } from "@/lib/plan-columnas";
 import type { Student } from "@/components/admin/StudentsTable";
 import { getAdminMembresias } from "@/data/membresia";
+import { PLANES_CON_LINK } from "@/lib/planes-link";
+
+export { PLANES_CON_LINK, requiereLink } from "@/lib/planes-link";
 
 export type Plan = {
     id: string;
@@ -14,13 +17,12 @@ export type Plan = {
     codigo_acceso?: string | null;
     // false = desactivado por el admin: no se vende (los planes no se eliminan).
     activo?: boolean;
+    // true = oculto por el admin: no sale en el catálogo, solo se compra con su link.
+    oculto?: boolean;
 };
 
 export type TipoPlan = "normal" | "familiar" | "kids" | "liga";
 
-// Planes que solo se compran con el link del admin (codigo_acceso):
-// no aparecen en el catálogo público.
-export const PLANES_CON_LINK: TipoPlan[] = ["familiar", "liga"];
 // tipo_plan NULL cuenta como plan normal (NOT IN descartaría los NULL).
 const FILTRO_CATALOGO = `tipo_plan.is.null,tipo_plan.not.in.(${PLANES_CON_LINK.join(",")})`;
 
@@ -33,6 +35,8 @@ export async function getPlanes(): Promise<Plan[]> {
         .or(FILTRO_CATALOGO)
         // Planes desactivados por el admin no se venden (los planes no se eliminan).
         .eq("activo", true)
+        // Ocultos por el admin: solo se compran con su link.
+        .eq("oculto", false)
         .order("precio", { ascending: true });
 
     if (error) {
@@ -52,6 +56,7 @@ export async function getPlanesLimit(limit: number): Promise<Plan[]> {
         .or(FILTRO_CATALOGO)
         // Planes desactivados por el admin no se venden (los planes no se eliminan).
         .eq("activo", true)
+        .eq("oculto", false)
         .order("precio", { ascending: true })
         .limit(limit);
 
@@ -128,6 +133,23 @@ export async function setPlanActivo(id: string, activo: boolean): Promise<{ succ
     return { success: true };
 }
 
+/**
+ * Oculta (o vuelve a mostrar) un plan en el catálogo: oculto solo se compra con
+ * su link de acceso, como los familiares. Las membresías vigentes no cambian.
+ */
+export async function setPlanOculto(id: string, oculto: boolean): Promise<{ success: boolean; error?: string }> {
+    const res = await fetch("/api/admin/planes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, oculto }),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { success: false, error: body.error || "No se pudo cambiar la visibilidad del plan" };
+    }
+    return { success: true };
+}
+
 type UsuarioRow = {
     id: string;
     nombre: string;
@@ -135,6 +157,8 @@ type UsuarioRow = {
     rut: string | null;
     telefono: string | null;
     email: string | null;
+    sede_id?: string | null;
+    sede?: { nombre: string } | { nombre: string }[] | null;
 };
 
 function mapRol(rol: string): string {
@@ -159,7 +183,7 @@ export async function getUsers(): Promise<Student[]> {
     const supabase = createClient();
 
     const [usuariosResult, membresias] = await Promise.all([
-        supabase.from("usuario").select("id, nombre, rol, rut, telefono, email").order("nombre"),
+        supabase.from("usuario").select("id, nombre, rol, rut, telefono, email, sede_id, sede:sede_id(nombre)").order("nombre"),
         getAdminMembresias(),
     ]);
 
@@ -174,6 +198,7 @@ export async function getUsers(): Promise<Student[]> {
 
     return ((usuarios as UsuarioRow[]) || []).map((user) => {
         const m = membresiasByUser.get(user.id);
+        const sede = Array.isArray(user.sede) ? user.sede[0] : user.sede;
 
         return {
             id: user.id,
@@ -185,6 +210,8 @@ export async function getUsers(): Promise<Student[]> {
             plan: m?.plan_nombre || "Sin plan",
             tokens: m?.tokens_restantes || 0,
             status: getStatus(m),
+            sedeId: user.sede_id ?? null,
+            sede: sede?.nombre ?? null,
         };
     });
 }

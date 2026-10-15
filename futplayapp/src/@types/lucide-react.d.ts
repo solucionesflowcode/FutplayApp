@@ -32,6 +32,7 @@ declare module "lucide-react" {
   export const Droplets: Icon;
   export const ExternalLink: Icon;
   export const Eye: Icon;
+  export const EyeOff: Icon;
   export const FileText: Icon;
   export const GraduationCap: Icon;
   export const Heart: Icon;

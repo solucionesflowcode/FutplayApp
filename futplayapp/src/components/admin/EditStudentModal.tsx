@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import type { Student } from "./StudentsTable";
+import type { Sede } from "@/data/sedes";
 import { telefonoParaGuardar } from "@/lib/telefono";
 import { Button, CLASE_INPUT, FormField, Modal, PhoneInput, useToast } from "@/components/admin/ui";
 
 type Props = {
   student: Student | null;
+  // Sedes para la sede principal (contabilidad por sede).
+  sedes?: Sede[];
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -24,12 +27,13 @@ const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * Edición de un usuario (USR-11): labels visibles, email editable (la API lo
  * sincroniza con el login) y teléfono con prefijo +569 fijo (USR-04).
  */
-export default function EditStudentModal({ student, open, onClose, onSaved }: Props) {
+export default function EditStudentModal({ student, sedes = [], open, onClose, onSaved }: Props) {
   const toast = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [rut, setRut] = useState("");
   const [phone, setPhone] = useState("");
+  const [sedeId, setSedeId] = useState("");
   const [saving, setSaving] = useState(false);
   const [errores, setErrores] = useState<{ nombre?: string; email?: string; telefono?: string; general?: string }>({});
 
@@ -43,6 +47,7 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
     setEmail(student.email || "");
     setRut(student.rut || "");
     setPhone(student.phone || "");
+    setSedeId(student.sedeId || "");
     setErrores({});
     setSaving(false);
   }
@@ -71,6 +76,7 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
           // Vacío → null: borra el dato (con `undefined` no se podía borrar).
           rut: rut.trim() || null,
           telefono,
+          sede_id: sedeId || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -113,6 +119,17 @@ export default function EditStudentModal({ student, open, onClose, onSaved }: Pr
         </FormField>
         <FormField label="Teléfono celular" ayuda="El bot de WhatsApp le escribe a este número. Déjalo vacío para borrarlo." error={errores.telefono}>
           {(p) => <PhoneInput {...p} value={phone} onChange={setPhone} />}
+        </FormField>
+        <FormField label="Sede principal" ayuda="Para separar la contabilidad y las analíticas por sede.">
+          {(p) => (
+            <select {...p} value={sedeId} onChange={(e) => setSedeId(e.target.value)} className={CLASE_INPUT}>
+              <option value="">Sin asignar</option>
+              {/* Una sede inactiva solo aparece si ya es la del usuario. */}
+              {sedes
+                .filter((s) => s.activa !== false || s.id === sedeId)
+                .map((s) => <option key={s.id} value={s.id}>{s.nombre}{s.activa === false ? " (inactiva)" : ""}</option>)}
+            </select>
+          )}
         </FormField>
         {errores.general && <p role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{errores.general}</p>}
       </div>

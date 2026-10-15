@@ -15,7 +15,8 @@ import { getAdminMembresias, type MembresiaConPlan } from "@/data/membresia";
 import { getPlanesAdmin, type Plan } from "@/data/plans";
 import { getChileMonthBounds, hoyChile } from "@/lib/fechas";
 import { membresiaVigente, porcentajeConPlanActivo } from "@/lib/analiticas";
-import { PageHeader, StatCard } from "@/components/admin/ui";
+import { coincideSede, SIN_SEDE, type FiltroSede } from "@/lib/sedes";
+import { CLASE_INPUT, PageHeader, StatCard } from "@/components/admin/ui";
 
 type Resumen = {
   totalAlumnos: number;
@@ -62,9 +63,11 @@ const MESES = [
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ];
 
-async function getIngresosMensuales(): Promise<{ datos: IngresoMensual[]; error: boolean }> {
+type UsuarioSede = { id: string; rol: string; sede_id: string | null };
+
+async function getIngresosMensuales(sede: FiltroSede): Promise<{ datos: IngresoMensual[]; error: boolean }> {
   try {
-    const res = await fetch("/api/admin/analiticas/mensual");
+    const res = await fetch(sede ? `/api/admin/analiticas/mensual?sede=${encodeURIComponent(sede)}` : "/api/admin/analiticas/mensual");
     if (!res.ok) return { datos: [], error: true };
     return { datos: await res.json(), error: false };
   } catch {
@@ -74,14 +77,11 @@ async function getIngresosMensuales(): Promise<{ datos: IngresoMensual[]; error:
 
 export default function AnaliticasPage() {
   const [loading, setLoading] = useState(true);
-  const [resumen, setResumen] = useState<Resumen>({
-    totalAlumnos: 0,
-    ingresosMes: 0,
-    membresiasActivas: 0,
-    conPlanActivo: 0,
-  });
   const [errorIngresos, setErrorIngresos] = useState(false);
-  const [membresias, setMembresias] = useState<MembresiaConPlan[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioSede[]>([]);
+  const [todasMembresias, setTodasMembresias] = useState<MembresiaConPlan[]>([]);
+  const [sedes, setSedes] = useState<{ id: string; nombre: string }[]>([]);
+  const [filtroSede, setFiltroSede] = useState<FiltroSede>(null);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [ingresosMensuales, setIngresosMensuales] = useState<IngresoMensual[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -95,33 +95,22 @@ export default function AnaliticasPage() {
       try {
         const supabase = createClient();
 
-        const { data: usuarios, error: errorUsuarios } = await supabase.from("usuario").select("id, rol");
-        if (errorUsuarios) throw errorUsuarios;
+        const [usuariosRes, sedesRes] = await Promise.all([
+          supabase.from("usuario").select("id, rol, sede_id"),
+          supabase.from("sede").select("id, nombre").order("nombre"),
+        ]);
+        if (usuariosRes.error) throw usuariosRes.error;
 
-        const [membresiasData, planesResult, ingresosResult] = await Promise.all([
-          getAdminMembresias(),
+        // Solo las membresías con boleta (Flow o N° de boleta externa) cuentan.
+        const [membresiasData, planesResult] = await Promise.all([
+          getAdminMembresias({ conBoleta: true }),
           getPlanesAdmin(),
-          getIngresosMensuales(),
         ]);
 
-        const ingresosData = ingresosResult.datos;
-        setMembresias(membresiasData);
+        setUsuarios((usuariosRes.data || []) as UsuarioSede[]);
+        setSedes(sedesRes.data || []);
+        setTodasMembresias(membresiasData);
         setPlanes(planesResult.planes);
-        setIngresosMensuales(ingresosData);
-        setErrorIngresos(ingresosResult.error);
-
-        const alumnoIds = new Set((usuarios || []).filter((u) => u.rol === "jugador").map((u) => u.id as string));
-        const totalAlumnos = alumnoIds.size;
-
-        const { startISO } = getChileMonthBounds();
-        const hoy = hoyChile();
-        const membresiasActivas = membresiasData.filter((m) => membresiaVigente(m, hoy)).length;
-
-        // ANA-02: si la API de ingresos falla se muestra el error; antes se
-        // estimaba sumando precios de planes (incluidas membresías regaladas).
-        const ingresosMes = ingresosResult.error ? null : ingresosData.find((i) => i.mes === startISO.slice(0, 7))?.ingresos ?? 0;
-
-        setResumen({ totalAlumnos, ingresosMes, membresiasActivas, conPlanActivo: porcentajeConPlanActivo(membresiasData, alumnoIds, hoy) });
       } catch (err) {
         console.error("Error fetching analytics:", err);
         setError("Error al cargar las analíticas");
@@ -132,6 +121,37 @@ export default function AnaliticasPage() {
 
     fetchData();
   }, []);
+
+  // Los ingresos se calculan en el servidor: se vuelven a pedir al cambiar de sede.
+  useEffect(() => {
+    let cancelado = false;
+    getIngresosMensuales(filtroSede).then((r) => {
+      if (cancelado) return;
+      setIngresosMensuales(r.datos);
+      setErrorIngresos(r.error);
+    });
+    return () => { cancelado = true; };
+  }, [filtroSede]);
+
+  const membresias = useMemo(
+    () => todasMembresias.filter((m) => coincideSede(m.sede_id, filtroSede)),
+    [todasMembresias, filtroSede],
+  );
+
+  const resumen = useMemo<Resumen>(() => {
+    const alumnoIds = new Set(usuarios.filter((u) => u.rol === "jugador" && coincideSede(u.sede_id, filtroSede)).map((u) => u.id));
+    const { startISO } = getChileMonthBounds();
+    const hoy = hoyChile();
+    // ANA-02: si la API de ingresos falla se muestra el error; antes se
+    // estimaba sumando precios de planes (incluidas membresías regaladas).
+    const ingresosMes = errorIngresos ? null : ingresosMensuales.find((i) => i.mes === startISO.slice(0, 7))?.ingresos ?? 0;
+    return {
+      totalAlumnos: alumnoIds.size,
+      ingresosMes,
+      membresiasActivas: membresias.filter((m) => membresiaVigente(m, hoy)).length,
+      conPlanActivo: porcentajeConPlanActivo(membresias, alumnoIds, hoy),
+    };
+  }, [usuarios, membresias, filtroSede, ingresosMensuales, errorIngresos]);
 
   // Close month dropdown on outside click
   const monthDropdownRef = useRef<HTMLDivElement>(null);
@@ -332,7 +352,18 @@ export default function AnaliticasPage() {
       >
         {/* Section 0: Header */}
         <div className="self-stretch">
-          <PageHeader titulo="Analíticas" descripcion="Estadísticas y métricas de rendimiento de la academia." />
+          <PageHeader titulo="Analíticas" descripcion="Estadísticas de la academia. Solo cuentan las membresías con boleta (Flow o N° de boleta).">
+            <select
+              aria-label="Filtrar por sede"
+              value={filtroSede ?? ""}
+              onChange={(e) => setFiltroSede(e.target.value || null)}
+              className={`${CLASE_INPUT} py-2 w-full sm:max-w-xs`}
+            >
+              <option value="">Todas las sedes</option>
+              {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+              <option value={SIN_SEDE}>Sin sede asignada</option>
+            </select>
+          </PageHeader>
         </div>
 
         {/* Section 1: Stat Cards */}
@@ -347,7 +378,7 @@ export default function AnaliticasPage() {
             <StatCard
               etiqueta={selectedMonth ? "Ingresos del mes elegido" : "Ingresos del mes"}
               valor={filteredResumen.ingresosMes === null ? "No disponible" : formatCLP(filteredResumen.ingresosMes)}
-              detalle="boletas pagadas"
+              detalle="membresías con boleta"
               icono={<DollarSign size={18} />}
               tono={filteredResumen.ingresosMes === null ? "peligro" : "exito"}
             />

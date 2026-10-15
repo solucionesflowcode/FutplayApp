@@ -16,6 +16,9 @@ export type Student = {
   tokens: number;
   status: string;
   medicalFileUrl?: string;
+  // Sede principal (contabilidad por sede). null = sin asignar.
+  sedeId?: string | null;
+  sede?: string | null;
 };
 
 type FichaModalState = {
@@ -96,6 +99,7 @@ export default function StudentsTable({ students, resetKey, cargando = false, er
     { id: "rol", encabezado: "Rol", celda: (s) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${COLOR_ROL[s.role] ?? COLOR_ROL.Admin}`}>{s.role}</span>, valorOrden: (s) => s.role },
     { id: "rut", encabezado: "RUT", celda: (s) => s.rut || "—", className: "whitespace-nowrap" },
     { id: "telefono", encabezado: "Teléfono", celda: (s) => formatoTelefono(s.phone), className: "whitespace-nowrap" },
+    { id: "sede", encabezado: "Sede", celda: (s) => s.sede || <span className="text-gray-500">Sin sede</span>, valorOrden: (s) => s.sede || "" },
     { id: "plan", encabezado: "Plan", celda: (s) => s.plan, valorOrden: (s) => s.plan },
     { id: "tokens", encabezado: "Tokens", celda: (s) => s.tokens, valorOrden: (s) => s.tokens },
     { id: "estado", encabezado: "Estado", celda: (s) => <StatusBadge estado={s.status} />, valorOrden: (s) => s.status },
@@ -124,7 +128,7 @@ export default function StudentsTable({ students, resetKey, cargando = false, er
               </div>
               <StatusBadge estado={s.status} />
             </div>
-            <p className="text-xs text-gray-500">{formatoTelefono(s.phone)}{s.rut ? ` · ${s.rut}` : ""}</p>
+            <p className="text-xs text-gray-500">{formatoTelefono(s.phone)}{s.rut ? ` · ${s.rut}` : ""} · {s.sede || "Sin sede"}</p>
             {acciones(s)}
           </div>
         )}

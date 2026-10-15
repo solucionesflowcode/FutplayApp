@@ -2,8 +2,11 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { traducirError } from "@/lib/errores";
+import { tieneBoleta } from "@/lib/analiticas";
 
-export async function GET() {
+export async function GET(request: Request) {
+  // ?conBoleta=1 (analíticas): solo compiten las membresías con boleta.
+  const conBoleta = new URL(request.url).searchParams.get("conBoleta") === "1";
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -60,14 +63,18 @@ export async function GET() {
     return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
   }
 
-  const planIds = [...new Set((membresias || []).map((m) => m.plan_id))];
+  const lista = conBoleta ? (membresias || []).filter(tieneBoleta) : membresias || [];
+  const planIds = [...new Set(lista.map((m) => m.plan_id))];
+  const usuarioIds = [...new Set(lista.map((m) => m.usuario_id))];
 
-  const { data: planes } = await adminClient
-    .from("plan")
-    .select("*")
-    .in("id", planIds);
+  const [{ data: planes }, { data: usuarios }] = await Promise.all([
+    adminClient.from("plan").select("*").in("id", planIds),
+    // Sede principal del alumno: las analíticas filtran por sede.
+    adminClient.from("usuario").select("id, sede_id").in("id", usuarioIds),
+  ]);
 
   const planesMap = new Map((planes || []).map((p) => [p.id, p]));
+  const sedesMap = new Map((usuarios || []).map((u) => [u.id, u.sede_id as string | null]));
 
   type MembresiaRow = {
     membresia_id: string;
@@ -85,6 +92,7 @@ export async function GET() {
     estado: boolean;
     congelada: boolean;
     sin_tokens: boolean;
+    sede_id: string | null;
   };
   const resultMap = new Map<string, MembresiaRow>();
   const prioridadMap = new Map<string, number>();
@@ -96,7 +104,7 @@ export async function GET() {
   // Con empate a 0 restantes, la congelada le gana a la vencida o agotada: es
   // el plan que el alumno sigue teniendo (antes ganaba la primera fila y un
   // alumno congelado podía figurar "Vencido").
-  for (const m of membresias || []) {
+  for (const m of lista) {
     const sinTokens = m.sin_tokens === true;
     const vigente =
       m.estado === true &&
@@ -127,6 +135,7 @@ export async function GET() {
         estado: m.estado === true,
         congelada: m.congelada === true,
         sin_tokens: sinTokens,
+        sede_id: sedesMap.get(m.usuario_id) ?? null,
       });
     }
   }

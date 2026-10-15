@@ -44,6 +44,8 @@ export type MembresiaConPlan = {
     congelada: boolean;
     sin_tokens: boolean;
     fecha_congelamiento?: string | null;
+    // Solo en getAdminMembresias: sede principal del alumno (filtro de analíticas).
+    sede_id?: string | null;
 };
 
 export async function userHasMembresia(userId: string): Promise<boolean> {
@@ -191,10 +193,14 @@ export async function getAllMembresiasConPlan(): Promise<MembresiaConPlan[]> {
     return Array.from(resultMap.values());
 }
 
-export async function getAdminMembresias(): Promise<MembresiaConPlan[]> {
+/**
+ * Una membresía por alumno (la vigente con más tokens). Con conBoleta solo
+ * compiten las que tienen boleta: es lo que cuentan las analíticas.
+ */
+export async function getAdminMembresias(opciones: { conBoleta?: boolean } = {}): Promise<MembresiaConPlan[]> {
     let res: Response;
     try {
-        res = await fetch("/api/admin/membresias");
+        res = await fetch(opciones.conBoleta ? "/api/admin/membresias?conBoleta=1" : "/api/admin/membresias");
     } catch {
         throw new Error("Sin conexión: no se pudieron cargar las membresías");
     }
@@ -271,6 +277,8 @@ export type MembresiaGestion = {
   plan_id: string;
   plan_nombre: string;
   boleta_id?: string;
+  // Folio de una boleta externa (efectivo/transferencia) anotado por el admin.
+  numero_boleta?: string | null;
   tokens_totales: number;
   tokens_usados: number;
   fecha_inicio: string;
@@ -343,6 +351,7 @@ export async function createMembresiaGestion(data: {
   usuario_id: string;
   plan_id: string;
   boleta_id?: string | null;
+  numero_boleta?: string | null;
   tokens_totales: number;
   dias: number;
 }): Promise<ResultadoGestion> {
@@ -357,6 +366,7 @@ export async function createMembresiaGestion(data: {
         usuario_id: data.usuario_id,
         plan_id: data.plan_id,
         boleta_id: data.boleta_id ?? null,
+        numero_boleta: data.numero_boleta?.trim() || null,
         tokens_totales: data.tokens_totales,
         tokens_usados: 0,
         fecha_inicio,
@@ -378,6 +388,7 @@ export async function updateMembresiaGestion(
     usuario_id: string;
     plan_id: string;
     boleta_id: string | null;
+    numero_boleta: string | null;
     tokens_totales: number;
     tokens_usados: number;
     fecha_inicio: string;
@@ -389,6 +400,9 @@ export async function updateMembresiaGestion(
     const payload = { ...data, id };
     if (payload.boleta_id !== undefined) {
       payload.boleta_id = payload.boleta_id?.trim() ? payload.boleta_id : null;
+    }
+    if (payload.numero_boleta !== undefined) {
+      payload.numero_boleta = payload.numero_boleta?.trim() || null;
     }
     const res = await fetch("/api/admin/membresias/gestion", {
       method: "PUT",

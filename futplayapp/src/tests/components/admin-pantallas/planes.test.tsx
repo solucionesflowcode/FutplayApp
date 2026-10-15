@@ -2,15 +2,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, within, cleanup } from "@testing-library/react";
 
-vi.mock("@/data/plans", () => ({
+vi.mock("@/data/plans", async () => ({
     getPlanesAdmin: vi.fn(),
     createPlanAdmin: vi.fn(),
     updatePlanAdmin: vi.fn(),
     setPlanActivo: vi.fn(),
-    PLANES_CON_LINK: ["familiar", "liga"],
+    setPlanOculto: vi.fn(),
+    ...(await vi.importActual<typeof import("@/lib/planes-link")>("@/lib/planes-link")),
 }));
 
-import { getPlanesAdmin, createPlanAdmin, setPlanActivo } from "@/data/plans";
+import { getPlanesAdmin, createPlanAdmin, setPlanActivo, setPlanOculto } from "@/data/plans";
 import { ToastProvider } from "@/components/admin/ui";
 import PlanesPage from "@/app/(admin)/admin/planes/page";
 
@@ -107,5 +108,33 @@ describe("Gestión de planes (fase 3, planes desactivables)", () => {
 
         await screen.findByRole("status");
         expect(createPlanAdmin).toHaveBeenCalledWith({ nombre: "Liga 2026", precio: 40000, tokens_mensuales: 0, dias: 90, tipo_plan: "liga" });
+    });
+});
+
+describe("Gestión de planes: ocultar (solo con link)", () => {
+    it("ADM-PLA-OCU-001: ocultar un plan explica las consecuencias, llama a setPlanOculto y muestra el badge y el link", async () => {
+        vi.mocked(setPlanOculto).mockResolvedValue({ success: true });
+        renderPagina();
+        await within(tabla()).findByText("Plan Basico");
+
+        // Antes de ocultarlo no tiene link.
+        expect(within(tabla()).queryByRole("button", { name: "Link de acceso de Plan Basico" })).toBeNull();
+        fireEvent.click(within(tabla()).getByRole("button", { name: "Ocultar Plan Basico" }));
+        const dialogo = screen.getByRole("dialog", { name: "Ocultar plan" });
+        expect(dialogo).toHaveTextContent("solo se compra con su link");
+        fireEvent.click(within(dialogo).getByRole("button", { name: "Ocultar" }));
+
+        expect(await screen.findByRole("status")).toHaveTextContent("solo se compra con su link");
+        expect(setPlanOculto).toHaveBeenCalledWith("p1", true);
+        expect(within(tabla()).getByText("Oculto · solo link")).toBeInTheDocument();
+        expect(within(tabla()).getByRole("button", { name: "Link de acceso de Plan Basico" })).toBeInTheDocument();
+        expect(within(tabla()).getByRole("button", { name: "Mostrar en catálogo Plan Basico" })).toBeInTheDocument();
+    });
+
+    it("ADM-PLA-OCU-002: familiar y liga no tienen la acción (siempre están ocultos)", async () => {
+        renderPagina();
+        await within(tabla()).findByText("Plan Familiar 1");
+
+        expect(within(tabla()).queryByRole("button", { name: "Ocultar Plan Familiar 1" })).toBeNull();
     });
 });

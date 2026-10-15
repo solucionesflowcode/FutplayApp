@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { rateLimit } from "@/lib/rate-limit";
+import { requiereLink } from "@/lib/planes-link";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/planes/familiar?token=XXXX
-// Endpoint público: valida el codigo_acceso de un plan familiar o liga y
+// Endpoint público: valida el codigo_acceso de un plan familiar, liga u oculto y
 // devuelve sus datos para la página /planes/familiar/[token].
 // Nunca devuelve el propio codigo_acceso.
 export async function GET(request: Request) {
@@ -47,9 +48,8 @@ export async function GET(request: Request) {
 
   const { data: plan, error } = await adminClient
     .from("plan")
-    .select("id, nombre, precio, tokens_mensuales, dias_vigencia, tipo_plan")
+    .select("id, nombre, precio, tokens_mensuales, dias_vigencia, tipo_plan, oculto")
     .eq("codigo_acceso", token)
-    .in("tipo_plan", ["familiar", "liga"])
     // Un plan desactivado deja de venderse también por su link.
     .eq("activo", true)
     .maybeSingle();
@@ -58,7 +58,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Error al validar el link" }, { status: 500 });
   }
 
-  if (!plan) {
+  // Un plan que volvió al catálogo ya no se vende por link (create-order tampoco lo pide).
+  if (!plan || !requiereLink(plan)) {
     return NextResponse.json({ error: "Link inválido" }, { status: 404 });
   }
 

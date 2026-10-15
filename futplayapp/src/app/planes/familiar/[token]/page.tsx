@@ -11,7 +11,7 @@ type PlanFamiliar = {
     precio: number;
     tokens_mensuales: number;
     dias_vigencia: number | null;
-    tipo_plan: "normal" | "familiar" | "liga";
+    tipo_plan: "normal" | "familiar" | "kids" | "liga";
 };
 
 function formatPrice(n: number) {
@@ -109,7 +109,7 @@ export default function PlanFamiliarPage() {
                         {renderPlanIcon(plan.nombre)}
 
                         <span className="inline-block px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold mb-3">
-                            {esLiga ? "Plan Liga · Pago único" : "Plan Familiar · Exclusivo"}
+                            {esLiga ? "Plan Liga · Pago único" : plan.tipo_plan === "familiar" ? "Plan Familiar · Exclusivo" : "Plan exclusivo"}
                         </span>
 
                         <h1 className="text-3xl font-black text-[#00305B] capitalize">{plan.nombre}</h1>
