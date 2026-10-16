@@ -196,4 +196,14 @@ describe("GET /api/admin/analiticas/mensual", () => {
         const sin = await (await GET_MENSUAL(req("http://localhost:3000/api/admin/analiticas/mensual?sede=sin", "GET"))).json();
         expect(sin).toEqual([]);
     });
+
+    it("AJU-ANA-003: una boleta pagada sin membresía (pago de prueba) no suma, aunque su mes no tenga membresías", async () => {
+        __setTableData("boleta", [{ usuario_id: "u3", total: 10000, created_at: "2026-08-10T12:00:00.000Z", estado: "pagado" }]);
+
+        const sin = await (await GET_MENSUAL(req("http://localhost:3000/api/admin/analiticas/mensual?sede=sin", "GET"))).json();
+        const todas = await (await GET_MENSUAL(req("http://localhost:3000/api/admin/analiticas/mensual", "GET"))).json();
+
+        expect(sin).toEqual([]);
+        expect(todas.map((m: { mes: string }) => m.mes)).toEqual(["2026-10"]);
+    });
 });
