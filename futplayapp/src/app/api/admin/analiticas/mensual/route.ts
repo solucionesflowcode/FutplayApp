@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { tieneBoleta } from "@/lib/analiticas";
 import { filtroSede } from "@/lib/sedes";
+import { mesChile } from "@/lib/fechas";
 
 type MesEntry = { ingresos: number; membresias: number; transacciones: number };
 
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
     const precioMap = new Map((planes || []).map((p) => [p.id, p.precio || 0]));
 
     for (const m of membresias) {
-      const mes = m.fecha_inicio?.slice(0, 7);
+      const mes = m.fecha_inicio ? mesChile(m.fecha_inicio) : null;
       if (!mes) continue;
       const prev = membershipMap.get(mes) || { ingresos: 0, membresias: 0, transacciones: 0 };
       membershipMap.set(mes, {
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
   // --- Boletas: add months not covered by membresias ---
   if (!boletasRes.error) {
     for (const b of boletas) {
-      const mes = b.created_at?.slice(0, 7);
+      const mes = b.created_at ? mesChile(b.created_at) : null;
       if (!mes) continue;
       if (membershipMap.has(mes)) continue; // already covered by membresia
       const prev = membershipMap.get(mes) || { ingresos: 0, membresias: 0, transacciones: 0 };

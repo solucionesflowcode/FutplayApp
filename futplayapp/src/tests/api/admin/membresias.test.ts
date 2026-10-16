@@ -116,3 +116,31 @@ describe("GET /api/admin/membresias?conBoleta=1 (analíticas)", () => {
         expect(todas[0].membresia_id).toBe("regalada");
     });
 });
+
+describe("GET /api/admin/membresias — membresía actual y ?todas=1", () => {
+    beforeEach(() => {
+        __resetMocks();
+        __setAuthUser({ id: "admin-1", email: "admin@test.cl" });
+        __setTableData("usuario", [{ id: "admin-1", rol: "administrador", sede_id: null }]);
+    });
+
+    const vencida = (id: string, inicio: string) => ({ id, usuario_id: "u1", plan_id: "p1", tokens_totales: 4, tokens_usados: 4, estado: false, congelada: false, fecha_inicio: inicio, fecha_vencimiento: "2026-09-30T00:00:00.000Z" });
+
+    it("API-ADM-MEMBRESIAS-ACT-001: sin vigente elige la más reciente, sea cual sea el orden", async () => {
+        const lista = [vencida("agosto", "2026-08-01T00:00:00.000Z"), vencida("septiembre", "2026-09-01T00:00:00.000Z")];
+        for (const orden of [lista, [...lista].reverse()]) {
+            __setTableData("membresia", orden);
+            const json = await (await GET(makeRequest("http://localhost:3000/api/admin/membresias"))).json();
+            expect(json).toHaveLength(1);
+            expect(json[0].membresia_id).toBe("septiembre");
+        }
+    });
+
+    it("API-ADM-MEMBRESIAS-ACT-002: ?todas=1 devuelve todas las filas", async () => {
+        __setTableData("membresia", [vencida("agosto", "2026-08-01T00:00:00.000Z"), vencida("septiembre", "2026-09-01T00:00:00.000Z")]);
+
+        const json = await (await GET(makeRequest("http://localhost:3000/api/admin/membresias?todas=1"))).json();
+
+        expect(json.map((m: { membresia_id: string }) => m.membresia_id).sort()).toEqual(["agosto", "septiembre"]);
+    });
+});

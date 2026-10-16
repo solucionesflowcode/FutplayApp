@@ -101,6 +101,11 @@ export function fechaHoraChileAIso(fecha: string, hora: string): string {
   return new Date(guess).toISOString();
 }
 
+/** Mes en Chile (YYYY-MM) de un instante. `iso.slice(0, 7)` da el mes UTC: una compra del 30 a las 22:00 caía en el mes siguiente. */
+export function mesChile(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Santiago" }).slice(0, 7);
+}
+
 export function getChileMonthBounds(): { startISO: string; endISO: string } {
   const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit" });
   const [y, m] = fmt.format(new Date()).split("-").map(Number);

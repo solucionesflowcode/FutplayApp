@@ -194,13 +194,18 @@ export async function getAllMembresiasConPlan(): Promise<MembresiaConPlan[]> {
 }
 
 /**
- * Una membresía por alumno (la vigente con más tokens). Con conBoleta solo
- * compiten las que tienen boleta: es lo que cuentan las analíticas.
+ * Una membresía por alumno, la actual (src/lib/membresia-actual.ts). Con
+ * conBoleta solo las que tienen boleta; con todas, todas las filas (las
+ * analíticas cuentan cada venta y eligen la actual en la pantalla).
  */
-export async function getAdminMembresias(opciones: { conBoleta?: boolean } = {}): Promise<MembresiaConPlan[]> {
+export async function getAdminMembresias(opciones: { conBoleta?: boolean; todas?: boolean } = {}): Promise<MembresiaConPlan[]> {
+    const params = new URLSearchParams();
+    if (opciones.conBoleta) params.set("conBoleta", "1");
+    if (opciones.todas) params.set("todas", "1");
+    const query = params.toString();
     let res: Response;
     try {
-        res = await fetch(opciones.conBoleta ? "/api/admin/membresias?conBoleta=1" : "/api/admin/membresias");
+        res = await fetch(query ? `/api/admin/membresias?${query}` : "/api/admin/membresias");
     } catch {
         throw new Error("Sin conexión: no se pudieron cargar las membresías");
     }

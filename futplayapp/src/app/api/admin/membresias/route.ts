@@ -3,10 +3,13 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { traducirError } from "@/lib/errores";
 import { tieneBoleta } from "@/lib/analiticas";
+import { membresiasActuales, tokensRestantes } from "@/lib/membresia-actual";
 
 export async function GET(request: Request) {
-  // ?conBoleta=1 (analíticas): solo compiten las membresías con boleta.
-  const conBoleta = new URL(request.url).searchParams.get("conBoleta") === "1";
+  const params = new URL(request.url).searchParams;
+  // ?conBoleta=1 (analíticas): solo las membresías con boleta.
+  const conBoleta = params.get("conBoleta") === "1";
+  const todas = params.get("todas") === "1";
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -94,51 +97,34 @@ export async function GET(request: Request) {
     sin_tokens: boolean;
     sede_id: string | null;
   };
-  const resultMap = new Map<string, MembresiaRow>();
-  const prioridadMap = new Map<string, number>();
+  const ahora = new Date();
+  const fila = (m: (typeof lista)[number]): MembresiaRow => {
+    const plan = planesMap.get(m.plan_id);
+    return {
+      membresia_id: m.id,
+      usuario_id: m.usuario_id,
+      plan_id: m.plan_id,
+      plan_nombre: plan?.nombre || "Sin plan",
+      tokens_mensuales: plan?.tokens_mensuales || 0,
+      precio: plan?.precio || 0,
+      dias: plan?.dias,
+      tokens_totales: m.tokens_totales,
+      tokens_usados: m.tokens_usados,
+      // 0 si la membresía está vencida, congelada o sin tokens.
+      tokens_restantes: tokensRestantes(m, ahora),
+      fecha_inicio: m.fecha_inicio,
+      fecha_vencimiento: m.fecha_vencimiento,
+      estado: m.estado === true,
+      congelada: m.congelada === true,
+      sin_tokens: m.sin_tokens === true,
+      sede_id: sedesMap.get(m.usuario_id) ?? null,
+    };
+  };
 
-  // Se elige la fila con más tokens RESTANTES, no la mayor resta cruda: una
-  // membresía vencida, congelada o sin tokens no compite. Antes ganaba la fila
-  // con más saldo sin importar si estaba vigente, y el panel mostraba como
-  // "Activo" a un alumno cuyo único plan ya había vencido.
-  // Con empate a 0 restantes, la congelada le gana a la vencida o agotada: es
-  // el plan que el alumno sigue teniendo (antes ganaba la primera fila y un
-  // alumno congelado podía figurar "Vencido").
-  for (const m of lista) {
-    const sinTokens = m.sin_tokens === true;
-    const vigente =
-      m.estado === true &&
-      !sinTokens &&
-      !m.congelada &&
-      new Date(m.fecha_vencimiento) >= new Date();
-    const restantes = vigente ? m.tokens_totales - m.tokens_usados : 0;
-    const prioridad = restantes * 2 + (m.congelada === true ? 1 : 0);
+  // ?todas=1 (analíticas): todas las filas; las ventas cuentan cada membresía
+  // y la pantalla elige la actual de cada alumno con la misma regla.
+  if (todas) return NextResponse.json(lista.map(fila));
 
-    const existing = resultMap.get(m.usuario_id);
-
-    if (!existing || prioridad > (prioridadMap.get(m.usuario_id) ?? -1)) {
-      prioridadMap.set(m.usuario_id, prioridad);
-      const plan = planesMap.get(m.plan_id);
-      resultMap.set(m.usuario_id, {
-        membresia_id: m.id,
-        usuario_id: m.usuario_id,
-        plan_id: m.plan_id,
-        plan_nombre: plan?.nombre || "Sin plan",
-        tokens_mensuales: plan?.tokens_mensuales || 0,
-        precio: plan?.precio || 0,
-        dias: plan?.dias,
-        tokens_totales: m.tokens_totales,
-        tokens_usados: m.tokens_usados,
-        tokens_restantes: restantes,
-        fecha_inicio: m.fecha_inicio,
-        fecha_vencimiento: m.fecha_vencimiento,
-        estado: m.estado === true,
-        congelada: m.congelada === true,
-        sin_tokens: sinTokens,
-        sede_id: sedesMap.get(m.usuario_id) ?? null,
-      });
-    }
-  }
-
-  return NextResponse.json(Array.from(resultMap.values()));
+  // Una por alumno: la actual (regla única en src/lib/membresia-actual.ts).
+  return NextResponse.json(Array.from(membresiasActuales(lista, ahora).values()).map(fila));
 }

@@ -157,3 +157,37 @@ describe("Gestión de membresías (fase 3)", () => {
         await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Se cancelaron 2 reservas"));
     });
 });
+
+describe("Gestión de membresías: solo la actual de cada alumno", () => {
+    const anterior = { ...base, id: "m0", usuario_id: "u1", usuario_nombre: "Ana Activa", plan_nombre: "Plan Viejo", tokens_totales: 4, tokens_usados: 4, estado: false, fecha_inicio: "2026-08-01T12:00:00Z", fecha_vencimiento: "2026-08-31T12:00:00Z" };
+
+    it("ADM-MEM-ACT-001: una fila por alumno; las anteriores se ven en su historial", async () => {
+        vi.mocked(getMembresiasGestion).mockResolvedValue([...MEMBRESIAS, anterior] as never);
+        renderPagina();
+        await within(tabla()).findByText("Ana Activa");
+
+        expect(within(tabla()).getAllByText("Ana Activa")).toHaveLength(1);
+        expect(within(tabla()).queryByText("Plan Viejo")).toBeNull();
+        // El filtro "Todas" cuenta alumnos, no filas de historial.
+        expect(screen.getByRole("button", { name: /Todas 2/ })).toBeInTheDocument();
+
+        fireEvent.click(within(tabla()).getByRole("button", { name: "Historial de Ana Activa (1)" }));
+        const dialogo = screen.getByRole("dialog", { name: "Historial de membresías" });
+        expect(within(dialogo).getByText("Plan Viejo")).toBeInTheDocument();
+        expect(within(dialogo).queryByText("Plan Basico")).toBeNull();
+        // Un alumno con una sola membresía no tiene historial.
+        expect(within(tabla()).queryByRole("button", { name: /Historial de Carlos/ })).toBeNull();
+    });
+
+    it("ADM-MEM-ACT-002: editar una membresía del historial cierra el historial y abre el formulario", async () => {
+        vi.mocked(getMembresiasGestion).mockResolvedValue([...MEMBRESIAS, anterior] as never);
+        renderPagina();
+        await within(tabla()).findByText("Ana Activa");
+
+        fireEvent.click(within(tabla()).getByRole("button", { name: "Historial de Ana Activa (1)" }));
+        fireEvent.click(within(screen.getByRole("dialog", { name: "Historial de membresías" })).getByRole("button", { name: "Editar membresía de Ana Activa" }));
+
+        expect(screen.queryByRole("dialog", { name: "Historial de membresías" })).toBeNull();
+        expect(screen.getByRole("dialog", { name: "Editar membresía" })).toBeInTheDocument();
+    });
+});

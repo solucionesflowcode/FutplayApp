@@ -111,7 +111,7 @@ describe("Analíticas: solo membresías con boleta y filtro por sede", () => {
         render(<AnaliticasPage />);
 
         await screen.findByText("% con plan activo");
-        expect(getAdminMembresias).toHaveBeenCalledWith({ conBoleta: true });
+        expect(getAdminMembresias).toHaveBeenCalledWith({ conBoleta: true, todas: true });
     });
 
     it("ANA-SEDE-001: al elegir una sede cambian los alumnos, el % y los ingresos se piden de esa sede", async () => {
@@ -134,5 +134,22 @@ describe("Analíticas: solo membresías con boleta y filtro por sede", () => {
         fireEvent.change(screen.getByLabelText("Filtrar por sede"), { target: { value: "sin" } });
         // Sin sede: solo u3, con plan → 100%.
         expect(await screen.findByText("100%")).toBeInTheDocument();
+    });
+});
+
+describe("Analíticas: ventas = todas las membresías con boleta; estado de hoy = la actual", () => {
+    it("ANA-VEN-001: una renovación cuenta como venta, pero el alumno vale uno en vigentes y % con plan", async () => {
+        vi.mocked(getAdminMembresias).mockResolvedValue([
+            membresia({ usuario_id: "u1", membresia_id: "vieja", fecha_inicio: "2026-09-01T12:00:00Z", fecha_vencimiento: "2026-09-30T12:00:00Z", estado: false }),
+            membresia({ usuario_id: "u1", membresia_id: "nueva", fecha_inicio: "2026-10-01T12:00:00Z", fecha_vencimiento: "2099-01-01T12:00:00Z" }),
+        ]);
+        vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => [] })));
+        render(<AnaliticasPage />);
+
+        // 1 de 3 alumnos con plan; 1 membresía vigente.
+        expect(await screen.findByText("33%")).toBeInTheDocument();
+        expect(screen.getByText("Membresías vigentes").parentElement!.parentElement!).toHaveTextContent("1");
+        // Ventas por plan: las 2 membresías con boleta.
+        expect(screen.getByText("2 ventas · 100%")).toBeInTheDocument();
     });
 });

@@ -13,7 +13,8 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { getAdminMembresias, type MembresiaConPlan } from "@/data/membresia";
 import { getPlanesAdmin, type Plan } from "@/data/plans";
-import { getChileMonthBounds, hoyChile } from "@/lib/fechas";
+import { getChileMonthBounds, hoyChile, mesChile } from "@/lib/fechas";
+import { membresiasActuales } from "@/lib/membresia-actual";
 import { membresiaVigente, porcentajeConPlanActivo } from "@/lib/analiticas";
 import { coincideSede, SIN_SEDE, type FiltroSede } from "@/lib/sedes";
 import { CLASE_INPUT, PageHeader, StatCard } from "@/components/admin/ui";
@@ -102,8 +103,9 @@ export default function AnaliticasPage() {
         if (usuariosRes.error) throw usuariosRes.error;
 
         // Solo las membresías con boleta (Flow o N° de boleta externa) cuentan.
+        // Todas: las ventas cuentan cada una; "vigentes" usa la actual de cada alumno.
         const [membresiasData, planesResult] = await Promise.all([
-          getAdminMembresias({ conBoleta: true }),
+          getAdminMembresias({ conBoleta: true, todas: true }),
           getPlanesAdmin(),
         ]);
 
@@ -133,10 +135,13 @@ export default function AnaliticasPage() {
     return () => { cancelado = true; };
   }, [filtroSede]);
 
+  // Ventas: todas las membresías con boleta de la sede elegida.
   const membresias = useMemo(
     () => todasMembresias.filter((m) => coincideSede(m.sede_id, filtroSede)),
     [todasMembresias, filtroSede],
   );
+  // Estado de hoy: la membresía actual de cada alumno (misma regla que Gestión de membresías).
+  const actuales = useMemo(() => Array.from(membresiasActuales(membresias).values()), [membresias]);
 
   const resumen = useMemo<Resumen>(() => {
     const alumnoIds = new Set(usuarios.filter((u) => u.rol === "jugador" && coincideSede(u.sede_id, filtroSede)).map((u) => u.id));
@@ -148,10 +153,10 @@ export default function AnaliticasPage() {
     return {
       totalAlumnos: alumnoIds.size,
       ingresosMes,
-      membresiasActivas: membresias.filter((m) => membresiaVigente(m, hoy)).length,
-      conPlanActivo: porcentajeConPlanActivo(membresias, alumnoIds, hoy),
+      membresiasActivas: actuales.filter((m) => membresiaVigente(m, hoy)).length,
+      conPlanActivo: porcentajeConPlanActivo(actuales, alumnoIds, hoy),
     };
-  }, [usuarios, membresias, filtroSede, ingresosMensuales, errorIngresos]);
+  }, [usuarios, actuales, filtroSede, ingresosMensuales, errorIngresos]);
 
   // Close month dropdown on outside click
   const monthDropdownRef = useRef<HTMLDivElement>(null);
@@ -169,7 +174,7 @@ export default function AnaliticasPage() {
   const membresiasPorMes = useMemo<MembresiaPorMes[]>(() => {
     const map = new Map<string, { total: number; count: number }>();
     membresias.forEach((m) => {
-      const mesKey = m.fecha_inicio?.slice(0, 7);
+      const mesKey = m.fecha_inicio ? mesChile(m.fecha_inicio) : null;
       if (!mesKey) return;
       const prev = map.get(mesKey) || { total: 0, count: 0 };
       map.set(mesKey, {
@@ -268,7 +273,7 @@ export default function AnaliticasPage() {
   // ── Filtered data by selected month ──
   const filteredMembresias = useMemo(() => {
     if (!selectedMonth) return membresias;
-    return membresias.filter((m) => m.fecha_inicio?.startsWith(selectedMonth));
+    return membresias.filter((m) => m.fecha_inicio && mesChile(m.fecha_inicio) === selectedMonth);
   }, [membresias, selectedMonth]);
 
   // Alumnos, membresías vigentes y % con plan son del estado actual; el mes
@@ -639,7 +644,7 @@ export default function AnaliticasPage() {
             {/* Por Plan */}
             <div className="bg-white border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-6">
-                Alumnos por Plan
+                Ventas por Plan
               </h2>
               {filteredPlanDist.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-8">
@@ -680,10 +685,10 @@ export default function AnaliticasPage() {
               <h2 className="text-lg font-bold text-gray-900 mb-6">
                 Ingresos por Plan
               </h2>
-              <p className="text-xs text-gray-500 -mt-5 mb-5">Estimado con el precio de lista del plan de cada membresía (incluye las asignadas por el admin).</p>
+              <p className="text-xs text-gray-500 -mt-5 mb-5">Precio de lista del plan de cada membresía con boleta (Flow o N° de boleta).</p>
               {filteredIngresosPorPlan.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-8">
-                  {selectedMonth ? "No hay ingresos para este mes" : "No hay membresías activas este mes"}
+                  {selectedMonth ? "No hay ingresos para este mes" : "No hay membresías con boleta"}
                 </p>
               ) : (
                 <div className="space-y-5">
@@ -704,8 +709,8 @@ export default function AnaliticasPage() {
                           <span className="font-black text-gray-900">{formatCLP(p.ingresos)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                          <span>{p.alumnos} alumno{p.alumnos !== 1 ? "s" : ""} · {pct}%</span>
-                          <span>{(p.ingresos / Math.max(p.alumnos, 1)).toLocaleString("es-CL")} /alumno</span>
+                          <span>{p.alumnos} venta{p.alumnos !== 1 ? "s" : ""} · {pct}%</span>
+                          <span>{(p.ingresos / Math.max(p.alumnos, 1)).toLocaleString("es-CL")} /venta</span>
                         </div>
                         <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div

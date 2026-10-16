@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, Snowflake, Play } from "lucide-react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Plus, Pencil, Trash2, Search, Snowflake, Play, Clock } from "lucide-react";
 import {
   getMembresiasGestion,
   createMembresiaGestion,
@@ -13,6 +13,7 @@ import {
 } from "@/data/membresia";
 import { getUsers, getPlanesAdmin, type Plan } from "@/data/plans";
 import type { Student } from "@/components/admin/StudentsTable";
+import { membresiasActuales } from "@/lib/membresia-actual";
 import {
   Button,
   CLASE_INPUT,
@@ -117,6 +118,8 @@ export default function MembresiasPage() {
   const [saving, setSaving] = useState(false);
   const [errorForm, setErrorForm] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MembresiaGestion | null>(null);
+  // Alumno cuyo historial (membresías anteriores) se está viendo.
+  const [historialDe, setHistorialDe] = useState<string | null>(null);
   const [freezeAction, setFreezeAction] = useState<{ m: MembresiaGestion; action: "congelar" | "reactivar" } | null>(null);
   const [accionEnCurso, setAccionEnCurso] = useState(false);
 
@@ -140,8 +143,23 @@ export default function MembresiasPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Una fila por alumno: su membresía actual (la vigente; si no, la congelada;
+  // si no, la más reciente). Las demás quedan en "Historial".
+  const actuales = useMemo(() => Array.from(membresiasActuales(membresias).values()), [membresias]);
+  const historial = (usuarioId: string) => {
+    const actual = actuales.find((m) => m.usuario_id === usuarioId);
+    return membresias
+      .filter((m) => m.usuario_id === usuarioId && m.id !== actual?.id)
+      .sort((a, b) => b.fecha_inicio.localeCompare(a.fecha_inicio));
+  };
+  const cantidadHistorial = useMemo(() => {
+    const porUsuario = new Map<string, number>();
+    for (const m of membresias) porUsuario.set(m.usuario_id, (porUsuario.get(m.usuario_id) ?? 0) + 1);
+    return (usuarioId: string) => (porUsuario.get(usuarioId) ?? 1) - 1;
+  }, [membresias]);
+
   const q = search.toLowerCase();
-  const porBusqueda = membresias.filter((m) =>
+  const porBusqueda = actuales.filter((m) =>
     m.usuario_nombre.toLowerCase().includes(q) || m.plan_nombre.toLowerCase().includes(q)
   );
   const filtered = filtroEstado === "todas"
@@ -292,20 +310,31 @@ export default function MembresiasPage() {
 
   const acciones = (m: MembresiaGestion, tamano: number) => (
     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+      {cantidadHistorial(m.usuario_id) > 0 && historialDe === null && (
+        <button
+          type="button"
+          onClick={() => setHistorialDe(m.usuario_id)}
+          className="flex items-center gap-1 p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg text-xs font-semibold"
+          title="Membresías anteriores"
+          aria-label={`Historial de ${m.usuario_nombre} (${cantidadHistorial(m.usuario_id)})`}
+        >
+          <Clock size={tamano} aria-hidden /> {cantidadHistorial(m.usuario_id)}
+        </button>
+      )}
       {!m.congelada && m.estado && (
-        <button type="button" onClick={() => setFreezeAction({ m, action: "congelar" })} className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg" title="Congelar" aria-label={`Congelar membresía de ${m.usuario_nombre}`}>
+        <button type="button" onClick={() => { setHistorialDe(null); setFreezeAction({ m, action: "congelar" }); }} className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg" title="Congelar" aria-label={`Congelar membresía de ${m.usuario_nombre}`}>
           <Snowflake size={tamano} />
         </button>
       )}
       {m.congelada && (
-        <button type="button" onClick={() => setFreezeAction({ m, action: "reactivar" })} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Reactivar" aria-label={`Reactivar membresía de ${m.usuario_nombre}`}>
+        <button type="button" onClick={() => { setHistorialDe(null); setFreezeAction({ m, action: "reactivar" }); }} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Reactivar" aria-label={`Reactivar membresía de ${m.usuario_nombre}`}>
           <Play size={tamano} />
         </button>
       )}
-      <button type="button" onClick={() => openEdit(m)} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar membresía de ${m.usuario_nombre}`}>
+      <button type="button" onClick={() => { setHistorialDe(null); openEdit(m); }} className="p-1.5 text-marca hover:bg-blue-50 rounded-lg" title="Editar" aria-label={`Editar membresía de ${m.usuario_nombre}`}>
         <Pencil size={tamano} />
       </button>
-      <button type="button" onClick={() => setDeleteTarget(m)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar" aria-label={`Eliminar membresía de ${m.usuario_nombre}`}>
+      <button type="button" onClick={() => { setHistorialDe(null); setDeleteTarget(m); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar" aria-label={`Eliminar membresía de ${m.usuario_nombre}`}>
         <Trash2 size={tamano} />
       </button>
     </div>
@@ -347,7 +376,7 @@ export default function MembresiasPage() {
       <div className="w-full max-w-[1216px] mx-auto">
         <PageHeader
           titulo="Gestión de membresías"
-          descripcion="Planes de los alumnos: tokens, vigencia y congelamientos"
+          descripcion="La membresía actual de cada alumno: tokens, vigencia y congelamientos. Las anteriores están en su historial."
           acciones={<Button icono={<Plus size={16} />} onClick={openCreate}>Nueva membresía</Button>}
         >
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -525,6 +554,31 @@ export default function MembresiasPage() {
             <p role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{errorForm}</p>
           )}
         </div>
+      </Modal>
+
+      <Modal
+        open={historialDe !== null}
+        onClose={() => setHistorialDe(null)}
+        title="Historial de membresías"
+        description={historialDe ? `${actuales.find((m) => m.usuario_id === historialDe)?.usuario_nombre ?? ""}: membresías anteriores a la actual.` : undefined}
+        cerrarConFondo
+        footer={<Button variante="secundario" onClick={() => setHistorialDe(null)}>Cerrar</Button>}
+      >
+        <ul className="space-y-3">
+          {historialDe && historial(historialDe).map((m) => (
+            <li key={m.id} className="p-3 border border-gray-200 rounded-lg space-y-1.5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold text-gray-900 text-sm">{m.plan_nombre}</p>
+                {badge(m)}
+              </div>
+              <p className="text-xs text-gray-600">{formatFecha(m.fecha_inicio)} → {formatFecha(m.fecha_vencimiento)} · {textoTokens(m)}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs">{boleta(m)}</span>
+                {acciones(m, 16)}
+              </div>
+            </li>
+          ))}
+        </ul>
       </Modal>
 
       <ConfirmDialog
