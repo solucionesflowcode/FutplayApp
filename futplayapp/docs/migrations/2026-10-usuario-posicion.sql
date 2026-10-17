@@ -1,6 +1,5 @@
 -- Posición de juego del usuario (oct-2026). La elige el propio jugador en
--- "Mi Perfil"; es opcional (null = sin definir). usuario tiene grants a nivel
--- de tabla, así que la columna nueva no necesita un grant aparte.
+-- "Mi Perfil"; es opcional (null = sin definir).
 
 create type posicion_jugador as enum (
     'arquero',
@@ -15,3 +14,7 @@ create type posicion_jugador as enum (
 );
 
 alter table usuario add column if not exists posicion posicion_jugador;
+
+-- Si ya se aplicó 2026-10-usuario-columnas-editables.sql (escritura solo por
+-- columna), el jugador necesita permiso explícito para editar su posición.
+grant update (posicion) on usuario to authenticated;
