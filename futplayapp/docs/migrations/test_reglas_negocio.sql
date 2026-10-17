@@ -40,6 +40,8 @@ WHERE clase_id IN (SELECT id FROM clase WHERE descripcion LIKE 'TEST_BIZ%' OR ti
 DELETE FROM clase WHERE descripcion LIKE 'TEST_BIZ%' OR titulo::text LIKE 'TEST_BIZ%';
 DELETE FROM membresia WHERE usuario_id IN (SELECT id FROM usuario WHERE nombre LIKE 'TEST_BIZ%');
 DELETE FROM plan WHERE nombre LIKE 'TEST_BIZ%';
+DELETE FROM ficha_medica WHERE usuario_id IN (SELECT id FROM usuario WHERE nombre LIKE 'TEST_BIZ%');
+
 DELETE FROM usuario WHERE nombre LIKE 'TEST_BIZ%';
 
 CREATE TEMP TABLE IF NOT EXISTS ctx (k text PRIMARY KEY, v uuid);
@@ -131,6 +133,9 @@ BEGIN
 
     RAISE NOTICE 'SETUP OK';
 END $$;
+
+-- La reserva exige ficha médica (2026-10-ficha-medica-obligatoria.sql).
+INSERT INTO ficha_medica (usuario_id) SELECT id FROM usuario WHERE nombre LIKE 'TEST_BIZ%';
 
 -- ── R1+R2: Entrenamiento descuenta 1 token, membresía por vigencia ──────
 DO $$
@@ -383,6 +388,8 @@ BEGIN
     DELETE FROM clase WHERE id IN (SELECT v FROM ctx WHERE k LIKE 'clase_%');
     DELETE FROM plan WHERE id IN (SELECT v FROM ctx WHERE k='plan');
     DELETE FROM usuario WHERE id IN (SELECT v FROM ctx WHERE k LIKE 'user_%');
+    DELETE FROM ficha_medica WHERE usuario_id IN (SELECT id FROM usuario WHERE nombre LIKE 'TEST_BIZ%');
+
     DELETE FROM usuario WHERE nombre LIKE 'TEST_BIZ%';
     RAISE NOTICE 'CLEANUP OK - TODAS LAS REGLAS DE NEGOCIO PASARON';
 END $$;

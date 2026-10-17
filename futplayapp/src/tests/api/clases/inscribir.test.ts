@@ -37,6 +37,8 @@ describe("POST /api/clases/inscribir", () => {
     beforeEach(() => {
         __resetMocks();
         __setAuthUser({ id: USER_ID, email: "test@test.cl" });
+        // Ficha médica obligatoria para reservar: por defecto la tiene.
+        __setTableData("ficha_medica", [{ usuario_id: USER_ID }]);
     });
 
     it("API-CLASES-INS-001: retorna 401 si no está autenticado", async () => {
@@ -245,5 +247,52 @@ __setTableData("clase_usuario", { id: "new-cu", usuario_id: USER_ID, clase_id: "
         expect(res.status).toBe(400);
         const json = await res.json();
         expect(json.error).toBe("No tienes tokens disponibles para agendar esta clase");
+    });
+});
+
+describe("POST /api/clases/inscribir — ficha médica obligatoria", () => {
+    const pedir = () => POST(makeRequest("http://localhost:3000/api/clases/inscribir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claseId: "c1" }),
+    }));
+
+    beforeEach(() => {
+        __resetMocks();
+        __setAuthUser({ id: USER_ID, email: "test@test.cl" });
+        __setTableData("clase", CLASE_BASE);
+        __setTableData("clase_usuario", { id: "new-ins", usuario_id: USER_ID });
+    });
+
+    it("API-CLASES-FICHA-001: sin ficha médica no se reserva (403 con código para la pantalla)", async () => {
+        __setTableData("ficha_medica", []);
+
+        const res = await pedir();
+
+        expect(res.status).toBe(403);
+        expect(await res.json()).toEqual({ error: "Completa tu ficha médica antes de reservar una clase", codigo: "FICHA_REQUERIDA" });
+    });
+
+    it("API-CLASES-FICHA-002: tampoco un partido", async () => {
+        __setTableData("ficha_medica", []);
+        __setTableData("clase", CLASE_PARTIDO);
+
+        expect((await pedir()).status).toBe(403);
+    });
+
+    it("API-CLASES-FICHA-003: si el trigger la rechaza por la ficha, responde lo mismo", async () => {
+        __setTableData("ficha_medica", [{ usuario_id: USER_ID }]);
+        __setTableData("clase_usuario", null, { message: "Completa tu ficha médica antes de reservar", code: "P0001" });
+
+        const res = await pedir();
+
+        expect(res.status).toBe(403);
+        expect((await res.json()).codigo).toBe("FICHA_REQUERIDA");
+    });
+
+    it("API-CLASES-FICHA-004: con ficha se reserva", async () => {
+        __setTableData("ficha_medica", [{ usuario_id: USER_ID }]);
+
+        expect((await pedir()).status).toBe(200);
     });
 });

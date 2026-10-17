@@ -9,8 +9,18 @@ const TRIGGER_ERROR_MESSAGES: Record<string, string> = {
     "Clase llena": "Esta clase ya está llena",
 };
 
+// La pantalla de reserva usa este código para ofrecer llenar la ficha ahí mismo.
+const FICHA_REQUERIDA = { error: "Completa tu ficha médica antes de reservar una clase", codigo: "FICHA_REQUERIDA" };
+
 function traducirErrorInscripcion(message: string): string {
     return TRIGGER_ERROR_MESSAGES[message] ?? message;
+}
+
+// El trigger manejar_inscripcion_clase también la exige (la reserva puede
+// insertarse sin pasar por esta API).
+function respuestaError(message: string) {
+    if (message.includes("ficha médica")) return NextResponse.json(FICHA_REQUERIDA, { status: 403 });
+    return NextResponse.json({ error: traducirErrorInscripcion(message) }, { status: 400 });
 }
 
 export async function POST(request: Request) {
@@ -45,6 +55,16 @@ export async function POST(request: Request) {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         serviceKey
     );
+
+    // Ficha médica obligatoria para cualquier reserva (también partidos).
+    const { data: ficha } = await admin
+        .from("ficha_medica")
+        .select("usuario_id")
+        .eq("usuario_id", user.id)
+        .maybeSingle();
+    if (!ficha) {
+        return NextResponse.json(FICHA_REQUERIDA, { status: 403 });
+    }
 
     // Verificar cupo máximo y tipo de evento (service_role evita el filtro RLS
     // que solo dejaría ver al usuario sus propias inscripciones)
@@ -119,9 +139,7 @@ export async function POST(request: Request) {
             .select("id")
             .single();
 
-        if (error) {
-            return NextResponse.json({ error: traducirErrorInscripcion(error.message) }, { status: 400 });
-        }
+        if (error) return respuestaError(error.message);
 
         return NextResponse.json({ inscripcionId: data.id });
     }
@@ -137,7 +155,7 @@ export async function POST(request: Request) {
         if (error.code === "23505") {
             return NextResponse.json({ error: "Ya estás inscrito en esta clase" }, { status: 409 });
         }
-        return NextResponse.json({ error: traducirErrorInscripcion(error.message) }, { status: 400 });
+        return respuestaError(error.message);
     }
 
     return NextResponse.json({ inscripcionId: data.id });

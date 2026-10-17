@@ -5,6 +5,7 @@ import {
     AlertCircle,
     CheckCircle2,
     Clock,
+    HeartPulse,
     Loader2,
     MapPin,
     Ticket,
@@ -14,6 +15,8 @@ import {
 import { getMembresiaByUser, type MembresiaConPlan } from "@/data/membresia";
 import { useAuthUser } from "@/context";
 import { esSemanaActual } from "@/lib/fechas";
+import { userHasFichaMedica } from "@/data/fichaMedica";
+import FichaMedicaModal from "@/components/checkout/FichaMedicaModal";
 
 type ClaseInfo = {
     claseId: string;
@@ -40,6 +43,9 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
     const [successId, setSuccessId] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState("");
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    // Sin ficha médica no se puede reservar: se ofrece llenarla aquí mismo.
+    const [sinFicha, setSinFicha] = useState(false);
+    const [abrirFicha, setAbrirFicha] = useState(false);
 
     useEffect(() => {
         if (!isOpen || !usuario?.id) return;
@@ -47,7 +53,9 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
         setSuccessId(null);
         setErrorMsg("");
         setShowSuccessModal(false);
+        setSinFicha(false);
         getMembresiaByUser(usuario.id).then(setMembresia);
+        userHasFichaMedica(usuario.id).then((tiene) => setSinFicha(!tiene));
     }, [isOpen, usuario?.id]);
 
     const handleAgendar = useCallback(async (claseId: string) => {
@@ -61,6 +69,10 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
             });
             const data = await res.json();
             if (!res.ok) {
+                if (data.codigo === "FICHA_REQUERIDA") {
+                    setSinFicha(true);
+                    return;
+                }
                 setErrorMsg(data.error || "Error al agendar la clase");
                 return;
             }
@@ -95,6 +107,23 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                 </div>
 
                 <div className="p-5 space-y-4">
+                    {sinFicha && (
+                        <div role="alert" className="bg-[#fff4e5] border border-[#fc9910]/40 rounded p-4 space-y-3">
+                            <div className="flex items-start gap-2 text-sm text-[#42474f]">
+                                <HeartPulse className="w-5 h-5 shrink-0 text-[#fc9910]" />
+                                <p>
+                                    <strong className="text-[#00305b]">Necesitas tu ficha médica para reservar.</strong>{" "}
+                                    Es obligatoria para entrenar con nosotros y toma un par de minutos.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setAbrirFicha(true)}
+                                className="w-full px-4 py-3 rounded bg-[#00305b] text-white font-bold text-sm hover:bg-[#15477a] transition-colors"
+                            >
+                                Completar ficha médica
+                            </button>
+                        </div>
+                    )}
                     {clases.map((clase) => {
                         const date = new Date(clase.fecha_hora);
                         const formattedDate = date.toLocaleDateString("es-CL", {
@@ -113,7 +142,7 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                         const inscritos = clase.inscritos ?? 0;
                         const estaLlena = cupo != null && inscritos >= cupo;
                         const enSemanaActual = esSemanaActual(clase.fecha_hora);
-                        const puedeAgendar = (esPartido || tokensRestantes > 0) && !isSuccess && !estaLlena && enSemanaActual;
+                        const puedeAgendar = (esPartido || tokensRestantes > 0) && !isSuccess && !estaLlena && enSemanaActual && !sinFicha;
 
                         return (
                             <div
@@ -236,6 +265,19 @@ export default function ReservarClaseModal({ isOpen, onClose, clases, onAgendada
                     </div>
                 )}
             </div>
+
+            {/* Fuera de la tarjeta para que no la recorte su overflow-hidden. */}
+            {usuario?.id && (
+                <FichaMedicaModal
+                    open={abrirFicha}
+                    userId={usuario.id}
+                    onClose={() => setAbrirFicha(false)}
+                    onSuccess={() => {
+                        setAbrirFicha(false);
+                        setSinFicha(false);
+                    }}
+                />
+            )}
         </div>
     );
 }
