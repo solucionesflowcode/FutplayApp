@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { traducirError } from "@/lib/errores";
+import { esPosicion } from "@/lib/posiciones";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -29,7 +30,7 @@ export async function GET() {
 
   const { data: usuario, error } = await supabase
     .from("usuario")
-    .select("id, nombre, email, rol, rut, telefono")
+    .select("id, nombre, email, rol, rut, telefono, posicion")
     .eq("id", user.id)
     .single();
 
@@ -65,7 +66,7 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const updateData: Record<string, string> = {};
+  const updateData: Record<string, string | null> = {};
 
   if (body.nombre !== undefined) {
     if (typeof body.nombre !== "string" || body.nombre.trim().length < 2) {
@@ -75,19 +76,27 @@ export async function PUT(request: Request) {
   }
 
   if (body.rut !== undefined) {
-    const rut = body.rut.trim();
+    const rut = String(body.rut ?? "").trim();
     if (rut !== "" && !/^\d{1,2}\.\d{3}\.\d{3}-[\dkK]$/.test(rut)) {
       return NextResponse.json({ error: "Formato de RUT inválido. Use XX.XXX.XXX-X" }, { status: 400 });
     }
-    updateData.rut = rut;
+    updateData.rut = rut || null;
   }
 
   if (body.telefono !== undefined) {
-    const tel = body.telefono.trim();
+    const tel = String(body.telefono ?? "").trim();
     if (tel !== "" && !/^(\+56\s?)?9\d{8}$/.test(tel.replace(/\s/g, ""))) {
       return NextResponse.json({ error: "Formato de teléfono inválido. Use +56 9 XXXX XXXX" }, { status: 400 });
     }
-    updateData.telefono = tel;
+    updateData.telefono = tel || null;
+  }
+
+  if (body.posicion !== undefined) {
+    // null o "" = sin posición.
+    if (body.posicion !== null && body.posicion !== "" && !esPosicion(body.posicion)) {
+      return NextResponse.json({ error: "Posición inválida" }, { status: 400 });
+    }
+    updateData.posicion = body.posicion || null;
   }
 
   if (Object.keys(updateData).length === 0) {

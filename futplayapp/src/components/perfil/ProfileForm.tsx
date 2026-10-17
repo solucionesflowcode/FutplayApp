@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { User, Mail, Shield, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 // Vive en lib/telefono (lo usan también el admin y su API).
 import { normalizeTelefono } from "@/lib/telefono";
+import { POSICIONES } from "@/lib/posiciones";
 
 export { normalizeTelefono };
 
@@ -14,6 +15,7 @@ type UsuarioData = {
   rol: string;
   rut: string | null;
   telefono: string | null;
+  posicion: string | null;
 };
 
 export default function ProfileForm() {
@@ -27,6 +29,7 @@ export default function ProfileForm() {
   const [nombre, setNombre] = useState("");
   const [rut, setRut] = useState("");
   const [telefono, setTelefono] = useState("+569");
+  const [posicion, setPosicion] = useState("");
 
   const [rutError, setRutError] = useState<string | null>(null);
   const [telError, setTelError] = useState<string | null>(null);
@@ -41,6 +44,7 @@ export default function ProfileForm() {
         setRut(data.rut || "");
         setTelefono(data.telefono ? normalizeTelefono(data.telefono) : "+569");
         setEmail(data.email);
+        setPosicion(data.posicion || "");
       }
       setLoading(false);
     };
@@ -103,6 +107,7 @@ export default function ProfileForm() {
           rut: rut || null,
           // Solo guarda si el teléfono está completo (+569 + 8 dígitos)
           telefono: telefono.length === 12 ? telefono : null,
+          posicion: posicion || null,
         }),
       });
       const data = await res.json();
@@ -221,6 +226,23 @@ export default function ProfileForm() {
                   <AlertCircle size={12} /> {telError}
                 </p>
               )}
+            </div>
+
+            <div>
+              <label htmlFor="perfil-posicion" className="block text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                Posición
+              </label>
+              <select
+                id="perfil-posicion"
+                value={posicion}
+                onChange={(e) => setPosicion(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-[#001220] bg-white focus:outline-none focus:border-[#F39200] focus:ring-1 focus:ring-[#F39200]/30 transition"
+              >
+                <option value="">Sin definir</option>
+                {POSICIONES.map((p) => (
+                  <option key={p.valor} value={p.valor}>{p.etiqueta}</option>
+                ))}
+              </select>
             </div>
 
             <div>
