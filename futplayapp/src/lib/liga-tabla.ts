@@ -17,6 +17,8 @@ export interface LigaEquipoBase {
     id: string;
     nombre: string;
     logo_url?: string | null;
+    /** Sede del equipo: ahí se juegan sus partidos de local. */
+    sede?: { nombre: string } | null;
 }
 
 export interface LigaPartido {

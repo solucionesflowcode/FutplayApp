@@ -25,7 +25,7 @@ const menuItems = [
   { name: "Capsulas", href: "/capsules", icon: Users },
   { name: "Pagos", href: "/pagos", icon: MapPin },
   { name: "Mis Clases", href: "/misclases", icon: CalendarDays },
-  { name: "Mi liga", href: "/miliga", icon: Trophy },
+  { name: "Liga SportTrade 2026", href: "/miliga", icon: Trophy },
 ];
 
 export default function Sidebar() {

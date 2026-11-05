@@ -1,5 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { fechaHoraChileAIso, fechaHoraChileDesdeIso } from "@/lib/fechas";
+import { esFechaIso, fechaHoraChileAIso, fechaHoraChileDesdeIso, fechaIsoDesdeTexto, fechaTextoDesdeIso } from "@/lib/fechas";
+
+describe("fecha dd/mm/aaaa", () => {
+    it("convierte de dd/mm/aaaa a ISO y de vuelta", () => {
+        expect(fechaIsoDesdeTexto("24/12/2026")).toBe("2026-12-24");
+        expect(fechaTextoDesdeIso("2026-12-24")).toBe("24/12/2026");
+    });
+
+    it("el primer número es el día, no el mes", () => {
+        expect(fechaIsoDesdeTexto("05/11/2026")).toBe("2026-11-05");
+        expect(fechaIsoDesdeTexto("12/13/2026")).toBeNull();
+    });
+
+    it("rechaza fechas incompletas o que no existen", () => {
+        expect(fechaIsoDesdeTexto("24/12")).toBeNull();
+        expect(fechaIsoDesdeTexto("31/02/2026")).toBeNull();
+        expect(esFechaIso("24/12")).toBe(false);
+        expect(esFechaIso("2026-12-24")).toBe(true);
+    });
+});
 
 describe("fechaHoraChileAIso", () => {
     it("FECH-001: convierte fecha+hora en zona Chile (invierno UTC-4) a ISO absoluto", () => {

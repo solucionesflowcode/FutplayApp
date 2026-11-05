@@ -11,10 +11,10 @@ import {
 } from "@/data/ligas-admin";
 import { calcularTabla, ETIQUETA_FASE, type LigaPartido } from "@/lib/liga-tabla";
 import { ganador, rondaActual, type Clasificados } from "@/lib/liga-playoffs";
-import { fechaHoraChileAIso, fechaHoraChileDesdeIso } from "@/lib/fechas";
+import { esFechaIso, fechaHoraChileAIso, fechaHoraChileDesdeIso } from "@/lib/fechas";
 import FixtureLista from "@/components/liga/FixtureLista";
 import CampeonBanner from "@/components/liga/CampeonBanner";
-import { Button, CLASE_INPUT, ConfirmDialog, FormField, Modal, useAdminMutation } from "@/components/admin/ui";
+import { Button, CLASE_INPUT, ConfirmDialog, FechaInput, FormField, Modal, useAdminMutation } from "@/components/admin/ui";
 import ResultadoModal from "./ResultadoModal";
 
 type Props = {
@@ -32,7 +32,7 @@ export default function PlayoffsPanel({ ligaId, clasificados, equipos, partidos,
   const [confirmarGenerar, setConfirmarGenerar] = useState(false);
   const [confirmarReinicio, setConfirmarReinicio] = useState(false);
   const [resultado, setResultado] = useState<LigaPartido | null>(null);
-  const [editar, setEditar] = useState<{ p: LigaPartido; fecha: string; hora: string; cancha: string } | null>(null);
+  const [editar, setEditar] = useState<{ p: LigaPartido; fecha: string; hora: string; cancha: string; errorFecha?: string } | null>(null);
   const mapa = new Map(equipos.map((e) => [e.id, e]));
 
   const ronda = rondaActual(partidos);
@@ -60,6 +60,10 @@ export default function PlayoffsPanel({ ligaId, clasificados, equipos, partidos,
 
   const guardarFecha = async () => {
     if (!editar) return;
+    if (editar.fecha && !esFechaIso(editar.fecha)) {
+      setEditar({ ...editar, errorFecha: "Usa dd/mm/aaaa" });
+      return;
+    }
     const ok = await ejecutar(
       () => actualizarPartido(editar.p.id, {
         fecha_hora: editar.fecha ? fechaHoraChileAIso(editar.fecha, editar.hora || "12:00") : null,
@@ -172,8 +176,8 @@ export default function PlayoffsPanel({ ligaId, clasificados, equipos, partidos,
         {editar && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Día">
-                {(p) => <input {...p} type="date" className={CLASE_INPUT} value={editar.fecha} onChange={(e) => setEditar({ ...editar, fecha: e.target.value })} />}
+              <FormField label="Día" error={editar.errorFecha}>
+                {(p) => <FechaInput {...p} value={editar.fecha} onChange={(fecha) => setEditar({ ...editar, fecha, errorFecha: undefined })} />}
               </FormField>
               <FormField label="Hora">
                 {(p) => <input {...p} type="time" className={CLASE_INPUT} value={editar.hora} onChange={(e) => setEditar({ ...editar, hora: e.target.value })} />}

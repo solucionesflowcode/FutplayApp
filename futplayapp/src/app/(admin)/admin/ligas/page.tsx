@@ -10,7 +10,6 @@ import {
   eliminarLiga,
   type LigaAdmin,
 } from "@/data/ligas-admin";
-import { getSedes, type Sede } from "@/data/sedes";
 import type { LigaEstado } from "@/lib/liga-tabla";
 import {
   Button,
@@ -25,14 +24,13 @@ import {
   type Columna,
 } from "@/components/admin/ui";
 
-type FormLiga = { id?: string; nombre: string; temporada: string; sede_id: string; estado: LigaEstado };
-const FORM_VACIO: FormLiga = { nombre: "", temporada: "", sede_id: "", estado: "borrador" };
+type FormLiga = { id?: string; nombre: string; temporada: string; estado: LigaEstado };
+const FORM_VACIO: FormLiga = { nombre: "", temporada: "", estado: "borrador" };
 
 export default function GestionLigasPage() {
   const router = useRouter();
   const { ejecutar, pendiente } = useAdminMutation();
   const [ligas, setLigas] = useState<LigaAdmin[]>([]);
-  const [sedes, setSedes] = useState<Sede[]>([]);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState(false);
   const [form, setForm] = useState<FormLiga | null>(null);
@@ -53,7 +51,6 @@ export default function GestionLigasPage() {
 
   useEffect(() => {
     cargar();
-    getSedes().then(setSedes).catch(() => setSedes([]));
   }, [cargar]);
 
   const guardar = async () => {
@@ -62,7 +59,7 @@ export default function GestionLigasPage() {
       setErrorNombre("El nombre es obligatorio");
       return;
     }
-    const datos = { nombre: form.nombre, temporada: form.temporada || null, sede_id: form.sede_id || null, estado: form.estado };
+    const datos = { nombre: form.nombre, temporada: form.temporada || null, estado: form.estado };
     const ok = await ejecutar(
       () => (form.id ? actualizarLiga(form.id, datos) : crearLiga(datos)),
       { exito: form.id ? "Liga actualizada" : "Liga creada" },
@@ -82,8 +79,6 @@ export default function GestionLigasPage() {
     }
   };
 
-  const nombreSede = (id: string | null) => sedes.find((s) => s.id === id)?.nombre ?? "—";
-
   const columnas: Columna<LigaAdmin>[] = [
     {
       id: "nombre",
@@ -96,7 +91,6 @@ export default function GestionLigasPage() {
         </div>
       ),
     },
-    { id: "sede", encabezado: "Sede", valorOrden: (l) => nombreSede(l.sede_id), celda: (l) => nombreSede(l.sede_id) },
     { id: "equipos", encabezado: "Equipos", valorOrden: (l) => l.total_equipos ?? 0, celda: (l) => l.total_equipos ?? 0 },
     {
       id: "partidos",
@@ -122,7 +116,7 @@ export default function GestionLigasPage() {
 
   function abrirEditar(l: LigaAdmin) {
     setErrorNombre(null);
-    setForm({ id: l.id, nombre: l.nombre, temporada: l.temporada ?? "", sede_id: l.sede_id ?? "", estado: l.estado });
+    setForm({ id: l.id, nombre: l.nombre, temporada: l.temporada ?? "", estado: l.estado });
   }
 
   return (
@@ -130,7 +124,7 @@ export default function GestionLigasPage() {
       <div className="w-full max-w-[1216px] mx-auto">
         <PageHeader
           titulo="Gestión de liga"
-          descripcion="Ligas, equipos, fixture, resultados y playoffs. Los jugadores ven las ligas en curso o finalizadas en 'Mi liga'; las en borrador no se muestran."
+          descripcion="Ligas, equipos, fixture, resultados y playoffs. Los jugadores ven las ligas en curso o finalizadas en 'Liga SportTrade 2026'; las en borrador no se muestran."
           acciones={<Button icono={<Plus size={16} />} onClick={() => { setErrorNombre(null); setForm({ ...FORM_VACIO }); }}>Nueva liga</Button>}
         />
 
@@ -184,14 +178,6 @@ export default function GestionLigasPage() {
             <FormField label="Temporada" ayuda="Opcional. Ej: Apertura 2026">
               {(p) => <input {...p} className={CLASE_INPUT} value={form.temporada} onChange={(e) => setForm({ ...form, temporada: e.target.value })} />}
             </FormField>
-            <FormField label="Sede">
-              {(p) => (
-                <select {...p} className={CLASE_INPUT} value={form.sede_id} onChange={(e) => setForm({ ...form, sede_id: e.target.value })}>
-                  <option value="">Sin sede</option>
-                  {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                </select>
-              )}
-            </FormField>
             <FormField label="Estado" ayuda="En borrador la liga no la ven los jugadores.">
               {(p) => (
                 <select {...p} className={CLASE_INPUT} value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value as LigaEstado })}>
@@ -209,7 +195,7 @@ export default function GestionLigasPage() {
         open={!!aEliminar}
         title="Eliminar liga"
         message={<>¿Eliminar <strong>{aEliminar?.nombre}</strong>? Esta acción no se puede deshacer.</>}
-        consecuencias={["Se borran sus equipos, planteles, partidos y resultados.", "Los jugadores dejan de verla en 'Mi liga'."]}
+        consecuencias={["Se borran sus equipos, planteles, partidos y resultados.", "Los jugadores dejan de verla en 'Liga SportTrade 2026'."]}
         confirmLabel="Eliminar liga"
         cargando={pendiente}
         textoCargando="Eliminando..."

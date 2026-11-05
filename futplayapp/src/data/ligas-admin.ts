@@ -5,7 +5,6 @@ export type LigaAdmin = {
   id: string;
   nombre: string;
   temporada: string | null;
-  sede_id: string | null;
   estado: LigaEstado;
   clasificados_playoff: Clasificados | null;
   created_at: string;
@@ -14,7 +13,7 @@ export type LigaAdmin = {
   partidos_jugados?: number;
 };
 
-export type LigaEquipoAdmin = { id: string; liga_id: string; nombre: string; logo_url: string | null };
+export type LigaEquipoAdmin = { id: string; liga_id: string; nombre: string; logo_url: string | null; sede_id: string | null; sede?: { nombre: string } | null };
 
 export type LigaJugadorAdmin = {
   id: string;
@@ -67,7 +66,6 @@ export async function getLigaAdmin(id: string): Promise<LigaDetalleAdmin> {
 export type DatosLiga = {
   nombre?: string;
   temporada?: string | null;
-  sede_id?: string | null;
   estado?: LigaEstado;
   clasificados_playoff?: Clasificados | null;
 };
@@ -76,9 +74,9 @@ export const crearLiga = (datos: DatosLiga) => enviar<LigaAdmin>("/api/admin/lig
 export const actualizarLiga = (id: string, datos: DatosLiga) => enviar("/api/admin/ligas", "PUT", { id, ...datos });
 export const eliminarLiga = (id: string) => enviar(`/api/admin/ligas?id=${encodeURIComponent(id)}`, "DELETE");
 
-export const crearEquipo = (liga_id: string, nombre: string, logo_url?: string | null) =>
-  enviar<LigaEquipoAdmin>("/api/admin/ligas/equipos", "POST", { liga_id, nombre, logo_url });
-export const actualizarEquipo = (id: string, datos: { nombre?: string; logo_url?: string | null }) =>
+export const crearEquipo = (liga_id: string, datos: { nombre: string; sede_id: string; logo_url?: string | null }) =>
+  enviar<LigaEquipoAdmin>("/api/admin/ligas/equipos", "POST", { liga_id, ...datos });
+export const actualizarEquipo = (id: string, datos: { nombre?: string; sede_id?: string; logo_url?: string | null }) =>
   enviar("/api/admin/ligas/equipos", "PUT", { id, ...datos });
 export const eliminarEquipo = (id: string) => enviar(`/api/admin/ligas/equipos?id=${encodeURIComponent(id)}`, "DELETE");
 

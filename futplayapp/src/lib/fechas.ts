@@ -33,6 +33,26 @@ export function fechaHoraChileDesdeIso(iso: string): { fecha: string; hora: stri
   return { fecha, hora };
 }
 
+export function esFechaIso(valor: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(valor);
+}
+
+/** "24/12/2026" → "2026-12-24", o null si está incompleta o el día no existe (31/02). */
+export function fechaIsoDesdeTexto(texto: string): string | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto.trim());
+  if (!m) return null;
+  const [dia, mes, anio] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(Date.UTC(anio, mes - 1, dia));
+  if (d.getUTCFullYear() !== anio || d.getUTCMonth() !== mes - 1 || d.getUTCDate() !== dia) return null;
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+/** "2026-12-24" → "24/12/2026". */
+export function fechaTextoDesdeIso(iso: string): string {
+  const [anio, mes, dia] = iso.split("-");
+  return `${dia}/${mes}/${anio}`;
+}
+
 /** Día de hoy en Chile (YYYY-MM-DD). `new Date().toISOString().slice(0, 10)` da el día UTC: después de las 21:00 ya es mañana. */
 export function hoyChile(ahora: Date = new Date()): string {
   return ahora.toLocaleDateString("en-CA", { timeZone: "America/Santiago" });

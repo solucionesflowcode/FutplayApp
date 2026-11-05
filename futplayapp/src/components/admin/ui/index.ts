@@ -2,6 +2,7 @@
 export { default as Button, type VarianteBoton } from "./Button";
 export { default as ConfirmDialog } from "./ConfirmDialog";
 export { default as DataTable, ordenarFilas, type Columna } from "./DataTable";
+export { default as FechaInput } from "./FechaInput";
 export { default as FormField, CLASE_INPUT, type PropsControl } from "./FormField";
 export { default as Modal } from "./Modal";
 export { default as NumberInput, parsearEntero } from "./NumberInput";

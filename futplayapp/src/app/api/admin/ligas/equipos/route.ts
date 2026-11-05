@@ -23,11 +23,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
     if (!body.liga_id || !nombre) return NextResponse.json({ error: "Faltan campos: liga_id, nombre" }, { status: 400 });
+    if (!body.sede_id) return NextResponse.json({ error: "La sede del equipo es obligatoria" }, { status: 400 });
 
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("liga_equipo")
-      .insert({ liga_id: body.liga_id, nombre, logo_url: body.logo_url || null })
+      .insert({ liga_id: body.liga_id, nombre, sede_id: body.sede_id, logo_url: body.logo_url || null })
       .select()
       .single();
     if (error) return nombreDuplicado(error.message) ?? NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
@@ -50,6 +51,10 @@ export async function PUT(request: Request) {
       const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
       if (!nombre) return NextResponse.json({ error: "El nombre del equipo es obligatorio" }, { status: 400 });
       datos.nombre = nombre;
+    }
+    if (body.sede_id !== undefined) {
+      if (!body.sede_id) return NextResponse.json({ error: "La sede del equipo es obligatoria" }, { status: 400 });
+      datos.sede_id = body.sede_id;
     }
     // null o "" quita el logo.
     if (body.logo_url !== undefined) datos.logo_url = body.logo_url || null;

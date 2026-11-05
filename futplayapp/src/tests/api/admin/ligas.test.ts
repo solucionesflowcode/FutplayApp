@@ -27,7 +27,7 @@ import { GET as GET_LIGAS, POST as POST_LIGA } from "@/app/api/admin/ligas/route
 import { POST as POST_JUGADOR } from "@/app/api/admin/ligas/jugadores/route";
 import { POST as POST_PARTIDO, PUT as PUT_PARTIDO, DELETE as DELETE_PARTIDO } from "@/app/api/admin/ligas/partidos/route";
 import { POST as POST_PLAYOFFS } from "@/app/api/admin/ligas/playoffs/route";
-import { DELETE as DELETE_EQUIPO } from "@/app/api/admin/ligas/equipos/route";
+import { POST as POST_EQUIPO, PUT as PUT_EQUIPO, DELETE as DELETE_EQUIPO } from "@/app/api/admin/ligas/equipos/route";
 
 const URL_BASE = "http://localhost:3000/api/admin/ligas";
 const json = (method: string, body: unknown) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -152,6 +152,21 @@ describe("ligas: partidos", () => {
 });
 
 describe("ligas: equipos y playoffs", () => {
+    it("API-ADM-LIGAS-EQ-003: un equipo nuevo exige sede", async () => {
+        comoAdmin();
+        const sinSede = await POST_EQUIPO(new Request(`${URL_BASE}/equipos`, json("POST", { liga_id: "l1", nombre: "Gamma" })));
+        expect(sinSede.status).toBe(400);
+        expect((await sinSede.json()).error).toMatch(/sede/);
+        const conSede = await POST_EQUIPO(new Request(`${URL_BASE}/equipos`, json("POST", { liga_id: "l1", nombre: "Gamma", sede_id: "s1" })));
+        expect(conSede.status).toBe(200);
+    });
+
+    it("API-ADM-LIGAS-EQ-004: no se puede dejar a un equipo sin sede", async () => {
+        comoAdmin();
+        const res = await PUT_EQUIPO(new Request(`${URL_BASE}/equipos`, json("PUT", { id: EQ_A, sede_id: "" })));
+        expect(res.status).toBe(400);
+    });
+
     it("API-ADM-LIGAS-EQ-001: un equipo con partidos no se borra", async () => {
         comoAdmin();
         __setTableData("liga_partido", [partido({})]);

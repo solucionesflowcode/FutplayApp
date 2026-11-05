@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
-import { calcularTabla, type LigaPartido } from "@/lib/liga-tabla";
+import { calcularTabla, type LigaEquipoBase, type LigaPartido } from "@/lib/liga-tabla";
 
 // GET /api/ligas[?id=<liga>] → vista de "Mi liga" (solo lectura, cualquier usuario con sesión).
 // Las ligas en borrador no se muestran. Sin id, se elige la liga en curso donde
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     if (!elegida) return NextResponse.json({ ligas: lista, detalle: null });
 
     const [{ data: equipos }, { data: jugadores }, { data: partidos }] = await Promise.all([
-      admin.from("liga_equipo").select("id, nombre, logo_url").eq("liga_id", elegida.id).order("nombre"),
+      admin.from("liga_equipo").select("id, nombre, logo_url, sede:sede_id (nombre)").eq("liga_id", elegida.id).order("nombre"),
       admin.from("liga_jugador").select("equipo_id, numero, usuario:usuario_id (nombre, foto_url, posicion)").eq("liga_id", elegida.id),
       admin.from("liga_partido").select("id, liga_id, fase, jornada, llave, local_id, visita_id, fecha_hora, cancha, goles_local, goles_visita, penales_local, penales_visita, estado").eq("liga_id", elegida.id).order("jornada").order("fecha_hora"),
     ]);
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         equipos: equipos || [],
         jugadores: plantel,
         partidos: partidos || [],
-        tabla: calcularTabla(equipos || [], (partidos || []) as LigaPartido[]),
+        tabla: calcularTabla((equipos || []) as unknown as LigaEquipoBase[], (partidos || []) as LigaPartido[]),
         miEquipoId: miEquipoPorLiga.get(elegida.id) ?? null,
       },
     });

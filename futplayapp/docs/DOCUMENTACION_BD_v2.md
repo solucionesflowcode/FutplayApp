@@ -53,7 +53,7 @@ erDiagram
     modulo ||--o{ capsula : "modulo_id (CASCADE)"
     capsula ||--o{ documento : "capsula_id (CASCADE)"
     capsula ||--o{ comentario : "capsula_id (CASCADE)"
-    sede ||--o{ liga : "sede_id (SET NULL)"
+    sede ||--o{ liga_equipo : "sede_id (SET NULL)"
     liga ||--o{ liga_equipo : "liga_id (CASCADE)"
     liga_equipo ||--o{ liga_jugador : "(equipo_id, liga_id) (CASCADE)"
     usuario ||--o{ liga_jugador : "usuario_id (CASCADE)"
@@ -127,9 +127,9 @@ Auditoría de los tokens que no se pudieron devolver al borrar una clase (`clase
 `usuario_id` (PK), `peso_kg`, `estatura_cm`, `imc` (columna normal que envía la app), `fecha_nacimiento`, `enfermedades`, `alergias`, `medicamentos`, `observaciones`, `historial_lesiones`, `afecciones_cardiacas`, `perfil`, `updated_at`. **Dato sensible.**
 
 ### liga / liga_equipo / liga_jugador / liga_partido
-Ligas internas (reemplazan Copa Fácil). El admin las gestiona en "Gestión de liga" (`/admin/ligas`) y el jugador las ve en "Mi liga" (`/miliga`). Migración `docs/migrations/2026-10-ligas.sql`.
-- `liga`: `nombre`, `temporada`, `sede_id`, `estado` (enum `liga_estado`: `borrador` | `en_curso` | `finalizada`; el jugador no ve las en borrador), `clasificados_playoff` (2, 4 u 8).
-- `liga_equipo`: `nombre` (único por liga), `logo_url` (bucket público `ligas`).
+Ligas internas (reemplazan Copa Fácil). El admin las gestiona en "Gestión de liga" (`/admin/ligas`) y el jugador las ve en "Mi liga" (`/miliga`). Migraciones `docs/migrations/2026-10-ligas.sql` y `2026-11-ligas-sede-equipo.sql`.
+- `liga`: `nombre`, `temporada`, `sede_id` (sin uso: la sede es del equipo), `estado` (enum `liga_estado`: `borrador` | `en_curso` | `finalizada`; el jugador no ve las en borrador), `clasificados_playoff` (2, 4 u 8).
+- `liga_equipo`: `nombre` (único por liga), `sede_id` (cada partido se juega en la sede del equipo local; la API la exige), `logo_url` (bucket público `ligas`).
 - `liga_jugador`: inscribe a un **usuario de la app** en un equipo, con `numero` (0-99) opcional. Único `(liga_id, usuario_id)`: un jugador está en un solo equipo por liga. Solo el admin inscribe; no depende del pago del Plan Liga.
 - `liga_partido`: `fase` (enum `liga_fase`: `regular` | `cuartos` | `semifinal` | `final`), `jornada` (fase regular), `llave` (orden del cuadro), `local_id`, `visita_id`, `fecha_hora`, `cancha`, goles, penales, `estado` (enum `liga_partido_estado`: `programado` | `jugado` | `suspendido`). Un `jugado` exige goles. Local ≠ visita.
 - **Misma liga garantizada por FK compuestas** `(equipo_id, liga_id)` → `liga_equipo(id, liga_id)`: no se puede inscribir un jugador ni crear un partido con un equipo de otra liga.
@@ -194,6 +194,7 @@ Desde el 2026-10-10 se registran en `supabase_migrations` (Database → Migratio
 | `2026-10-auditoria-plan-columnas.sql` | `auditoria_plan_columnas` |
 | `2026-10-auditoria-rls-profesor.sql` | Corrida a mano en el SQL Editor |
 | `2026-10-ligas.sql` | `ligas` + `ligas_indices_fk` (2026-10-29) |
+| `2026-11-ligas-sede-equipo.sql` | `ligas_sede_equipo` (2026-11-05) |
 
 Correcciones de datos del 2026-10-09 (sin archivo de migración):
 - Se cerraron 2 membresías manuales con 0 tokens que seguían activas.

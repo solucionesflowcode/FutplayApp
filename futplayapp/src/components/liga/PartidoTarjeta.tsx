@@ -29,6 +29,8 @@ export default function PartidoTarjeta({ partido: p, equipos, destacado, accione
   const jugado = p.estado === "jugado";
   const gana = ganador(p);
   const hayPenales = p.penales_local != null && p.penales_visita != null;
+  // El partido se juega en la sede del equipo local.
+  const lugar = [local?.sede?.nombre, p.cancha].filter(Boolean).join(" · ");
 
   return (
     <article className={`rounded-xl bg-white p-3 sm:p-4 ring-1 ${destacado ? "ring-[#F28C28] ring-2" : "ring-black/5"}`}>
@@ -49,13 +51,13 @@ export default function PartidoTarjeta({ partido: p, equipos, destacado, accione
         <Equipo e={visita} lado="visita" gano={jugado && gana === visita?.id} />
       </div>
 
-      {(p.fecha_hora || p.cancha || acciones) && (
+      {(p.fecha_hora || lugar || acciones) && (
         <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             {p.fecha_hora && (
               <span className="inline-flex items-center gap-1"><CalendarDays size={13} aria-hidden />{formatearFechaHora(p.fecha_hora)}</span>
             )}
-            {p.cancha && <span className="inline-flex items-center gap-1"><MapPin size={13} aria-hidden />{p.cancha}</span>}
+            {lugar && <span className="inline-flex items-center gap-1"><MapPin size={13} aria-hidden />{lugar}</span>}
           </div>
           {acciones && <div className="flex gap-1">{acciones}</div>}
         </div>

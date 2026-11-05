@@ -19,7 +19,6 @@ function camposLiga(body: Record<string, unknown>, parcial: boolean): Record<str
     datos.nombre = nombre;
   }
   if (body.temporada !== undefined) datos.temporada = typeof body.temporada === "string" && body.temporada.trim() ? body.temporada.trim() : null;
-  if (body.sede_id !== undefined) datos.sede_id = body.sede_id || null;
   if (body.estado !== undefined) {
     if (!ESTADOS.includes(body.estado as string)) return "Estado inválido";
     datos.estado = body.estado;
@@ -60,7 +59,7 @@ export async function GET(request: Request) {
     if (!liga) return NextResponse.json({ error: "Liga no encontrada" }, { status: 404 });
 
     const [{ data: equipos }, { data: jugadores }, { data: partidos }] = await Promise.all([
-      admin.from("liga_equipo").select("*").eq("liga_id", id).order("nombre"),
+      admin.from("liga_equipo").select("*, sede:sede_id (nombre)").eq("liga_id", id).order("nombre"),
       admin.from("liga_jugador").select("id, equipo_id, usuario_id, numero, usuario:usuario_id (nombre, email, foto_url, posicion)").eq("liga_id", id),
       admin.from("liga_partido").select("*").eq("liga_id", id).order("jornada").order("fecha_hora"),
     ]);

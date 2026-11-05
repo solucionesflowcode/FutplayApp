@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Plus, Pencil, Trash2, ClipboardCheck } from "lucide-react";
 import { crearPartido, actualizarPartido, eliminarPartido, type LigaEquipoAdmin } from "@/data/ligas-admin";
 import type { LigaPartido } from "@/lib/liga-tabla";
-import { fechaHoraChileAIso, fechaHoraChileDesdeIso } from "@/lib/fechas";
+import { esFechaIso, fechaHoraChileAIso, fechaHoraChileDesdeIso } from "@/lib/fechas";
 import FixtureLista from "@/components/liga/FixtureLista";
-import { Button, CLASE_INPUT, ConfirmDialog, FormField, Modal, NumberInput, useAdminMutation } from "@/components/admin/ui";
+import { Button, CLASE_INPUT, ConfirmDialog, FechaInput, FormField, Modal, NumberInput, useAdminMutation } from "@/components/admin/ui";
 import ResultadoModal from "./ResultadoModal";
 
 type Props = {
@@ -45,6 +45,7 @@ export default function FixturePanel({ ligaId, equipos, partidos, onCambio }: Pr
     if (!form.jornada || form.jornada < 1) return setErrorForm("Indica la fecha (jornada) del partido");
     if (!form.local_id || !form.visita_id) return setErrorForm("Elige el equipo local y el visitante");
     if (form.local_id === form.visita_id) return setErrorForm("Un equipo no puede jugar contra sí mismo");
+    if (form.fecha && !esFechaIso(form.fecha)) return setErrorForm("El día no es válido: usa dd/mm/aaaa");
     if (form.hora && !form.fecha) return setErrorForm("Si indicas la hora, indica también el día");
     setErrorForm(null);
 
@@ -136,13 +137,13 @@ export default function FixturePanel({ ligaId, equipos, partidos, onCambio }: Pr
             </div>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Día" ayuda="Opcional">
-                {(p) => <input {...p} type="date" className={CLASE_INPUT} value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />}
+                {(p) => <FechaInput {...p} value={form.fecha} onChange={(fecha) => setForm({ ...form, fecha })} />}
               </FormField>
               <FormField label="Hora" ayuda="Hora de Chile">
                 {(p) => <input {...p} type="time" className={CLASE_INPUT} value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} />}
               </FormField>
             </div>
-            <FormField label="Cancha" ayuda="Opcional">
+            <FormField label="Cancha" ayuda="Opcional. La sede es la del equipo local.">
               {(p) => <input {...p} className={CLASE_INPUT} value={form.cancha} onChange={(e) => setForm({ ...form, cancha: e.target.value })} />}
             </FormField>
             {errorForm && <p role="alert" className="text-sm text-red-600">{errorForm}</p>}

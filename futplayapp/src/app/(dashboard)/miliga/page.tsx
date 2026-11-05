@@ -55,7 +55,7 @@ export default function MiLigaPage() {
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
                     <div>
                         <div className="w-12 h-1 bg-[#F28C28] rounded-full mb-3" />
-                        <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-[#00305B]">Mi liga</h1>
+                        <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-[#00305B]">Liga SportTrade 2026</h1>
                         <p className="text-gray-500 mt-1.5 text-sm md:text-base">Tabla de posiciones, fixture y equipos.</p>
                     </div>
                     {datos && datos.ligas.length > 1 && (
@@ -164,7 +164,7 @@ export default function MiLigaPage() {
                                                             <EscudoEquipo nombre={e.nombre} logoUrl={e.logo_url} size="lg" />
                                                             <div className="min-w-0">
                                                                 <h2 className="font-bold text-[#00305B] truncate">{e.nombre}</h2>
-                                                                <p className="text-xs text-gray-500">{plantel.length} jugador(es)</p>
+                                                                <p className="text-xs text-gray-500">{e.sede?.nombre ? `${e.sede.nombre} · ` : ""}{plantel.length} jugador(es)</p>
                                                             </div>
                                                         </header>
                                                         <ul className="divide-y divide-gray-100">

@@ -15,6 +15,7 @@ import {
   type LigaJugadorAdmin,
   type JugadorBuscado,
 } from "@/data/ligas-admin";
+import { getSedes, type Sede } from "@/data/sedes";
 import { POSICIONES } from "@/lib/posiciones";
 import EscudoEquipo from "@/components/liga/EscudoEquipo";
 import { Button, CLASE_INPUT, ConfirmDialog, FormField, Modal, NumberInput, useAdminMutation, useToast } from "@/components/admin/ui";
@@ -33,8 +34,10 @@ export default function EquiposPanel({ ligaId, equipos, jugadores, onCambio }: P
   const toast = useToast();
 
   // Equipo: crear / editar
-  const [formEquipo, setFormEquipo] = useState<{ id?: string; nombre: string; logo_url: string | null } | null>(null);
+  const [formEquipo, setFormEquipo] = useState<{ id?: string; nombre: string; sede_id: string; logo_url: string | null } | null>(null);
   const [errorNombre, setErrorNombre] = useState<string | null>(null);
+  const [errorSede, setErrorSede] = useState<string | null>(null);
+  const [sedes, setSedes] = useState<Sede[]>([]);
   const [subiendo, setSubiendo] = useState(false);
   const inputLogo = useRef<HTMLInputElement>(null);
   const [equipoAEliminar, setEquipoAEliminar] = useState<LigaEquipoAdmin | null>(null);
@@ -44,16 +47,24 @@ export default function EquiposPanel({ ligaId, equipos, jugadores, onCambio }: P
   const [editarJugador, setEditarJugador] = useState<{ fila: LigaJugadorAdmin; numero: number | null; equipo_id: string } | null>(null);
   const [jugadorAQuitar, setJugadorAQuitar] = useState<LigaJugadorAdmin | null>(null);
 
+  useEffect(() => {
+    getSedes().then(setSedes);
+  }, []);
+
+  const abrirFormEquipo = (form: NonNullable<typeof formEquipo>) => {
+    setErrorNombre(null);
+    setErrorSede(null);
+    setFormEquipo(form);
+  };
+
   const guardarEquipo = async () => {
     if (!formEquipo) return;
-    if (!formEquipo.nombre.trim()) {
-      setErrorNombre("El nombre es obligatorio");
-      return;
-    }
+    if (!formEquipo.nombre.trim()) setErrorNombre("El nombre es obligatorio");
+    if (!formEquipo.sede_id) setErrorSede("Elige la sede del equipo");
+    if (!formEquipo.nombre.trim() || !formEquipo.sede_id) return;
+    const datos = { nombre: formEquipo.nombre, sede_id: formEquipo.sede_id, logo_url: formEquipo.logo_url };
     const ok = await ejecutar(
-      () => formEquipo.id
-        ? actualizarEquipo(formEquipo.id, { nombre: formEquipo.nombre, logo_url: formEquipo.logo_url })
-        : crearEquipo(ligaId, formEquipo.nombre, formEquipo.logo_url),
+      () => (formEquipo.id ? actualizarEquipo(formEquipo.id, datos) : crearEquipo(ligaId, datos)),
       { exito: formEquipo.id ? "Equipo actualizado" : "Equipo creado" },
     );
     if (ok) {
@@ -101,7 +112,7 @@ export default function EquiposPanel({ ligaId, equipos, jugadores, onCambio }: P
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="text-sm text-gray-500">{equipos.length} equipo(s) · {jugadores.length} jugador(es) inscritos</p>
-        <Button icono={<Plus size={16} />} onClick={() => { setErrorNombre(null); setFormEquipo({ nombre: "", logo_url: null }); }}>Nuevo equipo</Button>
+        <Button icono={<Plus size={16} />} onClick={() => abrirFormEquipo({ nombre: "", sede_id: "", logo_url: null })}>Nuevo equipo</Button>
       </div>
 
       {equipos.length === 0 ? (
@@ -118,10 +129,10 @@ export default function EquiposPanel({ ligaId, equipos, jugadores, onCambio }: P
                   <EscudoEquipo nombre={e.nombre} logoUrl={e.logo_url} size="lg" />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-bold text-gray-900 truncate">{e.nombre}</h3>
-                    <p className="text-xs text-gray-500">{plantel.length} jugador(es)</p>
+                    <p className="text-xs text-gray-500">{e.sede?.nombre ?? "Sin sede"} · {plantel.length} jugador(es)</p>
                   </div>
                   <Button variante="fantasma" aria-label={`Editar ${e.nombre}`} icono={<Pencil size={15} />}
-                    onClick={() => { setErrorNombre(null); setFormEquipo({ id: e.id, nombre: e.nombre, logo_url: e.logo_url }); }} />
+                    onClick={() => abrirFormEquipo({ id: e.id, nombre: e.nombre, sede_id: e.sede_id ?? "", logo_url: e.logo_url })} />
                   <Button variante="fantasma" aria-label={`Eliminar ${e.nombre}`} icono={<Trash2 size={15} className="text-red-600" />}
                     onClick={() => setEquipoAEliminar(e)} />
                 </header>
@@ -171,6 +182,15 @@ export default function EquiposPanel({ ligaId, equipos, jugadores, onCambio }: P
               {(p) => (
                 <input {...p} className={CLASE_INPUT} value={formEquipo.nombre}
                   onChange={(ev) => { setErrorNombre(null); setFormEquipo({ ...formEquipo, nombre: ev.target.value }); }} />
+              )}
+            </FormField>
+            <FormField label="Sede" required error={errorSede} ayuda="Sus partidos de local se juegan aquí.">
+              {(p) => (
+                <select {...p} className={CLASE_INPUT} value={formEquipo.sede_id}
+                  onChange={(ev) => { setErrorSede(null); setFormEquipo({ ...formEquipo, sede_id: ev.target.value }); }}>
+                  <option value="">Elige una sede</option>
+                  {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                </select>
               )}
             </FormField>
             <div>
