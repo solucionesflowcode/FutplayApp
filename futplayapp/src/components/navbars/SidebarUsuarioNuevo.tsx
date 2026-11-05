@@ -13,7 +13,8 @@ import {
   X,
   Crown,
   Shield,
-  User
+  User,
+  Trophy
 } from "lucide-react";
 import { useAuthUser } from "@/context";
 
@@ -24,6 +25,7 @@ const menuItems = [
   { name: "Capsulas", href: "/capsules", icon: Users },
   { name: "Pagos", href: "/pagos", icon: MapPin },
   { name: "Mis Clases", href: "/misclases", icon: CalendarDays },
+  { name: "Mi liga", href: "/miliga", icon: Trophy },
 ];
 
 export default function Sidebar() {

@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  User
+  User,
+  Trophy
 } from "lucide-react";
 
 // Los nombres coinciden con el título de cada pantalla (GEN-03).
@@ -31,6 +32,7 @@ const menuItems = [
   { name: "Gestión de profesores", href: "/admin/profesores", icon: PersonStanding },
   { name: "Gestión de planes", href: "/admin/planes", icon: CreditCard },
   { name: "Gestión de membresías", href: "/admin/membresias", icon: ShieldCheck },
+  { name: "Gestión de liga", href: "/admin/ligas", icon: Trophy },
   { name: "Mi perfil", href: "/admin/perfil", icon: User },
 ];
 

@@ -53,6 +53,11 @@ erDiagram
     modulo ||--o{ capsula : "modulo_id (CASCADE)"
     capsula ||--o{ documento : "capsula_id (CASCADE)"
     capsula ||--o{ comentario : "capsula_id (CASCADE)"
+    sede ||--o{ liga : "sede_id (SET NULL)"
+    liga ||--o{ liga_equipo : "liga_id (CASCADE)"
+    liga_equipo ||--o{ liga_jugador : "(equipo_id, liga_id) (CASCADE)"
+    usuario ||--o{ liga_jugador : "usuario_id (CASCADE)"
+    liga_equipo ||--o{ liga_partido : "(local_id | visita_id, liga_id) (CASCADE)"
 ```
 `usuario.id` → `auth.users(id)` `ON DELETE CASCADE`.
 
@@ -121,6 +126,16 @@ Auditoría de los tokens que no se pudieron devolver al borrar una clase (`clase
 ### ficha_medica
 `usuario_id` (PK), `peso_kg`, `estatura_cm`, `imc` (columna normal que envía la app), `fecha_nacimiento`, `enfermedades`, `alergias`, `medicamentos`, `observaciones`, `historial_lesiones`, `afecciones_cardiacas`, `perfil`, `updated_at`. **Dato sensible.**
 
+### liga / liga_equipo / liga_jugador / liga_partido
+Ligas internas (reemplazan Copa Fácil). El admin las gestiona en "Gestión de liga" (`/admin/ligas`) y el jugador las ve en "Mi liga" (`/miliga`). Migración `docs/migrations/2026-10-ligas.sql`.
+- `liga`: `nombre`, `temporada`, `sede_id`, `estado` (enum `liga_estado`: `borrador` | `en_curso` | `finalizada`; el jugador no ve las en borrador), `clasificados_playoff` (2, 4 u 8).
+- `liga_equipo`: `nombre` (único por liga), `logo_url` (bucket público `ligas`).
+- `liga_jugador`: inscribe a un **usuario de la app** en un equipo, con `numero` (0-99) opcional. Único `(liga_id, usuario_id)`: un jugador está en un solo equipo por liga. Solo el admin inscribe; no depende del pago del Plan Liga.
+- `liga_partido`: `fase` (enum `liga_fase`: `regular` | `cuartos` | `semifinal` | `final`), `jornada` (fase regular), `llave` (orden del cuadro), `local_id`, `visita_id`, `fecha_hora`, `cancha`, goles, penales, `estado` (enum `liga_partido_estado`: `programado` | `jugado` | `suspendido`). Un `jugado` exige goles. Local ≠ visita.
+- **Misma liga garantizada por FK compuestas** `(equipo_id, liga_id)` → `liga_equipo(id, liga_id)`: no se puede inscribir un jugador ni crear un partido con un equipo de otra liga.
+- **Tabla de posiciones:** no se guarda; se calcula en `src/lib/liga-tabla.ts` con los partidos `regular` jugados. Victoria 3, empate 1. Desempate: puntos → DG → GF → nombre.
+- **Playoffs** (`src/lib/liga-playoffs.ts`): desde la tabla, 1° vs último clasificado. Un empate se define por penales. Una ronda se genera cuando todas las llaves de la anterior tienen ganador; un resultado ya usado para la ronda siguiente no se corrige (hay que reiniciar los playoffs).
+
 ## 5. Funciones y triggers
 
 | Función | Trigger / uso | Qué hace |
@@ -163,8 +178,9 @@ RLS está activo en todas las tablas de `public`.
 | `producto`, `clase`, `sede`, `categoria`, `modulo` | Usuarios con sesión | Administrador |
 | `capsula` | Usuarios con sesión (el video exige URL firmada) | Staff y administradores |
 | `tokens_no_devueltos` | Solo servidor | Solo servidor |
+| `liga`, `liga_equipo`, `liga_jugador`, `liga_partido` | Usuarios con sesión | Solo servidor (`/api/admin/ligas/*`) |
 
-Las rutas de servidor usan la clave de servicio (ignoran RLS): `flow/*`, `admin/*`, `clases/inscribir`, `clases/cancelar`, `download-documento` y `auth/link-usuario`. Todas validan la sesión o el rol antes de usarla, salvo `flow/webhook` y `flow/return`, que se validan contra Flow.
+Las rutas de servidor usan la clave de servicio (ignoran RLS): `flow/*`, `admin/*`, `clases/inscribir`, `clases/cancelar`, `download-documento`, `auth/link-usuario` y `ligas` (la vista del jugador: entrega nombre, foto, posición y número de los jugadores, nunca email, RUT ni teléfono). Todas validan la sesión o el rol antes de usarla, salvo `flow/webhook` y `flow/return`, que se validan contra Flow.
 
 ## 7. Migraciones
 
@@ -177,6 +193,7 @@ Desde el 2026-10-10 se registran en `supabase_migrations` (Database → Migratio
 | `2026-10-auditoria-funciones.sql` | `auditoria_funciones_permisos` + los DROP corridos a mano en el SQL Editor |
 | `2026-10-auditoria-plan-columnas.sql` | `auditoria_plan_columnas` |
 | `2026-10-auditoria-rls-profesor.sql` | Corrida a mano en el SQL Editor |
+| `2026-10-ligas.sql` | `ligas` + `ligas_indices_fk` (2026-10-29) |
 
 Correcciones de datos del 2026-10-09 (sin archivo de migración):
 - Se cerraron 2 membresías manuales con 0 tokens que seguían activas.

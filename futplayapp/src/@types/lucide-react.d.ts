@@ -102,4 +102,9 @@ declare module "lucide-react" {
   export const ShieldX: Icon;
   export const Snowflake: Icon;
   export const TriangleAlert: Icon;
+  export const ChevronsRight: Icon;
+  export const Info: Icon;
+  export const ListOrdered: Icon;
+  export const Swords: Icon;
+  export const Trophy: Icon;
 }

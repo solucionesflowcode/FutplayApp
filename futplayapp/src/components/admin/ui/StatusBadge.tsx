@@ -20,6 +20,13 @@ const ESTADOS = {
   no_asistio: { etiqueta: "Ausente", clase: "bg-red-100 text-red-700" },
   cancelado: { etiqueta: "Cancelada", clase: "bg-gray-200 text-gray-600" },
   cancelado_sin_reembolso: { etiqueta: "Cancelada sin reembolso", clase: "bg-gray-200 text-gray-600" },
+  // Ligas y sus partidos
+  borrador: { etiqueta: "Borrador", clase: "bg-gray-100 text-gray-600" },
+  en_curso: { etiqueta: "En curso", clase: "bg-green-100 text-green-700" },
+  finalizada: { etiqueta: "Finalizada", clase: "bg-sky-100 text-sky-700" },
+  programado: { etiqueta: "Programado", clase: "bg-gray-100 text-gray-600" },
+  jugado: { etiqueta: "Jugado", clase: "bg-green-100 text-green-700" },
+  suspendido: { etiqueta: "Suspendido", clase: "bg-amber-100 text-amber-700" },
 } as const;
 
 export type EstadoConocido = keyof typeof ESTADOS;
