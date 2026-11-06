@@ -3,6 +3,7 @@ import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
 import { esClasificados } from "@/lib/liga-playoffs";
 import { aplanarDetallePartido, EMBED_DETALLE_PARTIDO } from "@/lib/liga-goles";
+import { borrarArchivosFotos, rutasFotosDeLiga } from "@/lib/liga-fotos-servidor";
 
 const ESTADOS = ["borrador", "en_curso", "finalizada"];
 
@@ -118,9 +119,12 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
 
     const admin = await getAdminClient();
+    // Las filas se borran en cascada, pero los archivos no: hay que leer sus rutas antes.
+    const rutas = await rutasFotosDeLiga(admin, id);
     const { error } = await admin.from("liga").delete().eq("id", id);
     if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
-    return NextResponse.json({ success: true });
+    const aviso = await borrarArchivosFotos(admin, rutas);
+    return NextResponse.json({ success: true, aviso });
   } catch (err) {
     return error500(err);
   }

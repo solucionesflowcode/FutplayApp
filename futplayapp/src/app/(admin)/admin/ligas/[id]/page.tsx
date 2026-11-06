@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Users, CalendarDays, ListOrdered, Swords } from "lucide-react";
+import { ArrowLeft, Camera, Users, CalendarDays, ListOrdered, Swords } from "lucide-react";
 import { getLigaAdmin, type LigaDetalleAdmin } from "@/data/ligas-admin";
 import { calcularTabla } from "@/lib/liga-tabla";
 import TablaGoleadores from "@/components/liga/TablaGoleadores";
 import TablaPosiciones from "@/components/liga/TablaPosiciones";
 import EquiposPanel from "@/components/admin/ligas/EquiposPanel";
 import FixturePanel from "@/components/admin/ligas/FixturePanel";
+import FotosPanel from "@/components/admin/ligas/FotosPanel";
 import PlayoffsPanel from "@/components/admin/ligas/PlayoffsPanel";
 import { Button, PageHeader, StatusBadge } from "@/components/admin/ui";
 
@@ -18,6 +19,7 @@ const PESTANAS = [
   { id: "fixture", etiqueta: "Fixture", icono: CalendarDays },
   { id: "tabla", etiqueta: "Tabla", icono: ListOrdered },
   { id: "playoffs", etiqueta: "Playoffs", icono: Swords },
+  { id: "fotos", etiqueta: "Fotos", icono: Camera },
 ] as const;
 type Pestana = (typeof PESTANAS)[number]["id"];
 
@@ -86,6 +88,10 @@ export default function LigaDetallePage() {
               {pestana === "playoffs" && (
                 <PlayoffsPanel ligaId={id} clasificados={datos.liga.clasificados_playoff} equipos={datos.equipos} jugadores={datos.jugadores} partidos={datos.partidos} onCambio={cargar} />
               )}
+              {/* Sigue montado al cambiar de pestaña: si no, se perdería el estado de las fotos que se están subiendo. */}
+              <div hidden={pestana !== "fotos"}>
+                <FotosPanel ligaId={id} partidos={datos.partidos} equipos={datos.equipos} />
+              </div>
             </div>
           </>
         )}

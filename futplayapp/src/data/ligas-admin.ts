@@ -1,5 +1,6 @@
 import type { LigaEstado, LigaPartido, LigaPartidoEstado } from "@/lib/liga-tabla";
 import type { Clasificados } from "@/lib/liga-playoffs";
+import type { LigaFotoVista, PaginaFotos } from "@/lib/liga-fotos";
 
 export type LigaAdmin = {
   id: string;
@@ -88,6 +89,25 @@ export async function subirLogoEquipo(file: File): Promise<Resultado<{ url: stri
   if (!res.ok) return { success: false, error: json?.error };
   return { success: true, data: json };
 }
+
+export async function getFotosLigaAdmin(ligaId: string, cursor?: string): Promise<PaginaFotos> {
+  const params = new URLSearchParams({ liga_id: ligaId });
+  if (cursor) params.set("cursor", cursor);
+  const res = await fetch(`/api/admin/ligas/fotos?${params}`);
+  if (!res.ok) throw new Error("No se pudieron cargar las fotos");
+  return res.json();
+}
+
+export async function subirFotoLiga(form: FormData): Promise<Resultado<LigaFotoVista>> {
+  const res = await fetch("/api/admin/ligas/fotos", { method: "POST", body: form });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) return { success: false, error: json?.error };
+  return { success: true, data: json };
+}
+
+export const actualizarFotoLiga = (id: string, datos: { pie: string | null; partido_id: string | null }) =>
+  enviar("/api/admin/ligas/fotos", "PUT", { id, ...datos });
+export const eliminarFotoLiga = (id: string) => enviar(`/api/admin/ligas/fotos?id=${encodeURIComponent(id)}`, "DELETE");
 
 export async function buscarJugadores(texto: string, ligaId: string): Promise<JugadorBuscado[]> {
   const res = await fetch(`/api/admin/ligas/jugadores?buscar=${encodeURIComponent(texto)}&liga_id=${encodeURIComponent(ligaId)}`);

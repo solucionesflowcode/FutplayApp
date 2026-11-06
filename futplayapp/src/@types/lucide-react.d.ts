@@ -40,6 +40,7 @@ declare module "lucide-react" {
   export const Hourglass: Icon;
   export const Landmark: Icon;
   export const Loader2: Icon;
+  export const MessageCircle: Icon;
   export const Lock: Icon;
   export const LogOut: Icon;
   export const LucideAlertTriangle: Icon;

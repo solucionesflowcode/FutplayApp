@@ -2,13 +2,14 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useState } from "react";
-import { Trophy, ListOrdered, CalendarDays, Users, Info } from "lucide-react";
+import { Trophy, ListOrdered, CalendarDays, Users, Info, Camera } from "lucide-react";
 import TopNavBarUser from "@/components/navbars/TopNavBarUser";
 import { getMiLiga, type MiLigaRespuesta } from "@/data/ligas";
 import { POSICIONES } from "@/lib/posiciones";
 import TablaGoleadores from "@/components/liga/TablaGoleadores";
 import TablaPosiciones from "@/components/liga/TablaPosiciones";
 import FixtureLista from "@/components/liga/FixtureLista";
+import FotosGaleria from "@/components/liga/FotosGaleria";
 import CampeonBanner from "@/components/liga/CampeonBanner";
 import EscudoEquipo from "@/components/liga/EscudoEquipo";
 
@@ -16,6 +17,7 @@ const PESTANAS = [
     { id: "tabla", etiqueta: "Tabla", icono: ListOrdered },
     { id: "fixture", etiqueta: "Fixture y resultados", icono: CalendarDays },
     { id: "equipos", etiqueta: "Equipos", icono: Users },
+    { id: "fotos", etiqueta: "Fotos", icono: Camera },
 ] as const;
 type Pestana = (typeof PESTANAS)[number]["id"];
 
@@ -57,7 +59,7 @@ export default function MiLigaPage() {
                     <div>
                         <div className="w-12 h-1 bg-[#F28C28] rounded-full mb-3" />
                         <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-[#00305B]">Liga SportTrade 2026</h1>
-                        <p className="text-gray-500 mt-1.5 text-sm md:text-base">Tabla de posiciones, fixture y equipos.</p>
+                        <p className="text-gray-500 mt-1.5 text-sm md:text-base">Tabla de posiciones, fixture, equipos y fotos.</p>
                     </div>
                     {datos && datos.ligas.length > 1 && (
                         <label className="text-sm text-gray-600 flex flex-col gap-1">
@@ -149,6 +151,10 @@ export default function MiLigaPage() {
                                     )}
                                     <FixtureLista partidos={partidosVisibles} equipos={detalle.equipos} miEquipoId={detalle.miEquipoId} />
                                 </>
+                            )}
+
+                            {pestana === "fotos" && (
+                                <FotosGaleria key={detalle.liga.id} ligaId={detalle.liga.id} partidos={detalle.partidos} equipos={detalle.equipos} />
                             )}
 
                             {pestana === "equipos" && (

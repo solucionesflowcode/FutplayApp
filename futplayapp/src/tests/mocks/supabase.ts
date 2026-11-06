@@ -240,6 +240,7 @@ export function makeChain(table: string) {
             filters.push({ method: "not", args: [col, op, val] });
             return terminal;
         }),
+        is: vi.fn((col: string, val: any) => { filters.push({ method: "eq", args: [col, val] }); return terminal; }),
         or: vi.fn(() => terminal),
         order: vi.fn((col: string, opts?: { ascending?: boolean }) => {
             orderBy = { column: col, ascending: opts?.ascending ?? true };

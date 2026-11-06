@@ -1,4 +1,41 @@
 import type { FilaTabla, LigaEquipoBase, LigaEstado, LigaPartido } from "@/lib/liga-tabla";
+import { paramsDeFiltro, type ComentarioFoto, type FiltroFotos, type PaginaFotos } from "@/lib/liga-fotos";
+
+/** Devuelve el JSON de la respuesta o lanza el mensaje de la API. */
+async function leer<T>(res: Response, mensaje: string): Promise<T> {
+    const json = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(json?.error ?? mensaje);
+    return json as T;
+}
+
+export async function getFotosLiga(ligaId: string, filtro: FiltroFotos, cursor?: string): Promise<PaginaFotos> {
+    const params = paramsDeFiltro(filtro);
+    params.set("liga_id", ligaId);
+    if (cursor) params.set("cursor", cursor);
+    return leer(await fetch(`/api/ligas/fotos?${params}`), "No se pudieron cargar las fotos");
+}
+
+export async function cambiarMeGusta(fotoId: string, meGusta: boolean): Promise<{ me_gusta: boolean; total: number }> {
+    const res = await fetch(`/api/ligas/fotos/${encodeURIComponent(fotoId)}/reaccion`, { method: meGusta ? "POST" : "DELETE" });
+    return leer(res, "No se pudo guardar tu me gusta");
+}
+
+export async function getComentariosFoto(fotoId: string): Promise<ComentarioFoto[]> {
+    return leer(await fetch(`/api/ligas/fotos/${encodeURIComponent(fotoId)}/comentarios`), "No se pudieron cargar los comentarios");
+}
+
+export async function comentarFoto(fotoId: string, texto: string): Promise<ComentarioFoto> {
+    const res = await fetch(`/api/ligas/fotos/${encodeURIComponent(fotoId)}/comentarios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto }),
+    });
+    return leer(res, "No se pudo publicar el comentario");
+}
+
+export async function borrarComentarioFoto(id: string): Promise<void> {
+    await leer(await fetch(`/api/ligas/fotos/comentarios/${encodeURIComponent(id)}`, { method: "DELETE" }), "No se pudo borrar el comentario");
+}
 
 export type LigaResumen = {
     id: string;
