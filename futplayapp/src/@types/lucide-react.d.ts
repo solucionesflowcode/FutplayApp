@@ -105,6 +105,7 @@ declare module "lucide-react" {
   export const ChevronsRight: Icon;
   export const Info: Icon;
   export const ListOrdered: Icon;
+  export const Star: Icon;
   export const Swords: Icon;
   export const Trophy: Icon;
 }

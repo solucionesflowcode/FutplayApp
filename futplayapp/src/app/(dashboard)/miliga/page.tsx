@@ -6,6 +6,7 @@ import { Trophy, ListOrdered, CalendarDays, Users, Info } from "lucide-react";
 import TopNavBarUser from "@/components/navbars/TopNavBarUser";
 import { getMiLiga, type MiLigaRespuesta } from "@/data/ligas";
 import { POSICIONES } from "@/lib/posiciones";
+import TablaGoleadores from "@/components/liga/TablaGoleadores";
 import TablaPosiciones from "@/components/liga/TablaPosiciones";
 import FixtureLista from "@/components/liga/FixtureLista";
 import CampeonBanner from "@/components/liga/CampeonBanner";
@@ -132,7 +133,10 @@ export default function MiLigaPage() {
 
                         <div role="tabpanel">
                             {pestana === "tabla" && (
-                                <TablaPosiciones filas={detalle.tabla} miEquipoId={detalle.miEquipoId} clasificados={detalle.liga.clasificados_playoff} />
+                                <>
+                                    <TablaPosiciones filas={detalle.tabla} miEquipoId={detalle.miEquipoId} clasificados={detalle.liga.clasificados_playoff} />
+                                    <TablaGoleadores partidos={detalle.partidos} equipos={detalle.equipos} miEquipoId={detalle.miEquipoId} />
+                                </>
                             )}
 
                             {pestana === "fixture" && (

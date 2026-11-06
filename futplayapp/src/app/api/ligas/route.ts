@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
 import { calcularTabla, type LigaEquipoBase, type LigaPartido } from "@/lib/liga-tabla";
+import { aplanarDetallePartido, EMBED_DETALLE_PARTIDO } from "@/lib/liga-goles";
 
 // GET /api/ligas[?id=<liga>] → vista de "Mi liga" (solo lectura, cualquier usuario con sesión).
 // Las ligas en borrador no se muestran. Sin id, se elige la liga en curso donde
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
     const [{ data: equipos }, { data: jugadores }, { data: partidos }] = await Promise.all([
       admin.from("liga_equipo").select("id, nombre, logo_url, sede:sede_id (nombre)").eq("liga_id", elegida.id).order("nombre"),
       admin.from("liga_jugador").select("equipo_id, numero, usuario:usuario_id (nombre, foto_url, posicion)").eq("liga_id", elegida.id),
-      admin.from("liga_partido").select("id, liga_id, fase, jornada, llave, local_id, visita_id, fecha_hora, cancha, goles_local, goles_visita, penales_local, penales_visita, estado").eq("liga_id", elegida.id).order("jornada").order("fecha_hora"),
+      admin.from("liga_partido").select(`id, liga_id, fase, jornada, llave, local_id, visita_id, fecha_hora, cancha, goles_local, goles_visita, penales_local, penales_visita, estado, jugador_partido_id, ${EMBED_DETALLE_PARTIDO}`).eq("liga_id", elegida.id).order("jornada").order("fecha_hora"),
     ]);
 
     const plantel = (jugadores || []).map((j) => {
@@ -50,14 +51,16 @@ export async function GET(request: Request) {
       return { equipo_id: j.equipo_id, numero: j.numero, nombre: u.nombre ?? "Jugador", foto_url: u.foto_url ?? null, posicion: u.posicion ?? null };
     });
 
+    const partidosConDetalle = (partidos || []).map(aplanarDetallePartido) as unknown as LigaPartido[];
+
     return NextResponse.json({
       ligas: lista,
       detalle: {
         liga: elegida,
         equipos: equipos || [],
         jugadores: plantel,
-        partidos: partidos || [],
-        tabla: calcularTabla((equipos || []) as unknown as LigaEquipoBase[], (partidos || []) as LigaPartido[]),
+        partidos: partidosConDetalle,
+        tabla: calcularTabla((equipos || []) as unknown as LigaEquipoBase[], partidosConDetalle),
         miEquipoId: miEquipoPorLiga.get(elegida.id) ?? null,
       },
     });

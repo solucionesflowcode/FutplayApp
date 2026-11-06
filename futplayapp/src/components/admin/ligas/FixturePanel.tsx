@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Pencil, Trash2, ClipboardCheck } from "lucide-react";
-import { crearPartido, actualizarPartido, eliminarPartido, type LigaEquipoAdmin } from "@/data/ligas-admin";
+import { crearPartido, actualizarPartido, eliminarPartido, type LigaEquipoAdmin, type LigaJugadorAdmin } from "@/data/ligas-admin";
 import type { LigaPartido } from "@/lib/liga-tabla";
 import { esFechaIso, fechaHoraChileAIso, fechaHoraChileDesdeIso } from "@/lib/fechas";
 import FixtureLista from "@/components/liga/FixtureLista";
@@ -12,13 +12,14 @@ import ResultadoModal from "./ResultadoModal";
 type Props = {
   ligaId: string;
   equipos: LigaEquipoAdmin[];
+  jugadores: LigaJugadorAdmin[];
   partidos: LigaPartido[];
   onCambio: () => void;
 };
 
 type FormPartido = { id?: string; jornada: number | null; local_id: string; visita_id: string; fecha: string; hora: string; cancha: string };
 
-export default function FixturePanel({ ligaId, equipos, partidos, onCambio }: Props) {
+export default function FixturePanel({ ligaId, equipos, jugadores, partidos, onCambio }: Props) {
   const { ejecutar, pendiente } = useAdminMutation();
   const [form, setForm] = useState<FormPartido | null>(null);
   const [errorForm, setErrorForm] = useState<string | null>(null);
@@ -151,7 +152,7 @@ export default function FixturePanel({ ligaId, equipos, partidos, onCambio }: Pr
         )}
       </Modal>
 
-      <ResultadoModal partido={resultado} equipos={mapa} onClose={() => setResultado(null)} onGuardado={onCambio} />
+      <ResultadoModal partido={resultado} equipos={mapa} jugadores={jugadores} onClose={() => setResultado(null)} onGuardado={onCambio} />
 
       <ConfirmDialog
         open={!!aEliminar}

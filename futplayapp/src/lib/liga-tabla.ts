@@ -21,6 +21,13 @@ export interface LigaEquipoBase {
     sede?: { nombre: string } | null;
 }
 
+export interface LigaGol {
+    equipo_id: string;
+    jugador_id: string | null;
+    autogol: boolean;
+    nombre: string | null;
+}
+
 export interface LigaPartido {
     id: string;
     liga_id: string;
@@ -36,6 +43,9 @@ export interface LigaPartido {
     penales_local: number | null;
     penales_visita: number | null;
     estado: LigaPartidoEstado;
+    goles?: LigaGol[];
+    jugador_partido_id?: string | null;
+    jugador_partido_nombre?: string | null;
 }
 
 export interface FilaTabla {

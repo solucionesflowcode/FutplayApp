@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
 import { FASES_PLAYOFF, type LigaFase } from "@/lib/liga-tabla";
+import { errorGoles, errorJugadorPartido, type GolEntrada } from "@/lib/liga-goles";
 
 type AdminClient = Awaited<ReturnType<typeof getAdminClient>>;
 
@@ -78,6 +79,7 @@ export async function PUT(request: Request) {
     const esPlayoff = FASES_PLAYOFF.includes(actual.fase as LigaFase);
 
     const datos: Record<string, unknown> = {};
+    let borrarGoles = false;
     if (body.fecha_hora !== undefined) datos.fecha_hora = body.fecha_hora || null;
     if (body.cancha !== undefined) datos.cancha = typeof body.cancha === "string" && body.cancha.trim() ? body.cancha.trim() : null;
 
@@ -97,6 +99,11 @@ export async function PUT(request: Request) {
         }
         datos.local_id = local;
         datos.visita_id = visita;
+        // Con otros equipos, los autores cargados ya no corresponden.
+        if (local !== actual.local_id || visita !== actual.visita_id) {
+          datos.jugador_partido_id = null;
+          borrarGoles = true;
+        }
       }
     }
 
@@ -125,7 +132,8 @@ export async function PUT(request: Request) {
 
       if (estado !== "jugado") {
         // Programado o suspendido: sin marcador.
-        Object.assign(datos, { estado, goles_local: null, goles_visita: null, penales_local: null, penales_visita: null });
+        Object.assign(datos, { estado, goles_local: null, goles_visita: null, penales_local: null, penales_visita: null, jugador_partido_id: null });
+        borrarGoles = true;
       } else {
         const gl = marcador(body.goles_local ?? actual.goles_local);
         const gv = marcador(body.goles_visita ?? actual.goles_visita);
@@ -147,10 +155,45 @@ export async function PUT(request: Request) {
       }
     }
 
-    if (Object.keys(datos).length === 0) return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
+    // Autores de los goles y jugador del partido: se validan contra el marcador que queda guardado.
+    if (body.goles !== undefined || body.jugador_partido_id !== undefined) {
+      const final = { ...actual, ...datos };
+      if (final.estado !== "jugado") return NextResponse.json({ error: "Solo un partido jugado tiene goles y jugador del partido" }, { status: 400 });
+      const { data: plantel } = await admin.from("liga_jugador").select("id, equipo_id").eq("liga_id", actual.liga_id).in("equipo_id", [final.local_id, final.visita_id]);
+      const equipoDeJugador = new Map((plantel || []).map((j) => [j.id as string, j.equipo_id as string]));
+      if (body.goles !== undefined) {
+        const errorG = errorGoles(body.goles, { ...final, equipoDeJugador });
+        if (errorG) return NextResponse.json({ error: errorG }, { status: 400 });
+        borrarGoles = true;
+      }
+      if (body.jugador_partido_id !== undefined) {
+        const errorJ = errorJugadorPartido(body.jugador_partido_id, equipoDeJugador);
+        if (errorJ) return NextResponse.json({ error: errorJ }, { status: 400 });
+        datos.jugador_partido_id = body.jugador_partido_id || null;
+      }
+    }
 
-    const { error } = await admin.from("liga_partido").update(datos).eq("id", body.id);
-    if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    if (Object.keys(datos).length === 0 && !borrarGoles) return NextResponse.json({ error: "No hay campos para actualizar" }, { status: 400 });
+
+    if (Object.keys(datos).length > 0) {
+      const { error } = await admin.from("liga_partido").update(datos).eq("id", body.id);
+      if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    }
+
+    if (borrarGoles) {
+      const { error } = await admin.from("liga_gol").delete().eq("partido_id", body.id);
+      if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    }
+    if (body.goles?.length) {
+      const filas = (body.goles as GolEntrada[]).map((g) => ({
+        partido_id: body.id,
+        equipo_id: g.equipo_id,
+        jugador_id: g.autogol ? null : g.jugador_id,
+        autogol: !!g.autogol,
+      }));
+      const { error } = await admin.from("liga_gol").insert(filas);
+      if (error) return NextResponse.json({ error: traducirError(error.message) }, { status: 500 });
+    }
     return NextResponse.json({ success: true });
   } catch (err) {
     return error500(err);

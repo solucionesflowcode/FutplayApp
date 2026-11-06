@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, Users, CalendarDays, ListOrdered, Swords } from "lucide-react";
 import { getLigaAdmin, type LigaDetalleAdmin } from "@/data/ligas-admin";
 import { calcularTabla } from "@/lib/liga-tabla";
+import TablaGoleadores from "@/components/liga/TablaGoleadores";
 import TablaPosiciones from "@/components/liga/TablaPosiciones";
 import EquiposPanel from "@/components/admin/ligas/EquiposPanel";
 import FixturePanel from "@/components/admin/ligas/FixturePanel";
@@ -75,12 +76,15 @@ export default function LigaDetallePage() {
 
             <div role="tabpanel">
               {pestana === "equipos" && <EquiposPanel ligaId={id} equipos={datos.equipos} jugadores={datos.jugadores} onCambio={cargar} />}
-              {pestana === "fixture" && <FixturePanel ligaId={id} equipos={datos.equipos} partidos={datos.partidos} onCambio={cargar} />}
+              {pestana === "fixture" && <FixturePanel ligaId={id} equipos={datos.equipos} jugadores={datos.jugadores} partidos={datos.partidos} onCambio={cargar} />}
               {pestana === "tabla" && (
-                <TablaPosiciones filas={calcularTabla(datos.equipos, datos.partidos)} clasificados={datos.liga.clasificados_playoff} />
+                <>
+                  <TablaPosiciones filas={calcularTabla(datos.equipos, datos.partidos)} clasificados={datos.liga.clasificados_playoff} />
+                  <TablaGoleadores partidos={datos.partidos} equipos={datos.equipos} />
+                </>
               )}
               {pestana === "playoffs" && (
-                <PlayoffsPanel ligaId={id} clasificados={datos.liga.clasificados_playoff} equipos={datos.equipos} partidos={datos.partidos} onCambio={cargar} />
+                <PlayoffsPanel ligaId={id} clasificados={datos.liga.clasificados_playoff} equipos={datos.equipos} jugadores={datos.jugadores} partidos={datos.partidos} onCambio={cargar} />
               )}
             </div>
           </>

@@ -8,6 +8,7 @@ import {
   reiniciarPlayoffs,
   siguienteRondaPlayoffs,
   type LigaEquipoAdmin,
+  type LigaJugadorAdmin,
 } from "@/data/ligas-admin";
 import { calcularTabla, ETIQUETA_FASE, type LigaPartido } from "@/lib/liga-tabla";
 import { ganador, rondaActual, type Clasificados } from "@/lib/liga-playoffs";
@@ -21,11 +22,12 @@ type Props = {
   ligaId: string;
   clasificados: Clasificados | null;
   equipos: LigaEquipoAdmin[];
+  jugadores: LigaJugadorAdmin[];
   partidos: LigaPartido[];
   onCambio: () => void;
 };
 
-export default function PlayoffsPanel({ ligaId, clasificados, equipos, partidos, onCambio }: Props) {
+export default function PlayoffsPanel({ ligaId, clasificados, equipos, jugadores, partidos, onCambio }: Props) {
   const { ejecutar, pendiente } = useAdminMutation();
   const opciones = ([2, 4, 8] as Clasificados[]).filter((n) => n <= equipos.length);
   const [n, setN] = useState<Clasificados | null>(clasificados ?? opciones.at(-1) ?? null);
@@ -158,7 +160,7 @@ export default function PlayoffsPanel({ ligaId, clasificados, equipos, partidos,
         ) : null}
       />
 
-      <ResultadoModal partido={resultado} equipos={mapa} onClose={() => setResultado(null)} onGuardado={onCambio} />
+      <ResultadoModal partido={resultado} equipos={mapa} jugadores={jugadores} onClose={() => setResultado(null)} onGuardado={onCambio} />
 
       <Modal
         open={!!editar}

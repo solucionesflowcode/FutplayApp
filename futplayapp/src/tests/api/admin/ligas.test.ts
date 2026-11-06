@@ -151,6 +151,47 @@ describe("ligas: partidos", () => {
     });
 });
 
+describe("ligas: goles y jugador del partido", () => {
+    const PLANTEL = [
+        { id: "ja", liga_id: "l1", equipo_id: EQ_A },
+        { id: "jb", liga_id: "l1", equipo_id: EQ_B },
+        { id: "jo", liga_id: "l2", equipo_id: EQ_OTRA },
+    ];
+    const resultado = (extra: object) => json("PUT", { id: "p1", estado: "jugado", goles_local: 1, goles_visita: 0, ...extra });
+
+    beforeEach(() => {
+        comoAdmin();
+        __setTableData("liga_partido", [partido({})]);
+        __setTableData("liga_jugador", PLANTEL);
+    });
+
+    it("API-ADM-LIGAS-GOL-001: guarda autor y jugador del partido", async () => {
+        const res = await PUT_PARTIDO(new Request(`${URL_BASE}/partidos`, resultado({ goles: [{ equipo_id: EQ_A, jugador_id: "ja", autogol: false }], jugador_partido_id: "jb" })));
+        expect(res.status).toBe(200);
+    });
+
+    it("API-ADM-LIGAS-GOL-002: el autor debe ser del equipo que anotó", async () => {
+        const res = await PUT_PARTIDO(new Request(`${URL_BASE}/partidos`, resultado({ goles: [{ equipo_id: EQ_A, jugador_id: "jb", autogol: false }] })));
+        expect(res.status).toBe(400);
+    });
+
+    it("API-ADM-LIGAS-GOL-003: no puede haber más autores que goles", async () => {
+        const res = await PUT_PARTIDO(new Request(`${URL_BASE}/partidos`, resultado({ goles: [{ equipo_id: EQ_B, jugador_id: "jb", autogol: false }] })));
+        expect(res.status).toBe(400);
+        expect((await res.json()).error).toMatch(/más autores/);
+    });
+
+    it("API-ADM-LIGAS-GOL-004: el jugador del partido debe jugar en alguno de los dos equipos", async () => {
+        const res = await PUT_PARTIDO(new Request(`${URL_BASE}/partidos`, resultado({ jugador_partido_id: "jo" })));
+        expect(res.status).toBe(400);
+    });
+
+    it("API-ADM-LIGAS-GOL-005: un partido no jugado no recibe goles", async () => {
+        const res = await PUT_PARTIDO(new Request(`${URL_BASE}/partidos`, json("PUT", { id: "p1", goles: [] })));
+        expect(res.status).toBe(400);
+    });
+});
+
 describe("ligas: equipos y playoffs", () => {
     it("API-ADM-LIGAS-EQ-003: un equipo nuevo exige sede", async () => {
         comoAdmin();

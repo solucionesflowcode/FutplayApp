@@ -112,6 +112,8 @@ export type DatosPartido = {
   goles_visita?: number | null;
   penales_local?: number | null;
   penales_visita?: number | null;
+  goles?: { equipo_id: string; jugador_id: string | null; autogol: boolean }[];
+  jugador_partido_id?: string | null;
 };
 
 export const crearPartido = (liga_id: string, datos: DatosPartido) => enviar<LigaPartido>("/api/admin/ligas/partidos", "POST", { liga_id, ...datos });

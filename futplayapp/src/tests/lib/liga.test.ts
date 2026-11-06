@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { aplanarDetallePartido, calcularGoleadores, errorGoles, resumenGoles } from "@/lib/liga-goles";
 import { calcularTabla, type LigaPartido } from "@/lib/liga-tabla";
 import { generarPrimeraRonda, generarSiguienteRonda, ganador, rondaActual } from "@/lib/liga-playoffs";
 
@@ -85,5 +86,59 @@ describe("playoffs", () => {
     it("LIGA-PO-007: ronda actual es la más avanzada existente", () => {
         expect(rondaActual([{ fase: "regular" }])).toBeNull();
         expect(rondaActual([{ fase: "cuartos" }, { fase: "semifinal" }])).toBe("semifinal");
+    });
+});
+
+describe("goles del partido", () => {
+    const ctx = { local_id: "a", visita_id: "b", goles_local: 2, goles_visita: 1, equipoDeJugador: new Map([["ja", "a"], ["jb", "b"]]) };
+
+    it("acepta autores, autogoles y goles sin autor registrado", () => {
+        expect(errorGoles([{ equipo_id: "a", jugador_id: "ja" }, { equipo_id: "b", autogol: true }], ctx)).toBeNull();
+        expect(errorGoles([], ctx)).toBeNull();
+    });
+
+    it("rechaza un autor de otro equipo, un autogol con autor y más autores que goles", () => {
+        expect(errorGoles([{ equipo_id: "a", jugador_id: "jb" }], ctx)).toMatch(/autor/);
+        expect(errorGoles([{ equipo_id: "a", jugador_id: "ja", autogol: true }], ctx)).toMatch(/autogol/);
+        expect(errorGoles([{ equipo_id: "b", jugador_id: "jb" }, { equipo_id: "b", jugador_id: "jb" }], ctx)).toMatch(/más autores/);
+    });
+
+    it("agrupa los goles de un mismo jugador y separa por equipo", () => {
+        const goles = [
+            { equipo_id: "a", jugador_id: "ja", autogol: false, nombre: "Juan" },
+            { equipo_id: "a", jugador_id: "ja", autogol: false, nombre: "Juan" },
+            { equipo_id: "a", jugador_id: null, autogol: true, nombre: null },
+            { equipo_id: "b", jugador_id: "jb", autogol: false, nombre: "Pedro" },
+            { equipo_id: "b", jugador_id: null, autogol: false, nombre: null },
+        ];
+        expect(resumenGoles(goles, "a")).toEqual(["Juan ×2", "Autogol"]);
+        expect(resumenGoles(goles, "b")).toEqual(["Pedro"]);
+    });
+
+    it("suma los goles de toda la liga y quienes empatan comparten posición", () => {
+        const gol = (equipo_id: string, jugador_id: string, nombre: string) => ({ equipo_id, jugador_id, autogol: false, nombre });
+        const resultado = calcularGoleadores([
+            { estado: "jugado", goles: [gol("a", "ja", "Juan"), gol("b", "jb", "Pedro")] },
+            { estado: "jugado", goles: [gol("a", "ja", "Juan"), gol("c", "jc", "Ana")] },
+        ]);
+        expect(resultado.map((g) => [g.posicion, g.nombre, g.goles])).toEqual([[1, "Juan", 2], [2, "Ana", 1], [2, "Pedro", 1]]);
+        expect(resultado[0].equipo_id).toBe("a");
+    });
+
+    it("no cuenta autogoles, goles sin autor ni partidos que no se jugaron", () => {
+        expect(calcularGoleadores([
+            { estado: "jugado", goles: [{ equipo_id: "a", jugador_id: null, autogol: true, nombre: null }, { equipo_id: "a", jugador_id: null, autogol: false, nombre: null }] },
+            { estado: "suspendido", goles: [{ equipo_id: "a", jugador_id: "ja", autogol: false, nombre: "Juan" }] },
+            { estado: "jugado" },
+        ])).toEqual([]);
+    });
+
+    it("aplana los datos embebidos sin dejar los objetos anidados", () => {
+        const fila = aplanarDetallePartido({
+            id: "p",
+            goles: [{ equipo_id: "a", jugador_id: "ja", autogol: false, jugador: { usuario: { nombre: "Juan" } } }],
+            mvp: { usuario: { nombre: "Pedro" } },
+        });
+        expect(fila).toEqual({ id: "p", goles: [{ equipo_id: "a", jugador_id: "ja", autogol: false, nombre: "Juan" }], jugador_partido_nombre: "Pedro" });
     });
 });

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { CalendarDays, MapPin } from "lucide-react";
+import { CalendarDays, MapPin, Star } from "lucide-react";
 import type { LigaEquipoBase, LigaPartido } from "@/lib/liga-tabla";
 import { ganador } from "@/lib/liga-playoffs";
+import { resumenGoles } from "@/lib/liga-goles";
 import { formatearFechaHora } from "@/lib/fechas";
 import EscudoEquipo from "./EscudoEquipo";
 
@@ -29,6 +30,8 @@ export default function PartidoTarjeta({ partido: p, equipos, destacado, accione
   const jugado = p.estado === "jugado";
   const gana = ganador(p);
   const hayPenales = p.penales_local != null && p.penales_visita != null;
+  const autoresLocal = jugado ? resumenGoles(p.goles ?? [], p.local_id) : [];
+  const autoresVisita = jugado ? resumenGoles(p.goles ?? [], p.visita_id) : [];
   // El partido se juega en la sede del equipo local.
   const lugar = [local?.sede?.nombre, p.cancha].filter(Boolean).join(" · ");
 
@@ -50,6 +53,20 @@ export default function PartidoTarjeta({ partido: p, equipos, destacado, accione
         </div>
         <Equipo e={visita} lado="visita" gano={jugado && gana === visita?.id} />
       </div>
+
+      {(autoresLocal.length > 0 || autoresVisita.length > 0) && (
+        <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-gray-600">
+          <ul>{autoresLocal.map((a) => <li key={a}>{a}</li>)}</ul>
+          <ul className="text-right">{autoresVisita.map((a) => <li key={a}>{a}</li>)}</ul>
+        </div>
+      )}
+
+      {jugado && p.jugador_partido_nombre && (
+        <p className="mt-2 flex items-center justify-center gap-1 text-xs text-gray-700">
+          <Star size={13} className="text-[#F28C28]" aria-hidden />
+          Jugador del partido: <strong>{p.jugador_partido_nombre}</strong>
+        </p>
+      )}
 
       {(p.fecha_hora || lugar || acciones) && (
         <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">

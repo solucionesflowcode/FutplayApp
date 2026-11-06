@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAdmin, getAdminClient } from "@/utils/supabase/admin";
 import { traducirError } from "@/lib/errores";
 import { esClasificados } from "@/lib/liga-playoffs";
+import { aplanarDetallePartido, EMBED_DETALLE_PARTIDO } from "@/lib/liga-goles";
 
 const ESTADOS = ["borrador", "en_curso", "finalizada"];
 
@@ -61,10 +62,10 @@ export async function GET(request: Request) {
     const [{ data: equipos }, { data: jugadores }, { data: partidos }] = await Promise.all([
       admin.from("liga_equipo").select("*, sede:sede_id (nombre)").eq("liga_id", id).order("nombre"),
       admin.from("liga_jugador").select("id, equipo_id, usuario_id, numero, usuario:usuario_id (nombre, email, foto_url, posicion)").eq("liga_id", id),
-      admin.from("liga_partido").select("*").eq("liga_id", id).order("jornada").order("fecha_hora"),
+      admin.from("liga_partido").select(`*, ${EMBED_DETALLE_PARTIDO}`).eq("liga_id", id).order("jornada").order("fecha_hora"),
     ]);
 
-    return NextResponse.json({ liga, equipos: equipos || [], jugadores: jugadores || [], partidos: partidos || [] });
+    return NextResponse.json({ liga, equipos: equipos || [], jugadores: jugadores || [], partidos: (partidos || []).map(aplanarDetallePartido) });
   } catch (err) {
     return error500(err);
   }
