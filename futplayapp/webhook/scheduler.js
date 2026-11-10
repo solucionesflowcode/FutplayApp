@@ -1,8 +1,13 @@
-const { parseFechaHoraChile, buildReminderMessage, buildCambioHoraMessage } = require('./handlers');
+const { parseFechaHoraChile, buildReminderMessage, buildCambioHoraMessage, buildRenovacionMessage } = require('./handlers');
 
 // Anticipación mínima para mandar el recordatorio: deja al menos 1 h para
 // responder antes del cierre de 1 h previo a la clase.
 const MARGEN_RECORDATORIO_MS = 2 * 60 * 60 * 1000;
+// Avisos de renovación por ciclo (uno por minuto): una tanda grande de mensajes
+// iguales a números que no escriben al club arriesga un bloqueo de WhatsApp.
+const MAX_AVISOS_RENOVACION_POR_CICLO = 5;
+// Tiempo sin plan antes de mandar el aviso de renovación.
+const ESPERA_AVISO_RENOVACION = '2 hours';
 
 /**
  * Un ciclo del scheduler (lo dispara node-cron cada minuto desde server.js).
@@ -37,6 +42,11 @@ const MARGEN_RECORDATORIO_MS = 2 * 60 * 60 * 1000;
  *     conocían y la nueva. Varios cambios seguidos se avisan una vez; si volvió
  *     a la hora original o la clase ya pasó, no se avisa. Si fallan todos los
  *     envíos de una clase, el aviso queda en cola para el siguiente ciclo.
+ *  6. Aviso de renovación: a los jugadores con teléfono y sin plan vigente se les
+ *     manda UNA vez el link de los planes (no espera respuesta). Primero a los que
+ *     nunca compraron; a los demás, 2 h después de gastar el último token o de
+ *     vencer el plan. Uno por membresía agotada (BD: aviso_renovacion). Máximo
+ *     MAX_AVISOS_RENOVACION_POR_CICLO por ciclo. Se apaga con avisoRenovacion=false.
  */
 function crearScheduler(deps) {
   const {
@@ -46,6 +56,7 @@ function crearScheduler(deps) {
     recordatoriosEnviados,
     guardarRecordatorios,
     esperaEntreEnviosMs = 1000,
+    avisoRenovacion = true,
   } = deps;
 
   let corriendo = false;
@@ -141,6 +152,24 @@ function crearScheduler(deps) {
     }
   }
 
+  async function avisarRenovaciones() {
+    const pendientes = await db.getAvisosRenovacionPendientes(ESPERA_AVISO_RENOVACION);
+    for (const p of pendientes.slice(0, MAX_AVISOS_RENOVACION_POR_CICLO)) {
+      const telefono = String(p.telefono ?? '').replace(/\D/g, '');
+      if (!telefono) continue;
+      const avisoId = await db.registrarAvisoRenovacion(p.usuario_id, p.membresia_id);
+      if (!avisoId) continue;
+      try {
+        await enviar(`${telefono}@c.us`, buildRenovacionMessage(p, p.membresia_id != null));
+        console.log(`[Scheduler] Aviso de renovación enviado a ${p.nombre}`);
+      } catch (err) {
+        await db.anularAvisoRenovacion(avisoId);
+        console.error(`[Scheduler] Error al enviar aviso de renovación a ${p.nombre}:`, err.message);
+      }
+      if (esperaEntreEnviosMs > 0) await new Promise((r) => setTimeout(r, esperaEntreEnviosMs));
+    }
+  }
+
   return async function tick() {
     // Un ciclo puede durar más de un minuto (1 s entre mensajes): sin esta
     // guarda, node-cron arranca otro en paralelo y se duplican recordatorios.
@@ -160,6 +189,14 @@ function crearScheduler(deps) {
       }
       await enviarRecordatorios();
       await cerrarConfirmaciones();
+      // Al final y aislado: lo urgente (clases) va primero y un error aquí no lo frena.
+      if (avisoRenovacion) {
+        try {
+          await avisarRenovaciones();
+        } catch (err) {
+          console.error('[Scheduler] Error en avisos de renovación:', err.message);
+        }
+      }
     } catch (err) {
       console.error('[Scheduler] Error en el ciclo:', err.message);
     } finally {
@@ -168,4 +205,4 @@ function crearScheduler(deps) {
   };
 }
 
-module.exports = { crearScheduler, MARGEN_RECORDATORIO_MS };
+module.exports = { crearScheduler, MARGEN_RECORDATORIO_MS, MAX_AVISOS_RENOVACION_POR_CICLO };

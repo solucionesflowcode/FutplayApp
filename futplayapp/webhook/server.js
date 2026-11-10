@@ -273,6 +273,8 @@ if (process.env.SCHEDULER_ENABLED === 'true') {
     estaListo: () => whatsappReady && alDia,
     recordatoriosEnviados,
     guardarRecordatorios,
+    // Link de los planes a quien no tiene plan vigente. AVISO_RENOVACION=false lo apaga.
+    avisoRenovacion: process.env.AVISO_RENOVACION !== 'false',
   });
   cron.schedule('* * * * *', tick);
 }

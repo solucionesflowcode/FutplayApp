@@ -67,6 +67,7 @@ La sesión queda guardada en el volumen `bot-session`: los reinicios no piden QR
 - **Respuestas:** `1` / `sí` / `confirmo` → `confirmado_whatsapp`. `2` / `no` / `cancelo` → cancela con ≥ 3 h, devolviendo el token (los partidos nunca devuelven token); con < 3 h queda sin reembolso. El token se devuelve una sola vez aunque el alumno mande "2" repetido o cancele a la vez en la web. La respuesta aplica a la clase del recordatorio pendiente; solo si no tiene ninguno, a su clase sin confirmar más próxima. Una respuesta **atrasada** (mandada con el bot apagado) solo aplica a la reserva pendiente: si mientras tanto la canceló en la web, no se toca otra clase. Las cuentas `@lid` se resuelven a su teléfono real.
 - **1 h antes de la clase:** quien recibió el recordatorio y no respondió (`pendiente`) queda `cancelado_sin_reembolso`. Las reservas nunca avisadas (`sin_confirmar`) **no** se cancelan.
 - **1 h después de la clase:** `confirmado_whatsapp` → `no_asistio` (el profesor lo corrige a `asistio`).
+- **Aviso de renovación:** a los jugadores con teléfono y sin plan vigente se les manda **una vez** el link de los planes (`PLANES_URL`, por defecto `https://futplay.cl/planes`). No espera respuesta. Primero a los que nunca compraron; a los demás, 2 h después de gastar el último token o de vencer el plan (un aviso por cada plan agotado). Salen máximo 5 por minuto. Se registran en la tabla `aviso_renovacion` (requiere `docs/migrations/2026-11-aviso-renovacion.sql`). Para apagarlo: `AVISO_RENOVACION=false` en `.env`.
 
 ## Problemas comunes
 

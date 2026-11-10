@@ -367,8 +367,42 @@ async function getInscripcionesAbiertas(claseId) {
   return data ?? [];
 }
 
+// ─── Aviso de renovación (docs/migrations/2026-11-aviso-renovacion.sql) ───
+// Jugadores sin plan vigente a los que aún no se les mandó el link de los
+// planes: primero los que nunca compraron, luego los que se quedaron sin
+// tokens o con el plan vencido hace al menos `espera`.
+
+async function getAvisosRenovacionPendientes(espera = '2 hours') {
+  const { data, error } = await supabase.rpc('usuarios_aviso_renovacion', { p_espera: espera });
+  if (error) throw new Error(`usuarios_aviso_renovacion: ${error.message}`);
+  return data ?? [];
+}
+
+// Reserva el aviso ANTES de enviarlo: si el envío sale pero la BD falla después,
+// no se manda dos veces. Devuelve el id, o null si ya estaba registrado.
+async function registrarAvisoRenovacion(usuarioId, membresiaId) {
+  const { data, error } = await supabase
+    .from('aviso_renovacion')
+    .insert({ usuario_id: usuarioId, membresia_id: membresiaId ?? null })
+    .select('id')
+    .maybeSingle();
+  if (error) {
+    if (error.code === '23505') return null; // ya avisado (otro ciclo)
+    throw new Error(`registrarAvisoRenovacion: ${error.message}`);
+  }
+  return data?.id ?? null;
+}
+
+// Si el envío falló, se libera para reintentar en el siguiente ciclo.
+async function anularAvisoRenovacion(avisoId) {
+  await supabase.from('aviso_renovacion').delete().eq('id', avisoId);
+}
+
 module.exports = {
   init,
+  getAvisosRenovacionPendientes,
+  registrarAvisoRenovacion,
+  anularAvisoRenovacion,
   getClient,
   buscarUsuarioPorTelefono,
   getProximaClaseUsuario,

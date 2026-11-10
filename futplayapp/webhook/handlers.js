@@ -49,6 +49,16 @@ function buildCambioHoraMessage(usuario, clase, fechaAnterior, fechaNueva) {
   return `Hola ${usuario.nombre}! Cambió el horario de "${titulo}": era el ${formatoFechaHora(fechaAnterior)} y ahora es el *${formatoFechaHora(fechaNueva)}*. Tu reserva se mantiene. Si no puedes asistir, cancélala desde "Mis clases" en la página.`;
 }
 
+const PLANES_URL = process.env.PLANES_URL || 'https://futplay.cl/planes';
+
+// Aviso informativo: no pide respuesta. tuvoPlan=false → nunca compró un plan.
+function buildRenovacionMessage(usuario, tuvoPlan) {
+  const motivo = tuvoPlan
+    ? 'Tu plan de FutPlay se quedó sin tokens o ya venció.'
+    : 'Todavía no tienes un plan activo en FutPlay.';
+  return `Hola ${usuario.nombre}! ${motivo} Si quieres seguir entrenando, puedes comprar tu plan aquí: ${PLANES_URL}`;
+}
+
 async function recargarPagina(whatsapp) {
   try {
     if (!whatsapp?.puppeteer?.page) return;
@@ -202,4 +212,4 @@ async function procesarMensajeWhatsApp(telefono, texto, db, opts = {}) {
   return null;
 }
 
-module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, interpretarRespuesta, telefonoDesdeContacto, horasHasta, parseFechaHoraChile, buildReminderMessage, buildCambioHoraMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };
+module.exports = { confirmarAsistencia, cancelarAsistencia, procesarMensajeWhatsApp, interpretarRespuesta, telefonoDesdeContacto, horasHasta, parseFechaHoraChile, buildReminderMessage, buildCambioHoraMessage, buildRenovacionMessage, sendMessageWithRetry, recargarPagina, esFrameDetached };

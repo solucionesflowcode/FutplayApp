@@ -19,6 +19,9 @@ function crearDb(over: Record<string, unknown> = {}) {
         marcarAvisosProcesados: vi.fn().mockResolvedValue(undefined),
         getClaseConHora: vi.fn(),
         getInscripcionesAbiertas: vi.fn().mockResolvedValue([]),
+        getAvisosRenovacionPendientes: vi.fn().mockResolvedValue([]),
+        registrarAvisoRenovacion: vi.fn().mockResolvedValue("aviso-1"),
+        anularAvisoRenovacion: vi.fn().mockResolvedValue(undefined),
         ...over,
     };
 }
@@ -295,6 +298,98 @@ describe("scheduler — aviso de cambio de hora", () => {
         await tick();
 
         expect(enviar).toHaveBeenCalledWith("56912345678@c.us", expect.stringContaining("Confirma tu asistencia"));
+        expect(db.setPendiente).toHaveBeenCalledWith("insc-1");
+    });
+});
+
+describe("scheduler — aviso de renovación", () => {
+    beforeEach(() => vi.restoreAllMocks());
+
+    const sinClases = () => ({ getHorarios24h: vi.fn().mockResolvedValue([]) });
+
+    it("SCH-REN-001: manda el link de los planes, con texto distinto si nunca compró", async () => {
+        const db = crearDb({
+            ...sinClases(),
+            getAvisosRenovacionPendientes: vi.fn().mockResolvedValue([
+                { usuario_id: "u-nuevo", membresia_id: null, nombre: "Ana", telefono: "+56 9 1111 1111" },
+                { usuario_id: "u-viejo", membresia_id: "m-1", nombre: "Beto", telefono: "+56922222222" },
+            ]),
+        });
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(db.getAvisosRenovacionPendientes).toHaveBeenCalledWith("2 hours");
+        expect(db.registrarAvisoRenovacion).toHaveBeenCalledWith("u-nuevo", null);
+        expect(db.registrarAvisoRenovacion).toHaveBeenCalledWith("u-viejo", "m-1");
+        expect(enviar).toHaveBeenCalledWith("56911111111@c.us", expect.stringContaining("Todavía no tienes un plan"));
+        expect(enviar).toHaveBeenCalledWith("56922222222@c.us", expect.stringContaining("se quedó sin tokens o ya venció"));
+        expect(enviar).toHaveBeenCalledWith(expect.any(String), expect.stringContaining("/planes"));
+    });
+
+    it("SCH-REN-002: respeta el orden y el máximo por ciclo", async () => {
+        const pendientes = Array.from({ length: 8 }, (_, i) => ({
+            usuario_id: `u${i}`, membresia_id: null, nombre: `N${i}`, telefono: `+5690000000${i}`,
+        }));
+        const db = crearDb({ ...sinClases(), getAvisosRenovacionPendientes: vi.fn().mockResolvedValue(pendientes) });
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(enviar).toHaveBeenCalledTimes(5);
+        expect(enviar.mock.calls[0][0]).toBe("56900000000@c.us");
+    });
+
+    it("SCH-REN-003: si ya estaba registrado (otro ciclo) no lo manda de nuevo", async () => {
+        const db = crearDb({
+            ...sinClases(),
+            getAvisosRenovacionPendientes: vi.fn().mockResolvedValue([
+                { usuario_id: "u1", membresia_id: null, nombre: "Ana", telefono: "+56911111111" },
+            ]),
+            registrarAvisoRenovacion: vi.fn().mockResolvedValue(null),
+        });
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(enviar).not.toHaveBeenCalled();
+    });
+
+    it("SCH-REN-004: si falla el envío libera el registro para reintentar", async () => {
+        const db = crearDb({
+            ...sinClases(),
+            getAvisosRenovacionPendientes: vi.fn().mockResolvedValue([
+                { usuario_id: "u1", membresia_id: "m1", nombre: "Ana", telefono: "+56911111111" },
+            ]),
+        });
+        const enviar = vi.fn().mockRejectedValue(new Error("caído"));
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const { tick } = crear(db, { enviar });
+
+        await tick();
+
+        expect(db.anularAvisoRenovacion).toHaveBeenCalledWith("aviso-1");
+    });
+
+    it("SCH-REN-005: desactivado no consulta ni envía", async () => {
+        const db = crearDb(sinClases());
+        const { tick } = crear(db, { avisoRenovacion: false });
+
+        await tick();
+
+        expect(db.getAvisosRenovacionPendientes).not.toHaveBeenCalled();
+    });
+
+    it("SCH-REN-006: si la consulta falla, recordatorios y cierres no se ven afectados", async () => {
+        const db = crearDb({
+            getAvisosRenovacionPendientes: vi.fn().mockRejectedValue(new Error("no existe la función")),
+        });
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const { tick, enviar } = crear(db);
+
+        await tick();
+
+        expect(enviar).toHaveBeenCalledWith("56912345678@c.us", expect.stringContaining("Hola Ana"));
         expect(db.setPendiente).toHaveBeenCalledWith("insc-1");
     });
 });
