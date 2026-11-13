@@ -8,6 +8,8 @@ const MARGEN_RECORDATORIO_MS = 2 * 60 * 60 * 1000;
 const MAX_AVISOS_RENOVACION_POR_CICLO = 5;
 // Tiempo sin plan antes de mandar el aviso de renovación.
 const ESPERA_AVISO_RENOVACION = '2 hours';
+// Tras un envío fallido, cuánto esperar antes de reintentar a esa persona.
+const REINTENTO_RENOVACION_MS = 60 * 60 * 1000;
 
 /**
  * Un ciclo del scheduler (lo dispara node-cron cada minuto desde server.js).
@@ -152,8 +154,14 @@ function crearScheduler(deps) {
     }
   }
 
+  // usuario_id → ms hasta el que no se reintenta (envío fallido). Sin esto, unos
+  // pocos números que siempre fallan ocupaban todos los cupos de cada ciclo.
+  const reintentoRenovacion = new Map();
+
   async function avisarRenovaciones() {
-    const pendientes = await db.getAvisosRenovacionPendientes(ESPERA_AVISO_RENOVACION);
+    const ahora = Date.now();
+    const pendientes = (await db.getAvisosRenovacionPendientes(ESPERA_AVISO_RENOVACION))
+      .filter((p) => !(reintentoRenovacion.get(p.usuario_id) > ahora));
     for (const p of pendientes.slice(0, MAX_AVISOS_RENOVACION_POR_CICLO)) {
       const telefono = String(p.telefono ?? '').replace(/\D/g, '');
       if (!telefono) continue;
@@ -163,8 +171,14 @@ function crearScheduler(deps) {
         await enviar(`${telefono}@c.us`, buildRenovacionMessage(p, p.membresia_id != null));
         console.log(`[Scheduler] Aviso de renovación enviado a ${p.nombre}`);
       } catch (err) {
-        await db.anularAvisoRenovacion(avisoId);
-        console.error(`[Scheduler] Error al enviar aviso de renovación a ${p.nombre}:`, err.message);
+        if (err.sinWhatsapp) {
+          // Queda registrado: no se reintenta a un número sin WhatsApp.
+          console.warn(`[Scheduler] Aviso de renovación no enviado a ${p.nombre}: ${telefono} no tiene WhatsApp`);
+        } else {
+          await db.anularAvisoRenovacion(avisoId);
+          reintentoRenovacion.set(p.usuario_id, Date.now() + REINTENTO_RENOVACION_MS);
+          console.error(`[Scheduler] Error al enviar aviso de renovación a ${p.nombre}:`, err.message);
+        }
       }
       if (esperaEntreEnviosMs > 0) await new Promise((r) => setTimeout(r, esperaEntreEnviosMs));
     }

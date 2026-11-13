@@ -553,3 +553,24 @@ describe("sendMessageWithRetry", () => {
     expect(whatsapp.sendMessage).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("sendMessageWithRetry — No LID for user", () => {
+    it("HND-LID-001: reintenta con el id que entrega WhatsApp para el número", async () => {
+        const { sendMessageWithRetry } = await import("../../../webhook/handlers");
+        const sendMessage = vi.fn()
+            .mockRejectedValueOnce(new Error("No LID for user"))
+            .mockResolvedValueOnce(undefined);
+        const getNumberId = vi.fn().mockResolvedValue({ _serialized: "56911111111@c.us" });
+        await sendMessageWithRetry({ sendMessage, getNumberId }, "56911111111@c.us", "hola");
+        expect(getNumberId).toHaveBeenCalledWith("56911111111@c.us");
+        expect(sendMessage).toHaveBeenCalledTimes(2);
+    });
+
+    it("HND-LID-002: si el número no tiene WhatsApp lanza un error marcado sinWhatsapp", async () => {
+        const { sendMessageWithRetry } = await import("../../../webhook/handlers");
+        const sendMessage = vi.fn().mockRejectedValue(new Error("No LID for user"));
+        const getNumberId = vi.fn().mockResolvedValue(null);
+        await expect(sendMessageWithRetry({ sendMessage, getNumberId }, "56911111111@c.us", "hola"))
+            .rejects.toMatchObject({ sinWhatsapp: true });
+    });
+});

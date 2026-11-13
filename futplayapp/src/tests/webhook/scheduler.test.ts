@@ -393,3 +393,41 @@ describe("scheduler — aviso de renovación", () => {
         expect(db.setPendiente).toHaveBeenCalledWith("insc-1");
     });
 });
+
+describe("scheduler — aviso de renovación con envíos fallidos", () => {
+    beforeEach(() => vi.restoreAllMocks());
+
+    const pendiente = (id: string) => ({ usuario_id: id, membresia_id: null, nombre: id, telefono: "+56911111111" });
+
+    it("SCH-REN-007: número sin WhatsApp queda registrado (no se reintenta)", async () => {
+        const db = crearDb({
+            getHorarios24h: vi.fn().mockResolvedValue([]),
+            getAvisosRenovacionPendientes: vi.fn().mockResolvedValue([pendiente("u1")]),
+        });
+        const enviar = vi.fn().mockRejectedValue(Object.assign(new Error("sin wsp"), { sinWhatsapp: true }));
+        vi.spyOn(console, "warn").mockImplementation(() => {});
+        const { tick } = crear(db, { enviar });
+
+        await tick();
+
+        expect(db.anularAvisoRenovacion).not.toHaveBeenCalled();
+    });
+
+    it("SCH-REN-008: tras un error, esa persona no ocupa cupo en los ciclos siguientes", async () => {
+        const db = crearDb({
+            getHorarios24h: vi.fn().mockResolvedValue([]),
+            getAvisosRenovacionPendientes: vi.fn().mockResolvedValue([pendiente("u-falla"), pendiente("u-ok")]),
+        });
+        const enviar = vi.fn((_: string, __: string) => Promise.resolve());
+        enviar.mockRejectedValueOnce(new Error("caído"));
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const { tick } = crear(db, { enviar });
+
+        await tick();
+        db.registrarAvisoRenovacion.mockClear();
+        await tick();
+
+        expect(db.registrarAvisoRenovacion).not.toHaveBeenCalledWith("u-falla", null);
+        expect(db.registrarAvisoRenovacion).toHaveBeenCalledWith("u-ok", null);
+    });
+});

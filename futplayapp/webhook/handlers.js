@@ -77,12 +77,26 @@ function esFrameDetached(err) {
   return !!(err && (err.message?.includes('detached Frame') || err.name === 'DetachedFrameError'));
 }
 
+const esSinLid = (err) => String(err?.message ?? err).includes('No LID for user');
+
 async function sendMessageWithRetry(whatsapp, chatId, message, maxRetries = 3) {
+  let destino = chatId;
+  let lidResuelto = false;
   for (let i = 0; i < maxRetries; i++) {
     try {
-      await whatsapp.sendMessage(chatId, message);
+      await whatsapp.sendMessage(destino, message);
       return;
     } catch (err) {
+      // "No LID for user": WhatsApp Web no conoce el contacto (nunca escribió al
+      // club). Se consulta el número a WhatsApp: si existe se reintenta con su id
+      // registrado; si no, el número no tiene WhatsApp y no tiene sentido reintentar.
+      if (esSinLid(err) && !lidResuelto) {
+        lidResuelto = true;
+        const wid = await whatsapp.getNumberId(chatId).catch(() => null);
+        if (!wid) throw Object.assign(new Error('El número no tiene WhatsApp'), { sinWhatsapp: true });
+        destino = wid._serialized ?? `${wid.user}@${wid.server}`;
+        continue;
+      }
       if (esFrameDetached(err) && i < maxRetries - 1) {
         console.log(`[WARN] Frame detached, recargando página y reintentando ${i + 1}/${maxRetries}...`);
         await recargarPagina(whatsapp);
