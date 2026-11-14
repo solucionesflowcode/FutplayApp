@@ -6,8 +6,9 @@ export type ClaseEvent = {
   descripcion: string | null;
   fecha_hora: string;
   sede: string;
+  esKids: boolean;
   isMine: boolean;
-  tipo_evento: "entrenamiento" | "partido" | "kids";
+  tipo_evento: "entrenamiento" | "partido";
 };
 
 export type AlumnoAsistencia = {
@@ -22,8 +23,8 @@ type ClaseRow = {
   titulo: string;
   descripcion: string | null;
   fecha_hora: string | null;
-  sede: { nombre: string } | null;
-  tipo_evento: "entrenamiento" | "partido" | "kids";
+  sede: { nombre: string; es_kids: boolean } | null;
+  tipo_evento: "entrenamiento" | "partido";
 };
 
 type ClaseUsuarioRow = {
@@ -43,7 +44,7 @@ async function fetchAllClases(): Promise<ClaseEvent[]> {
       descripcion,
       fecha_hora,
       tipo_evento,
-      sede:sede_id ( nombre )
+      sede:sede_id ( nombre, es_kids )
     `)
     .order("fecha_hora", { ascending: true, nullsFirst: false });
 
@@ -65,6 +66,7 @@ async function fetchAllClases(): Promise<ClaseEvent[]> {
         descripcion: r.descripcion,
         fecha_hora: r.fecha_hora!,
         sede: r.sede?.nombre ?? "",
+        esKids: r.sede?.es_kids === true,
         isMine: false,
         tipo_evento: r.tipo_evento,
       };

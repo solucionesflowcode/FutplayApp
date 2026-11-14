@@ -296,3 +296,60 @@ describe("POST /api/clases/inscribir — ficha médica obligatoria", () => {
         expect((await pedir()).status).toBe(200);
     });
 });
+
+// Kids es una SEDE (sede.es_kids), no un tipo de clase.
+describe("POST /api/clases/inscribir — sede Kids", () => {
+    const pedir = () => POST(new Request("http://localhost:3000/api/clases/inscribir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claseId: "c1" }),
+    }));
+    const CLASE_KIDS = { ...CLASE_BASE, sede: { es_kids: true } };
+    const CLASE_ADULTOS = { ...CLASE_BASE, sede: { es_kids: false } };
+    const conPlan = (tipo_plan: string) => __setTableData("membresia", [{
+        usuario_id: USER_ID, estado: true, sin_tokens: false,
+        fecha_inicio: "2020-01-01T00:00:00Z", fecha_vencimiento: "2099-01-01T00:00:00Z",
+        plan: { tipo_plan },
+    }]);
+
+    beforeEach(() => {
+        __resetMocks();
+        __setAuthUser({ id: USER_ID, email: "test@test.cl" });
+        __setTableData("ficha_medica", [{ usuario_id: USER_ID }]);
+        __setTableData("clase_usuario", { id: "new-ins", usuario_id: USER_ID });
+    });
+
+    it("API-CLASES-KIDS-001: plan Kids no reserva una clase de otra sede", async () => {
+        conPlan("kids");
+        __setTableData("clase", CLASE_ADULTOS);
+
+        const res = await pedir();
+
+        expect(res.status).toBe(403);
+        expect((await res.json()).error).toContain("sede Kids");
+    });
+
+    it("API-CLASES-KIDS-002: plan normal no reserva una clase de la sede Kids", async () => {
+        conPlan("normal");
+        __setTableData("clase", CLASE_KIDS);
+
+        const res = await pedir();
+
+        expect(res.status).toBe(403);
+        expect((await res.json()).error).toContain("exclusivas para el plan Kids");
+    });
+
+    it("API-CLASES-KIDS-003: plan Kids reserva una clase de la sede Kids", async () => {
+        conPlan("kids");
+        __setTableData("clase", CLASE_KIDS);
+
+        expect((await pedir()).status).toBe(200);
+    });
+
+    it("API-CLASES-KIDS-004: plan normal reserva una clase de otra sede", async () => {
+        conPlan("normal");
+        __setTableData("clase", CLASE_ADULTOS);
+
+        expect((await pedir()).status).toBe(200);
+    });
+});

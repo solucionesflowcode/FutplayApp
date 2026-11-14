@@ -33,7 +33,7 @@ type SessionItem = {
     descripcion: string | null;
     sede: string;
     claseId: string;
-    tipo_evento: "entrenamiento" | "partido" | "kids";
+    tipo_evento: "entrenamiento" | "partido";
     cupo_maximo: number | null;
     inscritos: number;
 };
@@ -131,7 +131,7 @@ export default function MisClasesClient() {
         descripcion: string | null;
         fecha_hora: string;
         sede: string;
-        tipo_evento: "entrenamiento" | "partido" | "kids";
+        tipo_evento: "entrenamiento" | "partido";
         cupo_maximo: number | null;
         inscritos: number;
     }[] | null>(null);
@@ -765,7 +765,7 @@ export default function MisClasesClient() {
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4">
                                                             <span className="inline-block bg-[#d3e3ff] text-[#16487b] px-3 py-1 rounded-full text-[10px] font-bold uppercase max-w-[200px] truncate align-middle">
-                                                                    {s.tipo_evento === "partido" ? "⚽ Partido" : s.tipo_evento === "kids" ? "🧒 Kids" : "🏋️ Entrenamiento"}
+                                                                    {s.tipo_evento === "partido" ? "⚽ Partido" :"🏋️ Entrenamiento"}
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 md:px-8 py-4">

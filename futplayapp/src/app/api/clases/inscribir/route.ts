@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     // que solo dejaría ver al usuario sus propias inscripciones)
     const { data: clase } = await admin
         .from("clase")
-        .select("cupo_maximo, tipo_evento")
+        .select("cupo_maximo, tipo_evento, sede:sede_id(es_kids)")
         .eq("id", claseId)
         .single();
 
@@ -105,15 +105,20 @@ export async function POST(request: Request) {
 
     const tipoPlan = (tipoPlanRow as unknown as { plan: { tipo_plan: "normal" | "familiar" | "kids" | "liga" } } | null)?.plan?.tipo_plan ?? "normal";
 
-    if (tipoPlan === "kids" && clase.tipo_evento !== "kids") {
+    // Kids es una SEDE (sede.es_kids), no un tipo de clase. Misma regla que el
+    // trigger manejar_inscripcion_clase().
+    const sedeClase = (clase as unknown as { sede: { es_kids: boolean } | { es_kids: boolean }[] | null }).sede;
+    const esClaseKids = (Array.isArray(sedeClase) ? sedeClase[0]?.es_kids : sedeClase?.es_kids) === true;
+
+    if (tipoPlan === "kids" && !esClaseKids) {
         return NextResponse.json(
-            { error: "Tu plan Kids solo permite reservar clases Kids" },
+            { error: "Tu plan Kids solo permite reservar clases de la sede Kids" },
             { status: 403 },
         );
     }
-    if (tipoPlan === "normal" && clase.tipo_evento === "kids") {
+    if (tipoPlan === "normal" && esClaseKids) {
         return NextResponse.json(
-            { error: "Esa clase es exclusiva para el plan Kids" },
+            { error: "Las clases de la sede Kids son exclusivas para el plan Kids" },
             { status: 403 },
         );
     }

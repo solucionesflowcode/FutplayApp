@@ -41,7 +41,7 @@ const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: "todas", etiqueta: "Todas" },
 ];
 
-type TipoEvento = "entrenamiento" | "partido" | "kids";
+type TipoEvento = "entrenamiento" | "partido";
 
 type ClaseForm = {
   id?: string;
@@ -70,7 +70,7 @@ const emptyForm: ClaseForm = {
   hora: "",
 };
 
-const NOMBRE_TIPO: Record<TipoEvento, string> = { entrenamiento: "Entrenamiento", partido: "Partido", kids: "Kids" };
+const NOMBRE_TIPO: Record<TipoEvento, string> = { entrenamiento: "Entrenamiento", partido: "Partido" };
 
 function formatFecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-CL", { weekday: "short", day: "2-digit", month: "short", year: "numeric", timeZone: "America/Santiago" });
@@ -437,7 +437,6 @@ export default function ClasesPage() {
               <select {...p} value={form.tipo_evento} onChange={(e) => setForm((f) => ({ ...f, tipo_evento: e.target.value as TipoEvento }))} className={CLASE_INPUT}>
                 <option value="entrenamiento">Entrenamiento</option>
                 <option value="partido">Partido</option>
-                <option value="kids">Kids</option>
               </select>
             )}
           </FormField>

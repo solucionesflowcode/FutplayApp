@@ -24,7 +24,7 @@ type ClaseInfo = {
     descripcion: string | null;
     fecha_hora: string;
     sede: string;
-    tipo_evento?: "entrenamiento" | "partido" | "kids";
+    tipo_evento?: "entrenamiento" | "partido";
     cupo_maximo?: number | null;
     inscritos?: number;
 };

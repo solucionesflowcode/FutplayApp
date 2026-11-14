@@ -121,6 +121,10 @@ export async function GET(request: Request) {
   }
 }
 
+// Kids ya no es un tipo de clase: es una sede (sede.es_kids).
+const TIPOS_EVENTO = ["entrenamiento", "partido"];
+const TIPO_INVALIDO = { error: "Tipo de clase inválido. Para una clase Kids, elige la sede Kids." };
+
 export async function POST(request: Request) {
   const user = await verifyAdmin();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -128,6 +132,10 @@ export async function POST(request: Request) {
   try {
     const admin = await getAdminClient();
     const body = await request.json();
+
+    if (body.tipo_evento !== undefined && !TIPOS_EVENTO.includes(body.tipo_evento)) {
+      return NextResponse.json(TIPO_INVALIDO, { status: 400 });
+    }
 
     if (body.tipo_evento !== "partido" && (!body.titulo || !body.sede_id)) {
       return NextResponse.json({ error: "Faltan campos: titulo, sede_id" }, { status: 400 });
@@ -176,6 +184,9 @@ export async function PUT(request: Request) {
     const body = await request.json();
 
     if (!body.id) return NextResponse.json({ error: "id requerido" }, { status: 400 });
+    if (body.tipo_evento !== undefined && !TIPOS_EVENTO.includes(body.tipo_evento)) {
+      return NextResponse.json(TIPO_INVALIDO, { status: 400 });
+    }
 
     const updateData: Record<string, unknown> = {};
     if (body.tipo_evento === "partido") {

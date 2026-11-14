@@ -206,8 +206,8 @@ export default function CalendarioClases({
           const hasMine = dayClases.some((c) => c.isMine);
           const hasOthers = dayClases.some((c) => !c.isMine);
           const hasPartido = dayClases.some((c) => c.tipo_evento === "partido");
-          const hasEntrenamiento = dayClases.some((c) => c.tipo_evento === "entrenamiento");
-          const hasKids = dayClases.some((c) => c.tipo_evento === "kids");
+          const hasEntrenamiento = dayClases.some((c) => c.tipo_evento === "entrenamiento" && !c.esKids);
+          const hasKids = dayClases.some((c) => c.esKids);
 
           let cellTone: "empty" | "mine" | "other" | "mixed" = "empty";
           if (dayClases.length > 0) {
@@ -325,7 +325,7 @@ export default function CalendarioClases({
                   <Calendar size={16} className={isSelected ? "text-white" : "text-slate-400"} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-semibold truncate block">
-                      {clase.tipo_evento === "partido" ? "Partido" : clase.tipo_evento === "kids" ? "Kids" : (clase.titulo || "Entrenamiento")}
+                      {clase.tipo_evento === "partido" ? "Partido" : (clase.titulo || "Entrenamiento")}
                     </span>
                     <span className="text-[10px] opacity-70">
                       {d.toLocaleDateString("es-CL", {

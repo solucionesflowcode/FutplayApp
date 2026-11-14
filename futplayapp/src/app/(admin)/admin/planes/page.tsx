@@ -40,7 +40,7 @@ const emptyForm: PlanForm = { nombre: "", precio: null, tokens_mensuales: 4, dia
 
 const TIPOS_PLAN: { valor: TipoPlan; etiqueta: string; ayuda: string }[] = [
   { valor: "normal", etiqueta: "Normal", ayuda: "Aparece en el catálogo salvo que lo ocultes. Reserva entrenamientos y partidos." },
-  { valor: "kids", etiqueta: "Kids", ayuda: "Aparece en el catálogo salvo que lo ocultes. Solo reserva clases Kids." },
+  { valor: "kids", etiqueta: "Kids", ayuda: "Aparece en el catálogo salvo que lo ocultes. Solo reserva clases de la sede Kids." },
   { valor: "familiar", etiqueta: "Familiar", ayuda: "Oculto: se compra solo con el link de acceso." },
   { valor: "liga", etiqueta: "Liga", ayuda: "Oculto, pago único sin tokens: se compra solo con el link de acceso." },
 ];

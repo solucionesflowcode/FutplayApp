@@ -8,7 +8,7 @@ export type ClaseRow = {
   cupo_maximo: number | null;
   profesor_id: string | null;
   fecha_hora: string | null;
-  tipo_evento: "entrenamiento" | "partido" | "kids";
+  tipo_evento: "entrenamiento" | "partido";
   created_at: string;
 };
 
@@ -42,7 +42,7 @@ export async function getProximaClase(userId: string, tipoPlan?: "normal" | "fam
   descripcion: string;
   fecha_hora: string;
   sede: string;
-  tipo_evento: "entrenamiento" | "partido" | "kids";
+  tipo_evento: "entrenamiento" | "partido";
 }>> {
   const supabase = createClient();
 
@@ -54,7 +54,7 @@ export async function getProximaClase(userId: string, tipoPlan?: "normal" | "fam
         descripcion,
         fecha_hora,
         tipo_evento,
-        sede (nombre)
+        sede (nombre, es_kids)
       ),
       asistencia
     `)
@@ -64,28 +64,30 @@ export async function getProximaClase(userId: string, tipoPlan?: "normal" | "fam
   if (error || !data?.length) return [];
 
   const excluded = new Set(["cancelado", "cancelado_sin_reembolso", "presente", "ausente"]);
-  const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string; tipo_evento: "entrenamiento" | "partido" | "kids" }> = [];
+  const rows: Array<{ titulo: string; descripcion: string; fecha_hora: string; sede: string; tipo_evento: "entrenamiento" | "partido"; esKids: boolean }> = [];
   for (const item of data) {
     if (excluded.has((item as { asistencia: string | null }).asistencia ?? "")) continue;
     const raw = item.clase;
     const c = (Array.isArray(raw) ? (raw as Record<string, unknown>[])[0] : raw) as Record<string, unknown>;
     if (!c) continue;
     rows.push({
-      titulo: (c.titulo as string) || (c.tipo_evento === "partido" ? "Partido" : c.tipo_evento === "kids" ? "Kids" : "Entrenamiento"),
+      titulo: (c.titulo as string) || (c.tipo_evento === "partido" ? "Partido" : "Entrenamiento"),
       descripcion: c.descripcion as string,
       fecha_hora: c.fecha_hora as string,
       sede: ((c.sede as Record<string, string>)?.nombre ?? ""),
-      tipo_evento: c.tipo_evento as "entrenamiento" | "partido" | "kids",
+      tipo_evento: c.tipo_evento as "entrenamiento" | "partido",
+      // Kids es una sede (sede.es_kids), no un tipo de clase.
+      esKids: (c.sede as { es_kids?: boolean } | null)?.es_kids === true,
     });
   }
 
   if (tipoPlan === "kids") {
-    const filtered = rows.filter(r => r.tipo_evento === "kids");
+    const filtered = rows.filter(r => r.esKids);
     filtered.sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime());
     return filtered.slice(0, 1);
   }
   if (tipoPlan === "normal") {
-    const filtered = rows.filter(r => r.tipo_evento !== "kids");
+    const filtered = rows.filter(r => !r.esKids);
     filtered.sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime());
     return filtered.slice(0, 1);
   }
@@ -122,7 +124,7 @@ export async function createClase(data: {
   cupo_maximo?: number;
   profesor_id?: string;
   fecha_hora?: string;
-  tipo_evento?: "entrenamiento" | "partido" | "kids";
+  tipo_evento?: "entrenamiento" | "partido";
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/clases", {
     method: "POST",
@@ -144,7 +146,7 @@ export async function updateClase(data: {
   cupo_maximo?: number;
   profesor_id?: string | null;
   fecha_hora?: string | null;
-  tipo_evento?: "entrenamiento" | "partido" | "kids";
+  tipo_evento?: "entrenamiento" | "partido";
 }): Promise<{ success: boolean; error?: string }> {
   const res = await fetch("/api/admin/clases", {
     method: "PUT",
