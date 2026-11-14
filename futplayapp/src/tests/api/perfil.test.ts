@@ -78,3 +78,34 @@ describe("/api/perfil — posición", () => {
         expect(updates()).toEqual([{ nombre: "Ana", rut: null, telefono: null, posicion: "arquero" }]);
     });
 });
+
+// Sede en "Mi Perfil" (docs/migrations/2026-11-perfil-sede.sql).
+describe("/api/perfil — sede", () => {
+    beforeEach(() => {
+        __setTableData("sede", [
+            { id: "s-activa", nombre: "Reñaca", activa: true },
+            { id: "s-inactiva", nombre: "Cerrada", activa: false },
+        ]);
+        ref.client = createMockServerClient();
+    });
+
+    it("PER-SEDE-001: PUT guarda una sede activa", async () => {
+        const res = await PUT(put({ sede_id: "s-activa" }));
+        expect(res.status).toBe(200);
+        expect(updates()).toEqual([{ sede_id: "s-activa" }]);
+    });
+
+    it("PER-SEDE-002: PUT con vacío deja al usuario sin sede", async () => {
+        const res = await PUT(put({ sede_id: "" }));
+        expect(res.status).toBe(200);
+        expect(updates()).toEqual([{ sede_id: null }]);
+    });
+
+    it("PER-SEDE-003: PUT rechaza una sede inactiva o inexistente", async () => {
+        for (const sede_id of ["s-inactiva", "no-existe"]) {
+            const res = await PUT(put({ sede_id }));
+            expect(res.status).toBe(400);
+        }
+        expect(updates()).toEqual([]);
+    });
+});

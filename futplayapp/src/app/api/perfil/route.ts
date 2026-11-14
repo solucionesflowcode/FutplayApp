@@ -30,7 +30,7 @@ export async function GET() {
 
   const { data: usuario, error } = await supabase
     .from("usuario")
-    .select("id, nombre, email, rol, rut, telefono, posicion")
+    .select("id, nombre, email, rol, rut, telefono, posicion, sede_id")
     .eq("id", user.id)
     .single();
 
@@ -97,6 +97,23 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Posición inválida" }, { status: 400 });
     }
     updateData.posicion = body.posicion || null;
+  }
+
+  if (body.sede_id !== undefined) {
+    // null o "" = sin sede. Solo se puede elegir una sede activa.
+    const sedeId = String(body.sede_id ?? "").trim();
+    if (sedeId !== "") {
+      const { data: sede } = await supabase
+        .from("sede")
+        .select("id")
+        .eq("id", sedeId)
+        .eq("activa", true)
+        .maybeSingle();
+      if (!sede) {
+        return NextResponse.json({ error: "Sede inválida" }, { status: 400 });
+      }
+    }
+    updateData.sede_id = sedeId || null;
   }
 
   if (Object.keys(updateData).length === 0) {

@@ -5,6 +5,7 @@ import { User, Mail, Shield, Loader2, CheckCircle2, AlertCircle } from "lucide-r
 // Vive en lib/telefono (lo usan también el admin y su API).
 import { normalizeTelefono } from "@/lib/telefono";
 import { POSICIONES } from "@/lib/posiciones";
+import { getSedes, type Sede } from "@/data/sedes";
 
 export { normalizeTelefono };
 
@@ -16,6 +17,7 @@ type UsuarioData = {
   rut: string | null;
   telefono: string | null;
   posicion: string | null;
+  sede_id: string | null;
 };
 
 export default function ProfileForm() {
@@ -30,15 +32,19 @@ export default function ProfileForm() {
   const [rut, setRut] = useState("");
   const [telefono, setTelefono] = useState("+569");
   const [posicion, setPosicion] = useState("");
+  const [sedeId, setSedeId] = useState("");
+  const [sedes, setSedes] = useState<Sede[]>([]);
 
   const [rutError, setRutError] = useState<string | null>(null);
   const [telError, setTelError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPerfil = async () => {
-      const res = await fetch("/api/perfil");
+      const [res, listaSedes] = await Promise.all([fetch("/api/perfil"), getSedes()]);
       const data = await res.json();
+      setSedes(listaSedes);
       if (res.ok) {
+        setSedeId(data.sede_id || "");
         setUsuario(data);
         setNombre(data.nombre);
         setRut(data.rut || "");
@@ -108,6 +114,7 @@ export default function ProfileForm() {
           // Solo guarda si el teléfono está completo (+569 + 8 dígitos)
           telefono: telefono.length === 12 ? telefono : null,
           posicion: posicion || null,
+          sede_id: sedeId || null,
         }),
       });
       const data = await res.json();
@@ -242,6 +249,26 @@ export default function ProfileForm() {
                 {POSICIONES.map((p) => (
                   <option key={p.valor} value={p.valor}>{p.etiqueta}</option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="perfil-sede" className="block text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                Sede
+              </label>
+              <select
+                id="perfil-sede"
+                value={sedeId}
+                onChange={(e) => setSedeId(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-[#001220] bg-white focus:outline-none focus:border-[#F39200] focus:ring-1 focus:ring-[#F39200]/30 transition"
+              >
+                <option value="">Sin definir</option>
+                {/* Las sedes activas, y la actual aunque se haya desactivado. */}
+                {sedes
+                  .filter((s) => s.activa || s.id === sedeId)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>{s.nombre}</option>
+                  ))}
               </select>
             </div>
 
